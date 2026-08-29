@@ -21,13 +21,14 @@ import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
 import { Tooltip } from 'radix-ui';
-import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, ListTree, Loader2, PenLine, Settings, Shuffle, X } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, ListTree, Loader2, PenLine, Settings, Shuffle, Sparkles, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import DocumentSettingsModal from '@/components/DocumentSettingsModal';
 import { useAlertModal } from '@/contexts/AlertModalContext';
+import { useAiSettingsDock } from '@/contexts/AiSettingsDockContext';
 import {
   convertAllMarkdownImagesToWiki,
   countStandardMarkdownImages,
@@ -152,6 +153,7 @@ export default function EditorPane({
   const recordingAudioRef = useRef(null);
   const [fileManagementOpen, setFileManagementOpen] = useState(false);
   const fileManagementRef = useRef(null);
+  const { open: aiSettingsDockOpen, toggleDock: toggleAiSettingsDock } = useAiSettingsDock();
   const [novelTocVisible, setNovelTocVisible] = useState(true);
   const editorTopChromeRef = useRef(null);
   const novelFlushBeforeSaveRef = useRef(null);
@@ -987,6 +989,21 @@ export default function EditorPane({
                     서식 유지 복사
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2 ${
+                    aiSettingsDockOpen
+                      ? 'text-violet-700 dark:text-violet-300'
+                      : 'text-gray-700 dark:text-odp-fgStrong'
+                  }`}
+                  onClick={() => {
+                    toggleAiSettingsDock();
+                    setFileManagementOpen(false);
+                  }}
+                >
+                  <Sparkles size={14} />
+                  AI설정
+                </button>
                 {currentFile.type !== 'session' ? (
                 <button
                   type="button"

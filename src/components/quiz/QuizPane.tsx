@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { AnimatePresence, motion as Motion } from 'motion/react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
+import { AnimatePresence, motion as Motion } from "motion/react";
 import {
   BookOpen,
   CheckCheck,
@@ -15,26 +23,26 @@ import {
   Sparkles,
   Wand2,
   X,
-} from 'lucide-react';
-import { DropdownMenu, Switch, Tooltip } from 'radix-ui';
-import Button from '@/components/Button';
-import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import QuizMdPreview from '@/components/quiz/QuizMdPreview';
-import { QuizImageHydrationProvider } from '@/components/quiz/QuizImageHydrationContext';
-import QuizDerivedQuestionModal from '@/components/quiz/QuizDerivedQuestionModal';
-import QuizAddQuestionModal from '@/components/quiz/QuizAddQuestionModal';
-import QuizBulkImportModal from '@/components/quiz/QuizBulkImportModal';
-import QuizSourcePickerModal from '@/components/quiz/QuizSourcePickerModal';
-import QuizSourcePathsChips from '@/components/quiz/QuizSourcePathsChips';
-import QuizGenerationQueuePanel from '@/components/quiz/QuizGenerationQueuePanel';
-import QuizStopwatchToolbar from '@/components/quiz/QuizStopwatchToolbar';
-import QuizTimeLogPanel from '@/components/quiz/QuizTimeLogPanel';
-import QuizWrongChoiceAnalysisPanel from '@/components/quiz/QuizWrongChoiceAnalysisPanel';
-import QuizQuestionMemoPanel from '@/components/quiz/QuizQuestionMemoPanel';
+} from "lucide-react";
+import { DropdownMenu, Switch, Tooltip } from "radix-ui";
+import Button from "@/components/Button";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import QuizMdPreview from "@/components/quiz/QuizMdPreview";
+import { QuizImageHydrationProvider } from "@/components/quiz/QuizImageHydrationContext";
+import QuizDerivedQuestionModal from "@/components/quiz/QuizDerivedQuestionModal";
+import QuizAddQuestionModal from "@/components/quiz/QuizAddQuestionModal";
+import QuizBulkImportModal from "@/components/quiz/QuizBulkImportModal";
+import QuizSourcePickerModal from "@/components/quiz/QuizSourcePickerModal";
+import QuizSourcePathsChips from "@/components/quiz/QuizSourcePathsChips";
+import QuizGenerationQueuePanel from "@/components/quiz/QuizGenerationQueuePanel";
+import QuizStopwatchToolbar from "@/components/quiz/QuizStopwatchToolbar";
+import QuizTimeLogPanel from "@/components/quiz/QuizTimeLogPanel";
+import QuizWrongChoiceAnalysisPanel from "@/components/quiz/QuizWrongChoiceAnalysisPanel";
+import QuizQuestionMemoPanel from "@/components/quiz/QuizQuestionMemoPanel";
 import QuizChoiceAnalysisDock, {
   type QuizChoiceAnalysisDockMode,
-} from '@/components/quiz/QuizChoiceAnalysisDock';
-import QuizExamGradeButton from '@/components/quiz/QuizExamGradeButton';
+} from "@/components/quiz/QuizChoiceAnalysisDock";
+import QuizExamGradeButton from "@/components/quiz/QuizExamGradeButton";
 import {
   isQuizSessionEmpty,
   nextDisplayLabel,
@@ -51,14 +59,14 @@ import {
   isQuizSourcePathEnabled,
   removeQuizSourcePathFromConfig,
   setQuizSourcePathEnabled,
-} from '@/utils/quiz';
+} from "@/utils/quiz";
 import {
   computeQuizScoreBoard,
   getQuizQuestionGradeStatus,
   QUIZ_GRADE_STATUS_DOT_CLASS,
   QUIZ_GRADE_STATUS_LABEL,
   type QuizQuestionGradeStatus,
-} from '@/utils/quiz/quizScoring';
+} from "@/utils/quiz/quizScoring";
 import {
   checkQuizLlmReady,
   generateQuestionsFromSources,
@@ -69,52 +77,57 @@ import {
   generateChoiceAnalysisFollowUp,
   gradeSubjectiveAnswer,
   isQuizLlmSetupIssue,
-} from '@/utils/quiz/quizLlmService';
+} from "@/utils/quiz/quizLlmService";
 import type {
   QuizAddQuestionForm,
   QuizDocument,
   QuizPersistedSession,
   QuizQuestion,
   SubjectiveGradeResult,
-} from '@/utils/quiz/quizTypes';
+} from "@/utils/quiz/quizTypes";
 import {
   remapChoiceAnalysisDockOption,
   shuffleQuizChoiceOptions,
-} from '@/utils/quiz/shuffleQuizChoiceOptions';
-import { formToQuizQuestion } from '@/utils/quiz/buildQuestionMarkdown';
-import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
-import type { QuizVaultTextReader } from '@/utils/quiz/quizVaultSourceLoader';
-import '@/styles/quiz-pane.css';
-import { writeQuizGenerationLog } from '@/utils/quiz/quizGenerationLog';
-import type { QuizGenStepUpdate } from '@/utils/quiz/quizGenerationQueueTypes';
-import { useToast } from '@/contexts/ToastContext';
-import { useAlertModal } from '@/contexts/AlertModalContext';
-import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
-import { useFileSession } from '@/App/hooks/useFileSession';
-import { useVault } from '@/App/hooks/useVault';
-import VaultDocumentPreviewPanel from '@/components/shared/panels/VaultDocumentPreviewPanel';
-import TocResizeHandleJs from '@/components/TocResizeHandle';
-import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
-import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
-import { useQuizGenerationQueue } from '@/hooks/useQuizGenerationQueue';
-import { useQuizStopwatch } from '@/hooks/useQuizStopwatch';
+} from "@/utils/quiz/shuffleQuizChoiceOptions";
+import { formToQuizQuestion } from "@/utils/quiz/buildQuestionMarkdown";
+import type { LlmProviderProfile } from "@/utils/llm/llmProviderProfiles";
+import { useQuizLlmSelection } from "@/hooks/useQuizLlmSelection";
+import QuizLlmSessionBar from "@/components/quiz/QuizLlmSessionBar";
+import type { QuizVaultTextReader } from "@/utils/quiz/quizVaultSourceLoader";
+import "@/styles/quiz-pane.css";
+import { writeQuizGenerationLog } from "@/utils/quiz/quizGenerationLog";
+import type { QuizGenStepUpdate } from "@/utils/quiz/quizGenerationQueueTypes";
+import { useToast } from "@/contexts/ToastContext";
+import { useAlertModal } from "@/contexts/AlertModalContext";
+import { useLlmAssistSessionOptional } from "@/contexts/LlmAssistSessionContext";
+import { useFileSession } from "@/App/hooks/useFileSession";
+import { useVault } from "@/App/hooks/useVault";
+import VaultDocumentPreviewPanel from "@/components/shared/panels/VaultDocumentPreviewPanel";
+import TocResizeHandleJs from "@/components/TocResizeHandle";
+import { useChromeOwned } from "@/App/providers/AppChromeStateProvider";
+import { useResizablePanelWidth } from "@/hooks/useResizablePanelWidth";
+import { useQuizGenerationQueue } from "@/hooks/useQuizGenerationQueue";
+import { useQuizStopwatch } from "@/hooks/useQuizStopwatch";
 import {
   QUIZ_QUESTION_TRACK_ATTR,
   useQuizQuestionTimeLog,
-} from '@/hooks/useQuizQuestionTimeLog';
-import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
-import { resolveQuizSourceMdPaths } from '@/utils/quiz/quizTreeSourceDrop';
-import type { TreeAttachSourceItem } from '@/utils/chatWithMyself/treeAttachDrop';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+} from "@/hooks/useQuizQuestionTimeLog";
+import { findFileNodeByPath, findNodeByPath } from "@/utils/s3Tree";
+import { resolveQuizSourceMdPaths } from "@/utils/quiz/quizTreeSourceDrop";
+import type { TreeAttachSourceItem } from "@/utils/chatWithMyself/treeAttachDrop";
+import {
+  STORAGE_MODE_LOCAL,
+  STORAGE_MODE_WEBDAV,
+} from "@/utils/storageSettings";
 import {
   createEmptyQuizTimeLog,
   appendQuizTimeLogEvent,
   isQuizTimeLogEmpty,
   normalizeQuizTimeLog,
   type QuizTimeLog,
-} from '@/utils/quiz/quizTimeLog';
-import { buildWrongQuestionsExtractQuiz } from '@/utils/quiz/buildWrongQuestionsExtractQuiz';
-import { resolveWrongQuizExtractPath } from '@/utils/quiz/quizWrongExtractPath';
+} from "@/utils/quiz/quizTimeLog";
+import { buildWrongQuestionsExtractQuiz } from "@/utils/quiz/buildWrongQuestionsExtractQuiz";
+import { resolveWrongQuizExtractPath } from "@/utils/quiz/quizWrongExtractPath";
 import {
   appendRegeneratedChoiceAnalysis,
   appendFollowUpChoiceAnalysis,
@@ -125,75 +138,75 @@ import {
   nestWrongChoiceExplanations,
   resolveChoiceAnalysisUserInstructions,
   wrongChoiceExplanationKey,
-} from '@/utils/quiz/quizWrongChoiceExplanations';
-import { loadQuizSettings } from '@/utils/quiz/quizSettingsStore';
-import type { QuizDerivedQuestionTarget } from '@/utils/quiz/derivedQuestionAnalysis';
-import { nextDerivedDisplayLabel } from '@/utils/quiz/derivedQuestionAnalysis';
-import { isQuestionMemosEmpty } from '@/utils/quiz/quizQuestionMemos';
+} from "@/utils/quiz/quizWrongChoiceExplanations";
+import { loadQuizSettings } from "@/utils/quiz/quizSettingsStore";
+import type { QuizDerivedQuestionTarget } from "@/utils/quiz/derivedQuestionAnalysis";
+import { nextDerivedDisplayLabel } from "@/utils/quiz/derivedQuestionAnalysis";
+import { isQuestionMemosEmpty } from "@/utils/quiz/quizQuestionMemos";
 import {
   areQuizPersistedSessionsEqual,
   buildQuizSessionForPersist,
   hasQuizInProgressSession,
   hasQuizSessionAnswer,
-} from '@/utils/quiz/quizSessionBuild';
-import { loadVaultDocumentPreview } from '@/utils/vault/loadVaultDocumentPreview';
+} from "@/utils/quiz/quizSessionBuild";
+import { loadVaultDocumentPreview } from "@/utils/vault/loadVaultDocumentPreview";
 import {
   resolveVaultFileNode,
   type VaultStorageType,
-} from '@/utils/vault/resolveVaultFileNode';
+} from "@/utils/vault/resolveVaultFileNode";
 
 const SOURCES_DOCK_DEFAULT_WIDTH = 320;
 const TOC_DOCK_DEFAULT_WIDTH = 288;
 const PREVIEW_DOCK_DEFAULT_WIDTH = 400;
 
 const TocResizeHandle = TocResizeHandleJs as unknown as ComponentType<{
-  edge?: 'left' | 'right';
+  edge?: "left" | "right";
   handleProps?: Record<string, unknown>;
   isResizing?: boolean;
   visibleOnHover?: boolean;
   label?: string;
 }>;
 const TOC_GRADE_FILTER_ORDER: QuizQuestionGradeStatus[] = [
-  'ungraded',
-  'correct',
-  'partial',
-  'wrong',
+  "ungraded",
+  "correct",
+  "partial",
+  "wrong",
 ];
 
 const TOC_GRADE_TOGGLE_ACTIVE_CLASS: Record<QuizQuestionGradeStatus, string> = {
   ungraded:
-    'bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:ring-slate-600',
+    "bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:ring-slate-600",
   correct:
-    'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-800',
+    "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-800",
   partial:
-    'bg-amber-50 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-800',
+    "bg-amber-50 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-800",
   wrong:
-    'bg-rose-50 text-rose-800 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-200 dark:ring-rose-800',
+    "bg-rose-50 text-rose-800 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-200 dark:ring-rose-800",
 };
 
 const TOC_GRADE_TOGGLE_INACTIVE_CLASS =
-  'bg-slate-100 text-slate-400 ring-1 ring-transparent dark:bg-odp-bgSoft dark:text-odp-muted';
+  "bg-slate-100 text-slate-400 ring-1 ring-transparent dark:bg-odp-bgSoft dark:text-odp-muted";
 const QUIZ_AUTOSAVE_DEBOUNCE_MS = 20_000;
-const QUIZ_SOURCE_REMOVE_CONFIRM_KEY = 's3haim_quiz_source_remove_confirm';
+const QUIZ_SOURCE_REMOVE_CONFIRM_KEY = "s3haim_quiz_source_remove_confirm";
 
 /** Fixed-height slots in the quiz header so progress/score fade does not resize the bar. */
 const QUIZ_HEADER_INLINE_SLOT_CLASS =
-  'flex h-6 max-h-6 min-w-0 items-center overflow-hidden';
+  "flex h-6 max-h-6 min-w-0 items-center overflow-hidden";
 
 const SOURCE_REMOVE_SWITCH_ROOT_CLASS = (checked: boolean) =>
   [
-    'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-violet-400',
+    "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-violet-400",
     checked
-      ? 'border-violet-500 bg-violet-500 shadow-sm dark:border-violet-500 dark:bg-violet-500'
-      : 'border-transparent bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong',
-  ].join(' ');
+      ? "border-violet-500 bg-violet-500 shadow-sm dark:border-violet-500 dark:bg-violet-500"
+      : "border-transparent bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong",
+  ].join(" ");
 
 const SOURCE_REMOVE_SWITCH_THUMB_CLASS =
-  'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
+  "block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]";
 
 function readQuizSourceRemoveConfirm(): boolean {
   try {
-    return localStorage.getItem(QUIZ_SOURCE_REMOVE_CONFIRM_KEY) === 'true';
+    return localStorage.getItem(QUIZ_SOURCE_REMOVE_CONFIRM_KEY) === "true";
   } catch {
     return false;
   }
@@ -215,10 +228,10 @@ type TreeNode = {
 };
 
 const QUIZ_ADD_MENU_CONTENT_CLASS =
-  'z-100010 min-w-[168px] overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
+  "z-100010 min-w-[168px] overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft";
 
 const QUIZ_ADD_MENU_ITEM_CLASS =
-  'flex cursor-pointer select-none items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-focusBg dark:focus:bg-odp-focusBg';
+  "flex cursor-pointer select-none items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium text-gray-800 outline-none hover:bg-gray-100 focus:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-focusBg dark:focus:bg-odp-focusBg";
 
 export type QuizFileManagementActions = {
   extractWrongQuestions: () => void | Promise<void>;
@@ -231,23 +244,32 @@ export type QuizFileManagementActions = {
 export type QuizPaneProps = {
   content: string;
   onChange: (markdown: string) => void;
-  onSave?: ((
-    fileOverride?: unknown,
-    options?: {
-      skipCoverChangeCheck?: boolean;
-      skipSuffixCheck?: boolean;
-      contentOverride?: string;
-    },
-  ) => void | Promise<void>) | undefined;
-  currentFile?: { id?: string; name?: string; type?: string; content?: string } | null;
-  onResolveWikiImageUrl?: ((path: string) => Promise<string | null>) | undefined;
+  onSave?:
+    | ((
+        fileOverride?: unknown,
+        options?: {
+          skipCoverChangeCheck?: boolean;
+          skipSuffixCheck?: boolean;
+          contentOverride?: string;
+        },
+      ) => void | Promise<void>)
+    | undefined;
+  currentFile?: {
+    id?: string;
+    name?: string;
+    type?: string;
+    content?: string;
+  } | null;
+  onResolveWikiImageUrl?:
+    | ((path: string) => Promise<string | null>)
+    | undefined;
   llmProviderProfiles?: LlmProviderProfile[];
   isActiveFile?: boolean;
   registerToolbar?: (node: ReactNode | null) => void;
   registerFileManagement?: (actions: QuizFileManagementActions | null) => void;
 };
 
-type FilterMode = 'all' | 'wrong' | 'unanswered';
+type FilterMode = "all" | "wrong" | "unanswered";
 
 export default function QuizPane({
   content,
@@ -281,31 +303,40 @@ export default function QuizPane({
       llmAssist?.openAssist();
       showToast({
         message:
-          message ||
-          'AI 도우미에서 모델을 로드·선택한 뒤 다시 시도하세요.',
+          message || "AI 도우미에서 모델을 로드·선택한 뒤 다시 시도하세요.",
         durationMs: 3500,
       });
     },
     [llmAssist, showToast],
   );
 
-  const ensureQuizLlmReady = useCallback(async (): Promise<boolean> => {
-    const result = await checkQuizLlmReady(llmProviderProfiles);
-    if (result.ready) return true;
-    openLlmAssistForSetup(result.message);
-    return false;
-  }, [llmProviderProfiles, openLlmAssistForSetup]);
+  const quizLlm = useQuizLlmSelection(llmProviderProfiles);
+
+  const ensureQuizLlmReady = useCallback(
+    async (overrides?: {
+      profileId?: string;
+      model?: string;
+    }): Promise<boolean> => {
+      const result = await checkQuizLlmReady(llmProviderProfiles, {
+        ...quizLlm.llmOpts,
+        ...overrides,
+      });
+      if (result.ready) return true;
+      openLlmAssistForSetup(result.message);
+      return false;
+    },
+    [llmProviderProfiles, openLlmAssistForSetup, quizLlm.llmOpts],
+  );
 
   const reportQuizError = useCallback(
     (title: string, err: unknown, fallback: string) => {
-      const message =
-        (err instanceof Error ? err.message : '') || fallback;
+      const message = (err instanceof Error ? err.message : "") || fallback;
       if (isQuizLlmSetupIssue(message)) {
         openLlmAssistForSetup(message);
         return;
       }
       // Long / multi-line errors (LLM, API) → Alert Modal; short tips stay toast.
-      if (message.length >= 48 || message.includes('\n')) {
+      if (message.length >= 48 || message.includes("\n")) {
         showAlert({ title, message });
         return;
       }
@@ -322,10 +353,10 @@ export default function QuizPane({
 
   const storageType =
     storageMode === STORAGE_MODE_LOCAL
-      ? 'local'
+      ? "local"
       : storageMode === STORAGE_MODE_WEBDAV
-        ? 'webdav'
-        : 's3';
+        ? "webdav"
+        : "s3";
 
   const vaultStorageType = storageType as VaultStorageType;
 
@@ -390,7 +421,7 @@ export default function QuizPane({
       const backend = getBackendForType(storageType);
       if (!backend?.readText) return null;
       const { text } = await backend.readText(path);
-      return typeof text === 'string' ? text : null;
+      return typeof text === "string" ? text : null;
     },
     [getBackendForType, storageType],
   );
@@ -412,7 +443,7 @@ export default function QuizPane({
           logKey,
           job,
           writeText: (p, t) =>
-            backend.writeText(p, t, 'text/markdown; charset=utf-8'),
+            backend.writeText(p, t, "text/markdown; charset=utf-8"),
         });
         genQueue.setJobLogPath(jobId, path);
       } catch {
@@ -440,30 +471,42 @@ export default function QuizPane({
     },
     [storageMode, loadLocalFolderChildren, loadWebdavFolderChildren],
   );
-  const [doc, setDoc] = useState<QuizDocument>(() => parseQuizDocument(content));
+  const [doc, setDoc] = useState<QuizDocument>(() =>
+    parseQuizDocument(content),
+  );
   const contentRef = useRef(content);
   const skipContentSessionHydrateRef = useRef(false);
   const sessionHydratedRef = useRef(false);
-  const sessionAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const docRef = useRef(doc);
   docRef.current = doc;
-  const [userAnswers, setUserAnswers] = useState<Record<string, number | string>>({});
+  const [userAnswers, setUserAnswers] = useState<
+    Record<string, number | string>
+  >({});
   const [graded, setGraded] = useState<Record<string, boolean>>({});
   const [expVisible, setExpVisible] = useState<Record<string, boolean>>({});
-  const [questionMemos, setQuestionMemos] = useState<Record<string, string>>({});
+  const [questionMemos, setQuestionMemos] = useState<Record<string, string>>(
+    {},
+  );
   const [wrongExps, setWrongExps] = useState<Record<string, string>>({});
   const wrongExpsRef = useRef(wrongExps);
   wrongExpsRef.current = wrongExps;
-  const [wrongExpFocus, setWrongExpFocus] = useState<Record<string, number>>({});
+  const [wrongExpFocus, setWrongExpFocus] = useState<Record<string, number>>(
+    {},
+  );
   const [choiceAnalysisDock, setChoiceAnalysisDock] = useState<{
     questionId: string;
     option: number;
     mode: QuizChoiceAnalysisDockMode;
   } | null>(null);
-  const [choiceAnalysisPrompt, setChoiceAnalysisPrompt] = useState('');
-  const [subjGrades, setSubjGrades] = useState<Record<string, SubjectiveGradeResult>>({});
+  const [choiceAnalysisPrompt, setChoiceAnalysisPrompt] = useState("");
+  const [subjGrades, setSubjGrades] = useState<
+    Record<string, SubjectiveGradeResult>
+  >({});
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [filter, setFilter] = useState<FilterMode>('all');
+  const [filter, setFilter] = useState<FilterMode>("all");
   const [tocOpen, setTocOpen] = useState(false);
   const [tocGradeFilters, setTocGradeFilters] = useState<
     Record<QuizQuestionGradeStatus, boolean>
@@ -474,65 +517,75 @@ export default function QuizPane({
     wrong: true,
   });
   const [sourcesDockOpen, setSourcesDockOpen] = useState(false);
-  const [previewSourcePath, setPreviewSourcePath] = useState<string | null>(null);
+  const [previewSourcePath, setPreviewSourcePath] = useState<string | null>(
+    null,
+  );
   const {
     width: previewDockWidth,
     handleProps: previewDockResizeHandleProps,
     isResizing: previewDockResizing,
   } = useResizablePanelWidth({
-    storageKey: 'quiz-source-preview-dock-width',
+    storageKey: "quiz-source-preview-dock-width",
     defaultWidth: PREVIEW_DOCK_DEFAULT_WIDTH,
     minWidth: 280,
     maxWidth: 640,
-    edge: 'left',
+    edge: "left",
   });
   const {
     width: sourcesDockWidth,
     handleProps: sourcesDockResizeHandleProps,
     isResizing: sourcesDockResizing,
   } = useResizablePanelWidth({
-    storageKey: 'quiz-sources-dock-width',
+    storageKey: "quiz-sources-dock-width",
     defaultWidth: SOURCES_DOCK_DEFAULT_WIDTH,
     minWidth: 240,
     maxWidth: 520,
-    edge: 'right',
+    edge: "right",
   });
   const {
     width: tocDockWidth,
     handleProps: tocDockResizeHandleProps,
     isResizing: tocDockResizing,
   } = useResizablePanelWidth({
-    storageKey: 'quiz-toc-dock-width',
+    storageKey: "quiz-toc-dock-width",
     defaultWidth: TOC_DOCK_DEFAULT_WIDTH,
     minWidth: 220,
     maxWidth: 480,
-    edge: 'right',
+    edge: "right",
   });
   const [examStartConfirmOpen, setExamStartConfirmOpen] = useState(false);
-  const [confirmSourceRemove, setConfirmSourceRemove] = useState(readQuizSourceRemoveConfirm);
-  const [pendingSourceRemove, setPendingSourceRemove] = useState<string | null>(null);
+  const [confirmSourceRemove, setConfirmSourceRemove] = useState(
+    readQuizSourceRemoveConfirm,
+  );
+  const [pendingSourceRemove, setPendingSourceRemove] = useState<string | null>(
+    null,
+  );
   const [busyId, setBusyId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editQ, setEditQ] = useState<QuizQuestion | null>(null);
-  const [derivedSourceQ, setDerivedSourceQ] = useState<QuizQuestion | null>(null);
+  const [derivedSourceQ, setDerivedSourceQ] = useState<QuizQuestion | null>(
+    null,
+  );
   const [bulkOpen, setBulkOpen] = useState(false);
   const [sourcePicker, setSourcePicker] = useState<{
     paths: string[];
-    scope: 'file' | 'question';
+    scope: "file" | "question";
     questionId?: string;
     onDone?: (paths: string[]) => void;
   } | null>(null);
-  const [genTopic, setGenTopic] = useState('');
-  const [freshQuestionIds, setFreshQuestionIds] = useState<Record<string, true>>(
-    {},
-  );
+  const [genTopic, setGenTopic] = useState("");
+  const [freshQuestionIds, setFreshQuestionIds] = useState<
+    Record<string, true>
+  >({});
   const abortRef = useRef<AbortController | null>(null);
   const quizScrollRef = useRef<HTMLDivElement>(null);
   const contentProgressRef = useRef<HTMLDivElement>(null);
   const contentScoreRef = useRef<HTMLDivElement>(null);
   const [contentProgressInView, setContentProgressInView] = useState(true);
   const [contentScoreInView, setContentScoreInView] = useState(true);
-  const [timeLog, setTimeLog] = useState<QuizTimeLog>(() => createEmptyQuizTimeLog());
+  const [timeLog, setTimeLog] = useState<QuizTimeLog>(() =>
+    createEmptyQuizTimeLog(),
+  );
   const [stopwatchHydrateKey, setStopwatchHydrateKey] = useState(0);
 
   const stopwatch = useQuizStopwatch({
@@ -567,7 +620,15 @@ export default function QuizPane({
       wrongChoiceExplanations: nestWrongChoiceExplanations(wrongExps),
       ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
     });
-  }, [userAnswers, graded, subjGrades, isSubmitted, timeLog, wrongExps, questionMemos]);
+  }, [
+    userAnswers,
+    graded,
+    subjGrades,
+    isSubmitted,
+    timeLog,
+    wrongExps,
+    questionMemos,
+  ]);
 
   const hasUnsavedQuizProgress = useCallback((): boolean => {
     if (!sessionHydratedRef.current || !isActiveFile) return false;
@@ -578,48 +639,57 @@ export default function QuizPane({
     if (!areQuizPersistedSessionsEqual(current, editorSession)) return true;
 
     const savedContent =
-      typeof currentFile?.content === 'string' ? currentFile.content : '';
+      typeof currentFile?.content === "string" ? currentFile.content : "";
     if (!savedContent) return true;
     const savedSession = parseQuizDocument(savedContent).session;
     return !areQuizPersistedSessionsEqual(current, savedSession);
   }, [buildSessionFromState, currentFile?.content, isActiveFile]);
 
-  const applySessionToState = useCallback((session: QuizPersistedSession | null | undefined) => {
-    const nextTimeLog = normalizeQuizTimeLog(session?.timeLog);
-    setTimeLog(nextTimeLog);
-    setStopwatchHydrateKey((k) => k + 1);
-    if (!session || isQuizSessionEmpty(session)) {
-      setUserAnswers({});
-      setGraded({});
-      setExpVisible({});
-      setWrongExps({});
+  const applySessionToState = useCallback(
+    (session: QuizPersistedSession | null | undefined) => {
+      const nextTimeLog = normalizeQuizTimeLog(session?.timeLog);
+      setTimeLog(nextTimeLog);
+      setStopwatchHydrateKey((k) => k + 1);
+      if (!session || isQuizSessionEmpty(session)) {
+        setUserAnswers({});
+        setGraded({});
+        setExpVisible({});
+        setWrongExps({});
+        setWrongExpFocus({});
+        setChoiceAnalysisDock(null);
+        setChoiceAnalysisPrompt("");
+        setQuestionMemos({});
+        setSubjGrades({});
+        setIsSubmitted(false);
+        return;
+      }
+      setUserAnswers({ ...session.userAnswers });
+      setGraded({ ...session.gradedQuestions });
+      setSubjGrades({ ...session.subjectiveGrades });
+      setIsSubmitted(session.isSubmitted);
+      setWrongExps(
+        flatWrongChoiceExplanations(session.wrongChoiceExplanations),
+      );
+      setQuestionMemos({ ...(session.questionMemos ?? {}) });
       setWrongExpFocus({});
       setChoiceAnalysisDock(null);
-      setChoiceAnalysisPrompt('');
-      setQuestionMemos({});
-      setSubjGrades({});
-      setIsSubmitted(false);
-      return;
-    }
-    setUserAnswers({ ...session.userAnswers });
-    setGraded({ ...session.gradedQuestions });
-    setSubjGrades({ ...session.subjectiveGrades });
-    setIsSubmitted(session.isSubmitted);
-    setWrongExps(flatWrongChoiceExplanations(session.wrongChoiceExplanations));
-    setQuestionMemos({ ...(session.questionMemos ?? {}) });
-    setWrongExpFocus({});
-    setChoiceAnalysisDock(null);
-    setChoiceAnalysisPrompt('');
-    const nextExp: Record<string, boolean> = {};
-    for (const [qid, done] of Object.entries(session.gradedQuestions)) {
-      if (done) nextExp[qid] = true;
-    }
-    setExpVisible(nextExp);
-  }, []);
+      setChoiceAnalysisPrompt("");
+      const nextExp: Record<string, boolean> = {};
+      for (const [qid, done] of Object.entries(session.gradedQuestions)) {
+        if (done) nextExp[qid] = true;
+      }
+      setExpVisible(nextExp);
+    },
+    [],
+  );
 
   const persistDocument = useCallback(
     (nextDoc: QuizDocument, session: QuizPersistedSession) => {
-      const md = serializeQuizDocument(nextDoc.config, nextDoc.questions, session);
+      const md = serializeQuizDocument(
+        nextDoc.config,
+        nextDoc.questions,
+        session,
+      );
       skipContentSessionHydrateRef.current = true;
       contentRef.current = md;
       onChange(md);
@@ -639,7 +709,11 @@ export default function QuizPane({
 
   const saveAfterAiGenerate = useCallback(
     async (wrongExpsSnapshot?: Record<string, string>) => {
-      if (!loadQuizSettings().autoSaveOnAiGenerate || typeof onSave !== 'function') return;
+      if (
+        !loadQuizSettings().autoSaveOnAiGenerate ||
+        typeof onSave !== "function"
+      )
+        return;
       if (wrongExpsSnapshot) {
         const session = buildQuizSessionForPersist({
           questions: docRef.current.questions,
@@ -648,7 +722,8 @@ export default function QuizPane({
           subjectiveGrades: subjGrades,
           isSubmitted,
           ...(isQuizTimeLogEmpty(timeLog) ? {} : { timeLog }),
-          wrongChoiceExplanations: nestWrongChoiceExplanations(wrongExpsSnapshot),
+          wrongChoiceExplanations:
+            nestWrongChoiceExplanations(wrongExpsSnapshot),
           ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
         });
         persistDocument(docRef.current, session);
@@ -711,7 +786,17 @@ export default function QuizPane({
         sessionAutosaveTimerRef.current = null;
       }
     };
-  }, [userAnswers, graded, subjGrades, isSubmitted, timeLog, wrongExps, questionMemos, buildSessionFromState, persistDocument]);
+  }, [
+    userAnswers,
+    graded,
+    subjGrades,
+    isSubmitted,
+    timeLog,
+    wrongExps,
+    questionMemos,
+    buildSessionFromState,
+    persistDocument,
+  ]);
 
   const handleExtractWrongQuestions = useCallback(async () => {
     const built = buildWrongQuestionsExtractQuiz(docRef.current, {
@@ -723,7 +808,7 @@ export default function QuizPane({
     });
     if (!built) {
       showToast({
-        message: '추출할 틀린 문제가 없습니다. 채점 후 다시 시도하세요.',
+        message: "추출할 틀린 문제가 없습니다. 채점 후 다시 시도하세요.",
         durationMs: 3500,
       });
       return;
@@ -734,28 +819,35 @@ export default function QuizPane({
 
     const backend = getBackendForType(storageType);
     if (!backend?.writeText) {
-      showToast({ message: '저장소에 쓸 수 없습니다.', durationMs: 3000 });
+      showToast({ message: "저장소에 쓸 수 없습니다.", durationMs: 3000 });
       return;
     }
 
     try {
-      const newPath = await resolveWrongQuizExtractPath(sourcePath, async (path) => {
-        if (!backend.head) return false;
-        try {
-          await backend.head(path);
-          return true;
-        } catch {
-          return false;
-        }
-      });
-      await backend.writeText(newPath, built.markdown, 'text/markdown; charset=utf-8');
+      const newPath = await resolveWrongQuizExtractPath(
+        sourcePath,
+        async (path) => {
+          if (!backend.head) return false;
+          try {
+            await backend.head(path);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      );
+      await backend.writeText(
+        newPath,
+        built.markdown,
+        "text/markdown; charset=utf-8",
+      );
       await openAdvancedSearchFile(newPath);
       showToast({
         message: `틀린 문제 ${built.questions.length}개를 새 퀴즈로 추출했습니다.`,
         durationMs: 4000,
       });
     } catch (err) {
-      reportQuizError('틀린문제 추출', err, '파일을 생성하지 못했습니다.');
+      reportQuizError("틀린문제 추출", err, "파일을 생성하지 못했습니다.");
     }
   }, [
     userAnswers,
@@ -775,10 +867,10 @@ export default function QuizPane({
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!hasUnsavedQuizProgress()) return;
       event.preventDefault();
-      event.returnValue = '';
+      event.returnValue = "";
     };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isActiveFile, hasUnsavedQuizProgress]);
 
   const commitDoc = useCallback(
@@ -804,7 +896,10 @@ export default function QuizPane({
       wrongExpFocus,
     });
     if (result.shuffledQuestionCount <= 0) {
-      showToast({ message: '선택지가 2개 이상인 문제가 없습니다.', durationMs: 2800 });
+      showToast({
+        message: "선택지가 2개 이상인 문제가 없습니다.",
+        durationMs: 2800,
+      });
       return;
     }
 
@@ -980,9 +1075,9 @@ export default function QuizPane({
         return;
       }
       const current = docRef.current;
-      const merged = [...new Set([...current.config.sourcePaths, ...incoming])].sort(
-        (a, b) => a.localeCompare(b),
-      );
+      const merged = [
+        ...new Set([...current.config.sourcePaths, ...incoming]),
+      ].sort((a, b) => a.localeCompare(b));
       commitDoc({
         ...current,
         config: { ...current.config, sourcePaths: merged },
@@ -1041,12 +1136,14 @@ export default function QuizPane({
 
   const choiceAnalysisQuestion = useMemo(() => {
     if (!choiceAnalysisDock) return null;
-    return doc.questions.find((q) => q.id === choiceAnalysisDock.questionId) || null;
+    return (
+      doc.questions.find((q) => q.id === choiceAnalysisDock.questionId) || null
+    );
   }, [choiceAnalysisDock, doc.questions]);
 
   const openChoiceAnalysisDock = useCallback(
     (questionId: string, option: number, mode: QuizChoiceAnalysisDockMode) => {
-      setChoiceAnalysisPrompt('');
+      setChoiceAnalysisPrompt("");
       setChoiceAnalysisDock({ questionId, option, mode });
     },
     [],
@@ -1097,7 +1194,7 @@ export default function QuizPane({
     setWrongExps({});
     setWrongExpFocus({});
     setChoiceAnalysisDock(null);
-    setChoiceAnalysisPrompt('');
+    setChoiceAnalysisPrompt("");
     setSubjGrades({});
     setIsSubmitted(false);
     setTimeLog(createEmptyQuizTimeLog());
@@ -1118,10 +1215,14 @@ export default function QuizPane({
     setWrongExps({});
     setWrongExpFocus({});
     setChoiceAnalysisDock(null);
-    setChoiceAnalysisPrompt('');
+    setChoiceAnalysisPrompt("");
     setSubjGrades({});
     setIsSubmitted(false);
-    const startedLog = appendQuizTimeLogEvent(createEmptyQuizTimeLog(), 'start', 0);
+    const startedLog = appendQuizTimeLogEvent(
+      createEmptyQuizTimeLog(),
+      "start",
+      0,
+    );
     setTimeLog(startedLog);
     setStopwatchHydrateKey((k) => k + 1);
     persistDocument(
@@ -1150,7 +1251,10 @@ export default function QuizPane({
   useEffect(() => {
     if (!isActiveFile || !registerToolbar) return;
     registerToolbar(
-      <QuizStopwatchToolbar stopwatch={stopwatch} onRequestStart={handleRequestExamStart} />,
+      <QuizStopwatchToolbar
+        stopwatch={stopwatch}
+        onRequestStart={handleRequestExamStart}
+      />,
     );
     return () => registerToolbar(null);
   }, [
@@ -1206,9 +1310,9 @@ export default function QuizPane({
 
   const gradeSubjective = async (q: QuizQuestion) => {
     if (stopwatch.examInProgress) return;
-    const ans = String(userAnswers[q.id] || '').trim();
+    const ans = String(userAnswers[q.id] || "").trim();
     if (!ans) {
-      showToast({ message: '답안을 입력하세요.', durationMs: 2200 });
+      showToast({ message: "답안을 입력하세요.", durationMs: 2200 });
       return;
     }
     if (!(await ensureQuizLlmReady())) return;
@@ -1226,9 +1330,9 @@ export default function QuizPane({
       setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
       setGraded((prev) => ({ ...prev, [q.id]: true }));
       setExpVisible((prev) => ({ ...prev, [q.id]: true }));
-      showToast({ message: '주관식 채점 완료', durationMs: 2200 });
+      showToast({ message: "주관식 채점 완료", durationMs: 2200 });
     } catch (err) {
-      reportQuizError('채점 실패', err, '채점 실패');
+      reportQuizError("채점 실패", err, "채점 실패");
     } finally {
       setBusyId(null);
     }
@@ -1242,17 +1346,17 @@ export default function QuizPane({
     const pending = doc.questions.filter((q) => {
       if (!hasQuizSessionAnswer(userAnswers[q.id])) return false;
       if (graded[q.id]) return false;
-      if (q.kind === 'subjective' && subjGrades[q.id]) return false;
+      if (q.kind === "subjective" && subjGrades[q.id]) return false;
       return true;
     });
 
     if (pending.length === 0) {
-      showToast({ message: '채점할 항목이 없습니다.', durationMs: 2200 });
+      showToast({ message: "채점할 항목이 없습니다.", durationMs: 2200 });
       return;
     }
 
-    const choicePending = pending.filter((q) => q.kind === 'choice');
-    const subjectivePending = pending.filter((q) => q.kind === 'subjective');
+    const choicePending = pending.filter((q) => q.kind === "choice");
+    const subjectivePending = pending.filter((q) => q.kind === "subjective");
 
     if (choicePending.length > 0) {
       setGraded((prev) => {
@@ -1270,7 +1374,7 @@ export default function QuizPane({
     if (subjectivePending.length > 0) {
       if (!(await ensureQuizLlmReady())) return;
       for (const q of subjectivePending) {
-        const ans = String(userAnswers[q.id] || '').trim();
+        const ans = String(userAnswers[q.id] || "").trim();
         if (!ans) continue;
         try {
           const result = await gradeSubjectiveAnswer({
@@ -1312,10 +1416,10 @@ export default function QuizPane({
         readText,
         onStep: (update) => handleGenerationStep(jobId, logKey, update),
       });
-      const labelBase = String(q.displayLabel || q.id).split('-유사')[0] || '1';
+      const labelBase = String(q.displayLabel || q.id).split("-유사")[0] || "1";
       let max = 0;
       const re = new RegExp(
-        `^${labelBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-유사(\\d+)$`,
+        `^${labelBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-유사(\\d+)$`,
       );
       for (const item of doc.questions) {
         const m = String(item.displayLabel).match(re);
@@ -1334,21 +1438,21 @@ export default function QuizPane({
         ...(sources.length ? { sourcePaths: sources } : {}),
       };
       genQueue.updateJobStep(jobId, {
-        step: 'finalize',
-        status: 'running',
-        detail: '문서에 추가 중…',
+        step: "finalize",
+        status: "running",
+        detail: "문서에 추가 중…",
       });
       void persistGenerationLog(jobId, newQ.id);
       const idx = doc.questions.findIndex((x) => x.id === q.id);
       const questions = [...doc.questions];
       questions.splice(idx + 1, 0, newQ);
-      setFilter('all');
+      setFilter("all");
       setFreshQuestionIds((prev) => ({ ...prev, [newQ.id]: true }));
       commitDoc({ ...doc, questions });
       genQueue.setJobResultQuestionId(jobId, newQ.id);
       genQueue.updateJobStep(jobId, {
-        step: 'finalize',
-        status: 'done',
+        step: "finalize",
+        status: "done",
         detail: displayLabel,
         llmResponse: JSON.stringify(newQ, null, 2),
       });
@@ -1359,14 +1463,14 @@ export default function QuizPane({
       window.setTimeout(() => {
         document
           .getElementById(`q-card-${newQ.id}`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 80);
     } catch (err) {
       const message =
-        (err instanceof Error ? err.message : '') || '유사문제 생성 실패';
+        (err instanceof Error ? err.message : "") || "유사문제 생성 실패";
       genQueue.failJob(jobId, message);
       void persistGenerationLog(jobId, logKey);
-      reportQuizError('유사문제 생성 실패', err, '유사문제 생성 실패');
+      reportQuizError("유사문제 생성 실패", err, "유사문제 생성 실패");
     } finally {
       setBusyId(null);
     }
@@ -1411,21 +1515,21 @@ export default function QuizPane({
         ...(sources.length ? { sourcePaths: sources } : {}),
       };
       genQueue.updateJobStep(jobId, {
-        step: 'finalize',
-        status: 'running',
-        detail: '문서에 추가 중…',
+        step: "finalize",
+        status: "running",
+        detail: "문서에 추가 중…",
       });
       void persistGenerationLog(jobId, newQ.id);
       const idx = doc.questions.findIndex((x) => x.id === q.id);
       const questions = [...doc.questions];
       questions.splice(idx + 1, 0, newQ);
-      setFilter('all');
+      setFilter("all");
       setFreshQuestionIds((prev) => ({ ...prev, [newQ.id]: true }));
       commitDoc({ ...doc, questions });
       genQueue.setJobResultQuestionId(jobId, newQ.id);
       genQueue.updateJobStep(jobId, {
-        step: 'finalize',
-        status: 'done',
+        step: "finalize",
+        status: "done",
         detail: displayLabel,
         llmResponse: JSON.stringify(newQ, null, 2),
       });
@@ -1437,14 +1541,14 @@ export default function QuizPane({
       window.setTimeout(() => {
         document
           .getElementById(`q-card-${newQ.id}`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 80);
     } catch (err) {
       const message =
-        (err instanceof Error ? err.message : '') || '파생문제 생성 실패';
+        (err instanceof Error ? err.message : "") || "파생문제 생성 실패";
       genQueue.failJob(jobId, message);
       void persistGenerationLog(jobId, logKey);
-      reportQuizError('파생문제 생성 실패', err, '파생문제 생성 실패');
+      reportQuizError("파생문제 생성 실패", err, "파생문제 생성 실패");
     } finally {
       setBusyId(null);
     }
@@ -1467,20 +1571,21 @@ export default function QuizPane({
     q: QuizQuestion,
     selected: number,
     userInstructions: string,
-    mode: QuizChoiceAnalysisDockMode = 'create',
+    mode: QuizChoiceAnalysisDockMode = "create",
   ) => {
     const isCorrectOption = selected === q.answer;
-    if (mode === 'followup') {
-      const userQuestion = String(userInstructions || '').trim();
+    const llmOpts = quizLlm.llmOpts;
+    if (mode === "followup") {
+      const userQuestion = String(userInstructions || "").trim();
       if (!userQuestion) {
-        showToast({ message: '추가 질문을 입력하세요.', durationMs: 2200 });
+        showToast({ message: "추가 질문을 입력하세요.", durationMs: 2200 });
         return;
       }
-      if (!(await ensureQuizLlmReady())) return;
+      if (!(await ensureQuizLlmReady(llmOpts))) return;
       const key = wrongChoiceExplanationKey(q.id, selected);
-      const previous = String(wrongExpsRef.current[key] || '').trim();
+      const previous = String(wrongExpsRef.current[key] || "").trim();
       if (!previous) {
-        showToast({ message: '먼저 분석을 생성하세요.', durationMs: 2200 });
+        showToast({ message: "먼저 분석을 생성하세요.", durationMs: 2200 });
         return;
       }
       setBusyId(key);
@@ -1495,24 +1600,32 @@ export default function QuizPane({
           selectedOption: selected,
           existingAnalysis: previous,
           userQuestion,
+          ...llmOpts,
           signal: ac.signal,
           onChunk: (accumulated) => {
-            const merged = mergeStreamingFollowUpChoiceAnalysis(previous, accumulated);
+            const merged = mergeStreamingFollowUpChoiceAnalysis(
+              previous,
+              accumulated,
+            );
             setWrongExps((prev) => ({ ...prev, [key]: merged }));
           },
         });
         const block = ensureChoiceAnalysisFollowUpHeader(text, fallbackTitle);
-        const finalText = appendFollowUpChoiceAnalysis(previous, block, fallbackTitle);
+        const finalText = appendFollowUpChoiceAnalysis(
+          previous,
+          block,
+          fallbackTitle,
+        );
         const nextWrongExps = { ...wrongExpsRef.current, [key]: finalText };
         wrongExpsRef.current = nextWrongExps;
         setWrongExps(nextWrongExps);
         setChoiceAnalysisDock(null);
-        setChoiceAnalysisPrompt('');
+        setChoiceAnalysisPrompt("");
         await saveAfterAiGenerate(nextWrongExps);
       } catch (err) {
         if (ac.signal.aborted) return;
         setWrongExps((prev) => ({ ...prev, [key]: previous }));
-        reportQuizError('추가 질문 답변 실패', err, '추가 질문 답변 실패');
+        reportQuizError("추가 질문 답변 실패", err, "추가 질문 답변 실패");
       } finally {
         setBusyId(null);
       }
@@ -1523,13 +1636,15 @@ export default function QuizPane({
       userInstructions,
       isCorrectOption,
     );
-    if (!(await ensureQuizLlmReady())) return;
+    if (!(await ensureQuizLlmReady(llmOpts))) return;
     const key = wrongChoiceExplanationKey(q.id, selected);
     const previous =
-      mode === 'regenerate' ? String(wrongExpsRef.current[key] || '').trim() : '';
+      mode === "regenerate"
+        ? String(wrongExpsRef.current[key] || "").trim()
+        : "";
     setBusyId(key);
-    if (mode !== 'regenerate') {
-      setWrongExps((prev) => ({ ...prev, [key]: '' }));
+    if (mode !== "regenerate") {
+      setWrongExps((prev) => ({ ...prev, [key]: "" }));
     }
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -1540,37 +1655,38 @@ export default function QuizPane({
         question: q,
         selectedOption: selected,
         userInstructions: instructions,
+        ...llmOpts,
         signal: ac.signal,
         onChunk: (accumulated) => {
           const merged =
-            mode === 'regenerate'
+            mode === "regenerate"
               ? mergeStreamingRegeneratedChoiceAnalysis(previous, accumulated)
               : accumulated;
           setWrongExps((prev) => ({ ...prev, [key]: merged }));
         },
       });
       const finalText =
-        mode === 'regenerate'
+        mode === "regenerate"
           ? appendRegeneratedChoiceAnalysis(previous, text)
           : text;
       const nextWrongExps = { ...wrongExpsRef.current, [key]: finalText };
       wrongExpsRef.current = nextWrongExps;
       setWrongExps(nextWrongExps);
       setChoiceAnalysisDock(null);
-      setChoiceAnalysisPrompt('');
+      setChoiceAnalysisPrompt("");
       await saveAfterAiGenerate(nextWrongExps);
     } catch (err) {
       if (ac.signal.aborted) return;
       setWrongExps((prev) => {
         const next = { ...prev };
-        if (mode === 'regenerate' && previous) {
+        if (mode === "regenerate" && previous) {
           next[key] = previous;
-        } else if (!String(next[key] || '').trim()) {
+        } else if (!String(next[key] || "").trim()) {
           delete next[key];
         }
         return next;
       });
-      reportQuizError('오답 해설 실패', err, '오답 해설 실패');
+      reportQuizError("오답 해설 실패", err, "오답 해설 실패");
     } finally {
       setBusyId(null);
     }
@@ -1581,24 +1697,28 @@ export default function QuizPane({
     const sources = getActiveSourcePaths(doc.config);
     if (!total) {
       setSourcesDockOpen(true);
-      showToast({ message: '파일 근거 문서를 먼저 선택하세요.', durationMs: 2800 });
+      showToast({
+        message: "파일 근거 문서를 먼저 선택하세요.",
+        durationMs: 2800,
+      });
       return;
     }
     if (!sources.length) {
       setSourcesDockOpen(true);
       showToast({
-        message: '사용 중인 근거 문서가 없습니다. 체크박스로 근거를 활성화하세요.',
+        message:
+          "사용 중인 근거 문서가 없습니다. 체크박스로 근거를 활성화하세요.",
         durationMs: 3200,
       });
       return;
     }
     if (!(await ensureQuizLlmReady())) return;
-    setBusyId('gen-sources');
+    setBusyId("gen-sources");
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
     const jobId = genQueue.createSourceJob({
-      preview: doc.questions[0]?.question || '근거 기반 출제',
+      preview: doc.questions[0]?.question || "근거 기반 출제",
       topic: genTopic,
     });
     const logKey = jobId;
@@ -1608,7 +1728,7 @@ export default function QuizPane({
         config: doc.config,
         sourcePaths: sources,
         topic: genTopic,
-        kind: 'choice',
+        kind: "choice",
         count: 1,
         exampleQuestions: doc.questions,
         readText,
@@ -1616,9 +1736,10 @@ export default function QuizPane({
         onStep: (update) => handleGenerationStep(jobId, logKey, update),
       });
       if (!generated.length) {
-        throw new Error('생성된 문항이 없습니다.');
+        throw new Error("생성된 문항이 없습니다.");
       }
-      const labelBase = Number.parseInt(nextDisplayLabel(doc.questions), 10) || 1;
+      const labelBase =
+        Number.parseInt(nextDisplayLabel(doc.questions), 10) || 1;
       const stamp = Date.now();
       const added = generated.map((g, i) => ({
         ...g,
@@ -1628,16 +1749,16 @@ export default function QuizPane({
         ...(sources.length ? { sourcePaths: [...sources] } : {}),
       }));
       const firstId = added[0]?.id;
-      const resultLabels = added.map((q) => q.displayLabel).join(', ');
+      const resultLabels = added.map((q) => q.displayLabel).join(", ");
       const persistKey = firstId || jobId;
       genQueue.updateJobStep(jobId, {
-        step: 'finalize',
-        status: 'running',
-        detail: '문서에 추가 중…',
+        step: "finalize",
+        status: "running",
+        detail: "문서에 추가 중…",
       });
       void persistGenerationLog(jobId, persistKey);
       const questions = [...doc.questions, ...added];
-      setFilter('all');
+      setFilter("all");
       if (firstId) {
         setFreshQuestionIds((prev) => {
           const next = { ...prev };
@@ -1650,8 +1771,8 @@ export default function QuizPane({
         genQueue.setJobResultQuestionId(jobId, firstId);
       }
       genQueue.updateJobStep(jobId, {
-        step: 'finalize',
-        status: 'done',
+        step: "finalize",
+        status: "done",
         detail: resultLabels,
         llmResponse: JSON.stringify(added, null, 2),
       });
@@ -1666,19 +1787,20 @@ export default function QuizPane({
         window.setTimeout(() => {
           document
             .getElementById(`q-card-${firstId}`)
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
         }, 80);
       }
     } catch (err) {
       if (ac.signal.aborted) {
-        genQueue.failJob(jobId, '취소됨');
+        genQueue.failJob(jobId, "취소됨");
         void persistGenerationLog(jobId, logKey);
         return;
       }
-      const message = (err instanceof Error ? err.message : '') || '문제 생성 실패';
+      const message =
+        (err instanceof Error ? err.message : "") || "문제 생성 실패";
       genQueue.failJob(jobId, message);
       void persistGenerationLog(jobId, logKey);
-      reportQuizError('문제 생성 실패', err, '문제 생성 실패');
+      reportQuizError("문제 생성 실패", err, "문제 생성 실패");
     } finally {
       setBusyId(null);
     }
@@ -1713,28 +1835,36 @@ export default function QuizPane({
           readText,
           signal: ac.signal,
         });
-        const choiceCount = resolveQuestionChoiceCount(draft, doc.config.choiceCount);
+        const choiceCount = resolveQuestionChoiceCount(
+          draft,
+          doc.config.choiceCount,
+        );
         const next: QuizAddQuestionForm = {
           kind: fixed.kind,
           displayLabel: editQ.displayLabel,
           question: fixed.question,
           point: fixed.point,
           explanation: fixed.explanation,
-          ...(form.sourcePaths?.length ? { sourcePaths: form.sourcePaths } : {}),
+          ...(form.sourcePaths?.length
+            ? { sourcePaths: form.sourcePaths }
+            : {}),
         };
-        if (fixed.kind === 'subjective') {
-          next.answerStyle = fixed.answerStyle === 'essay' ? 'essay' : 'short';
-          next.modelAnswer = fixed.modelAnswer || '';
+        if (fixed.kind === "subjective") {
+          next.answerStyle = fixed.answerStyle === "essay" ? "essay" : "short";
+          next.modelAnswer = fixed.modelAnswer || "";
         } else {
           const opts = [...(fixed.options || [])];
           next.options = resizeChoiceOptions(opts, choiceCount);
           next.answer = fixed.answer && fixed.answer >= 1 ? fixed.answer : 1;
         }
-        showToast({ message: '문항을 교정했습니다. 내용을 확인한 뒤 저장하세요.', durationMs: 3200 });
+        showToast({
+          message: "문항을 교정했습니다. 내용을 확인한 뒤 저장하세요.",
+          durationMs: 3200,
+        });
         return next;
       } catch (err) {
         if (ac.signal.aborted) return null;
-        reportQuizError('문제 고치기 실패', err, '문제 고치기 실패');
+        reportQuizError("문제 고치기 실패", err, "문제 고치기 실패");
         return null;
       }
     },
@@ -1771,7 +1901,7 @@ export default function QuizPane({
       aria-label={`정답 ${scoreBoard.correct}, 부분정답 ${scoreBoard.partial}, 오답 ${scoreBoard.wrong}`}
     >
       <span>
-        정답{' '}
+        정답{" "}
         <span className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
           {scoreBoard.correct}
         </span>
@@ -1780,7 +1910,7 @@ export default function QuizPane({
         |
       </span>
       <span>
-        부분{' '}
+        부분{" "}
         <span className="font-bold tabular-nums text-amber-600 dark:text-amber-400">
           {scoreBoard.partial}
         </span>
@@ -1789,7 +1919,7 @@ export default function QuizPane({
         |
       </span>
       <span>
-        오답{' '}
+        오답{" "}
         <span className="font-bold tabular-nums text-rose-500 dark:text-rose-400">
           {scoreBoard.wrong}
         </span>
@@ -1807,1099 +1937,1209 @@ export default function QuizPane({
 
   return (
     <QuizImageHydrationProvider value={imageHydrationValue}>
-    <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-    <div className="quiz-pane relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg">
-      <div className="shrink-0 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-odp-borderSoft dark:bg-odp-surface">
-        <div className="flex flex-wrap items-center gap-2 overflow-hidden">
-          <div className="mr-auto flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-auto sm:gap-3">
-            <ClipboardList className="shrink-0 text-blue-600" size={18} />
-            <span className="shrink-0 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-              퀴즈 모드
-            </span>
-            {scoreBoard.total > 0 ? (
-              <div
-                className={`${QUIZ_HEADER_INLINE_SLOT_CLASS} flex-1`}
-                aria-hidden={!showHeaderProgress}
-              >
-                <AnimatePresence initial={false}>
-                  {showHeaderProgress ? (
-                    <Motion.div
-                      key="quiz-header-progress"
-                      className="flex w-full min-w-0 items-center gap-2 overflow-hidden sm:gap-3"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                    >
-                      <p className="hidden shrink-0 overflow-hidden text-xs whitespace-nowrap text-slate-600 dark:text-odp-muted md:inline">
-                        총{' '}
-                        <span className="font-semibold text-slate-800 dark:text-odp-fgStrong">
-                          {scoreBoard.total}
-                        </span>
-                        문항 중{' '}
-                        <span className="font-semibold text-blue-600 dark:text-blue-400">
-                          {scoreBoard.answered}
-                        </span>
-                        문항 풀이
-                      </p>
-                      <span className="shrink-0 text-xs font-semibold whitespace-nowrap tabular-nums text-slate-600 dark:text-odp-muted md:hidden">
-                        {scoreBoard.answered}/{scoreBoard.total}
-                      </span>
-                      <div
-                        className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-odp-bgSoft"
-                        role="progressbar"
-                        aria-valuenow={scoreBoard.answered}
-                        aria-valuemin={0}
-                        aria-valuemax={scoreBoard.total}
-                        aria-label={`풀이 진행 ${scoreBoard.answered} / ${scoreBoard.total}`}
+      <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+        <div className="quiz-pane relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg">
+          <div className="shrink-0 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-odp-borderSoft dark:bg-odp-surface">
+            <div className="flex flex-wrap items-center gap-2 overflow-hidden">
+              <div className="mr-auto flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-auto sm:gap-3">
+                <ClipboardList className="shrink-0 text-blue-600" size={18} />
+                <span className="shrink-0 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
+                  퀴즈 모드
+                </span>
+                {scoreBoard.total > 0 ? (
+                  <div
+                    className={`${QUIZ_HEADER_INLINE_SLOT_CLASS} flex-1`}
+                    aria-hidden={!showHeaderProgress}
+                  >
+                    <AnimatePresence initial={false}>
+                      {showHeaderProgress ? (
+                        <Motion.div
+                          key="quiz-header-progress"
+                          className="flex w-full min-w-0 items-center gap-2 overflow-hidden sm:gap-3"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                        >
+                          <p className="hidden shrink-0 overflow-hidden text-xs whitespace-nowrap text-slate-600 dark:text-odp-muted md:inline">
+                            총{" "}
+                            <span className="font-semibold text-slate-800 dark:text-odp-fgStrong">
+                              {scoreBoard.total}
+                            </span>
+                            문항 중{" "}
+                            <span className="font-semibold text-blue-600 dark:text-blue-400">
+                              {scoreBoard.answered}
+                            </span>
+                            문항 풀이
+                          </p>
+                          <span className="shrink-0 text-xs font-semibold whitespace-nowrap tabular-nums text-slate-600 dark:text-odp-muted md:hidden">
+                            {scoreBoard.answered}/{scoreBoard.total}
+                          </span>
+                          <div
+                            className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-odp-bgSoft"
+                            role="progressbar"
+                            aria-valuenow={scoreBoard.answered}
+                            aria-valuemin={0}
+                            aria-valuemax={scoreBoard.total}
+                            aria-label={`풀이 진행 ${scoreBoard.answered} / ${scoreBoard.total}`}
+                          >
+                            <Motion.div
+                              className="h-full rounded-full bg-blue-500"
+                              initial={false}
+                              animate={{ width: `${progressPct}%` }}
+                              transition={{ duration: 0.3, ease: "easeOut" }}
+                            />
+                          </div>
+                          <span className="shrink-0 text-[11px] font-medium whitespace-nowrap tabular-nums text-slate-500 dark:text-odp-muted">
+                            {progressPct}%
+                          </span>
+                        </Motion.div>
+                      ) : null}
+                    </AnimatePresence>
+                  </div>
+                ) : null}
+              </div>
+              {scoreBoard.total > 0 ? (
+                <div
+                  className={`${QUIZ_HEADER_INLINE_SLOT_CLASS} shrink-0`}
+                  aria-hidden={!showHeaderScore}
+                >
+                  <AnimatePresence initial={false}>
+                    {showHeaderScore ? (
+                      <Motion.div
+                        key="quiz-header-score"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="overflow-hidden whitespace-nowrap"
                       >
+                        {headerScoreStrip}
+                      </Motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </div>
+              ) : null}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <Button type="button" variant="secondary" size="sm">
+                    <Plus size={14} />
+                    문제 추가
+                    <ChevronDown size={14} className="opacity-70" aria-hidden />
+                  </Button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    className={QUIZ_ADD_MENU_CONTENT_CLASS}
+                    sideOffset={6}
+                    align="start"
+                  >
+                    <DropdownMenu.Item
+                      className={QUIZ_ADD_MENU_ITEM_CLASS}
+                      onSelect={() => {
+                        setEditQ(null);
+                        setAddOpen(true);
+                      }}
+                    >
+                      <PenLine size={14} aria-hidden />
+                      직접추가
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      className={QUIZ_ADD_MENU_ITEM_CLASS}
+                      onSelect={() => setBulkOpen(true)}
+                    >
+                      <FilePlus2 size={14} aria-hidden />
+                      마크다운 가져오기
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={resetSession}
+              >
+                <RotateCcw size={14} />
+                초기화
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => void submitAll()}
+              >
+                <CheckCheck size={14} />
+                전체 채점
+              </Button>
+              <Button
+                type="button"
+                variant={sourcePathUsage.active > 0 ? "primary" : "secondary"}
+                size="sm"
+                aria-pressed={sourcesDockOpen}
+                onClick={() => {
+                  setSourcesDockOpen((open) => {
+                    if (open) setPreviewSourcePath(null);
+                    return !open;
+                  });
+                }}
+              >
+                <Library size={14} />
+                근거
+              </Button>
+              <Button
+                type="button"
+                variant={tocOpen ? "primary" : "tertiary"}
+                size="sm"
+                aria-label="목차"
+                aria-pressed={tocOpen}
+                onClick={() => setTocOpen((v) => !v)}
+              >
+                <List size={14} />
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <div className="relative min-h-0 min-w-0 flex-1">
+              <div
+                ref={quizScrollRef}
+                className="h-full min-h-0 overflow-y-auto px-4 py-4"
+              >
+                <div className="mx-auto max-w-3xl space-y-4">
+                  <QuizLlmSessionBar
+                    profiles={profiles}
+                    profileId={quizLlm.profileId}
+                    model={quizLlm.model}
+                    onProfileIdChange={quizLlm.onProfileIdChange}
+                    onModelChange={quizLlm.onModelChange}
+                  />
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-odp-borderSoft dark:bg-odp-surface">
+                    <div ref={contentProgressRef}>
+                      <div className="mb-2 flex justify-between text-xs font-semibold text-slate-600 dark:text-odp-muted">
+                        <span>풀이 진행률</span>
+                        <span>
+                          {scoreBoard.answered} / {scoreBoard.total}
+                        </span>
+                      </div>
+                      <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-odp-bgSoft">
                         <Motion.div
                           className="h-full rounded-full bg-blue-500"
                           initial={false}
                           animate={{ width: `${progressPct}%` }}
-                          transition={{ duration: 0.3, ease: 'easeOut' }}
+                          transition={{ duration: 0.3, ease: "easeOut" }}
                         />
                       </div>
-                      <span className="shrink-0 text-[11px] font-medium whitespace-nowrap tabular-nums text-slate-500 dark:text-odp-muted">
-                        {progressPct}%
-                      </span>
-                    </Motion.div>
-                  ) : null}
-                </AnimatePresence>
-              </div>
-            ) : null}
-          </div>
-          {scoreBoard.total > 0 ? (
-            <div
-              className={`${QUIZ_HEADER_INLINE_SLOT_CLASS} shrink-0`}
-              aria-hidden={!showHeaderScore}
-            >
-              <AnimatePresence initial={false}>
-                {showHeaderScore ? (
-                  <Motion.div
-                    key="quiz-header-score"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
-                    className="overflow-hidden whitespace-nowrap"
-                  >
-                    {headerScoreStrip}
-                  </Motion.div>
-                ) : null}
-              </AnimatePresence>
-            </div>
-          ) : null}
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
-              <Button type="button" variant="secondary" size="sm">
-                <Plus size={14} />
-                문제 추가
-                <ChevronDown size={14} className="opacity-70" aria-hidden />
-              </Button>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                className={QUIZ_ADD_MENU_CONTENT_CLASS}
-                sideOffset={6}
-                align="start"
-              >
-                <DropdownMenu.Item
-                  className={QUIZ_ADD_MENU_ITEM_CLASS}
-                  onSelect={() => {
-                    setEditQ(null);
-                    setAddOpen(true);
-                  }}
-                >
-                  <PenLine size={14} aria-hidden />
-                  직접추가
-                </DropdownMenu.Item>
-                <DropdownMenu.Item
-                  className={QUIZ_ADD_MENU_ITEM_CLASS}
-                  onSelect={() => setBulkOpen(true)}
-                >
-                  <FilePlus2 size={14} aria-hidden />
-                  마크다운 가져오기
-                </DropdownMenu.Item>
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
-          <Button type="button" variant="secondary" size="sm" onClick={resetSession}>
-            <RotateCcw size={14} />
-            초기화
-          </Button>
-          <Button type="button" variant="primary" size="sm" onClick={() => void submitAll()}>
-            <CheckCheck size={14} />
-            전체 채점
-          </Button>
-          <Button
-            type="button"
-            variant={sourcePathUsage.active > 0 ? 'primary' : 'secondary'}
-            size="sm"
-            aria-pressed={sourcesDockOpen}
-            onClick={() => {
-              setSourcesDockOpen((open) => {
-                if (open) setPreviewSourcePath(null);
-                return !open;
-              });
-            }}
-          >
-            <Library size={14} />
-            근거
-          </Button>
-          <Button
-            type="button"
-            variant={tocOpen ? 'primary' : 'tertiary'}
-            size="sm"
-            aria-label="목차"
-            aria-pressed={tocOpen}
-            onClick={() => setTocOpen((v) => !v)}
-          >
-            <List size={14} />
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="relative min-h-0 min-w-0 flex-1">
-          <div ref={quizScrollRef} className="h-full min-h-0 overflow-y-auto px-4 py-4">
-            <div className="mx-auto max-w-3xl space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-odp-borderSoft dark:bg-odp-surface">
-            <div ref={contentProgressRef}>
-            <div className="mb-2 flex justify-between text-xs font-semibold text-slate-600 dark:text-odp-muted">
-              <span>풀이 진행률</span>
-              <span>
-                {scoreBoard.answered} / {scoreBoard.total}
-              </span>
-            </div>
-            <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-odp-bgSoft">
-              <Motion.div
-                className="h-full rounded-full bg-blue-500"
-                initial={false}
-                animate={{ width: `${progressPct}%` }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-              />
-            </div>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex gap-4 text-center text-xs">
-                <div>
-                  <div className="text-xl font-black text-slate-800 dark:text-odp-fgStrong">
-                    {scoreBoard.scorePercent != null ? `${scoreBoard.scorePercent}점` : '-'}
-                  </div>
-                  <div className="text-[10px] text-slate-400">점수</div>
-                </div>
-                <div ref={contentScoreRef} className="flex gap-4 text-center text-xs">
-                  <div>
-                    <div className="text-lg font-bold text-emerald-600">{scoreBoard.correct}</div>
-                    <div className="text-[10px] text-slate-400">정답</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-amber-600">{scoreBoard.partial}</div>
-                    <div className="text-[10px] text-slate-400">부분</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-rose-500">{scoreBoard.wrong}</div>
-                    <div className="text-[10px] text-slate-400">오답</div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-1 rounded-xl bg-slate-100 p-1 text-xs dark:bg-odp-bgSoft">
-                {(
-                  [
-                    ['all', '전체'],
-                    ['wrong', '오답만'],
-                    ['unanswered', '미풀이'],
-                  ] as const
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={`rounded-lg px-2.5 py-1 font-medium ${
-                      filter === id
-                        ? 'bg-white shadow-sm dark:bg-odp-surface'
-                        : 'text-slate-600 dark:text-odp-muted'
-                    }`}
-                    onClick={() => setFilter(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <QuizTimeLogPanel log={timeLog} />
-          </div>
-
-          {doc.questions.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-odp-borderSoft dark:bg-odp-surface">
-              <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-odp-fgStrong">
-                등록된 문제가 없습니다
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button type="button" variant="primary" onClick={() => setAddOpen(true)}>
-                  <Plus size={14} />
-                  문제 추가
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => setBulkOpen(true)}>
-                  마크다운 가져오기
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          {doc.questions.map((q) => {
-            const answered = userAnswers[q.id] !== undefined && String(userAnswers[q.id]).trim() !== '';
-            const isGraded = isSubmitted || graded[q.id];
-            let isWrong = false;
-            let isCorrect = false;
-            if (q.kind === 'choice' && isGraded && answered) {
-              isCorrect = userAnswers[q.id] === q.answer;
-              isWrong = !isCorrect;
-            }
-            if (q.kind === 'subjective' && isGraded) {
-              const g = subjGrades[q.id];
-              isCorrect = g?.verdict === 'correct';
-              isWrong = g?.verdict === 'wrong';
-            }
-            if (filter === 'wrong' && !(isGraded && isWrong)) return null;
-            if (filter === 'unanswered' && answered) return null;
-
-            const showExp = expVisible[q.id];
-            const selected = userAnswers[q.id];
-            const isFreshQuestion = Boolean(freshQuestionIds[q.id]);
-            let gradeLabel: string | null = null;
-            if (isGraded) {
-              if (q.kind === 'choice') {
-                if (!answered) gradeLabel = '미채점';
-                else if (isCorrect) gradeLabel = '정답';
-                else gradeLabel = '오답';
-              } else {
-                const verdict = subjGrades[q.id]?.verdict;
-                if (verdict === 'correct') gradeLabel = '정답';
-                else if (verdict === 'partial') gradeLabel = '부분정답';
-                else if (verdict === 'wrong') gradeLabel = '오답';
-              }
-            }
-
-            return (
-              <Motion.div
-                key={q.id}
-                id={`q-card-${q.id}`}
-                {...{ [QUIZ_QUESTION_TRACK_ATTR]: q.id }}
-                initial={
-                  isFreshQuestion
-                    ? { opacity: 0, y: 36, scale: 0.96 }
-                    : false
-                }
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={
-                  isFreshQuestion
-                    ? { type: 'spring', stiffness: 340, damping: 26 }
-                    : { duration: 0 }
-                }
-                onAnimationComplete={() => {
-                  if (!isFreshQuestion) return;
-                  setFreshQuestionIds((prev) => {
-                    if (!prev[q.id]) return prev;
-                    const next = { ...prev };
-                    delete next[q.id];
-                    return next;
-                  });
-                }}
-                className={`relative rounded-2xl border bg-white p-5 pr-16 shadow-xs dark:bg-odp-surface ${
-                  isGraded
-                    ? isCorrect
-                      ? 'border-emerald-300'
-                      : isWrong
-                        ? 'border-rose-300'
-                        : 'border-slate-200 dark:border-odp-borderSoft'
-                    : 'border-slate-200 dark:border-odp-borderSoft'
-                } ${
-                  q.isGenerated
-                    ? 'border-purple-300 dark:border-purple-700'
-                    : ''
-                } ${
-                  isFreshQuestion
-                    ? 'ring-2 ring-purple-300/70 dark:ring-purple-500/50'
-                    : ''
-                }`}
-              >
-                <Button
-                  type="button"
-                  variant="tertiary"
-                  size="sm"
-                  className="absolute top-3 right-3 z-10"
-                  onClick={() => {
-                    setEditQ(q);
-                    setAddOpen(true);
-                  }}
-                >
-                  <PenLine size={14} />
-                  수정
-                </Button>
-                <div className="mb-3">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-                    <span className="mr-1.5 inline-flex items-center gap-1.5 align-middle">
-                      <span>{q.displayLabel}.</span>
-                      {gradeLabel ? (
-                        <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                            gradeLabel === '정답'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
-                              : gradeLabel === '오답'
-                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200'
-                                : gradeLabel === '부분정답'
-                                  ? 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200'
-                                  : 'bg-slate-100 text-slate-700 dark:bg-odp-bgSoft dark:text-odp-muted'
-                          }`}
-                        >
-                          {gradeLabel}
-                        </span>
-                      ) : null}
-                    </span>
-                    {q.kind === 'subjective'
-                      ? q.answerStyle === 'essay'
-                        ? '[주관식] '
-                        : '[단답형] '
-                      : ''}
-                    <span className="font-medium">
-                      <QuizMdPreview
-                        text={q.question}
-                        previewId={`qq-${q.id}`}
-                        className="inline"
-                      />
-                    </span>
-                  </h3>
-                </div>
-
-                {q.kind === 'choice' ? (
-                  <div className="space-y-2">
-                    {(q.options || []).map((opt, idx) => {
-                      const n = idx + 1;
-                      const isSel = selected === n;
-                      const reveal = isGraded;
-                      const isRight = q.answer === n;
-                      let cls =
-                        'border-slate-200 bg-white hover:bg-slate-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft';
-                      if (isSel && !reveal) {
-                        cls = 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:bg-blue-950/30';
-                      }
-                      if (reveal && isRight) {
-                        cls =
-                          'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500 dark:bg-emerald-950/30';
-                      } else if (reveal && isSel && !isRight) {
-                        cls = 'border-rose-400 bg-rose-50 dark:bg-rose-950/30';
-                      }
-                      return (
-                        <button
-                          key={n}
-                          type="button"
-                          className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left text-sm ${cls}`}
-                          onClick={() => selectOption(q.id, n)}
-                        >
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold">
-                            {n}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <QuizMdPreview text={opt} previewId={`qo-${q.id}-${n}`} />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex gap-4 text-center text-xs">
+                        <div>
+                          <div className="text-xl font-black text-slate-800 dark:text-odp-fgStrong">
+                            {scoreBoard.scorePercent != null
+                              ? `${scoreBoard.scorePercent}점`
+                              : "-"}
                           </div>
-                        </button>
-                      );
-                    })}
+                          <div className="text-[10px] text-slate-400">점수</div>
+                        </div>
+                        <div
+                          ref={contentScoreRef}
+                          className="flex gap-4 text-center text-xs"
+                        >
+                          <div>
+                            <div className="text-lg font-bold text-emerald-600">
+                              {scoreBoard.correct}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              정답
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-amber-600">
+                              {scoreBoard.partial}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              부분
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-rose-500">
+                              {scoreBoard.wrong}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              오답
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 rounded-xl bg-slate-100 p-1 text-xs dark:bg-odp-bgSoft">
+                        {(
+                          [
+                            ["all", "전체"],
+                            ["wrong", "오답만"],
+                            ["unanswered", "미풀이"],
+                          ] as const
+                        ).map(([id, label]) => (
+                          <button
+                            key={id}
+                            type="button"
+                            className={`rounded-lg px-2.5 py-1 font-medium ${
+                              filter === id
+                                ? "bg-white shadow-sm dark:bg-odp-surface"
+                                : "text-slate-600 dark:text-odp-muted"
+                            }`}
+                            onClick={() => setFilter(id)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <QuizTimeLogPanel log={timeLog} />
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {q.answerStyle === 'essay' ? (
-                      <textarea
-                        className="quiz-body-field min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                        value={String(userAnswers[q.id] || '')}
-                        disabled={isGraded}
-                        onChange={(e) =>
-                          setUserAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                  
+
+                  {doc.questions.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-odp-borderSoft dark:bg-odp-surface">
+                      <p className="mb-3 text-sm font-semibold text-slate-700 dark:text-odp-fgStrong">
+                        등록된 문제가 없습니다
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          onClick={() => setAddOpen(true)}
+                        >
+                          <Plus size={14} />
+                          문제 추가
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => setBulkOpen(true)}
+                        >
+                          마크다운 가져오기
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {doc.questions.map((q) => {
+                    const answered =
+                      userAnswers[q.id] !== undefined &&
+                      String(userAnswers[q.id]).trim() !== "";
+                    const isGraded = isSubmitted || graded[q.id];
+                    let isWrong = false;
+                    let isCorrect = false;
+                    if (q.kind === "choice" && isGraded && answered) {
+                      isCorrect = userAnswers[q.id] === q.answer;
+                      isWrong = !isCorrect;
+                    }
+                    if (q.kind === "subjective" && isGraded) {
+                      const g = subjGrades[q.id];
+                      isCorrect = g?.verdict === "correct";
+                      isWrong = g?.verdict === "wrong";
+                    }
+                    if (filter === "wrong" && !(isGraded && isWrong))
+                      return null;
+                    if (filter === "unanswered" && answered) return null;
+
+                    const showExp = expVisible[q.id];
+                    const selected = userAnswers[q.id];
+                    const isFreshQuestion = Boolean(freshQuestionIds[q.id]);
+                    let gradeLabel: string | null = null;
+                    if (isGraded) {
+                      if (q.kind === "choice") {
+                        if (!answered) gradeLabel = "미채점";
+                        else if (isCorrect) gradeLabel = "정답";
+                        else gradeLabel = "오답";
+                      } else {
+                        const verdict = subjGrades[q.id]?.verdict;
+                        if (verdict === "correct") gradeLabel = "정답";
+                        else if (verdict === "partial") gradeLabel = "부분정답";
+                        else if (verdict === "wrong") gradeLabel = "오답";
+                      }
+                    }
+
+                    return (
+                      <Motion.div
+                        key={q.id}
+                        id={`q-card-${q.id}`}
+                        {...{ [QUIZ_QUESTION_TRACK_ATTR]: q.id }}
+                        initial={
+                          isFreshQuestion
+                            ? { opacity: 0, y: 36, scale: 0.96 }
+                            : false
                         }
-                        placeholder="답안을 입력하세요"
-                      />
-                    ) : (
-                      <input
-                        className="quiz-body-field w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                        value={String(userAnswers[q.id] || '')}
-                        disabled={isGraded}
-                        onChange={(e) =>
-                          setUserAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={
+                          isFreshQuestion
+                            ? { type: "spring", stiffness: 340, damping: 26 }
+                            : { duration: 0 }
                         }
-                        placeholder="단답 입력"
-                      />
-                    )}
-                    {subjGrades[q.id] ? (
-                      <div
-                        className={`rounded-xl border p-3 text-xs ${
-                          subjGrades[q.id]?.verdict === 'correct'
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/70 dark:bg-emerald-950/45 dark:text-emerald-100'
-                            : subjGrades[q.id]?.verdict === 'partial'
-                              ? 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/70 dark:bg-amber-950/45 dark:text-amber-100'
-                              : 'border-rose-200 bg-rose-50 text-rose-950 dark:border-rose-800/70 dark:bg-rose-950/45 dark:text-rose-100'
+                        onAnimationComplete={() => {
+                          if (!isFreshQuestion) return;
+                          setFreshQuestionIds((prev) => {
+                            if (!prev[q.id]) return prev;
+                            const next = { ...prev };
+                            delete next[q.id];
+                            return next;
+                          });
+                        }}
+                        className={`relative rounded-2xl border bg-white p-5 pr-16 shadow-xs dark:bg-odp-surface ${
+                          isGraded
+                            ? isCorrect
+                              ? "border-emerald-300"
+                              : isWrong
+                                ? "border-rose-300"
+                                : "border-slate-200 dark:border-odp-borderSoft"
+                            : "border-slate-200 dark:border-odp-borderSoft"
+                        } ${
+                          q.isGenerated
+                            ? "border-purple-300 dark:border-purple-700"
+                            : ""
+                        } ${
+                          isFreshQuestion
+                            ? "ring-2 ring-purple-300/70 dark:ring-purple-500/50"
+                            : ""
                         }`}
                       >
-                        <div className="mb-1 font-bold">
-                          {subjGrades[q.id]?.verdict} · {subjGrades[q.id]?.score}점
+                        <Button
+                          type="button"
+                          variant="tertiary"
+                          size="sm"
+                          className="absolute top-3 right-3 z-10"
+                          onClick={() => {
+                            setEditQ(q);
+                            setAddOpen(true);
+                          }}
+                        >
+                          <PenLine size={14} />
+                          수정
+                        </Button>
+                        <div className="mb-3">
+                          <h3 className="text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
+                            <span className="mr-1.5 inline-flex items-center gap-1.5 align-middle">
+                              <span>{q.displayLabel}.</span>
+                              {gradeLabel ? (
+                                <span
+                                  className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                                    gradeLabel === "정답"
+                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
+                                      : gradeLabel === "오답"
+                                        ? "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
+                                        : gradeLabel === "부분정답"
+                                          ? "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
+                                          : "bg-slate-100 text-slate-700 dark:bg-odp-bgSoft dark:text-odp-muted"
+                                  }`}
+                                >
+                                  {gradeLabel}
+                                </span>
+                              ) : null}
+                            </span>
+                            {q.kind === "subjective"
+                              ? q.answerStyle === "essay"
+                                ? "[주관식] "
+                                : "[단답형] "
+                              : ""}
+                            <span className="font-medium">
+                              <QuizMdPreview
+                                text={q.question}
+                                previewId={`qq-${q.id}`}
+                                className="inline"
+                              />
+                            </span>
+                          </h3>
                         </div>
-                        <div className="[&_.md-editor-preview]:text-inherit [&_.md-editor-preview]:!bg-transparent [&_.md-editor]:!bg-transparent">
-                          <QuizMdPreview
-                            text={subjGrades[q.id]?.feedback || ''}
-                            previewId={`qg-${q.id}`}
+
+                        {q.kind === "choice" ? (
+                          <div className="space-y-2">
+                            {(q.options || []).map((opt, idx) => {
+                              const n = idx + 1;
+                              const isSel = selected === n;
+                              const reveal = isGraded;
+                              const isRight = q.answer === n;
+                              let cls =
+                                "border-slate-200 bg-white hover:bg-slate-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft";
+                              if (isSel && !reveal) {
+                                cls =
+                                  "border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:bg-blue-950/30";
+                              }
+                              if (reveal && isRight) {
+                                cls =
+                                  "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500 dark:bg-emerald-950/30";
+                              } else if (reveal && isSel && !isRight) {
+                                cls =
+                                  "border-rose-400 bg-rose-50 dark:bg-rose-950/30";
+                              }
+                              return (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left text-sm ${cls}`}
+                                  onClick={() => selectOption(q.id, n)}
+                                >
+                                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold">
+                                    {n}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <QuizMdPreview
+                                      text={opt}
+                                      previewId={`qo-${q.id}-${n}`}
+                                    />
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {q.answerStyle === "essay" ? (
+                              <textarea
+                                className="quiz-body-field min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                                value={String(userAnswers[q.id] || "")}
+                                disabled={isGraded}
+                                onChange={(e) =>
+                                  setUserAnswers((prev) => ({
+                                    ...prev,
+                                    [q.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="답안을 입력하세요"
+                              />
+                            ) : (
+                              <input
+                                className="quiz-body-field w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                                value={String(userAnswers[q.id] || "")}
+                                disabled={isGraded}
+                                onChange={(e) =>
+                                  setUserAnswers((prev) => ({
+                                    ...prev,
+                                    [q.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="단답 입력"
+                              />
+                            )}
+                            {subjGrades[q.id] ? (
+                              <div
+                                className={`rounded-xl border p-3 text-xs ${
+                                  subjGrades[q.id]?.verdict === "correct"
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/70 dark:bg-emerald-950/45 dark:text-emerald-100"
+                                    : subjGrades[q.id]?.verdict === "partial"
+                                      ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/70 dark:bg-amber-950/45 dark:text-amber-100"
+                                      : "border-rose-200 bg-rose-50 text-rose-950 dark:border-rose-800/70 dark:bg-rose-950/45 dark:text-rose-100"
+                                }`}
+                              >
+                                <div className="mb-1 font-bold">
+                                  {subjGrades[q.id]?.verdict} ·{" "}
+                                  {subjGrades[q.id]?.score}점
+                                </div>
+                                <div className="[&_.md-editor-preview]:text-inherit [&_.md-editor-preview]:!bg-transparent [&_.md-editor]:!bg-transparent">
+                                  <QuizMdPreview
+                                    text={subjGrades[q.id]?.feedback || ""}
+                                    previewId={`qg-${q.id}`}
+                                  />
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                          {!isGraded ? (
+                            q.kind === "choice" ? (
+                              <QuizExamGradeButton
+                                examInProgress={examInProgress}
+                                size="sm"
+                                disabled={!answered}
+                                onClick={() => gradeChoice(q)}
+                                className="!bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-700"
+                              >
+                                <CheckCheck size={14} />
+                                채점
+                              </QuizExamGradeButton>
+                            ) : (
+                              <QuizExamGradeButton
+                                examInProgress={examInProgress}
+                                size="sm"
+                                disabled={busyId === q.id || !answered}
+                                onClick={() => void gradeSubjective(q)}
+                                className="!bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-700"
+                              >
+                                <Sparkles size={14} />
+                                AI 채점
+                              </QuizExamGradeButton>
+                            )
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => retryQuestion(q)}
+                            >
+                              <RotateCcw size={14} />
+                              다시풀기
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() =>
+                              setExpVisible((prev) => ({
+                                ...prev,
+                                [q.id]: !prev[q.id],
+                              }))
+                            }
+                          >
+                            <BookOpen size={14} />
+                            {showExp ? "해설 접기" : "해설 보기"}
+                          </Button>
+                          {q.kind === "choice" ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={busyId === `sim-${q.id}`}
+                              onClick={() => void handleSimilar(q)}
+                            >
+                              <Wand2 size={14} />
+                              유사문제
+                            </Button>
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={busyId === `derived-${q.id}`}
+                            onClick={() => setDerivedSourceQ(q)}
+                          >
+                            <GitBranch size={14} />
+                            파생문제 생성
+                          </Button>
+                        </div>
+
+                        {isGraded && q.kind === "choice" ? (
+                          <QuizWrongChoiceAnalysisPanel
+                            question={q}
+                            focusOption={resolveWrongExpFocusOption(
+                              q,
+                              typeof selected === "number"
+                                ? selected
+                                : undefined,
+                            )}
+                            onFocusOptionChange={(option) =>
+                              setWrongExpFocus((prev) => ({
+                                ...prev,
+                                [q.id]: option,
+                              }))
+                            }
+                            wrongExps={wrongExps}
+                            busyKey={busyId}
+                            onOpenAnalysisDock={(option, mode) =>
+                              openChoiceAnalysisDock(q.id, option, mode)
+                            }
                           />
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
+                        ) : null}
 
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  {!isGraded ? (
-                    q.kind === 'choice' ? (
-                      <QuizExamGradeButton
-                        examInProgress={examInProgress}
-                        size="sm"
-                        disabled={!answered}
-                        onClick={() => gradeChoice(q)}
-                        className="!bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-700"
-                      >
-                        <CheckCheck size={14} />
-                        채점
-                      </QuizExamGradeButton>
-                    ) : (
-                      <QuizExamGradeButton
-                        examInProgress={examInProgress}
-                        size="sm"
-                        disabled={busyId === q.id || !answered}
-                        onClick={() => void gradeSubjective(q)}
-                        className="!bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-700"
-                      >
-                        <Sparkles size={14} />
-                        AI 채점
-                      </QuizExamGradeButton>
-                    )
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => retryQuestion(q)}
-                    >
-                      <RotateCcw size={14} />
-                      다시풀기
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() =>
-                      setExpVisible((prev) => ({ ...prev, [q.id]: !prev[q.id] }))
-                    }
-                  >
-                    <BookOpen size={14} />
-                    {showExp ? '해설 접기' : '해설 보기'}
-                  </Button>
-                  {q.kind === 'choice' ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={busyId === `sim-${q.id}`}
-                      onClick={() => void handleSimilar(q)}
-                    >
-                      <Wand2 size={14} />
-                      유사문제
-                    </Button>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={busyId === `derived-${q.id}`}
-                    onClick={() => setDerivedSourceQ(q)}
-                  >
-                    <GitBranch size={14} />
-                    파생문제 생성
-                  </Button>
+                        {showExp ? (
+                          <div className="mt-2 space-y-2 rounded-xl bg-slate-50 p-3 text-xs dark:bg-odp-bgSoft">
+                            <div>
+                              <div className="mb-1 font-bold text-amber-800">
+                                접근 Point!
+                              </div>
+                              <QuizMdPreview
+                                text={q.point}
+                                previewId={`qp-${q.id}`}
+                              />
+                            </div>
+                            <div>
+                              <div className="mb-1 font-bold text-slate-800 dark:text-odp-fgStrong">
+                                해설
+                              </div>
+                              <QuizMdPreview
+                                text={q.explanation}
+                                previewId={`qe-${q.id}`}
+                              />
+                            </div>
+                            {q.kind === "subjective" && q.modelAnswer ? (
+                              <div>
+                                <div className="mb-1 font-bold">모범 답안</div>
+                                <QuizMdPreview
+                                  text={q.modelAnswer}
+                                  previewId={`qm-${q.id}`}
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        <QuizQuestionMemoPanel
+                          questionId={q.id}
+                          value={questionMemos[q.id] || ""}
+                          onSave={(next) =>
+                            setQuestionMemos((prev) => {
+                              const trimmed = next.trim();
+                              if (!trimmed) {
+                                const { [q.id]: _removed, ...rest } = prev;
+                                return rest;
+                              }
+                              return { ...prev, [q.id]: next };
+                            })
+                          }
+                        />
+                      </Motion.div>
+                    );
+                  })}
                 </div>
-
-                {isGraded && q.kind === 'choice' ? (
-                  <QuizWrongChoiceAnalysisPanel
-                    question={q}
-                    focusOption={resolveWrongExpFocusOption(
-                      q,
-                      typeof selected === 'number' ? selected : undefined,
-                    )}
-                    onFocusOptionChange={(option) =>
-                      setWrongExpFocus((prev) => ({ ...prev, [q.id]: option }))
-                    }
-                    wrongExps={wrongExps}
-                    busyKey={busyId}
-                    onOpenAnalysisDock={(option, mode) =>
-                      openChoiceAnalysisDock(q.id, option, mode)
-                    }
-                  />
-                ) : null}
-
-                {showExp ? (
-                  <div className="mt-2 space-y-2 rounded-xl bg-slate-50 p-3 text-xs dark:bg-odp-bgSoft">
-                    <div>
-                      <div className="mb-1 font-bold text-amber-800">접근 Point!</div>
-                      <QuizMdPreview text={q.point} previewId={`qp-${q.id}`} />
-                    </div>
-                    <div>
-                      <div className="mb-1 font-bold text-slate-800 dark:text-odp-fgStrong">
-                        해설
-                      </div>
-                      <QuizMdPreview text={q.explanation} previewId={`qe-${q.id}`} />
-                    </div>
-                    {q.kind === 'subjective' && q.modelAnswer ? (
-                      <div>
-                        <div className="mb-1 font-bold">모범 답안</div>
-                        <QuizMdPreview text={q.modelAnswer} previewId={`qm-${q.id}`} />
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <QuizQuestionMemoPanel
-                  questionId={q.id}
-                  value={questionMemos[q.id] || ''}
-                  onSave={(next) =>
-                    setQuestionMemos((prev) => {
-                      const trimmed = next.trim();
-                      if (!trimmed) {
-                        const { [q.id]: _removed, ...rest } = prev;
-                        return rest;
-                      }
-                      return { ...prev, [q.id]: next };
-                    })
-                  }
-                />
-              </Motion.div>
-            );
-          })}
+              </div>
             </div>
-          </div>
-        </div>
 
-        <QuizChoiceAnalysisDock
-          open={Boolean(choiceAnalysisDock && choiceAnalysisQuestion)}
-          question={choiceAnalysisQuestion}
-          option={choiceAnalysisDock?.option ?? null}
-          mode={choiceAnalysisDock?.mode ?? 'create'}
-          prompt={choiceAnalysisPrompt}
-          existingAnalysis={
-            choiceAnalysisDock && choiceAnalysisDock.mode === 'followup'
-              ? String(
-                  wrongExps[
+            <QuizChoiceAnalysisDock
+              open={Boolean(choiceAnalysisDock && choiceAnalysisQuestion)}
+              question={choiceAnalysisQuestion}
+              option={choiceAnalysisDock?.option ?? null}
+              mode={choiceAnalysisDock?.mode ?? "create"}
+              prompt={choiceAnalysisPrompt}
+              existingAnalysis={
+                choiceAnalysisDock && choiceAnalysisDock.mode === "followup"
+                  ? String(
+                      wrongExps[
+                        wrongChoiceExplanationKey(
+                          choiceAnalysisDock.questionId,
+                          choiceAnalysisDock.option,
+                        )
+                      ] || "",
+                    )
+                  : ""
+              }
+              llmProfiles={profiles}
+              profileId={quizLlm.profileId}
+              model={quizLlm.model}
+              onProfileIdChange={quizLlm.onProfileIdChange}
+              onModelChange={quizLlm.onModelChange}
+              busy={
+                choiceAnalysisDock != null &&
+                busyId ===
+                  wrongChoiceExplanationKey(
+                    choiceAnalysisDock.questionId,
+                    choiceAnalysisDock.option,
+                  )
+              }
+              onPromptChange={setChoiceAnalysisPrompt}
+              onClose={() => {
+                if (
+                  choiceAnalysisDock &&
+                  busyId ===
                     wrongChoiceExplanationKey(
                       choiceAnalysisDock.questionId,
                       choiceAnalysisDock.option,
                     )
-                  ] || '',
-                )
-              : ''
-          }
-          busy={
-            choiceAnalysisDock != null &&
-            busyId ===
-              wrongChoiceExplanationKey(
-                choiceAnalysisDock.questionId,
-                choiceAnalysisDock.option,
-              )
-          }
-          onPromptChange={setChoiceAnalysisPrompt}
-          onClose={() => {
-            if (
-              choiceAnalysisDock &&
-              busyId ===
-                wrongChoiceExplanationKey(
-                  choiceAnalysisDock.questionId,
+                ) {
+                  return;
+                }
+                setChoiceAnalysisDock(null);
+                setChoiceAnalysisPrompt("");
+              }}
+              onGenerate={() => {
+                if (!choiceAnalysisQuestion || !choiceAnalysisDock) return;
+                void handleWrongExp(
+                  choiceAnalysisQuestion,
                   choiceAnalysisDock.option,
-                )
-            ) {
-              return;
-            }
-            setChoiceAnalysisDock(null);
-            setChoiceAnalysisPrompt('');
-          }}
-          onGenerate={() => {
-            if (!choiceAnalysisQuestion || !choiceAnalysisDock) return;
-            void handleWrongExp(
-              choiceAnalysisQuestion,
-              choiceAnalysisDock.option,
-              choiceAnalysisPrompt,
-              choiceAnalysisDock.mode,
-            );
-          }}
-        />
+                  choiceAnalysisPrompt,
+                  choiceAnalysisDock.mode,
+                );
+              }}
+            />
 
-        <AnimatePresence initial={false}>
-          {previewSourcePath ? (
-            <Motion.aside
-              key="quiz-source-preview-dock"
-              role="complementary"
-              aria-label="근거 문서 미리보기"
-              className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-              initial={{ width: 0, opacity: 0.85 }}
-              animate={{ width: previewDockWidth, opacity: 1 }}
-              exit={{ width: 0, opacity: 0.85 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-            >
-              <div
-                className="relative h-full min-h-0"
-                style={{ width: previewDockWidth }}
-              >
-                <VaultDocumentPreviewPanel
-                  embedded
-                  path={previewSourcePath}
-                  width={previewDockWidth}
-                  resizeHandleProps={previewDockResizeHandleProps}
-                  isResizing={previewDockResizing}
-                  resizeEdge="left"
-                  onClose={() => setPreviewSourcePath(null)}
-                  loadDocument={loadVaultPreviewDocument}
-                  onOpenDocument={openSourceDocument}
-                  onOpenInNewTab={openSourceInNewTab}
-                />
-              </div>
-            </Motion.aside>
-          ) : null}
-        </AnimatePresence>
-
-        <AnimatePresence initial={false}>
-          {sourcesDockOpen ? (
-            <Motion.aside
-              key="quiz-sources-dock"
-              role="complementary"
-              aria-label="파일 근거 문서"
-              className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-              initial={{ width: 0, opacity: 0.85 }}
-              animate={{ width: sourcesDockWidth, opacity: 1 }}
-              exit={{ width: 0, opacity: 0.85 }}
-              transition={
-                sourcesDockResizing
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 380, damping: 36 }
-              }
-            >
-              <div
-                className="relative flex h-full min-h-0 flex-col"
-                style={{ width: sourcesDockWidth }}
-              >
-                <TocResizeHandle
-                  edge="left"
-                  handleProps={sourcesDockResizeHandleProps}
-                  isResizing={sourcesDockResizing}
-                  visibleOnHover
-                  label="파일 근거 패널 너비 조절"
-                />
-                <div className="border-b border-slate-200 dark:border-odp-borderSoft">
-                  <div className="flex items-center justify-between px-3 py-2.5">
-                    <div className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-                      <Library size={16} className="shrink-0 text-violet-600 dark:text-violet-400" />
-                      <span className="truncate">파일 근거</span>
-                      {sourcePathUsage.total > 0 ? (
-                        <span
-                          className="ml-0.5 inline-flex shrink-0 items-baseline gap-0.5 rounded-md bg-violet-100 px-1.5 py-0.5 text-[11px] font-bold tabular-nums dark:bg-violet-950/70"
-                          aria-label={`등록 ${sourcePathUsage.total}개 중 ${sourcePathUsage.active}개 사용 중`}
-                        >
-                          <span className="text-violet-600 dark:text-violet-400">
-                            {sourcePathUsage.active}
-                          </span>
-                          <span className="font-medium text-slate-400">/</span>
-                          <span className="text-slate-700 dark:text-slate-200">
-                            {sourcePathUsage.total}
-                          </span>
-                          <span className="ml-0.5 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
-                            사용
-                          </span>
-                        </span>
-                      ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      aria-label="근거 패널 닫기"
-                      className="rounded p-1 hover:bg-slate-100 dark:hover:bg-odp-focusBg"
-                      onClick={closeSourcesDock}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
-                    <label
-                      htmlFor="quiz-source-remove-confirm"
-                      className="text-[11px] font-medium text-slate-600 dark:text-odp-muted"
-                    >
-                      삭제 시 확인
-                    </label>
-                    <Switch.Root
-                      id="quiz-source-remove-confirm"
-                      className={SOURCE_REMOVE_SWITCH_ROOT_CLASS(confirmSourceRemove)}
-                      checked={confirmSourceRemove}
-                      onCheckedChange={(checked) => {
-                        setConfirmSourceRemove(checked);
-                        writeQuizSourceRemoveConfirm(checked);
-                      }}
-                      aria-label="근거 문서 삭제 시 확인"
-                    >
-                      <Switch.Thumb className={SOURCE_REMOVE_SWITCH_THUMB_CLASS} />
-                    </Switch.Root>
-                  </div>
-                </div>
-                <div
-                  ref={handleDockDropHostChange}
-                  className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-3"
+            <AnimatePresence initial={false}>
+              {previewSourcePath ? (
+                <Motion.aside
+                  key="quiz-source-preview-dock"
+                  role="complementary"
+                  aria-label="근거 문서 미리보기"
+                  className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
+                  initial={{ width: 0, opacity: 0.85 }}
+                  animate={{ width: previewDockWidth, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0.85 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 36 }}
                 >
-                  <QuizSourcePathsChips
-                    layout="dock"
-                    paths={doc.config.sourcePaths}
-                    label="선택된 문서"
-                    onPreview={handlePreviewSource}
-                    onRemove={handleSourceRemove}
-                    isPathEnabled={(path) => isQuizSourcePathEnabled(doc.config, path)}
-                    onToggleEnabled={handleToggleSourcePathEnabled}
-                    onOpenPicker={() =>
-                      setSourcePicker({
-                        paths: doc.config.sourcePaths,
-                        scope: 'file',
-                      })
-                    }
-                  />
-                  <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-odp-borderSoft">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-odp-fgStrong">
-                      근거로 문제 생성
-                    </label>
-                    <input
-                      className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                      placeholder="주제 (선택)"
-                      value={genTopic}
-                      onChange={(e) => setGenTopic(e.target.value)}
+                  <div
+                    className="relative h-full min-h-0"
+                    style={{ width: previewDockWidth }}
+                  >
+                    <VaultDocumentPreviewPanel
+                      embedded
+                      path={previewSourcePath}
+                      width={previewDockWidth}
+                      resizeHandleProps={previewDockResizeHandleProps}
+                      isResizing={previewDockResizing}
+                      resizeEdge="left"
+                      onClose={() => setPreviewSourcePath(null)}
+                      loadDocument={loadVaultPreviewDocument}
+                      onOpenDocument={openSourceDocument}
+                      onOpenInNewTab={openSourceInNewTab}
                     />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="w-full"
-                      disabled={busyId === 'gen-sources'}
-                      onClick={() => void handleGenerateFromSources()}
-                    >
-                      <Sparkles size={14} />
-                      근거로 문제 추가
-                    </Button>
                   </div>
-                </div>
-              </div>
-            </Motion.aside>
-          ) : null}
-        </AnimatePresence>
+                </Motion.aside>
+              ) : null}
+            </AnimatePresence>
 
-        <AnimatePresence initial={false}>
-          {tocOpen ? (
-            <Motion.aside
-              key="quiz-toc-dock"
-              role="complementary"
-              aria-label="문제 목차"
-              className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-              initial={{ width: 0, opacity: 0.85 }}
-              animate={{ width: tocDockWidth, opacity: 1 }}
-              exit={{ width: 0, opacity: 0.85 }}
-              transition={
-                tocDockResizing
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 380, damping: 36 }
-              }
-            >
-              <div
-                className="relative flex h-full min-h-0 flex-col"
-                style={{ width: tocDockWidth }}
-              >
-                <TocResizeHandle
-                  edge="left"
-                  handleProps={tocDockResizeHandleProps}
-                  isResizing={tocDockResizing}
-                  visibleOnHover
-                  label="목차 패널 너비 조절"
-                />
-                <div className="border-b border-slate-200 dark:border-odp-borderSoft">
-                  <div className="flex items-center justify-between px-3 py-2.5">
-                    <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-                      <List size={16} className="text-slate-600 dark:text-odp-muted" />
-                      문제 목차
-                    </div>
-                    <button
-                      type="button"
-                      aria-label="목차 패널 닫기"
-                      className="rounded p-1 hover:bg-slate-100 dark:hover:bg-odp-focusBg"
-                      onClick={() => setTocOpen(false)}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1 px-3 pb-2.5">
-                    {TOC_GRADE_FILTER_ORDER.map((status) => {
-                      const active = tocGradeFilters[status];
-                      return (
-                        <button
-                          key={status}
-                          type="button"
-                          aria-pressed={active}
-                          aria-label={`목차 ${QUIZ_GRADE_STATUS_LABEL[status]} ${active ? '표시' : '숨김'}`}
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                            active
-                              ? TOC_GRADE_TOGGLE_ACTIVE_CLASS[status]
-                              : TOC_GRADE_TOGGLE_INACTIVE_CLASS
-                          }`}
-                          onClick={() =>
-                            setTocGradeFilters((prev) => ({
-                              ...prev,
-                              [status]: !prev[status],
-                            }))
-                          }
-                        >
-                          <span
-                            className={`h-2 w-2 shrink-0 rounded-full ${
-                              active
-                                ? QUIZ_GRADE_STATUS_DOT_CLASS[status]
-                                : 'bg-slate-300 dark:bg-slate-600'
-                            }`}
-                            aria-hidden
+            <AnimatePresence initial={false}>
+              {sourcesDockOpen ? (
+                <Motion.aside
+                  key="quiz-sources-dock"
+                  role="complementary"
+                  aria-label="파일 근거 문서"
+                  className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
+                  initial={{ width: 0, opacity: 0.85 }}
+                  animate={{ width: sourcesDockWidth, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0.85 }}
+                  transition={
+                    sourcesDockResizing
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 380, damping: 36 }
+                  }
+                >
+                  <div
+                    className="relative flex h-full min-h-0 flex-col"
+                    style={{ width: sourcesDockWidth }}
+                  >
+                    <TocResizeHandle
+                      edge="left"
+                      handleProps={sourcesDockResizeHandleProps}
+                      isResizing={sourcesDockResizing}
+                      visibleOnHover
+                      label="파일 근거 패널 너비 조절"
+                    />
+                    <div className="border-b border-slate-200 dark:border-odp-borderSoft">
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <div className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
+                          <Library
+                            size={16}
+                            className="shrink-0 text-violet-600 dark:text-violet-400"
                           />
-                          {QUIZ_GRADE_STATUS_LABEL[status]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3 text-xs">
-                  {doc.questions.map((q, i) => {
-                    const isSimilarChild = Boolean(q.similarOf);
-                    const childKindLabel = /-파생\d+$/u.test(String(q.displayLabel || ''))
-                      ? '파생문제'
-                      : '유사문제';
-                    const gradeStatus = getQuizQuestionGradeStatus({
-                      question: q,
-                      userAnswers,
-                      gradedQuestions: graded,
-                      isSubmitted,
-                      subjectiveGrades: subjGrades,
-                    });
-                    if (
-                      gradeStatus &&
-                      !tocGradeFilters[gradeStatus]
-                    ) {
-                      return null;
-                    }
-                    return (
-                      <Motion.li
-                        key={q.id}
-                        initial={{ opacity: 0, x: 12 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: Math.min(i, 12) * 0.03, duration: 0.18 }}
-                      >
+                          <span className="truncate">파일 근거</span>
+                          {sourcePathUsage.total > 0 ? (
+                            <span
+                              className="ml-0.5 inline-flex shrink-0 items-baseline gap-0.5 rounded-md bg-violet-100 px-1.5 py-0.5 text-[11px] font-bold tabular-nums dark:bg-violet-950/70"
+                              aria-label={`등록 ${sourcePathUsage.total}개 중 ${sourcePathUsage.active}개 사용 중`}
+                            >
+                              <span className="text-violet-600 dark:text-violet-400">
+                                {sourcePathUsage.active}
+                              </span>
+                              <span className="font-medium text-slate-400">
+                                /
+                              </span>
+                              <span className="text-slate-700 dark:text-slate-200">
+                                {sourcePathUsage.total}
+                              </span>
+                              <span className="ml-0.5 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
+                                사용
+                              </span>
+                            </span>
+                          ) : null}
+                        </div>
                         <button
                           type="button"
-                          className={`flex w-full items-center gap-2 rounded py-1.5 text-left hover:bg-slate-100 dark:hover:bg-odp-focusBg ${
-                            isSimilarChild
-                              ? 'ml-3 border-l-2 border-violet-300 pl-2.5 text-[11px] text-violet-900 dark:border-violet-600 dark:text-violet-200'
-                              : 'px-2'
-                          }`}
-                          title={
-                            isSimilarChild
-                              ? `${q.similarOf?.displayLabel || q.similarOf?.id}의 ${childKindLabel}`
-                              : undefined
-                          }
-                          onClick={() => {
-                            document
-                              .getElementById(`q-card-${q.id}`)
-                              ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            setFilter('all');
-                          }}
+                          aria-label="근거 패널 닫기"
+                          className="rounded p-1 hover:bg-slate-100 dark:hover:bg-odp-focusBg"
+                          onClick={closeSourcesDock}
                         >
-                          <span
-                            className="flex h-4 w-2 shrink-0 items-center justify-center"
-                            aria-hidden
-                          >
-                            {gradeStatus ? (
-                              <span
-                                className={`h-2 w-2 rounded-full ${QUIZ_GRADE_STATUS_DOT_CLASS[gradeStatus]}`}
-                              />
-                            ) : null}
-                          </span>
-                          <span className="min-w-0 truncate">
-                            {isSimilarChild ? (
-                              <span className="mr-1 text-violet-400 dark:text-violet-500">
-                                ↳
-                              </span>
-                            ) : null}
-                            {q.displayLabel}. {q.question.slice(0, 40)}
-                          </span>
+                          <X size={16} />
                         </button>
-                      </Motion.li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </Motion.aside>
-          ) : null}
-        </AnimatePresence>
-      </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
+                        <label
+                          htmlFor="quiz-source-remove-confirm"
+                          className="text-[11px] font-medium text-slate-600 dark:text-odp-muted"
+                        >
+                          삭제 시 확인
+                        </label>
+                        <Switch.Root
+                          id="quiz-source-remove-confirm"
+                          className={SOURCE_REMOVE_SWITCH_ROOT_CLASS(
+                            confirmSourceRemove,
+                          )}
+                          checked={confirmSourceRemove}
+                          onCheckedChange={(checked) => {
+                            setConfirmSourceRemove(checked);
+                            writeQuizSourceRemoveConfirm(checked);
+                          }}
+                          aria-label="근거 문서 삭제 시 확인"
+                        >
+                          <Switch.Thumb
+                            className={SOURCE_REMOVE_SWITCH_THUMB_CLASS}
+                          />
+                        </Switch.Root>
+                      </div>
+                    </div>
+                    <div
+                      ref={handleDockDropHostChange}
+                      className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-3"
+                    >
+                      <QuizSourcePathsChips
+                        layout="dock"
+                        paths={doc.config.sourcePaths}
+                        label="선택된 문서"
+                        onPreview={handlePreviewSource}
+                        onRemove={handleSourceRemove}
+                        isPathEnabled={(path) =>
+                          isQuizSourcePathEnabled(doc.config, path)
+                        }
+                        onToggleEnabled={handleToggleSourcePathEnabled}
+                        onOpenPicker={() =>
+                          setSourcePicker({
+                            paths: doc.config.sourcePaths,
+                            scope: "file",
+                          })
+                        }
+                      />
+                      <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-odp-borderSoft">
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-odp-fgStrong">
+                          근거로 문제 생성
+                        </label>
+                        <input
+                          className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                          placeholder="주제 (선택)"
+                          value={genTopic}
+                          onChange={(e) => setGenTopic(e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="w-full"
+                          disabled={busyId === "gen-sources"}
+                          onClick={() => void handleGenerateFromSources()}
+                        >
+                          <Sparkles size={14} />
+                          근거로 문제 추가
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Motion.aside>
+              ) : null}
+            </AnimatePresence>
 
-      <QuizDerivedQuestionModal
-        isOpen={derivedSourceQ != null}
-        question={derivedSourceQ}
-        defaultChoiceCount={doc.config.choiceCount || 4}
-        busy={derivedSourceQ != null && busyId === `derived-${derivedSourceQ.id}`}
-        onClose={() => {
-          if (derivedSourceQ && busyId === `derived-${derivedSourceQ.id}`) return;
-          setDerivedSourceQ(null);
-        }}
-        onSubmit={(target) => {
-          if (!derivedSourceQ) return;
-          void handleDerivedGenerate(derivedSourceQ, target);
-        }}
-      />
+            <AnimatePresence initial={false}>
+              {tocOpen ? (
+                <Motion.aside
+                  key="quiz-toc-dock"
+                  role="complementary"
+                  aria-label="문제 목차"
+                  className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
+                  initial={{ width: 0, opacity: 0.85 }}
+                  animate={{ width: tocDockWidth, opacity: 1 }}
+                  exit={{ width: 0, opacity: 0.85 }}
+                  transition={
+                    tocDockResizing
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 380, damping: 36 }
+                  }
+                >
+                  <div
+                    className="relative flex h-full min-h-0 flex-col"
+                    style={{ width: tocDockWidth }}
+                  >
+                    <TocResizeHandle
+                      edge="left"
+                      handleProps={tocDockResizeHandleProps}
+                      isResizing={tocDockResizing}
+                      visibleOnHover
+                      label="목차 패널 너비 조절"
+                    />
+                    <div className="border-b border-slate-200 dark:border-odp-borderSoft">
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
+                          <List
+                            size={16}
+                            className="text-slate-600 dark:text-odp-muted"
+                          />
+                          문제 목차
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="목차 패널 닫기"
+                          className="rounded p-1 hover:bg-slate-100 dark:hover:bg-odp-focusBg"
+                          onClick={() => setTocOpen(false)}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1 px-3 pb-2.5">
+                        {TOC_GRADE_FILTER_ORDER.map((status) => {
+                          const active = tocGradeFilters[status];
+                          return (
+                            <button
+                              key={status}
+                              type="button"
+                              aria-pressed={active}
+                              aria-label={`목차 ${QUIZ_GRADE_STATUS_LABEL[status]} ${active ? "표시" : "숨김"}`}
+                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                                active
+                                  ? TOC_GRADE_TOGGLE_ACTIVE_CLASS[status]
+                                  : TOC_GRADE_TOGGLE_INACTIVE_CLASS
+                              }`}
+                              onClick={() =>
+                                setTocGradeFilters((prev) => ({
+                                  ...prev,
+                                  [status]: !prev[status],
+                                }))
+                              }
+                            >
+                              <span
+                                className={`h-2 w-2 shrink-0 rounded-full ${
+                                  active
+                                    ? QUIZ_GRADE_STATUS_DOT_CLASS[status]
+                                    : "bg-slate-300 dark:bg-slate-600"
+                                }`}
+                                aria-hidden
+                              />
+                              {QUIZ_GRADE_STATUS_LABEL[status]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3 text-xs">
+                      {doc.questions.map((q, i) => {
+                        const isSimilarChild = Boolean(q.similarOf);
+                        const childKindLabel = /-파생\d+$/u.test(
+                          String(q.displayLabel || ""),
+                        )
+                          ? "파생문제"
+                          : "유사문제";
+                        const gradeStatus = getQuizQuestionGradeStatus({
+                          question: q,
+                          userAnswers,
+                          gradedQuestions: graded,
+                          isSubmitted,
+                          subjectiveGrades: subjGrades,
+                        });
+                        if (gradeStatus && !tocGradeFilters[gradeStatus]) {
+                          return null;
+                        }
+                        return (
+                          <Motion.li
+                            key={q.id}
+                            initial={{ opacity: 0, x: 12 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{
+                              delay: Math.min(i, 12) * 0.03,
+                              duration: 0.18,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className={`flex w-full items-center gap-2 rounded py-1.5 text-left hover:bg-slate-100 dark:hover:bg-odp-focusBg ${
+                                isSimilarChild
+                                  ? "ml-3 border-l-2 border-violet-300 pl-2.5 text-[11px] text-violet-900 dark:border-violet-600 dark:text-violet-200"
+                                  : "px-2"
+                              }`}
+                              title={
+                                isSimilarChild
+                                  ? `${q.similarOf?.displayLabel || q.similarOf?.id}의 ${childKindLabel}`
+                                  : undefined
+                              }
+                              onClick={() => {
+                                document
+                                  .getElementById(`q-card-${q.id}`)
+                                  ?.scrollIntoView({
+                                    behavior: "smooth",
+                                    block: "center",
+                                  });
+                                setFilter("all");
+                              }}
+                            >
+                              <span
+                                className="flex h-4 w-2 shrink-0 items-center justify-center"
+                                aria-hidden
+                              >
+                                {gradeStatus ? (
+                                  <span
+                                    className={`h-2 w-2 rounded-full ${QUIZ_GRADE_STATUS_DOT_CLASS[gradeStatus]}`}
+                                  />
+                                ) : null}
+                              </span>
+                              <span className="min-w-0 truncate">
+                                {isSimilarChild ? (
+                                  <span className="mr-1 text-violet-400 dark:text-violet-500">
+                                    ↳
+                                  </span>
+                                ) : null}
+                                {q.displayLabel}. {q.question.slice(0, 40)}
+                              </span>
+                            </button>
+                          </Motion.li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </Motion.aside>
+              ) : null}
+            </AnimatePresence>
+          </div>
 
-      {addOpen ? (
-        <QuizAddQuestionModal
-          isOpen={addOpen}
-          onClose={() => {
-            setAddOpen(false);
-            setEditQ(null);
-          }}
-          styleTemplate={addQuestionStyleTemplate}
-          initial={editQ}
-          nextLabel={nextDisplayLabel(doc.questions)}
-          onSubmit={(q) => {
-            if (editQ) {
-              commitDoc({
-                ...doc,
-                questions: doc.questions.map((x) => (x.id === editQ.id ? q : x)),
-              });
-            } else {
-              commitDoc({ ...doc, questions: [...doc.questions, q] });
+          <QuizDerivedQuestionModal
+            isOpen={derivedSourceQ != null}
+            question={derivedSourceQ}
+            defaultChoiceCount={doc.config.choiceCount || 4}
+            busy={
+              derivedSourceQ != null &&
+              busyId === `derived-${derivedSourceQ.id}`
             }
-            setEditQ(null);
-          }}
-          onOpenSourcePicker={(paths, onDone) =>
-            setSourcePicker({ paths, scope: 'question', onDone })
-          }
-          {...(editQ ? { onFixWithAi: handleFixWithAi } : {})}
-        />
-      ) : null}
+            onClose={() => {
+              if (derivedSourceQ && busyId === `derived-${derivedSourceQ.id}`)
+                return;
+              setDerivedSourceQ(null);
+            }}
+            onSubmit={(target) => {
+              if (!derivedSourceQ) return;
+              void handleDerivedGenerate(derivedSourceQ, target);
+            }}
+          />
 
-      {bulkOpen ? (
-        <QuizBulkImportModal
-          isOpen={bulkOpen}
-          onClose={() => setBulkOpen(false)}
-          current={doc}
-          onApply={(next, mode) => {
-            commitDoc(next);
-            if (mode === 'replace') resetSession();
-            showToast({
-              message: `문제 ${next.questions.length}개 적용`,
-              durationMs: 2500,
-            });
-          }}
-        />
-      ) : null}
-
-      {sourcePicker ? (
-        <QuizSourcePickerModal
-          isOpen
-          onClose={() => setSourcePicker(null)}
-          tree={vaultTree}
-          selected={sourcePicker.paths}
-          excludePath={currentFile?.id || null}
-          onExpandFolder={onExpandFolder}
-          onDropHostChange={handleModalDropHostChange}
-          onRegisterDropPathsMerge={(fn) => {
-            mergeModalPathsRef.current = fn;
-          }}
-          onConfirm={(paths) => {
-            if (sourcePicker.onDone) {
-              sourcePicker.onDone(paths);
-            } else if (sourcePicker.scope === 'file') {
-              commitDoc({
-                ...doc,
-                config: { ...doc.config, sourcePaths: paths },
-              });
-            }
-            setSourcePicker(null);
-          }}
-        />
-      ) : null}
-
-      <ConfirmModal
-        isOpen={examStartConfirmOpen}
-        title="시험 시작"
-        message="초기화하고 시험을 시작하시겠습니까?"
-        confirmLabel="시작"
-        cancelLabel="취소"
-        variant="danger"
-        onConfirm={() => {
-          setExamStartConfirmOpen(false);
-          resetSessionAndStartExam();
-        }}
-        onCancel={() => setExamStartConfirmOpen(false)}
-      />
-
-      <ConfirmModal
-        isOpen={pendingSourceRemove != null}
-        title="근거 문서 제거"
-        message={
-          pendingSourceRemove
-            ? `「${pendingSourceRemove}」을(를) 파일 근거에서 제거할까요?`
-            : ''
-        }
-        confirmLabel="제거"
-        cancelLabel="취소"
-        variant="danger"
-        onConfirm={() => {
-          if (pendingSourceRemove) removeSourcePath(pendingSourceRemove);
-          setPendingSourceRemove(null);
-        }}
-        onCancel={() => setPendingSourceRemove(null)}
-      />
-
-      <QuizGenerationQueuePanel
-        jobs={genQueue.jobs}
-        isOpen={genQueue.panelOpen}
-        size={genQueue.panelSize}
-        onClose={genQueue.closePanel}
-        onResize={genQueue.setPanelSize}
-        onRemoveJob={genQueue.removeJob}
-        onClearFinished={genQueue.clearFinishedJobs}
-        onUserEngage={genQueue.markPanelUserEngaged}
-        onPointerEngageChange={genQueue.markPanelPointerEngaged}
-        onFocusEngageChange={genQueue.markPanelFocusEngaged}
-      />
-
-      {!genQueue.panelOpen && genQueue.jobs.length > 0 ? (
-        <button
-          type="button"
-          className="fixed bottom-4 right-4 z-10049 flex items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-2 text-xs font-semibold text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 dark:border-violet-700/60"
-          onClick={genQueue.openPanel}
-          onMouseEnter={() => genQueue.markPanelPointerEngaged(true)}
-          onMouseLeave={() => genQueue.markPanelPointerEngaged(false)}
-          onFocus={() => genQueue.markPanelFocusEngaged(true)}
-          onBlur={() => genQueue.markPanelFocusEngaged(false)}
-          aria-label="문제 생성 대기열 열기"
-        >
-          <Sparkles size={14} />
-          생성 대기열
-          {genQueue.hasActiveJobs ? (
-            <span className="rounded-full bg-violet-400/30 px-1.5 py-0.5 text-[10px] font-bold">
-              진행
-            </span>
+          {addOpen ? (
+            <QuizAddQuestionModal
+              isOpen={addOpen}
+              onClose={() => {
+                setAddOpen(false);
+                setEditQ(null);
+              }}
+              styleTemplate={addQuestionStyleTemplate}
+              initial={editQ}
+              nextLabel={nextDisplayLabel(doc.questions)}
+              onSubmit={(q) => {
+                if (editQ) {
+                  commitDoc({
+                    ...doc,
+                    questions: doc.questions.map((x) =>
+                      x.id === editQ.id ? q : x,
+                    ),
+                  });
+                } else {
+                  commitDoc({ ...doc, questions: [...doc.questions, q] });
+                }
+                setEditQ(null);
+              }}
+              onOpenSourcePicker={(paths, onDone) =>
+                setSourcePicker({ paths, scope: "question", onDone })
+              }
+              {...(editQ ? { onFixWithAi: handleFixWithAi } : {})}
+            />
           ) : null}
-        </button>
-      ) : null}
-    </div>
-    </Tooltip.Provider>
+
+          {bulkOpen ? (
+            <QuizBulkImportModal
+              isOpen={bulkOpen}
+              onClose={() => setBulkOpen(false)}
+              current={doc}
+              onApply={(next, mode) => {
+                commitDoc(next);
+                if (mode === "replace") resetSession();
+                showToast({
+                  message: `문제 ${next.questions.length}개 적용`,
+                  durationMs: 2500,
+                });
+              }}
+            />
+          ) : null}
+
+          {sourcePicker ? (
+            <QuizSourcePickerModal
+              isOpen
+              onClose={() => setSourcePicker(null)}
+              tree={vaultTree}
+              selected={sourcePicker.paths}
+              excludePath={currentFile?.id || null}
+              onExpandFolder={onExpandFolder}
+              onDropHostChange={handleModalDropHostChange}
+              onRegisterDropPathsMerge={(fn) => {
+                mergeModalPathsRef.current = fn;
+              }}
+              onConfirm={(paths) => {
+                if (sourcePicker.onDone) {
+                  sourcePicker.onDone(paths);
+                } else if (sourcePicker.scope === "file") {
+                  commitDoc({
+                    ...doc,
+                    config: { ...doc.config, sourcePaths: paths },
+                  });
+                }
+                setSourcePicker(null);
+              }}
+            />
+          ) : null}
+
+          <ConfirmModal
+            isOpen={examStartConfirmOpen}
+            title="시험 시작"
+            message="초기화하고 시험을 시작하시겠습니까?"
+            confirmLabel="시작"
+            cancelLabel="취소"
+            variant="danger"
+            onConfirm={() => {
+              setExamStartConfirmOpen(false);
+              resetSessionAndStartExam();
+            }}
+            onCancel={() => setExamStartConfirmOpen(false)}
+          />
+
+          <ConfirmModal
+            isOpen={pendingSourceRemove != null}
+            title="근거 문서 제거"
+            message={
+              pendingSourceRemove
+                ? `「${pendingSourceRemove}」을(를) 파일 근거에서 제거할까요?`
+                : ""
+            }
+            confirmLabel="제거"
+            cancelLabel="취소"
+            variant="danger"
+            onConfirm={() => {
+              if (pendingSourceRemove) removeSourcePath(pendingSourceRemove);
+              setPendingSourceRemove(null);
+            }}
+            onCancel={() => setPendingSourceRemove(null)}
+          />
+
+          <QuizGenerationQueuePanel
+            jobs={genQueue.jobs}
+            isOpen={genQueue.panelOpen}
+            size={genQueue.panelSize}
+            onClose={genQueue.closePanel}
+            onResize={genQueue.setPanelSize}
+            onRemoveJob={genQueue.removeJob}
+            onClearFinished={genQueue.clearFinishedJobs}
+            onUserEngage={genQueue.markPanelUserEngaged}
+            onPointerEngageChange={genQueue.markPanelPointerEngaged}
+            onFocusEngageChange={genQueue.markPanelFocusEngaged}
+          />
+
+          {!genQueue.panelOpen && genQueue.jobs.length > 0 ? (
+            <button
+              type="button"
+              className="fixed bottom-4 right-4 z-10049 flex items-center gap-1.5 rounded-full border border-violet-300/70 bg-violet-950/90 px-3 py-2 text-xs font-semibold text-violet-50 shadow-lg backdrop-blur-sm hover:bg-violet-900/95 dark:border-violet-700/60"
+              onClick={genQueue.openPanel}
+              onMouseEnter={() => genQueue.markPanelPointerEngaged(true)}
+              onMouseLeave={() => genQueue.markPanelPointerEngaged(false)}
+              onFocus={() => genQueue.markPanelFocusEngaged(true)}
+              onBlur={() => genQueue.markPanelFocusEngaged(false)}
+              aria-label="문제 생성 대기열 열기"
+            >
+              <Sparkles size={14} />
+              생성 대기열
+              {genQueue.hasActiveJobs ? (
+                <span className="rounded-full bg-violet-400/30 px-1.5 py-0.5 text-[10px] font-bold">
+                  진행
+                </span>
+              ) : null}
+            </button>
+          ) : null}
+        </div>
+      </Tooltip.Provider>
     </QuizImageHydrationProvider>
   );
 }

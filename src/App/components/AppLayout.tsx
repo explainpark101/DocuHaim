@@ -53,6 +53,7 @@ import { useLlamaCppProviderAutoSync } from '@/hooks/useLlamaCppProviderAutoSync
 import { useMlxVlmLoadToast } from '@/hooks/useMlxVlmLoadToast';
 import { useDesktopMenuBridge } from '@/hooks/useDesktopMenuBridge';
 import LlmAssistModal from '@/components/LlmAssistModal';
+import AiSettingsDock from '@/components/settings/AiSettingsDock';
 import { useLlmAssistSession } from '@/contexts/LlmAssistSessionContext';
 
 /** Main app chrome — domain hooks + thin contexts (no AppHandlers bag). */
@@ -896,6 +897,12 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           <LlmAssistModal
             llmProviderProfiles={llmProviderProfiles}
             theme={theme}
+          />
+          <AiSettingsDock
+            profiles={llmProviderProfiles}
+            onSaveProfiles={(next) =>
+              handleSaveS3Creds({ ...s3Creds, llmProviderProfiles: next })
+            }
           />
           </div>
         </div>

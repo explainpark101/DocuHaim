@@ -10,6 +10,8 @@ export type QuizSettings = {
   calcComplexity: QuizCalcComplexity;
   systemPrompt: string;
   profileId: string | null;
+  /** Last model selected in quiz mode (for the active profile). */
+  modelId: string | null;
   ragTopK: number;
   ragMaxChars: number;
   /** When true, flush quiz markdown and vault-save after AI generation completes. */
@@ -34,6 +36,7 @@ export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
   calcComplexity: 'hand',
   systemPrompt: DEFAULT_QUIZ_SYSTEM_PROMPT,
   profileId: null,
+  modelId: null,
   ragTopK: 24,
   ragMaxChars: 120_000,
   autoSaveOnAiGenerate: true,
@@ -68,6 +71,10 @@ export function normalizeQuizSettings(
     profileId:
       typeof raw?.profileId === 'string' && raw.profileId.trim()
         ? raw.profileId.trim()
+        : null,
+    modelId:
+      typeof raw?.modelId === 'string' && raw.modelId.trim()
+        ? raw.modelId.trim()
         : null,
     ragTopK: Math.min(
       64,

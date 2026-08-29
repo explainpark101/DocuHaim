@@ -70,11 +70,14 @@ function draftFromProfile(profile: LlmProviderProfile): Draft {
 type LlmProviderProfilesSettingsProps = {
   profiles: LlmProviderProfile[];
   onSaveProfiles: (next: LlmProviderProfile[]) => void;
+  /** Hide intro/helper copy (e.g. in the AI settings dock). */
+  compact?: boolean;
 };
 
 export default function LlmProviderProfilesSettings({
   profiles,
   onSaveProfiles,
+  compact = false,
 }: LlmProviderProfilesSettingsProps) {
   const [open, setOpen] = useState(true);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -175,16 +178,18 @@ export default function LlmProviderProfilesSettings({
       <SettingsCollapsibleHeading>AI 도우미 제공자</SettingsCollapsibleHeading>
       <SettingsCollapsibleContent>
         <>
-          <p className="text-xs text-gray-600 dark:text-odp-muted">
-            Gemini와 OpenAI 호환 endpoint를 여러 개 저장할 수 있습니다. 실제 사용할 제공자는
-            에디터 AI 도우미에서 고릅니다. API 키는 연결 정보와 함께 암호화되며, 이 화면에서 다시
-            표시되지 않습니다. 웹에서는 Gemini 요청이 Google AI Studio(
-            <code className="rounded bg-gray-100 px-1 dark:bg-odp-bgSoft">
-              generativelanguage.googleapis.com
-            </code>
-            )로 직접 전송됩니다. Tauri 앱은 네이티브 HTTP를 사용합니다. OpenAI 호환
-            endpoint는 CORS가 허용되어야 합니다.
-          </p>
+          {!compact ? (
+            <p className="text-xs text-gray-600 dark:text-odp-muted">
+              Gemini와 OpenAI 호환 endpoint를 여러 개 저장할 수 있습니다. 실제 사용할 제공자는
+              에디터 AI 도우미에서 고릅니다. API 키는 연결 정보와 함께 암호화되며, 이 화면에서 다시
+              표시되지 않습니다. 웹에서는 Gemini 요청이 Google AI Studio(
+              <code className="rounded bg-gray-100 px-1 dark:bg-odp-bgSoft">
+                generativelanguage.googleapis.com
+              </code>
+              )로 직접 전송됩니다. Tauri 앱은 네이티브 HTTP를 사용합니다. OpenAI 호환
+              endpoint는 CORS가 허용되어야 합니다.
+            </p>
+          ) : null}
 
           {profiles.length === 0 ? (
             <p className="text-xs text-gray-500 dark:text-odp-muted">
@@ -310,7 +315,7 @@ export default function LlmProviderProfilesSettings({
                   ) : null}
                 </RadioGroup.Root>
               </div>
-              {draft.kind === LLM_PROVIDER_MLX_VLM ? (
+              {draft.kind === LLM_PROVIDER_MLX_VLM && !compact ? (
                 <div className="rounded border border-emerald-200 bg-emerald-50/60 p-2.5 text-[11px] leading-relaxed text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
                   MLX-VLM 서버 시작·모델 설치는 설정의{' '}
                   <a href="#settings-mlx-vlm" className="underline">
@@ -332,10 +337,12 @@ export default function LlmProviderProfilesSettings({
                     onChange={(e) => setDraft((p) => (p ? { ...p, baseUrl: e.target.value } : p))}
                     placeholder="https://api.openai.com/v1"
                   />
-                  <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
-                    예: https://api.openai.com/v1 , https://openrouter.ai/api/v1 ,
-                    http://localhost:11434/v1
-                  </p>
+                  {!compact ? (
+                    <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
+                      예: https://api.openai.com/v1 , https://openrouter.ai/api/v1 ,
+                      http://localhost:11434/v1
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               <div>

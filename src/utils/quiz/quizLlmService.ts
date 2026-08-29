@@ -125,12 +125,13 @@ export type QuizLlmReadyResult =
  */
 export async function checkQuizLlmReady(
   profiles: LlmProviderProfile[],
+  overrides?: { profileId?: string | null; model?: string | null },
 ): Promise<QuizLlmReadyResult> {
   const settings = loadQuizSettings();
   const list = Array.isArray(profiles) ? profiles : [];
   const profile = resolveSelectedLlmProfile(
     list,
-    settings.profileId || loadLastLlmProfileId(),
+    overrides?.profileId?.trim() || settings.profileId || loadLastLlmProfileId(),
   );
   if (!profile) {
     return {
@@ -140,7 +141,11 @@ export async function checkQuizLlmReady(
     };
   }
 
-  const model = loadLastUsedModelForProfile(profile.id, profile.kind).trim();
+  const model = (
+    overrides?.model?.trim() ||
+    settings.modelId?.trim() ||
+    loadLastUsedModelForProfile(profile.id, profile.kind)
+  ).trim();
 
   if (profile.kind === LLM_PROVIDER_MLX_VLM) {
     const mlxSettings = loadMlxVlmSettings();
@@ -291,6 +296,10 @@ export type QuizLlmRunOptions = {
   signal?: AbortSignal;
   /** Streaming callback with accumulated text (wrong-answer analysis, etc.). */
   onChunk?: (accumulated: string) => void;
+  /** Override quiz default profile for this request. */
+  profileId?: string;
+  /** Override last-used model for this request. */
+  model?: string;
 };
 
 function withStreamOpts<T extends Record<string, unknown>>(
@@ -310,7 +319,7 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
   const profiles = Array.isArray(options.profiles) ? options.profiles : [];
   const selectedProfile = resolveSelectedLlmProfile(
     profiles,
-    settings.profileId || loadLastLlmProfileId(),
+    options.profileId?.trim() || settings.profileId || loadLastLlmProfileId(),
   );
   if (!selectedProfile) {
     throw new Error(
@@ -318,10 +327,11 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
     );
   }
 
-  const model = loadLastUsedModelForProfile(
-    selectedProfile.id,
-    selectedProfile.kind,
-  );
+  const model = (
+    options.model?.trim() ||
+    settings.modelId?.trim() ||
+    loadLastUsedModelForProfile(selectedProfile.id, selectedProfile.kind)
+  ).trim();
   const systemPrompt = (options.systemPrompt || settings.systemPrompt || '').trim();
   const instruction = options.instruction.trim();
   const requestOptions = {
@@ -502,6 +512,8 @@ function runOpts(
   extras?: {
     signal?: AbortSignal;
     onChunk?: (accumulated: string) => void;
+    profileId?: string;
+    model?: string;
   },
 ): QuizLlmRunOptions {
   const base: QuizLlmRunOptions = {
@@ -512,6 +524,8 @@ function runOpts(
   };
   if (extras?.signal) base.signal = extras.signal;
   if (extras?.onChunk) base.onChunk = extras.onChunk;
+  if (extras?.profileId?.trim()) base.profileId = extras.profileId.trim();
+  if (extras?.model?.trim()) base.model = extras.model.trim();
   return base;
 }
 
@@ -522,11 +536,20 @@ function signalExtra(signal?: AbortSignal): { signal?: AbortSignal } | undefined
 function streamExtra(opts: {
   signal?: AbortSignal | undefined;
   onChunk?: ((accumulated: string) => void) | undefined;
-}): { signal?: AbortSignal; onChunk?: (accumulated: string) => void } | undefined {
-  const out: { signal?: AbortSignal; onChunk?: (accumulated: string) => void } = {};
+  profileId?: string | undefined;
+  model?: string | undefined;
+}): { signal?: AbortSignal; onChunk?: (accumulated: string) => void; profileId?: string; model?: string } | undefined {
+  const out: {
+    signal?: AbortSignal;
+    onChunk?: (accumulated: string) => void;
+    profileId?: string;
+    model?: string;
+  } = {};
   if (opts.signal) out.signal = opts.signal;
   if (opts.onChunk) out.onChunk = opts.onChunk;
-  return out.signal || out.onChunk ? out : undefined;
+  if (opts.profileId?.trim()) out.profileId = opts.profileId.trim();
+  if (opts.model?.trim()) out.model = opts.model.trim();
+  return out.signal || out.onChunk || out.profileId || out.model ? out : undefined;
 }
 
 export async function gradeSubjectiveAnswer(params: {
@@ -580,6 +603,8 @@ export async function generateWrongChoiceExplanation(params: {
   question: QuizQuestion;
   selectedOption: number;
   userInstructions?: string;
+  profileId?: string;
+  model?: string;
   signal?: AbortSignal;
   onChunk?: (accumulated: string) => void;
 }): Promise<string> {
@@ -611,7 +636,12 @@ ${userBlock}
       instruction,
       '당신은 시험 해설 작성자입니다.',
       0.5,
-      streamExtra({ signal: params.signal, onChunk: params.onChunk }),
+      streamExtra({
+        signal: params.signal,
+        onChunk: params.onChunk,
+        profileId: params.profileId,
+        model: params.model,
+      }),
     ),
   );
 }
@@ -622,6 +652,8 @@ export async function generateChoiceAnalysisFollowUp(params: {
   selectedOption: number;
   existingAnalysis: string;
   userQuestion: string;
+  profileId?: string;
+  model?: string;
   signal?: AbortSignal;
   onChunk?: (accumulated: string) => void;
 }): Promise<string> {
@@ -658,7 +690,12 @@ ${params.userQuestion.trim()}
       instruction,
       '당신은 시험 해설 튜터입니다. 문제와 기존 분석 내용만 근거로 답하세요.',
       0.5,
-      streamExtra({ signal: params.signal, onChunk: params.onChunk }),
+      streamExtra({
+        signal: params.signal,
+        onChunk: params.onChunk,
+        profileId: params.profileId,
+        model: params.model,
+      }),
     ),
   );
 }

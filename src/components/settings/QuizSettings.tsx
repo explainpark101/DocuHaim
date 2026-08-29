@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Switch } from 'radix-ui';
 import {
   SettingsCollapsibleContainer,
@@ -6,6 +6,8 @@ import {
   SettingsCollapsibleHeading,
 } from '@/components/settings/SettingsCollapsible';
 import Button from '@/components/Button';
+import QuizLlmModelPicker from '@/components/quiz/QuizLlmModelPicker';
+import PretextAutoHeightTextarea from '@/components/shared/ui/PretextAutoHeightTextarea';
 import { RotateCcw } from 'lucide-react';
 import {
   DEFAULT_QUIZ_SETTINGS,
@@ -15,7 +17,15 @@ import {
   QUIZ_SETTINGS_CHANGED_EVENT,
   type QuizSettings,
 } from '@/utils/quiz/quizSettingsStore';
-import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
+import {
+  defaultModelForKind,
+  loadLastLlmProfileId,
+  loadLastUsedModelForProfile,
+  resolveSelectedLlmProfile,
+  saveLastLlmProfileId,
+  saveLastUsedModelForProfile,
+  type LlmProviderProfile,
+} from '@/utils/llmProviderProfiles';
 
 type QuizSettingsProps = {
   llmProviderProfiles?: LlmProviderProfile[];
@@ -37,6 +47,52 @@ export default function QuizSettingsSection({
     setSettings(saveQuizSettings(partial));
   }, []);
 
+  const resolvedProfileId = useMemo(() => {
+    const profile = resolveSelectedLlmProfile(
+      llmProviderProfiles,
+      settings.profileId || loadLastLlmProfileId(),
+    );
+    return profile?.id ?? '';
+  }, [llmProviderProfiles, settings.profileId]);
+
+  const displayModel = useMemo(() => {
+    const fromSettings = String(settings.modelId || '').trim();
+    if (fromSettings) return fromSettings;
+    const profile = resolveSelectedLlmProfile(llmProviderProfiles, resolvedProfileId);
+    if (!profile) return '';
+    return (
+      loadLastUsedModelForProfile(profile.id, profile.kind) ||
+      defaultModelForKind(profile.kind)
+    );
+  }, [llmProviderProfiles, resolvedProfileId, settings.modelId]);
+
+  const handleProfileChange = useCallback(
+    (nextProfileId: string) => {
+      const trimmedId = nextProfileId.trim();
+      saveLastLlmProfileId(trimmedId);
+      const profile = resolveSelectedLlmProfile(llmProviderProfiles, trimmedId);
+      const nextModel = profile
+        ? loadLastUsedModelForProfile(profile.id, profile.kind) ||
+          defaultModelForKind(profile.kind)
+        : '';
+      patch({
+        profileId: trimmedId || null,
+        modelId: nextModel.trim() || null,
+      });
+    },
+    [llmProviderProfiles, patch],
+  );
+
+  const handleModelChange = useCallback(
+    (nextModel: string) => {
+      const trimmedModel = nextModel.trim();
+      const profile = resolveSelectedLlmProfile(llmProviderProfiles, resolvedProfileId);
+      if (profile) saveLastUsedModelForProfile(profile.id, trimmedModel);
+      patch({ modelId: trimmedModel || null });
+    },
+    [llmProviderProfiles, resolvedProfileId, patch],
+  );
+
   return (
     <div
       id="settings-quiz"
@@ -51,25 +107,21 @@ export default function QuizSettingsSection({
             근거 파일 목록은 각 `.quiz.md` 파일에 저장됩니다.
           </p>
 
-          <label className="mb-4 block space-y-1.5">
+          <div className="mb-4 space-y-2">
             <span className="text-xs font-semibold text-gray-700 dark:text-odp-fgStrong">
-              LLM 프로필
+              AI 제공자
             </span>
-            <select
-              className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-              value={settings.profileId || ''}
-              onChange={(e) =>
-                patch({ profileId: e.target.value.trim() || null })
-              }
-            >
-              <option value="">(앱 기본 / 마지막 사용 프로필)</option>
-              {llmProviderProfiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.kind})
-                </option>
-              ))}
-            </select>
-          </label>
+            <QuizLlmModelPicker
+              profiles={llmProviderProfiles}
+              profileId={resolvedProfileId}
+              model={displayModel}
+              onProfileIdChange={handleProfileChange}
+              onModelChange={handleModelChange}
+            />
+            <p className="text-[11px] text-gray-500 dark:text-odp-muted">
+              퀴즈 모드 출제·채점·보기 분석에 사용할 기본 제공자와 모델입니다.
+            </p>
+          </div>
 
           <label className="mb-4 block space-y-1.5">
             <div className="flex items-center justify-between">
@@ -179,8 +231,9 @@ export default function QuizSettingsSection({
                 기본값
               </Button>
             </div>
-            <textarea
-              className="min-h-28 w-full rounded-lg border border-gray-300 bg-white p-2 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+            <PretextAutoHeightTextarea
+              layoutKey={open}
+              minHeight={112}
               value={settings.systemPrompt}
               onChange={(e) => patch({ systemPrompt: e.target.value })}
             />

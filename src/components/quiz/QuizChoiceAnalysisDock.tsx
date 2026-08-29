@@ -2,9 +2,11 @@ import Button from '@/components/Button';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import type { QuizQuestion } from '@/utils/quiz/quizTypes';
+import type { LlmProviderProfile } from '@/utils/llmProviderProfiles';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Sparkles, X } from 'lucide-react';
 import { type ComponentType, type KeyboardEvent, useCallback } from 'react';
+import QuizLlmModelPicker from '@/components/quiz/QuizLlmModelPicker';
 
 const CHOICE_ANALYSIS_DOCK_DEFAULT_WIDTH = 320;
 
@@ -25,6 +27,11 @@ type QuizChoiceAnalysisDockProps = {
   mode: QuizChoiceAnalysisDockMode;
   prompt: string;
   existingAnalysis?: string;
+  llmProfiles: LlmProviderProfile[];
+  profileId: string;
+  model: string;
+  onProfileIdChange: (profileId: string) => void;
+  onModelChange: (model: string) => void;
   busy: boolean;
   onPromptChange: (value: string) => void;
   onClose: () => void;
@@ -44,6 +51,11 @@ export default function QuizChoiceAnalysisDock({
   mode,
   prompt,
   existingAnalysis = '',
+  llmProfiles,
+  profileId,
+  model,
+  onProfileIdChange,
+  onModelChange,
   busy,
   onPromptChange,
   onClose,
@@ -147,6 +159,14 @@ export default function QuizChoiceAnalysisDock({
                     <p className="line-clamp-6 whitespace-pre-wrap">{existingAnalysis.trim()}</p>
                   </div>
                 ) : null}
+                <QuizLlmModelPicker
+                  profiles={llmProfiles}
+                  profileId={profileId}
+                  model={model}
+                  onProfileIdChange={onProfileIdChange}
+                  onModelChange={onModelChange}
+                  disabled={busy}
+                />
                 <label className="block space-y-1.5">
                   <span className="text-xs font-semibold text-slate-700 dark:text-odp-fgStrong">
                     {isFollowUp ? '추가 질문' : '궁금한 점'}
