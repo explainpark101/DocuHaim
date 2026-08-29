@@ -1211,6 +1211,7 @@ export default function EditorPane({
               <QuizPane
                 content={editorContent}
                 onChange={onChangeEditor}
+                onSave={onSave}
                 currentFile={currentFile}
                 llmProviderProfiles={llmProviderProfiles}
                 isActiveFile={isActiveFile}

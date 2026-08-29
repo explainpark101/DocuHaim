@@ -12,6 +12,8 @@ export type QuizSettings = {
   profileId: string | null;
   ragTopK: number;
   ragMaxChars: number;
+  /** When true, flush quiz markdown and vault-save after AI generation completes. */
+  autoSaveOnAiGenerate: boolean;
 };
 
 export const DEFAULT_QUIZ_SYSTEM_PROMPT = `당신은 대한민국 자격증 및 학술 시험 문제 출제위원입니다.
@@ -34,6 +36,7 @@ export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
   profileId: null,
   ragTopK: 24,
   ragMaxChars: 120_000,
+  autoSaveOnAiGenerate: true,
 };
 
 export const QUIZ_SETTINGS_CHANGED_EVENT = 's3haim:quiz-settings-changed';
@@ -86,6 +89,7 @@ export function normalizeQuizSettings(
         ),
       ),
     ),
+    autoSaveOnAiGenerate: raw?.autoSaveOnAiGenerate !== false,
   };
 }
 

@@ -235,7 +235,7 @@ export default function QuizAddQuestionModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} contentClassName="max-w-2xl max-h-[90vh]">
+    <Modal isOpen={isOpen} onClose={onClose} contentClassName="quiz-pane max-w-2xl max-h-[90vh]">
       <div className="flex max-h-[min(80vh,720px)] flex-col gap-3 overflow-y-auto p-4 text-sm">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="text-base font-bold text-gray-900 dark:text-odp-fgStrong">

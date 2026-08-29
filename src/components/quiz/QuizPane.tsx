@@ -78,6 +78,7 @@ import {
 import { formToQuizQuestion } from '@/utils/quiz/buildQuestionMarkdown';
 import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
 import type { QuizVaultTextReader } from '@/utils/quiz/quizVaultSourceLoader';
+import '@/styles/quiz-pane.css';
 import { writeQuizGenerationLog } from '@/utils/quiz/quizGenerationLog';
 import type { QuizGenStepUpdate } from '@/utils/quiz/quizGenerationQueueTypes';
 import { useToast } from '@/contexts/ToastContext';
@@ -109,11 +110,14 @@ import {
 import { buildWrongQuestionsExtractQuiz } from '@/utils/quiz/buildWrongQuestionsExtractQuiz';
 import { resolveWrongQuizExtractPath } from '@/utils/quiz/quizWrongExtractPath';
 import {
+  appendRegeneratedChoiceAnalysis,
   flatWrongChoiceExplanations,
+  mergeStreamingRegeneratedChoiceAnalysis,
   nestWrongChoiceExplanations,
   resolveChoiceAnalysisUserInstructions,
   wrongChoiceExplanationKey,
 } from '@/utils/quiz/quizWrongChoiceExplanations';
+import { loadQuizSettings } from '@/utils/quiz/quizSettingsStore';
 import {
   areQuizPersistedSessionsEqual,
   buildQuizSessionForPersist,
@@ -215,6 +219,7 @@ export type QuizFileManagementActions = {
 export type QuizPaneProps = {
   content: string;
   onChange: (markdown: string) => void;
+  onSave?: (() => void | Promise<void>) | undefined;
   currentFile?: { id?: string; name?: string; type?: string; content?: string } | null;
   llmProviderProfiles?: LlmProviderProfile[];
   isActiveFile?: boolean;
@@ -227,6 +232,7 @@ type FilterMode = 'all' | 'wrong' | 'unanswered';
 export default function QuizPane({
   content,
   onChange,
+  onSave,
   currentFile,
   llmProviderProfiles = [],
   isActiveFile = true,
@@ -424,6 +430,8 @@ export default function QuizPane({
   const [graded, setGraded] = useState<Record<string, boolean>>({});
   const [expVisible, setExpVisible] = useState<Record<string, boolean>>({});
   const [wrongExps, setWrongExps] = useState<Record<string, string>>({});
+  const wrongExpsRef = useRef(wrongExps);
+  wrongExpsRef.current = wrongExps;
   const [wrongExpFocus, setWrongExpFocus] = useState<Record<string, number>>({});
   const [choiceAnalysisDock, setChoiceAnalysisDock] = useState<{
     questionId: string;
@@ -602,6 +610,37 @@ export default function QuizPane({
     const session = buildSessionFromState();
     persistDocument(docRef.current, session);
   }, [buildSessionFromState, persistDocument]);
+
+  const saveAfterAiGenerate = useCallback(
+    async (wrongExpsSnapshot?: Record<string, string>) => {
+      if (!loadQuizSettings().autoSaveOnAiGenerate || typeof onSave !== 'function') return;
+      if (wrongExpsSnapshot) {
+        const session = buildQuizSessionForPersist({
+          questions: docRef.current.questions,
+          userAnswers,
+          gradedQuestions: graded,
+          subjectiveGrades: subjGrades,
+          isSubmitted,
+          ...(isQuizTimeLogEmpty(timeLog) ? {} : { timeLog }),
+          wrongChoiceExplanations: nestWrongChoiceExplanations(wrongExpsSnapshot),
+        });
+        persistDocument(docRef.current, session);
+      } else {
+        flushSessionToEditor();
+      }
+      await onSave();
+    },
+    [
+      flushSessionToEditor,
+      graded,
+      isSubmitted,
+      onSave,
+      persistDocument,
+      subjGrades,
+      timeLog,
+      userAnswers,
+    ],
+  );
 
   // Sync from external content when file changes / reload
   useEffect(() => {
@@ -1258,6 +1297,7 @@ export default function QuizPane({
       genQueue.completeJob(jobId, displayLabel);
       void persistGenerationLog(jobId, newQ.id);
       showToast({ message: `${displayLabel} 유사문제 추가`, durationMs: 2500 });
+      await saveAfterAiGenerate();
       window.setTimeout(() => {
         document
           .getElementById(`q-card-${newQ.id}`)
@@ -1291,6 +1331,7 @@ export default function QuizPane({
     q: QuizQuestion,
     selected: number,
     userInstructions: string,
+    mode: QuizChoiceAnalysisDockMode = 'create',
   ) => {
     const isCorrectOption = selected === q.answer;
     const instructions = resolveChoiceAnalysisUserInstructions(
@@ -1299,8 +1340,12 @@ export default function QuizPane({
     );
     if (!(await ensureQuizLlmReady())) return;
     const key = wrongChoiceExplanationKey(q.id, selected);
+    const previous =
+      mode === 'regenerate' ? String(wrongExpsRef.current[key] || '').trim() : '';
     setBusyId(key);
-    setWrongExps((prev) => ({ ...prev, [key]: '' }));
+    if (mode !== 'regenerate') {
+      setWrongExps((prev) => ({ ...prev, [key]: '' }));
+    }
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -1312,17 +1357,32 @@ export default function QuizPane({
         userInstructions: instructions,
         signal: ac.signal,
         onChunk: (accumulated) => {
-          setWrongExps((prev) => ({ ...prev, [key]: accumulated }));
+          const merged =
+            mode === 'regenerate'
+              ? mergeStreamingRegeneratedChoiceAnalysis(previous, accumulated)
+              : accumulated;
+          setWrongExps((prev) => ({ ...prev, [key]: merged }));
         },
       });
-      setWrongExps((prev) => ({ ...prev, [key]: text }));
+      const finalText =
+        mode === 'regenerate'
+          ? appendRegeneratedChoiceAnalysis(previous, text)
+          : text;
+      const nextWrongExps = { ...wrongExpsRef.current, [key]: finalText };
+      wrongExpsRef.current = nextWrongExps;
+      setWrongExps(nextWrongExps);
       setChoiceAnalysisDock(null);
       setChoiceAnalysisPrompt('');
+      await saveAfterAiGenerate(nextWrongExps);
     } catch (err) {
       if (ac.signal.aborted) return;
       setWrongExps((prev) => {
         const next = { ...prev };
-        if (!String(next[key] || '').trim()) delete next[key];
+        if (mode === 'regenerate' && previous) {
+          next[key] = previous;
+        } else if (!String(next[key] || '').trim()) {
+          delete next[key];
+        }
         return next;
       });
       reportQuizError('오답 해설 실패', err, '오답 해설 실패');
@@ -1416,6 +1476,7 @@ export default function QuizPane({
         message: `근거 기반 문제 ${added.length}개 추가`,
         durationMs: 2500,
       });
+      await saveAfterAiGenerate();
       if (firstId) {
         window.setTimeout(() => {
           document
@@ -1505,7 +1566,7 @@ export default function QuizPane({
 
   if (!isActiveFile) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+      <div className="quiz-pane flex flex-1 items-center justify-center text-sm text-gray-400">
         탭을 선택하면 퀴즈가 열립니다
       </div>
     );
@@ -1553,7 +1614,7 @@ export default function QuizPane({
 
   return (
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg">
+    <div className="quiz-pane relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg">
       <div className="shrink-0 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-odp-borderSoft dark:bg-odp-surface">
         <div className="flex flex-wrap items-center gap-2 overflow-hidden">
           <div className="mr-auto flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-auto sm:gap-3">
@@ -1956,7 +2017,7 @@ export default function QuizPane({
                   <div className="space-y-2">
                     {q.answerStyle === 'essay' ? (
                       <textarea
-                        className="min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                        className="quiz-body-field min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
                         value={String(userAnswers[q.id] || '')}
                         disabled={isGraded}
                         onChange={(e) =>
@@ -1966,7 +2027,7 @@ export default function QuizPane({
                       />
                     ) : (
                       <input
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                        className="quiz-body-field w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
                         value={String(userAnswers[q.id] || '')}
                         disabled={isGraded}
                         onChange={(e) =>
@@ -2140,6 +2201,7 @@ export default function QuizPane({
               choiceAnalysisQuestion,
               choiceAnalysisDock.option,
               choiceAnalysisPrompt,
+              choiceAnalysisDock.mode,
             );
           }}
         />

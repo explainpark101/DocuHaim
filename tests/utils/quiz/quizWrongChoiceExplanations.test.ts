@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  appendRegeneratedChoiceAnalysis,
   flatWrongChoiceExplanations,
+  mergeStreamingRegeneratedChoiceAnalysis,
   nestWrongChoiceExplanations,
   normalizeWrongChoiceExplanations,
   filterWrongChoiceExplanations,
@@ -27,6 +29,16 @@ describe('quizWrongChoiceExplanations', () => {
       q1: { '2': 'why wrong', '4': 'also wrong' },
     });
     expect(flatWrongChoiceExplanations(nested)).toEqual(flat);
+  });
+
+  it('appends regenerated analysis below existing content', () => {
+    expect(appendRegeneratedChoiceAnalysis('first', 'second')).toBe(
+      'first\n\n---\n\nsecond',
+    );
+    expect(appendRegeneratedChoiceAnalysis('', 'second')).toBe('second');
+    expect(mergeStreamingRegeneratedChoiceAnalysis('first', 'partial')).toBe(
+      'first\n\n---\n\npartial',
+    );
   });
 
   it('filters by question id and option count', () => {

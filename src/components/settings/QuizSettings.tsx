@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Switch } from 'radix-ui';
 import {
   SettingsCollapsibleContainer,
   SettingsCollapsibleContent,
@@ -138,6 +139,29 @@ export default function QuizSettingsSection({
                 계산기 필수
               </button>
             </div>
+          </div>
+
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-700 dark:text-odp-fgStrong">
+                AI 생성 완료 시 자동 저장
+              </p>
+              <p className="mt-0.5 text-[11px] text-gray-500 dark:text-odp-muted">
+                유사문제·근거 출제·보기 분석 등 AI 생성이 끝나면 퀴즈 파일을 즉시 저장합니다.
+              </p>
+            </div>
+            <Switch.Root
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                settings.autoSaveOnAiGenerate
+                  ? 'border-blue-600 bg-blue-600'
+                  : 'border-gray-300 bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+              }`}
+              checked={settings.autoSaveOnAiGenerate}
+              onCheckedChange={(checked) => patch({ autoSaveOnAiGenerate: checked })}
+              aria-label="AI 생성 완료 시 자동 저장"
+            >
+              <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-white shadow transition-transform data-[state=checked]:translate-x-[18px]" />
+            </Switch.Root>
           </div>
 
           <label className="mb-4 block space-y-1.5">

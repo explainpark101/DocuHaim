@@ -101,7 +101,7 @@ export default function QuizSourcePickerModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} contentClassName="max-w-lg max-h-[90vh]">
+    <Modal isOpen={isOpen} onClose={onClose} contentClassName="quiz-pane max-w-lg max-h-[90vh]">
       <div className="flex max-h-[min(75vh,640px)] flex-col gap-3 p-4 text-sm">
         <h2 className="text-base font-bold text-gray-900 dark:text-odp-fgStrong">
           근거 문서 선택

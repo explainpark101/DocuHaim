@@ -69,7 +69,7 @@ export default function QuizBulkImportModal({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} contentClassName="max-w-3xl max-h-[90vh]">
+      <Modal isOpen={isOpen} onClose={onClose} contentClassName="quiz-pane max-w-3xl max-h-[90vh]">
         <div className="flex max-h-[min(80vh,720px)] flex-col gap-3 p-4 text-sm">
           <h2 className="text-base font-bold text-gray-900 dark:text-odp-fgStrong">
             마크다운 가져오기

@@ -13,6 +13,31 @@ export const DEFAULT_CORRECT_CHOICE_ANALYSIS_INSTRUCTIONS =
 export const DEFAULT_WRONG_CHOICE_ANALYSIS_INSTRUCTIONS =
   '이 보기가 오답인 이유와 정답 보기와의 차이를 명확히 설명해 주세요.';
 
+export const REGENERATED_CHOICE_ANALYSIS_SEPARATOR = '\n\n---\n\n';
+
+/** Keep prior analysis and append a new block below (regenerate). */
+export function appendRegeneratedChoiceAnalysis(
+  previous: string,
+  generated: string,
+): string {
+  const prev = String(previous || '').trimEnd();
+  const next = String(generated || '').trim();
+  if (!prev) return next;
+  if (!next) return prev;
+  return `${prev}${REGENERATED_CHOICE_ANALYSIS_SEPARATOR}${next}`;
+}
+
+export function mergeStreamingRegeneratedChoiceAnalysis(
+  previous: string,
+  streamed: string,
+): string {
+  const prev = String(previous || '').trimEnd();
+  const chunk = String(streamed || '');
+  if (!prev) return chunk;
+  if (!chunk) return prev;
+  return `${prev}${REGENERATED_CHOICE_ANALYSIS_SEPARATOR}${chunk}`;
+}
+
 export function resolveChoiceAnalysisUserInstructions(
   raw: string,
   isCorrectOption: boolean,

@@ -139,7 +139,7 @@ export default function QuizChoiceAnalysisDock({
                     </span>
                   </span>
                   <textarea
-                    className="min-h-28 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                    className="quiz-body-field min-h-28 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
                     placeholder={
                       isCorrectOption
                         ? '비워 두면 정답/오답 이유를 기본 설명합니다. 예: 왜 이 보기가 정답인지…'
