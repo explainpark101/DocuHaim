@@ -3,6 +3,13 @@ import {
   getCssPageSizeDescriptor,
   type PrintPageSizeId,
 } from '@/utils/printPageLayout';
+import { DEFAULT_PRINT_FONTS } from '@/utils/print/printFonts';
+
+export type ExportPdfPagedStyleOptions = {
+  bodyLineHeight?: string;
+  headingLineHeight?: string;
+  baseFontSizePx?: string;
+};
 
 /**
  * CSS for paged.js Previewer.
@@ -10,9 +17,16 @@ import {
  * After chunking, nodes live under `.pagedjs_page_content` (not under
  * `.export-pdf-paged-source`), so content rules must target the page box.
  * Keep free of `@media print` / app-shell selectors — those break css-tree.
+ * Line-heights are inlined (scratch mounts off the shell, so CSS vars may miss).
  */
-export function buildExportPdfPagedStyles(pageSizeId: PrintPageSizeId): string {
+export function buildExportPdfPagedStyles(
+  pageSizeId: PrintPageSizeId,
+  options: ExportPdfPagedStyleOptions = {},
+): string {
   const size = getCssPageSizeDescriptor(pageSizeId);
+  const bodyLh = options.bodyLineHeight || DEFAULT_PRINT_FONTS.bodyLineHeight;
+  const headingLh = options.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight;
+  const baseFs = options.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx;
   return `
 @page {
   size: ${size};
@@ -26,21 +40,22 @@ export function buildExportPdfPagedStyles(pageSizeId: PrintPageSizeId): string {
   background: #ffffff;
   color: #111827;
   font-family: var(--print-font-body, var(--font-sans-builtin));
+  font-size: ${baseFs}px;
   color-scheme: light;
-  line-height: 1.7;
+  line-height: ${bodyLh};
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
 .export-pdf-paged-source p,
 .pagedjs_page_content p {
-  line-height: 1.7;
+  line-height: ${bodyLh};
   margin: 0.75em 0;
 }
 
 .export-pdf-paged-source li,
 .pagedjs_page_content li {
-  line-height: 1.7;
+  line-height: ${bodyLh};
 }
 
 .export-pdf-paged-source h1,
@@ -62,6 +77,7 @@ export function buildExportPdfPagedStyles(pageSizeId: PrintPageSizeId): string {
   overflow-wrap: break-word;
   margin: 1em 0 0.8em;
   font-weight: 700;
+  line-height: ${headingLh};
 }
 
 .export-pdf-paged-source h1,
@@ -213,6 +229,28 @@ export function buildExportPdfPagedStyles(pageSizeId: PrintPageSizeId): string {
 .pagedjs_page_content .md-editor-mermaid svg * {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+
+/* Only processed hosts — flex on placeholders breaks lazy Mermaid source (white-space:pre). */
+.export-pdf-paged-source .md-editor-mermaid[data-processed],
+.pagedjs_page_content .md-editor-mermaid[data-processed] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.export-pdf-paged-source .md-editor-mermaid[data-processed] svg,
+.pagedjs_page_content .md-editor-mermaid[data-processed] svg {
+  margin-inline: auto;
+}
+
+.export-pdf-paged-source .md-editor-mermaid-action,
+.pagedjs_page_content .md-editor-mermaid-action {
+  display: none !important;
 }
 
 .md-pgbr {

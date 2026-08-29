@@ -1,18 +1,17 @@
 import { getObjectBody, headObject, putObject, getSignedGetUrl } from '@/utils/s3Client';
 import { getLocalWikiImageObjectUrl } from '@/utils/localEditorImage';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import {
+  DEFAULT_PRINT_FONTS,
+  parsePrintFonts,
+} from '@/utils/print/printFonts';
 
 const PRINT_JSON_KEY = '.settings/print.json';
 const LOCAL_STORAGE_KEY = 's3haim_print_fonts';
 /** Fired when MainApp injects S3/local/WebDAV accessors into the print store. */
 export const PRINT_SETTINGS_STORE_CHANGED_EVENT = 's3haim-print-settings-store-changed';
 
-export const DEFAULT_PRINT_FONTS = {
-  bold: '',
-  heading: '',
-  body: '',
-  code: '',
-};
+export { DEFAULT_PRINT_FONTS, parsePrintFonts };
 
 const store = {
   getS3Client: null,
@@ -96,13 +95,7 @@ export function getPrintSettingsStoreSnapshot() {
 }
 
 function parseFontsJson(parsed) {
-  if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_PRINT_FONTS };
-  return {
-    bold: typeof parsed.bold === 'string' ? parsed.bold : DEFAULT_PRINT_FONTS.bold,
-    heading: typeof parsed.heading === 'string' ? parsed.heading : DEFAULT_PRINT_FONTS.heading,
-    body: typeof parsed.body === 'string' ? parsed.body : DEFAULT_PRINT_FONTS.body,
-    code: typeof parsed.code === 'string' ? parsed.code : DEFAULT_PRINT_FONTS.code,
-  };
+  return parsePrintFonts(parsed);
 }
 
 function loadFromLocalStorage() {
@@ -173,7 +166,7 @@ async function loadPrintFontsFromLocal() {
 
 /**
  * Active storage mode only, then localStorage fallback.
- * @returns {Promise<{ bold: string, heading: string, body: string, code: string }>}
+ * @returns {Promise<import('@/utils/print/printFonts').PrintFonts>}
  */
 export async function loadPrintFontsFromStorage() {
   const fallback = loadFromLocalStorage() ?? { ...DEFAULT_PRINT_FONTS };
@@ -195,10 +188,11 @@ export async function loadPrintFontsFromStorage() {
 
 /**
  * Save to active storage mode (when available) and always to localStorage.
- * @param {{ bold: string, heading: string, body: string, code: string }} fonts
+ * @param {Partial<import('@/utils/print/printFonts').PrintFonts> | null | undefined} fonts
  */
 export async function savePrintFontsToStorage(fonts) {
-  const payload = JSON.stringify(fonts ?? DEFAULT_PRINT_FONTS, null, 2);
+  const normalized = parsePrintFonts(fonts ?? DEFAULT_PRINT_FONTS);
+  const payload = JSON.stringify(normalized, null, 2);
   const mode = store.storageMode || 's3';
 
   if (mode === 'webdav') {
@@ -230,5 +224,5 @@ export async function savePrintFontsToStorage(fonts) {
     }
   }
 
-  saveToLocalStorage(fonts ?? DEFAULT_PRINT_FONTS);
+  saveToLocalStorage(normalized);
 }

@@ -12,11 +12,27 @@ describe('exportPdf paged styles', () => {
     expect(css).toContain('.export-pdf-paged-source');
     expect(css).toContain('.pagedjs_page_content');
     expect(css).toContain('font-size: 1.75em');
+    expect(css).toContain('font-size: 16px');
     expect(css).toContain('line-height: 1.7');
+    expect(css).toContain('line-height: 1.35');
     expect(css).toContain('rgba(135, 131, 120, 0.15)');
     expect(css).toContain('#282c34');
     expect(css).toContain('.md-editor-copy-button');
+    expect(css).toContain('.md-editor-mermaid[data-processed]');
+    expect(css).toContain('.md-editor-mermaid-action');
+    expect(css).toContain('align-items: center');
     expect(css).not.toContain('@media print');
+  });
+
+  it('inlines custom body/heading line-heights for paged measure', () => {
+    const css = buildExportPdfPagedStyles('a4', {
+      bodyLineHeight: '2',
+      headingLineHeight: '1.2',
+      baseFontSizePx: '18',
+    });
+    expect(css).toContain('line-height: 2');
+    expect(css).toContain('line-height: 1.2');
+    expect(css).toContain('font-size: 18px');
   });
 
   it('keeps landscape descriptor for a4-landscape', () => {

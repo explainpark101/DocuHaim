@@ -1,5 +1,6 @@
 import { Check, ChevronDown, Columns2, File } from 'lucide-react';
 import { Select } from 'radix-ui';
+import { usePretextFitWidth } from '@/hooks/usePretextFitWidth';
 import type { PrintPreviewPageCount } from '@/utils/printPreviewView';
 
 type Props = {
@@ -17,12 +18,19 @@ const OPTIONS: {
   { value: 2, label: '2페이지', Icon: Columns2 },
 ];
 
+/** px-2.5 ×2 + gap + leading icon 14 + gap-1.5 + chevron 14 */
+const TRIGGER_EXTRA_PX = 10 + 10 + 8 + 14 + 6 + 14;
+
 export default function PrintPreviewPagesSelect({
   value,
   onValueChange,
   disabled = false,
 }: Props) {
   const current = OPTIONS.find((o) => o.value === value) ?? OPTIONS[0]!;
+  const fit = usePretextFitWidth(current.label, {
+    extraPx: TRIGGER_EXTRA_PX,
+    minPx: 80,
+  });
 
   return (
     <label className="flex min-w-0 items-center gap-2">
@@ -36,9 +44,11 @@ export default function PrintPreviewPagesSelect({
         }}
       >
         <Select.Trigger
+          ref={fit.ref}
+          style={fit.style}
           aria-label="미리보기 1페이지/2페이지"
           data-print-toolbar="view-pages"
-          className="inline-flex h-8 min-w-32 items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+          className="inline-flex h-8 items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2.5 text-sm text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
         >
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <current.Icon size={14} className="shrink-0 text-gray-500 dark:text-odp-muted" aria-hidden />

@@ -8,6 +8,9 @@ type Args = {
   outputRef: RefObject<HTMLElement | null>;
   layoutKey: string;
   pageSizeId: PrintPageSizeId;
+  bodyLineHeight?: string;
+  headingLineHeight?: string;
+  baseFontSizePx?: string;
 };
 
 type PagedPreviewer = {
@@ -81,9 +84,9 @@ function buildPagedSourceFromPreview(preview: Element): HTMLElement | null {
   wrapper.style.boxSizing = 'border-box';
   wrapper.innerHTML = html;
 
-  // Drop code-block chrome (copy / lang head) from the print flow.
+  // Drop code-block / mermaid chrome (copy, pin, lang head) from the print flow.
   for (const el of wrapper.querySelectorAll(
-    '.md-editor-code-head, .md-editor-copy-button, .md-editor-code-action',
+    '.md-editor-code-head, .md-editor-copy-button, .md-editor-code-action, .md-editor-mermaid-action',
   )) {
     el.remove();
   }
@@ -101,6 +104,9 @@ export function usePagedJsPreview({
   outputRef,
   layoutKey,
   pageSizeId,
+  bodyLineHeight,
+  headingLineHeight,
+  baseFontSizePx,
 }: Args) {
   const [pageCount, setPageCount] = useState(1);
   const [packLayoutKey, setPackLayoutKey] = useState(layoutKey);
@@ -152,7 +158,11 @@ export function usePagedJsPreview({
         const { Previewer } = await import('pagedjs');
         if (cancelled || generation !== generationRef.current) return;
 
-        const stylesCss = buildExportPdfPagedStyles(pageSizeId);
+        const stylesCss = buildExportPdfPagedStyles(pageSizeId, {
+          ...(bodyLineHeight != null ? { bodyLineHeight } : {}),
+          ...(headingLineHeight != null ? { headingLineHeight } : {}),
+          ...(baseFontSizePx != null ? { baseFontSizePx } : {}),
+        });
         const paged = new Previewer() as PagedPreviewer;
         previewerRef.current = paged;
 
@@ -213,7 +223,7 @@ export function usePagedJsPreview({
         el.remove();
       }
     };
-  }, [layoutKey, outputRef, pageSizeId, sourceRef]);
+  }, [baseFontSizePx, bodyLineHeight, headingLineHeight, layoutKey, outputRef, pageSizeId, sourceRef]);
 
   return { pageCount, packLayoutKey, isRendering };
 }

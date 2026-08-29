@@ -30,6 +30,8 @@ export const printFontStyles = `
     color: #111827;
     font-family: var(--print-font-body, var(--font-sans-builtin));
     color-scheme: light;
+    font-size: var(--print-font-size, 16px);
+    line-height: var(--print-line-height-body, 1.7);
     /* Force light table chrome even when html/app is .dark (preview.css). */
     --md-theme-table-stripe-color: #f9fafb;
     --md-theme-table-tr-bg-color: #ffffff;
@@ -93,6 +95,7 @@ export const printFontStyles = `
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h5,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview h6 {
     font-family: var(--print-font-heading, var(--font-display-builtin));
+    line-height: var(--print-line-height-heading, 1.35);
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview b,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview strong {
@@ -146,6 +149,25 @@ export const printFontStyles = `
     text-align: left;
     margin: 0 0 1em;
   }
+  /* Only processed hosts — flex on placeholders breaks lazy Mermaid source (white-space:pre). */
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-processed],
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-mermaid[data-processed] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin-inline: auto;
+    width: 100%;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-processed] svg,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-mermaid[data-processed] svg {
+    margin-inline: auto;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid-action,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-mermaid-action {
+    display: none !important;
+  }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview figure figcaption {
     text-align: left;
   }
@@ -182,7 +204,8 @@ export const printFontStyles = `
   .export-pdf-preview-stage .export-pdf-page-slot-clone .pagedjs_page_content {
     color: #111827;
     font-family: var(--print-font-body, var(--font-sans-builtin));
-    line-height: 1.7;
+    font-size: var(--print-font-size, 16px);
+    line-height: var(--print-line-height-body, 1.7);
     word-break: break-word;
     overflow-wrap: anywhere;
   }
@@ -190,7 +213,7 @@ export const printFontStyles = `
   [data-export-pdf-pages] .pagedjs_page_content li,
   .export-pdf-preview-stage .export-pdf-page-slot-clone p,
   .export-pdf-preview-stage .export-pdf-page-slot-clone li {
-    line-height: 1.7;
+    line-height: var(--print-line-height-body, 1.7);
   }
   [data-export-pdf-pages] .pagedjs_page_content h1,
   [data-export-pdf-pages] .pagedjs_page_content h2,
@@ -210,6 +233,7 @@ export const printFontStyles = `
     margin: 1em 0 0.8em;
     word-break: keep-all;
     overflow-wrap: break-word;
+    line-height: var(--print-line-height-heading, 1.35);
   }
   [data-export-pdf-pages] .pagedjs_page_content h1,
   .export-pdf-preview-stage .export-pdf-page-slot-clone h1 { font-size: 1.75em; }
@@ -261,10 +285,26 @@ export const printFontStyles = `
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code .md-editor-code-head,
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-copy-button,
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code-action,
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-mermaid-action,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code-head,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-copy-button,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code-action {
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code-action,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-mermaid-action {
     display: none !important;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-mermaid[data-processed],
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-mermaid[data-processed] {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin-inline: auto;
+    width: 100%;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-mermaid[data-processed] svg,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-mermaid[data-processed] svg {
+    margin-inline: auto;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code pre,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code pre {

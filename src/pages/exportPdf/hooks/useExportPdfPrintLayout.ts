@@ -84,6 +84,7 @@ export function useExportPdfPrintLayout({
   const [printStoreEpoch, setPrintStoreEpoch] = useState(() => getPrintSettingsStoreEpoch());
 
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
+  const fontLayoutKey = `${fonts.baseFontSizePx}|${fonts.bodyLineHeight}|${fonts.headingLineHeight}`;
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
   usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
   usePrintTableFit(paperContentRef, `${printLayoutKey}|${previewValue}`);
@@ -96,7 +97,7 @@ export function useExportPdfPrintLayout({
   const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
   const effectivePageInnerHeightPx =
     pageInnerHeightPx > 1 ? pageInnerHeightPx : printPageInnerPx.heightPx;
-  const pagedSourceKey = `${printLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}`;
+  const pagedSourceKey = `${printLayoutKey}|${fontLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}`;
   const {
     pageCount: bodyPageCount,
     packLayoutKey,
@@ -105,6 +106,9 @@ export function useExportPdfPrintLayout({
     outputRef: pagesHostRef,
     layoutKey: pagedSourceKey,
     pageSizeId: printLayout.pageSizeId,
+    bodyLineHeight: fonts.bodyLineHeight || DEFAULT_PRINT_FONTS.bodyLineHeight,
+    headingLineHeight: fonts.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight,
+    baseFontSizePx: fonts.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx,
   });
 
   useEffect(() => {
@@ -233,7 +237,16 @@ export function useExportPdfPrintLayout({
           '--print-font-code',
           printFontCssVarValue(documentSettings.fonts?.code || fonts.code, 'mono'),
         ],
-      ].filter((entry): entry is [string, string] => entry[1] != null),
+        ['--print-line-height-body', fonts.bodyLineHeight || DEFAULT_PRINT_FONTS.bodyLineHeight],
+        [
+          '--print-line-height-heading',
+          fonts.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight,
+        ],
+        [
+          '--print-font-size',
+          `${fonts.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx}px`,
+        ],
+      ].filter((entry): entry is [string, string] => entry[1] != null && entry[1] !== ''),
     ),
   };
 

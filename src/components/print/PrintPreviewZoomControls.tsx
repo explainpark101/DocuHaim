@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
+import { usePretextFitWidth } from '@/hooks/usePretextFitWidth';
 import {
   clampZoomPercent,
   PRINT_ZOOM_MAX,
@@ -13,6 +14,9 @@ type Props = {
   disabled?: boolean;
 };
 
+/** Horizontal padding for the zoom label/input. */
+const ZOOM_LABEL_EXTRA_PX = 10;
+
 export default function PrintPreviewZoomControls({
   value,
   onChange,
@@ -23,6 +27,12 @@ export default function PrintPreviewZoomControls({
   const inputRef = useRef<HTMLInputElement>(null);
   const ignoreBlurCommitRef = useRef(false);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const labelText = editing ? (draft || String(value)) : `${value}%`;
+  const fit = usePretextFitWidth(labelText, {
+    extraPx: ZOOM_LABEL_EXTRA_PX,
+    minPx: 36,
+  });
 
   useEffect(() => () => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
@@ -51,6 +61,11 @@ export default function PrintPreviewZoomControls({
     setEditing(false);
   };
 
+  const setInputEl = (el: HTMLInputElement | null) => {
+    inputRef.current = el;
+    fit.ref(el);
+  };
+
   return (
     <div
       className="inline-flex h-8 items-center gap-0.5 rounded-md border border-gray-300 bg-white dark:border-odp-borderStrong dark:bg-odp-surface"
@@ -68,13 +83,14 @@ export default function PrintPreviewZoomControls({
       </button>
       {editing ? (
         <input
-          ref={inputRef}
+          ref={setInputEl}
           type="text"
           inputMode="numeric"
           disabled={disabled}
           value={draft}
+          style={fit.style}
           aria-label="확대 비율"
-          className="h-full w-14 border-x border-gray-200 bg-transparent px-1 text-center text-xs tabular-nums text-gray-800 outline-none dark:border-odp-borderSoft dark:text-odp-fgStrong"
+          className="h-full border-x border-gray-200 bg-transparent px-1 text-center text-xs tabular-nums text-gray-800 outline-none dark:border-odp-borderSoft dark:text-odp-fgStrong"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -99,8 +115,10 @@ export default function PrintPreviewZoomControls({
       ) : (
         <button
           type="button"
+          ref={fit.ref}
+          style={fit.style}
           disabled={disabled}
-          className="inline-flex h-full w-14 items-center justify-center border-x border-gray-200 px-1 text-xs tabular-nums text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
+          className="inline-flex h-full items-center justify-center border-x border-gray-200 px-1 text-xs tabular-nums text-gray-800 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-odp-borderSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
           aria-label={`확대 비율 ${value}%`}
           title="클릭하여 입력, 더블클릭으로 100%"
           onClick={() => {

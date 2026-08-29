@@ -25,7 +25,12 @@ export const DEFAULT_DOCUMENT_SETTINGS_META: DocumentSettingsMeta = {
     show: true,
     title: DEFAULT_SOURCE_LIST_TITLE,
   },
-  fonts: { ...DEFAULT_PRINT_FONTS },
+  fonts: {
+    body: DEFAULT_PRINT_FONTS.body,
+    heading: DEFAULT_PRINT_FONTS.heading,
+    bold: DEFAULT_PRINT_FONTS.bold,
+    code: DEFAULT_PRINT_FONTS.code,
+  },
   webfontCss: '',
 };
 
@@ -94,7 +99,15 @@ export function parseDocumentSettingsMeta(markdown: string): ParseDocumentSettin
     const json = unescapeJsonFromComment(match[1] ?? '').trim();
     meta = normalizeMeta(JSON.parse(json || '{}'));
   } catch {
-    meta = { ...DEFAULT_DOCUMENT_SETTINGS_META, fonts: { ...DEFAULT_PRINT_FONTS } };
+    meta = {
+      ...DEFAULT_DOCUMENT_SETTINGS_META,
+      fonts: {
+        body: DEFAULT_PRINT_FONTS.body,
+        heading: DEFAULT_PRINT_FONTS.heading,
+        bold: DEFAULT_PRINT_FONTS.bold,
+        code: DEFAULT_PRINT_FONTS.code,
+      },
+    };
   }
 
   const start = match.index;
