@@ -12,7 +12,7 @@ import type {
 } from '@/utils/advancedSearch/indexDocsLoad.worker';
 import { strFromU8 } from 'fflate';
 
-const APPLY_BATCH_YIELD_EVERY = 250;
+const APPLY_BATCH_YIELD_EVERY = 100;
 
 let worker: Worker | null = null;
 let workerFailed = false;
@@ -47,6 +47,7 @@ function attachWorkerHandlers(w: Worker): void {
 
     if (msg.type === 'batch') {
       await applyEntries(load.map, msg.entries);
+      await yieldToMain();
       return;
     }
 

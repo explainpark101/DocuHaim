@@ -66,12 +66,6 @@ export default function ContentSearchPage({
   }, []);
 
   useEffect(() => {
-    if (advancedSearchEngine.isEnabled()) {
-      void advancedSearchEngine.ensureLoaded();
-    }
-  }, []);
-
-  useEffect(() => {
     const next = searchParams.get('q') || '';
     setQuery(next);
     setDebouncedQuery(next);

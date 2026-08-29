@@ -292,6 +292,12 @@ export default function SettingsPage({
   }, []);
 
   useEffect(() => {
+    if (advancedSearchEngine.isEnabled()) {
+      void advancedSearchEngine.ensureManifestSummary();
+    }
+  }, []);
+
+  useEffect(() => {
     setFormCreds({
       ...s3Creds,
       llmProviderProfiles: resolveLlmProviderProfiles(s3Creds),
@@ -1249,7 +1255,9 @@ export default function SettingsPage({
                   ? '검색 격리(COOP/COEP)가 없어 Lucivy 역색인은 쓸 수 없습니다. Spotlight는 볼트 파일을 직접 읽어 본문을 검색합니다(느릴 수 있음).'
                   : '웹에서는 검색 엔진 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하거나 SharedArrayBuffer를 지원하는 환경에서 다시 시도하세요. 파일명·바로가기는 계속 검색됩니다. Tauri 앱은 네이티브 역색인을 사용합니다.'}
               </>
-            ) : advancedSearchStatus.hasIndex ? (
+            ) : advancedSearchStatus.hasIndex ||
+              advancedSearchStatus.fileCount > 0 ||
+              advancedSearchStatus.chatCount > 0 ? (
               <>
                 색인 있음 · 파일 {advancedSearchStatus.fileCount} · 채팅{' '}
                 {advancedSearchStatus.chatCount}

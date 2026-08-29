@@ -328,6 +328,7 @@ export default function AdvancedSearchHost({
     if (!open) return;
     if (advancedSearchEngine.isEnabled()) {
       void advancedSearchEngine.ensureLoaded();
+      void advancedSearchEngine.ensureLucivyReady();
     }
   }, [open]);
 

@@ -88,7 +88,7 @@ export function hydrateDocIdMapFromDocs(
 export async function hydrateDocIdMapFromDocsAsync(
   docs: Map<string, { numericId?: number }>,
   nextNumericIdHint?: number,
-  yieldEvery = 500,
+  yieldEvery = 100,
 ): Promise<DocIdMapState> {
   const map = emptyDocIdMap(nextNumericIdHint ?? 1);
   let maxId = 0;

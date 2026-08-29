@@ -178,12 +178,11 @@ export function useAppChromeDomain() {
           () => hasRestoredPersistedWorkspaceTabsRef.current,
         );
         if (cancelled) return;
-        // Let keep-alive tab commits paint before Lucivy/docs hydrate (post-restore spike).
         await yieldToMain();
-        await yieldToMain();
-        await advancedSearchEngine.ensureLoaded();
-        if (cancelled) return;
+        // Checkpoint only — do not auto-load docs map or Lucivy (causes post-unlock freezes).
         await advancedSearchEngine.refreshCheckpointStatus();
+        if (cancelled) return;
+        void advancedSearchEngine.ensureManifestSummary();
       })();
     }, 5000);
     return () => {

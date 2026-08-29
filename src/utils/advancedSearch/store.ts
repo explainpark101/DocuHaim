@@ -171,6 +171,21 @@ export type LoadDocsOptions = {
   skipLuceBytes?: boolean;
 };
 
+export async function loadManifestFromVault(
+  backend: AdvancedSearchBackend,
+): Promise<IndexManifest | null> {
+  if (typeof backend.isReady === 'function' && !backend.isReady()) return null;
+  try {
+    if (!backend.readText) return null;
+    const { text } = await backend.readText(manifestKey());
+    const manifest = JSON.parse(text) as IndexManifest;
+    if (manifest.schemaVersion !== INDEX_SCHEMA_VERSION) return null;
+    return manifest;
+  } catch {
+    return null;
+  }
+}
+
 export async function loadDocsAndManifestFromVault(
   backend: AdvancedSearchBackend,
   options: LoadDocsOptions = {},
