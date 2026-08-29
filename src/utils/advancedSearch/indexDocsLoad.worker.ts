@@ -4,33 +4,68 @@
  */
 
 import { gunzipSync, strFromU8 } from 'fflate';
+import type { DocMeta } from '@/utils/advancedSearch/types';
+
+const BATCH_SIZE = 250;
 
 export type IndexDocsLoadWorkerRequest = {
   id: number;
   body: Uint8Array;
 };
 
+export type IndexDocsLoadWorkerBatchMessage = {
+  id: number;
+  type: 'batch';
+  entries: Array<[string, DocMeta]>;
+};
+
+export type IndexDocsLoadWorkerDoneMessage = {
+  id: number;
+  type: 'done';
+};
+
+export type IndexDocsLoadWorkerErrorMessage = {
+  id: number;
+  type: 'error';
+  error: string;
+};
+
 export type IndexDocsLoadWorkerResponse =
-  | { id: number; ok: true; result: Record<string, unknown> }
-  | { id: number; ok: false; error: string };
+  | IndexDocsLoadWorkerBatchMessage
+  | IndexDocsLoadWorkerDoneMessage
+  | IndexDocsLoadWorkerErrorMessage;
 
 self.onmessage = (event: MessageEvent<IndexDocsLoadWorkerRequest>) => {
   const msg = event.data;
   if (!msg || typeof msg.id !== 'number') return;
   const requestId = msg.id;
+
   try {
     const raw = gunzipSync(msg.body);
-    const result = JSON.parse(strFromU8(raw)) as Record<string, unknown>;
-    const response: IndexDocsLoadWorkerResponse = {
+    const parsed = JSON.parse(strFromU8(raw)) as Record<string, DocMeta>;
+    const entries = Object.entries(parsed).filter(
+      ([, meta]) => meta && typeof meta === 'object',
+    ) as Array<[string, DocMeta]>;
+
+    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+      const batch = entries.slice(i, i + BATCH_SIZE);
+      const response: IndexDocsLoadWorkerBatchMessage = {
+        id: requestId,
+        type: 'batch',
+        entries: batch,
+      };
+      self.postMessage(response);
+    }
+
+    const done: IndexDocsLoadWorkerDoneMessage = {
       id: requestId,
-      ok: true,
-      result,
+      type: 'done',
     };
-    self.postMessage(response);
+    self.postMessage(done);
   } catch (err) {
-    const response: IndexDocsLoadWorkerResponse = {
+    const response: IndexDocsLoadWorkerErrorMessage = {
       id: requestId,
-      ok: false,
+      type: 'error',
       error: err instanceof Error ? err.message : String(err),
     };
     self.postMessage(response);

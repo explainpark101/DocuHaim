@@ -39,3 +39,24 @@ export async function yieldIfSlow(
     await yieldToMain();
   }
 }
+
+/**
+ * Wait until workspace tab restore finishes (or timeout) so index load does not
+ * contend with parallel tab file reads during startup.
+ */
+export async function waitForWorkspaceTabsRestore(
+  isEnabled: () => boolean,
+  isRestored: () => boolean,
+  options?: { pollMs?: number; timeoutMs?: number },
+): Promise<void> {
+  if (!isEnabled()) return;
+  if (isRestored()) return;
+  const pollMs = options?.pollMs ?? 40;
+  const timeoutMs = options?.timeoutMs ?? 120_000;
+  const start = Date.now();
+  while (!isRestored()) {
+    if (Date.now() - start > timeoutMs) return;
+    await new Promise<void>((r) => setTimeout(r, pollMs));
+    await yieldToMain();
+  }
+}

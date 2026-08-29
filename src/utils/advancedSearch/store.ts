@@ -6,7 +6,7 @@ import {
   postingsKey,
   advancedSearchFolderPrefix,
 } from '@/utils/advancedSearch/paths';
-import { loadDocsObjectFromGzip } from '@/utils/advancedSearch/loadIndexDocsAsync';
+import { loadDocsMapFromGzip } from '@/utils/advancedSearch/loadIndexDocsAsync';
 import {
   emptyIndex,
   emptyManifest,
@@ -141,14 +141,14 @@ export function resolveVaultAbsPath(
   return `${base}/${rel}`.replace(/\\/g, '/');
 }
 
-async function readDocsGzipJson(
+async function readDocsGzipMap(
   backend: AdvancedSearchBackend,
   path: string,
-): Promise<Record<string, DocMeta> | null> {
+): Promise<Map<string, DocMeta> | null> {
   if (!backend.readBytes) return null;
   try {
     const { body } = await backend.readBytes(path);
-    return loadDocsObjectFromGzip(body);
+    return loadDocsMapFromGzip(body);
   } catch {
     return null;
   }
@@ -198,7 +198,7 @@ export async function loadDocsAndManifestFromVault(
     return { index, luceGz: null, luceSnapshotAbsPath: null };
   }
 
-  const docsObj = await readDocsGzipJson(backend, docsKey());
+  const docsMap = await readDocsGzipMap(backend, docsKey());
   let luceGz: Uint8Array | null = null;
   const luceSnapshotAbsPath = resolveVaultAbsPath(backend, luceKey());
   if (!options.skipLuceBytes && backend.readBytes) {
@@ -216,9 +216,9 @@ export async function loadDocsAndManifestFromVault(
     schemaVersion: INDEX_SCHEMA_VERSION,
     initialized:
       manifest.initialized === true ||
-      (docsObj != null && Object.keys(docsObj).length > 0),
+      (docsMap != null && docsMap.size > 0),
   };
-  index.docs = await objectToDocsAsync(docsObj);
+  index.docs = docsMap ?? new Map();
   return { index, luceGz, luceSnapshotAbsPath };
 }
 

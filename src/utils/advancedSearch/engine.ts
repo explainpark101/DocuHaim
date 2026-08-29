@@ -555,6 +555,18 @@ class AdvancedSearchEngine {
         return;
       }
 
+      const api = await this.loadLucivyApi();
+
+      // Tauri: open native Lucivy from disk before docs metadata (avoids IPC + parse contention).
+      if (tauriLuceAbs) {
+        await api.openOrCreateLucivyIndex(null, {
+          snapshotFilePath: tauriLuceAbs,
+        });
+        this.lucivyReady = true;
+        this.emit();
+        await yieldToMain();
+      }
+
       const { index, luceGz } = await loadDocsAndManifestFromVault(
         this.backend,
         { skipLuceBytes },
@@ -566,20 +578,20 @@ class AdvancedSearchEngine {
         index.manifest.nextNumericId,
       );
 
-      const api = await this.loadLucivyApi();
-      let snapshot: Uint8Array | null = null;
-      if (!skipLuceBytes && luceGz?.byteLength) {
-        try {
-          snapshot = await gunzipBytesAsync(luceGz);
-        } catch {
-          snapshot = null;
+      if (!tauriLuceAbs) {
+        let snapshot: Uint8Array | null = null;
+        if (luceGz?.byteLength) {
+          try {
+            snapshot = await gunzipBytesAsync(luceGz);
+          } catch {
+            snapshot = null;
+          }
         }
+        await yieldToMain();
+        await api.openOrCreateLucivyIndex(snapshot);
+        this.lucivyReady = true;
       }
-      await yieldToMain();
-      await api.openOrCreateLucivyIndex(snapshot, {
-        snapshotFilePath: tauriLuceAbs,
-      });
-      this.lucivyReady = true;
+
       this.loaded = true;
       this.lastError = null;
       this.emit();

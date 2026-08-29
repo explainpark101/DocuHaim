@@ -22,6 +22,31 @@ import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings
 import { webdavHead } from '@/utils/webdavClient';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { buildSessionTree, listSessionWorkspaces } from '@/utils/sessionWorkspace';
+import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
+
+const TAB_RESTORE_FILE_CONCURRENCY = 2;
+
+async function forEachWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  let i = 0;
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (i < items.length) {
+        const idx = i++;
+        const item = items[idx];
+        if (item === undefined) return;
+        await fn(item);
+        await yieldToMain();
+      }
+    },
+  );
+  await Promise.all(workers);
+}
 
 /**
  * useAdvancedSearchTabsDomain: context-owned domain handlers.
@@ -226,6 +251,7 @@ export function useAdvancedSearchTabsDomain() {
       }
       workspaceTabsRef.current = nextState;
       setWorkspaceTabs(nextState);
+      await yieldToMain();
 
       // Phase 3: activate the last-used tab from the start.
       if (targetActiveId === CHAT_TAB_ID) {
@@ -243,25 +269,23 @@ export function useAdvancedSearchTabsDomain() {
         }
       }
 
-      // Phase 4: load all file tab contents in parallel (background).
-      await Promise.allSettled(
-        fileTabs.map(async (tab: any) => {
-          try {
-            const node = await resolveClosedFileNode({
-              kind: 'file',
-              storageType: tab.type,
-              path: tab.path,
-            });
-            if ((node as any)?.type !== 'file') return;
-            await selectFileRawRef.current?.(tab.type, node, {
-              skipNavigate: true,
-              background: true,
-            });
-          } catch (err) {
-            console.warn('Failed to restore workspace tab:', tab.path, err);
-          }
-        }),
-      );
+      // Phase 4: load file tab contents with limited concurrency (avoid startup spikes).
+      await forEachWithConcurrency(fileTabs, TAB_RESTORE_FILE_CONCURRENCY, async (tab: any) => {
+        try {
+          const node = await resolveClosedFileNode({
+            kind: 'file',
+            storageType: tab.type,
+            path: tab.path,
+          });
+          if ((node as any)?.type !== 'file') return;
+          await selectFileRawRef.current?.(tab.type, node, {
+            skipNavigate: true,
+            background: true,
+          });
+        } catch (err) {
+          console.warn('Failed to restore workspace tab:', tab.path, err);
+        }
+      });
 
       // Re-activate in case any load briefly changed focus.
       if (targetActiveId === CHAT_TAB_ID) {
