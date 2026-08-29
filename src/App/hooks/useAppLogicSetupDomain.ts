@@ -129,6 +129,7 @@ export function useAppLogicSetupDomain() {
     loadLastOpenedFileRef,
     clearLastOpenedFileRef,
     maybeAutoSaveOnFocusChangeRef,
+    quizFlushBeforeSaveRef,
   } = fileOwned;
   const fileSessionApi = useFileSession();
   const { setSelectedIds } = useTreeOpsOwned();
@@ -326,6 +327,7 @@ export function useAppLogicSetupDomain() {
   const maybeAutoSaveOnWindowChange = useCallback(() => {
     if (!workspaceTabsEnabledRef.current) return;
     if (workspaceTabsAutoSaveModeRef.current !== 'onWindowChange') return;
+    quizFlushBeforeSaveRef.current?.();
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
       editorContent: editorContentRef.current ?? '',
       currentFile: currentFileRef.current,
@@ -341,7 +343,7 @@ export function useAppLogicSetupDomain() {
     ) {
       queueBackgroundTabSave(leaving.currentFile, leaving.editorContent);
     }
-  }, [queueBackgroundTabSave]);
+  }, [queueBackgroundTabSave, quizFlushBeforeSaveRef]);
 
   useEffect(() => {
     s3TreeRef.current = s3Tree;

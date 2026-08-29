@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   buildSimilarJobSteps,
   buildSourceJobSteps,
@@ -80,6 +80,10 @@ export function useQuizGenerationQueue() {
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelSize, setPanelSizeState] = useState<QuizGenPanelSize>(() => loadPanelSize());
+  const panelUserOpenedRef = useRef(false);
+  const panelPointerEngagedRef = useRef(false);
+  const panelFocusEngagedRef = useRef(false);
+  const prevRunningCountRef = useRef(0);
 
   const setPanelSize = useCallback((next: QuizGenPanelSize) => {
     const clamped = clampPanelSize(next);
@@ -87,8 +91,37 @@ export function useQuizGenerationQueue() {
     savePanelSize(clamped);
   }, []);
 
-  const openPanel = useCallback(() => setPanelOpen(true), []);
-  const closePanel = useCallback(() => setPanelOpen(false), []);
+  const markPanelUserEngaged = useCallback(() => {
+    panelUserOpenedRef.current = true;
+  }, []);
+
+  const markPanelPointerEngaged = useCallback((engaged: boolean) => {
+    panelPointerEngagedRef.current = engaged;
+  }, []);
+
+  const markPanelFocusEngaged = useCallback((engaged: boolean) => {
+    panelFocusEngagedRef.current = engaged;
+  }, []);
+
+  const isPanelEngaged = useCallback(() => {
+    return panelPointerEngagedRef.current || panelFocusEngagedRef.current;
+  }, []);
+
+  const openPanel = useCallback(() => {
+    panelUserOpenedRef.current = true;
+    setPanelOpen(true);
+  }, []);
+
+  const closePanel = useCallback(() => {
+    panelUserOpenedRef.current = false;
+    panelPointerEngagedRef.current = false;
+    panelFocusEngagedRef.current = false;
+    setPanelOpen(false);
+  }, []);
+
+  const openPanelForJob = useCallback(() => {
+    setPanelOpen(true);
+  }, []);
 
   const getJob = useCallback((jobId: string) => {
     return jobsRef.current.find((j) => j.id === jobId) ?? null;
@@ -107,10 +140,10 @@ export function useQuizGenerationQueue() {
         createdAt: Date.now(),
       };
       setJobs((prev) => [job, ...prev]);
-      setPanelOpen(true);
+      openPanelForJob();
       return id;
     },
-    [],
+    [openPanelForJob],
   );
 
   const createSourceJob = useCallback((params: { preview: string; topic?: string }) => {
@@ -128,9 +161,9 @@ export function useQuizGenerationQueue() {
       createdAt: Date.now(),
     };
     setJobs((prev) => [job, ...prev]);
-    setPanelOpen(true);
+    openPanelForJob();
     return id;
-  }, []);
+  }, [openPanelForJob]);
 
   const updateJobStep = useCallback((jobId: string, update: QuizGenStepUpdate) => {
     setJobs((prev) =>
@@ -184,6 +217,21 @@ export function useQuizGenerationQueue() {
 
   const hasActiveJobs = jobs.some((j) => j.status === 'running');
 
+  useEffect(() => {
+    const runningCount = jobs.filter((j) => j.status === 'running').length;
+    const hadRunning = prevRunningCountRef.current > 0;
+    prevRunningCountRef.current = runningCount;
+
+    if (!panelOpen || !hadRunning || runningCount > 0) return undefined;
+    if (panelUserOpenedRef.current || isPanelEngaged()) return undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      if (panelUserOpenedRef.current || isPanelEngaged()) return;
+      closePanel();
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [closePanel, isPanelEngaged, jobs, panelOpen]);
+
   return {
     jobs,
     panelOpen,
@@ -192,6 +240,9 @@ export function useQuizGenerationQueue() {
     openPanel,
     closePanel,
     setPanelOpen,
+    markPanelUserEngaged,
+    markPanelPointerEngaged,
+    markPanelFocusEngaged,
     getJob,
     createSimilarJob,
     createSourceJob,

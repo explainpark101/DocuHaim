@@ -191,20 +191,71 @@ export function formatSampledVariablesForPrompt(samples: SimilarVariableSample[]
   return lines.join('\n');
 }
 
+export const SIMILAR_QUESTION_PLACEHOLDER_POINTS = [
+  '핵심 개념을 파악하세요.',
+  '문항 핵심 접근법을 확인하세요.',
+] as const;
+
+export const SIMILAR_QUESTION_PLACEHOLDER_EXPLANATIONS = [
+  '해설이 제공되지 않았습니다.',
+] as const;
+
+const SIMILAR_POINT_MIN_LEN = 12;
+const SIMILAR_EXPLANATION_MIN_LEN = 24;
+
+export function isWeakSimilarQuestionPoint(point: string): boolean {
+  const trimmed = String(point || '').trim();
+  if (!trimmed || trimmed.length < SIMILAR_POINT_MIN_LEN) return true;
+  return SIMILAR_QUESTION_PLACEHOLDER_POINTS.some((placeholder) => trimmed === placeholder);
+}
+
+export function isWeakSimilarQuestionExplanation(explanation: string): boolean {
+  const trimmed = String(explanation || '').trim();
+  if (!trimmed || trimmed.length < SIMILAR_EXPLANATION_MIN_LEN) return true;
+  return SIMILAR_QUESTION_PLACEHOLDER_EXPLANATIONS.some(
+    (placeholder) => trimmed === placeholder,
+  );
+}
+
+export function hasCompleteSimilarQuestionSections(section: {
+  point?: string;
+  explanation?: string;
+}): boolean {
+  return (
+    !isWeakSimilarQuestionPoint(String(section.point || '')) &&
+    !isWeakSimilarQuestionExplanation(String(section.explanation || ''))
+  );
+}
+
+export function buildSimilarQuestionGenerationSystemPrompt(userSystemPrompt: string): string {
+  const base = String(userSystemPrompt || '').trim();
+  return `${base}
+
+[유사문항 생성 — 필수]
+- 신규 문항마다 point(접근 Point)와 explanation(해설)을 반드시 함께 작성합니다. 둘 중 하나라도 비우거나 placeholder로 채우면 안 됩니다.
+- point: 신규 문항의 출제 의도를 매우 간결하게 작성합니다(1~3개 불릿 또는 1~2문장).
+  - 수험자가 유사한 다른 문제를 만나더라도, 무엇을 먼저 판별·연결·검토해야 하는지 핵심 사고 포인트만 짚습니다.
+  - 전체 풀이 과정이나 정답을 그대로 노출하지 마세요.
+- explanation: 정답 근거, 오답 함정, 풀이 흐름이 드러나는 완결된 해설을 작성합니다. 마크다운 사용 가능.
+- 원본 문항의 point/해설을 그대로 복사하지 말고, 신규 문항·선택지·정답에 맞게 새로 작성합니다.`;
+}
+
 export function buildSimilarAnalysisInstruction(params: {
   question: string;
   options: string[];
   answer: number;
   point: string;
+  explanation?: string;
   ragBlock?: string;
 }): string {
   const rag = params.ragBlock?.trim();
+  const explanation = String(params.explanation || '').trim();
   return `${rag ? `[근거 발췌]\n${rag}\n\n발췌 밖의 사실은 사용하지 마세요.\n\n` : ''}[원본 문제]
 질문: ${params.question}
 보기: ${params.options.map((o, i) => `${i + 1}. ${o}`).join(' | ')}
 정답: ${params.answer}번
 접근 Point: ${params.point || ''}
-
+${explanation ? `해설: ${explanation}\n` : ''}
 위 문항을 분석하여 JSON 스키마에 맞게만 반환하세요.`;
 }
 
@@ -213,6 +264,7 @@ export function buildSimilarGenerationInstruction(params: {
   options: string[];
   answer: number;
   point: string;
+  explanation?: string;
   choiceCount: number;
   targetAnswer: number;
   complexity: string;
@@ -221,12 +273,13 @@ export function buildSimilarGenerationInstruction(params: {
   ragBlock?: string;
 }): string {
   const rag = params.ragBlock?.trim();
+  const explanation = String(params.explanation || '').trim();
   return `${rag ? `[근거 발췌]\n${rag}\n\n발췌 밖의 사실은 사용하지 마세요.\n\n` : ''}[원본 문제]
 질문: ${params.question}
 보기: ${params.options.map((o, i) => `${i + 1}. ${o}`).join(' | ')}
 정답: ${params.answer}번
 접근 Point: ${params.point || ''}
-
+${explanation ? `해설: ${explanation}\n` : ''}
 ${params.analysisBlock}
 
 ${params.sampledBlock}
@@ -236,6 +289,41 @@ ${params.complexity}
 이번 신규 문제의 정답 번호는 반드시 ${params.targetAnswer}번이어야 합니다.
 
 동일한 핵심 범주 내에서 원본과 다른 수치/사례/표현의 유사 문항을 작성하세요.
+
+[필수 — point / explanation]
+- JSON의 point와 explanation을 반드시 함께 채우세요. 둘 중 하나라도 비우면 안 됩니다.
+- point(접근 Point): 신규 문항의 출제 의도를 매우 간결하게 작성하세요.
+  - 수험자가 유사한 다른 문제를 만나더라도 무엇을 먼저 판별·연결·검토해야 하는지 핵심 사고 포인트만 1~3개 불릿(또는 1~2문장)으로 제시하세요.
+  - 전체 풀이나 정답을 그대로 적지 마세요. 원본 접근 Point를 복사하지 마세요.
+- explanation(해설): 정답 근거, 오답 함정, 풀이 흐름이 드러나는 완결된 해설을 작성하세요.
+- 원본 해설/접근 Point를 그대로 복사하지 말고, 신규 문항·선택지·정답에 맞게 새로 작성하세요.
+
 JSON만 반환:
 {"question":"...","options":[${Array.from({ length: params.choiceCount }, () => '"..."').join(',')}],"answer":${params.targetAnswer},"point":"...","explanation":"..."}`;
+}
+
+export function buildSimilarSectionsRepairInstruction(params: {
+  question: string;
+  options: string[];
+  answer: number;
+  analysisBlock: string;
+  missingPoint: boolean;
+  missingExplanation: boolean;
+}): string {
+  const missing: string[] = [];
+  if (params.missingPoint) missing.push('point(접근 Point)');
+  if (params.missingExplanation) missing.push('explanation(해설)');
+  return `[신규 유사 문항]
+질문: ${params.question}
+보기: ${params.options.map((o, i) => `${i + 1}. ${o}`).join(' | ')}
+정답: ${params.answer}번
+
+${params.analysisBlock}
+
+위 문항에 대해 누락된 ${missing.join(' 및 ')}을(를) 작성하세요.
+- point: 출제 의도를 매우 간결하게(1~3개 불릿 또는 1~2문장). 유사 유형에서 무엇을 먼저 생각해야 하는지 핵심 사고 포인트만.
+- explanation: 정답 근거·함정·풀이 흐름이 드러나는 완결된 해설.
+
+JSON만 반환:
+{"point":"...","explanation":"..."}`;
 }

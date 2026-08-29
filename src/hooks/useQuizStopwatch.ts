@@ -4,6 +4,7 @@ import {
   createEmptyQuizTimeLog,
   getQuizStopwatchBaseElapsedMs,
   isQuizStopwatchRunning,
+  isQuizExamStopwatchActive,
   normalizeQuizTimeLog,
   type QuizTimeLog,
 } from '@/utils/quiz/quizTimeLog';
@@ -20,6 +21,8 @@ export type UseQuizStopwatchResult = {
   displayMs: number;
   running: boolean;
   started: boolean;
+  /** Started and not yet stopped (pause still counts as exam in progress). */
+  examInProgress: boolean;
   start: () => void;
   pause: () => void;
   resume: () => void;
@@ -52,6 +55,7 @@ export function useQuizStopwatch({
 
   const running = isQuizStopwatchRunning(log);
   const started = log.events.length > 0;
+  const examInProgress = isQuizExamStopwatchActive(log);
   const baseElapsedMs = getQuizStopwatchBaseElapsedMs(log);
 
   useEffect(() => {
@@ -131,6 +135,7 @@ export function useQuizStopwatch({
     displayMs,
     running,
     started,
+    examInProgress,
     start,
     pause,
     resume,

@@ -27,9 +27,10 @@ import {
   IconTrash,
   IconSettings,
 } from '@/components/icons';
-import { PencilIcon, ArrowRightToLine, AlertCircle, Loader2 } from 'lucide-react';
+import { PencilIcon, ArrowRightToLine, AlertCircle, Loader2, ClipboardList } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { isEncMdPath } from '@/utils/encMd';
+import { isQuizMdPath } from '@/utils/quiz/quizPath';
 import { getFilePathBaseForRecordingLookup } from '@/utils/s3Tree';
 import { getParentFolderPath, toDraggableId, toDroppableId } from '@/utils/treeMove';
 import { useTreeNodeTouchGesture } from '@/hooks/useTreeNodeTouchGesture';
@@ -488,6 +489,7 @@ export default function TreeNode({
       return indexExcluded ? IconFolder : IconFolderFilled;
     }
     if (node.type !== 'file') return IconFile;
+    if (isQuizMdPath(node.name) || isQuizMdPath(node.path)) return ClipboardList;
     if (isEncMdPath(node.name) || isEncMdPath(node.path)) return IconLock;
     const lower = node.name.toLowerCase();
     const lastDot = lower.lastIndexOf('.');
@@ -529,6 +531,9 @@ export default function TreeNode({
       return 'text-yellow-600 dark:text-yellow-400';
     }
     const lower = node.name.toLowerCase();
+    if (isQuizMdPath(node.name) || isQuizMdPath(node.path)) {
+      return 'text-orange-600 dark:text-orange-400';
+    }
     if (isEncMdPath(node.name) || isEncMdPath(node.path)) {
       return 'text-violet-600 dark:text-violet-400';
     }

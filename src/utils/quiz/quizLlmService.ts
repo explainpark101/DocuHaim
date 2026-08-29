@@ -36,8 +36,13 @@ import type { QuizVaultTextReader } from '@/utils/quiz/quizVaultSourceLoader';
 import {
   buildSimilarAnalysisInstruction,
   buildSimilarGenerationInstruction,
+  buildSimilarQuestionGenerationSystemPrompt,
+  buildSimilarSectionsRepairInstruction,
   formatAnalysisForPrompt,
   formatSampledVariablesForPrompt,
+  hasCompleteSimilarQuestionSections,
+  isWeakSimilarQuestionExplanation,
+  isWeakSimilarQuestionPoint,
   parseSimilarQuestionAnalysis,
   randomizeSimilarVariables,
   SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
@@ -568,20 +573,29 @@ export async function generateWrongChoiceExplanation(params: {
   profiles: LlmProviderProfile[];
   question: QuizQuestion;
   selectedOption: number;
+  userInstructions?: string;
   signal?: AbortSignal;
   onChunk?: (accumulated: string) => void;
 }): Promise<string> {
   const q = params.question;
   const opts = q.options || [];
   const selected = params.selectedOption;
-  const instruction = `객관식에서 수험자가 ${selected}번을 골랐습니다. 왜 오답인지 설명하세요.
+  const isCorrectPick = selected === q.answer;
+  const userBlock = params.userInstructions?.trim()
+    ? `\n[수험자 추가 질문]\n${params.userInstructions.trim()}\n위 질문에도 답변하세요.`
+    : '';
+  const taskLine = isCorrectPick
+    ? `수험자가 ${selected}번(정답)을 골랐습니다. 왜 정답인지, 다른 보기가 왜 틀렸는지 설명하세요.`
+    : `수험자가 ${selected}번을 골랐습니다. 왜 오답인지 설명하세요.`;
+  const instruction = `${taskLine}
 
 [문제] ${q.question}
 [보기]
 ${opts.map((o, i) => `${i + 1}. ${o}`).join('\n')}
 [정답] ${q.answer}번
-[선택한 오답] ${selected}번 (${opts[selected - 1] || ''})
+[선택한 보기] ${selected}번 (${opts[selected - 1] || ''})
 [기존 해설] ${q.explanation || ''}
+${userBlock}
 
 설명 텍스트만 반환하세요.`;
 
@@ -642,6 +656,7 @@ export async function generateSimilarChoiceQuestion(params: {
     options,
     answer: stemAnswer,
     point: q.point || '',
+    explanation: q.explanation || '',
     ...(ragBlock ? { ragBlock } : {}),
   });
 
@@ -704,6 +719,7 @@ export async function generateSimilarChoiceQuestion(params: {
     options,
     answer: stemAnswer,
     point: q.point || '',
+    explanation: q.explanation || '',
     choiceCount,
     targetAnswer,
     complexity,
@@ -712,7 +728,9 @@ export async function generateSimilarChoiceQuestion(params: {
     ...(ragBlock ? { ragBlock } : {}),
   });
 
-  const genSystemPrompt = settings.systemPrompt || DEFAULT_QUIZ_SYSTEM_PROMPT;
+  const genSystemPrompt = buildSimilarQuestionGenerationSystemPrompt(
+    settings.systemPrompt || DEFAULT_QUIZ_SYSTEM_PROMPT,
+  );
   emit({
     step: 'generate',
     status: 'running',
@@ -738,8 +756,64 @@ export async function generateSimilarChoiceQuestion(params: {
     llmResponse: truncateForGenerationLog(text),
     systemPrompt: genSystemPrompt,
   });
+
+  let generated = parseGeneratedQuestion(parsed, choiceCount, targetAnswer);
+  if (!hasCompleteSimilarQuestionSections(generated)) {
+    const missingPoint = isWeakSimilarQuestionPoint(generated.point);
+    const missingExplanation = isWeakSimilarQuestionExplanation(generated.explanation);
+    const repairInstruction = buildSimilarSectionsRepairInstruction({
+      question: generated.question,
+      options: generated.options || [],
+      answer: generated.answer || targetAnswer,
+      analysisBlock,
+      missingPoint,
+      missingExplanation,
+    });
+    emit({
+      step: 'generate',
+      status: 'running',
+      detail: '해설·접근 Point 보완 중…',
+      llmInstruction: repairInstruction,
+      systemPrompt: genSystemPrompt,
+    });
+    const repairText = await runQuizLlmPrompt(
+      runOpts(
+        params.profiles,
+        repairInstruction,
+        genSystemPrompt,
+        Math.min(settings.temperature, 0.8),
+        signalExtra(params.signal),
+      ),
+    );
+    const repairParsed = extractJsonObject(repairText);
+    const repairObj =
+      repairParsed && typeof repairParsed === 'object'
+        ? (repairParsed as Record<string, unknown>)
+        : {};
+    if (missingPoint && typeof repairObj.point === 'string' && repairObj.point.trim()) {
+      generated = { ...generated, point: String(repairObj.point).trim() };
+    }
+    if (
+      missingExplanation &&
+      typeof repairObj.explanation === 'string' &&
+      repairObj.explanation.trim()
+    ) {
+      generated = { ...generated, explanation: String(repairObj.explanation).trim() };
+    }
+    emit({
+      step: 'generate',
+      status: 'done',
+      detail: hasCompleteSimilarQuestionSections(generated)
+        ? '해설·접근 Point 보완 완료'
+        : '해설·접근 Point 일부 보완',
+      llmInstruction: repairInstruction,
+      llmResponse: truncateForGenerationLog(repairText),
+      systemPrompt: genSystemPrompt,
+    });
+  }
+
   return {
-    ...parseGeneratedQuestion(parsed, choiceCount, targetAnswer),
+    ...generated,
     isGenerated: true,
   };
 }

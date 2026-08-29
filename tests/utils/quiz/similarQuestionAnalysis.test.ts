@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  buildSimilarGenerationInstruction,
   formatSampledVariablesForPrompt,
+  hasCompleteSimilarQuestionSections,
+  isWeakSimilarQuestionExplanation,
+  isWeakSimilarQuestionPoint,
   parseSimilarQuestionAnalysis,
   randomizeSimilarVariables,
 } from '@/utils/quiz/similarQuestionAnalysis';
@@ -74,5 +78,52 @@ describe('randomizeSimilarVariables', () => {
     expect(text).toContain('무작위 샘플링');
     expect(text).toContain('3 A');
     expect(text).toContain('원본: 2 A');
+  });
+});
+
+describe('similar question point / explanation requirements', () => {
+  test('detects placeholder point and explanation', () => {
+    expect(isWeakSimilarQuestionPoint('핵심 개념을 파악하세요.')).toBe(true);
+    expect(isWeakSimilarQuestionPoint('- 법칙 적용 전 단위를 먼저 통일한다')).toBe(false);
+    expect(isWeakSimilarQuestionExplanation('해설이 제공되지 않았습니다.')).toBe(true);
+    expect(
+      isWeakSimilarQuestionExplanation(
+        '정답은 2번이다. 1번은 단위 환산을 빠뜨린 함정이고, 3·4번은 공식을 잘못 적용했다.',
+      ),
+    ).toBe(false);
+  });
+
+  test('hasCompleteSimilarQuestionSections requires both fields', () => {
+    expect(
+      hasCompleteSimilarQuestionSections({
+        point: '- 개념 정의를 먼저 떠올린다',
+        explanation: '정답은 2번이며, 선택지 함정과 근거를 설명한다.',
+      }),
+    ).toBe(true);
+    expect(
+      hasCompleteSimilarQuestionSections({
+        point: '핵심 개념을 파악하세요.',
+        explanation: '정답은 2번이며, 선택지 함정과 근거를 설명한다.',
+      }),
+    ).toBe(false);
+  });
+
+  test('buildSimilarGenerationInstruction requires point and explanation together', () => {
+    const text = buildSimilarGenerationInstruction({
+      question: 'Q?',
+      options: ['A', 'B'],
+      answer: 1,
+      point: 'old point',
+      explanation: 'old explanation',
+      choiceCount: 2,
+      targetAnswer: 2,
+      complexity: '[계산 난이도: 손으로 계산 가능]',
+      analysisBlock: '[문항 분석 결과]',
+      sampledBlock: '',
+    });
+    expect(text).toContain('point와 explanation을 반드시 함께');
+    expect(text).toContain('출제 의도를 매우 간결하게');
+    expect(text).toContain('"point":"..."');
+    expect(text).toContain('"explanation":"..."');
   });
 });

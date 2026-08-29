@@ -9,6 +9,8 @@ export type QuizQuestionKind = 'choice' | 'subjective';
 export type QuizFileConfig = {
   choiceCount: number;
   sourcePaths: string[];
+  /** Registered sources excluded from RAG / generation while kept in the list. */
+  disabledSourcePaths?: string[];
 };
 
 export type QuizQuestion = {
@@ -39,6 +41,9 @@ export type QuizQuestion = {
   };
 };
 
+/** Per-question, per-option wrong-choice AI analysis (`option` → markdown). */
+export type QuizWrongChoiceExplanations = Record<string, Record<string, string>>;
+
 /** User attempt state persisted in `<!-- quiz-session … -->`. */
 export type QuizPersistedSession = {
   version: 1;
@@ -48,6 +53,8 @@ export type QuizPersistedSession = {
   isSubmitted: boolean;
   /** Stopwatch event log (start / pause / resume / stop with timestamps). */
   timeLog?: QuizTimeLog;
+  /** Saved wrong-choice analyses keyed by question id → option number string. */
+  wrongChoiceExplanations?: QuizWrongChoiceExplanations;
 };
 
 export type QuizDocument = {

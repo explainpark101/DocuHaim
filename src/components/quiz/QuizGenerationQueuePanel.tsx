@@ -28,6 +28,9 @@ type QuizGenerationQueuePanelProps = {
   onResize: (size: QuizGenPanelSize) => void;
   onRemoveJob: (jobId: string) => void;
   onClearFinished: () => void;
+  onUserEngage?: () => void;
+  onPointerEngageChange?: (engaged: boolean) => void;
+  onFocusEngageChange?: (engaged: boolean) => void;
 };
 
 function stepStatusIcon(status: QuizGenStepStatus) {
@@ -255,6 +258,9 @@ export default function QuizGenerationQueuePanel({
   onResize,
   onRemoveJob,
   onClearFinished,
+  onUserEngage,
+  onPointerEngageChange,
+  onFocusEngageChange,
 }: QuizGenerationQueuePanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [detailOpenIds, setDetailOpenIds] = useState<Record<string, true>>({});
@@ -335,6 +341,15 @@ export default function QuizGenerationQueuePanel({
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 48, opacity: 0, scale: 0.98 }}
           transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+          onMouseEnter={() => onPointerEngageChange?.(true)}
+          onMouseLeave={() => onPointerEngageChange?.(false)}
+          onFocusCapture={() => onFocusEngageChange?.(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              onFocusEngageChange?.(false);
+            }
+          }}
+          onPointerDown={() => onUserEngage?.()}
         >
           <div
             className="absolute left-0 top-0 z-20 h-3 w-3 cursor-nwse-resize touch-none"

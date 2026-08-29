@@ -13,7 +13,10 @@ Vault quiz notes opened in **퀴즈 모드** (`/quiz/<path>`). Authors can also 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `choiceCount` | number | `4` | Multiple-choice option count (clamped **2–10**) |
-| `sourcePaths` | string[] | `[]` | Vault `.md` paths used as RAG sources for the whole file |
+| `sourcePaths` | string[] | `[]` | Vault `.md` paths registered as RAG sources for the whole file |
+| `disabledSourcePaths` | string[] | *(omitted)* | Subset of `sourcePaths` excluded from RAG / generation while kept in the list. Omitted when all sources are enabled. |
+
+In the quiz UI, each file-level source row has a checkbox (dock). The dock header shows **active/total** (e.g. `2/3 사용`). Only enabled paths are passed to RAG and AI generation; question-level `sourcePaths` are unchanged.
 
 ### Session state (optional, after `quiz-config`)
 
@@ -26,10 +29,11 @@ User answers and grading results are persisted so reopening the quiz restores pr
 | Field | Type | Description |
 |-------|------|-------------|
 | `userAnswers` | object | Question id → choice index (number) or subjective text (string) |
-| `gradedQuestions` | object | Question id → `true` when graded |
+| `gradedQuestions` | object | Question id → `true` if graded, `false` if answered but not yet graded (omitted when no answer) |
 | `subjectiveGrades` | object | Question id → `{ verdict, score, feedback, rationale? }` |
 | `isSubmitted` | boolean | Whole-quiz submit was used |
 | `timeLog` | object | Stopwatch event log (see below) |
+| `wrongChoiceExplanations` | object | Question id → option number string → markdown analysis text |
 
 #### `timeLog` (stopwatch)
 
@@ -150,7 +154,7 @@ QUIZ_DOC := [ QUIZ_CONFIG_COMMENT ] [ QUIZ_SESSION_COMMENT ] QUESTION_BLOCK*
 
 QUIZ_CONFIG_COMMENT := '<!--' WS 'quiz-config' WS JSON '-->'
 QUIZ_SESSION_COMMENT := '<!--' WS 'quiz-session' WS JSON '-->'
-JSON := { choiceCount?: number, sourcePaths?: string[] }
+JSON := { choiceCount?: number, sourcePaths?: string[], disabledSourcePaths?: string[] }
 SESSION_JSON := { version: 1, userAnswers?: object, gradedQuestions?: object, subjectiveGrades?: object, isSubmitted?: boolean }
 
 QUESTION_BLOCK := HEADING NL [IMAGE] [SOURCE_QUOTE] (CHOICE_BODY | SHORT_BODY | ESSAY_BODY) [POINT_EXP_QUOTE]
@@ -180,6 +184,7 @@ ESSAY_BODY := '>' WS '**📖 모범 답안:**' NL ('>' LINE)*
 
 - `choiceCount`: round to int; clamp to `[2, 10]`; invalid → `4`.
 - `sourcePaths`: trim, strip leading `/`, dedupe, POSIX separators.
+- `disabledSourcePaths`: same normalization as `sourcePaths`; entries not in `sourcePaths` are dropped; omitted from serialized config when empty (all enabled).
 - Choice `answer`: 1-based index; default `1` if no marker.
 
 ### 4. Canonical serialization
@@ -209,7 +214,7 @@ ESSAY_BODY := '>' WS '**📖 모범 답안:**' NL ('>' LINE)*
 ### 5. Non-goals
 
 - Lucivy index is optional for RAG ranking; selected files are always readable via storage `readText`.
-- Live wrong-choice AI explanations (`wrongExps`) are not persisted in the file.
+- Wrong-choice AI explanations are persisted in `quiz-session` as `wrongChoiceExplanations` (not inline in question blocks).
 
 ### AI generation logs (`.quiz/` sidecar)
 

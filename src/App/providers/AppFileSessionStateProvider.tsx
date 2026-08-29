@@ -57,6 +57,8 @@ export type FileSessionOwnedApi = {
   handleRequestSessionSaveChooserRef: MutableRefObject<(() => void) | null>;
   connectedHaimStorageTypeRef: MutableRefObject<(() => string) | null>;
   hasUnsavedEditorChangesRef: MutableRefObject<(() => boolean) | null>;
+  quizHasUnsavedProgressRef: MutableRefObject<(() => boolean) | null>;
+  quizFlushBeforeSaveRef: MutableRefObject<(() => void) | null>;
   closeCurrentFileRef: MutableRefObject<(() => void) | null>;
   maybeAutoSaveOnFocusChangeRef: MutableRefObject<
     ((file: any, content: string) => void) | null
@@ -128,6 +130,8 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
   const handleRequestSessionSaveChooserRef = useRef<(() => void) | null>(null);
   const connectedHaimStorageTypeRef = useRef<(() => string) | null>(null);
   const hasUnsavedEditorChangesRef = useRef<(() => boolean) | null>(null);
+  const quizHasUnsavedProgressRef = useRef<(() => boolean) | null>(null);
+  const quizFlushBeforeSaveRef = useRef<(() => void) | null>(null);
   const closeCurrentFileRef = useRef<(() => void) | null>(null);
   const maybeAutoSaveOnFocusChangeRef = useRef<
     ((file: any, content: string) => void) | null
@@ -198,6 +202,8 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
       handleRequestSessionSaveChooserRef,
       connectedHaimStorageTypeRef,
       hasUnsavedEditorChangesRef,
+      quizHasUnsavedProgressRef,
+      quizFlushBeforeSaveRef,
       closeCurrentFileRef,
       maybeAutoSaveOnFocusChangeRef,
       requestEncMdPasswordRef,

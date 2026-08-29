@@ -1,4 +1,5 @@
 import type { QuizFileConfig } from '@/utils/quiz/quizTypes';
+import { normalizeDisabledSourcePaths } from '@/utils/quiz/quizSourcePathState';
 
 export const QUIZ_CONFIG_DEFAULT: QuizFileConfig = {
   choiceCount: 4,
@@ -43,9 +44,15 @@ export function normalizeSourcePaths(raw: unknown): string[] {
 export function normalizeQuizFileConfig(
   raw: Partial<QuizFileConfig> | null | undefined,
 ): QuizFileConfig {
+  const sourcePaths = normalizeSourcePaths(raw?.sourcePaths);
+  const disabledSourcePaths = normalizeDisabledSourcePaths(
+    raw?.disabledSourcePaths,
+    sourcePaths,
+  );
   return {
     choiceCount: clampChoiceCount(raw?.choiceCount),
-    sourcePaths: normalizeSourcePaths(raw?.sourcePaths),
+    sourcePaths,
+    ...(disabledSourcePaths.length ? { disabledSourcePaths } : {}),
   };
 }
 
@@ -105,6 +112,9 @@ export function serializeQuizConfigComment(config: QuizFileConfig): string {
   const payload: QuizFileConfig = {
     choiceCount: normalized.choiceCount,
     sourcePaths: normalized.sourcePaths,
+    ...(normalized.disabledSourcePaths?.length
+      ? { disabledSourcePaths: normalized.disabledSourcePaths }
+      : {}),
   };
   const json = JSON.stringify(payload);
   return `<!-- quiz-config ${escapeJsonForComment(json)} -->`;

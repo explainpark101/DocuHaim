@@ -21,7 +21,7 @@ import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
 import { Tooltip } from 'radix-ui';
-import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, ListTree, Loader2, PenLine, Settings, X } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, ListTree, Loader2, PenLine, Settings, Shuffle, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
@@ -61,6 +61,7 @@ import {
   quizPathnameForStoragePath,
   viewPathnameForStoragePath,
 } from '@/utils/appHref';
+import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 
 const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
 const NovelMarkdownEditor = lazy(() => import('@/components/NovelMarkdownEditor'));
@@ -68,12 +69,19 @@ const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
 const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
 const QuizPane = lazy(() => import('@/components/quiz/QuizPane'));
 
-function EditorPaneSuspenseFallback() {
+function EditorPaneSuspenseFallback({ message = '에디터 로딩 중…' }) {
   return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-surface dark:text-odp-muted">
-      에디터 로딩 중…
+    <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-white dark:bg-odp-surface">
+      <Loader2 size={18} className="animate-spin text-gray-400 dark:text-gray-500" aria-hidden />
+      <div className="text-sm text-gray-500 dark:text-odp-muted">{message}</div>
     </div>
   );
+}
+
+function QuizModeTransitionLoading({ target }) {
+  const message =
+    target === 'quiz' ? '퀴즈 모드로 이동 중…' : '마크다운 편집으로 이동 중…';
+  return <EditorPaneSuspenseFallback message={message} />;
 }
 
 const QUIZ_MODE_TOGGLE_BTN_CLASS =
@@ -157,6 +165,11 @@ export default function EditorPane({
   const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
   const [documentSettingsOpen, setDocumentSettingsOpen] = useState(false);
   const [quizToolbarNode, setQuizToolbarNode] = useState(null);
+  const [quizFileManagement, setQuizFileManagement] = useState(null);
+  const [quizModeSwitching, setQuizModeSwitching] = useState(false);
+  const [quizModeSwitchTarget, setQuizModeSwitchTarget] = useState(null);
+  const quizSwitchNavigatedRef = useRef(false);
+  const { quizHasUnsavedProgressRef, quizFlushBeforeSaveRef } = useFileSessionOwned();
   const { showAlert } = useAlertModal();
   const location = useLocation();
   const navigate = useNavigate();
@@ -164,19 +177,89 @@ export default function EditorPane({
   const isQuizFile = isQuizMdPath(currentFile?.id || currentFile?.name);
   const quizMode = isQuizFile && isQuizAppPathname(location.pathname);
 
-  const toggleQuizEditMode = useCallback(() => {
+  const flushBeforeSave = useCallback(() => {
+    novelFlushBeforeSaveRef.current?.();
+    quizFlushBeforeSaveRef.current?.();
+  }, [quizFlushBeforeSaveRef]);
+
+  const toggleQuizEditMode = useCallback(async () => {
     const path = currentFile?.id;
-    if (!path || !isQuizFile) return;
-    if (quizMode) {
-      navigate(viewPathnameForStoragePath(path));
-    } else {
-      navigate(quizPathnameForStoragePath(path));
+    if (!path || !isQuizFile || quizModeSwitching) return;
+
+    const target = quizMode ? 'edit' : 'quiz';
+    // Flush while QuizPane / editor is still mounted (switching state unmounts them).
+    flushBeforeSave();
+
+    quizSwitchNavigatedRef.current = false;
+    setQuizModeSwitchTarget(target);
+    setQuizModeSwitching(true);
+
+    try {
+      await onSave?.(null, {
+        skipCoverChangeCheck: true,
+        skipSuffixCheck: true,
+      });
+      navigate(
+        target === 'quiz'
+          ? quizPathnameForStoragePath(path)
+          : viewPathnameForStoragePath(path),
+      );
+      quizSwitchNavigatedRef.current = true;
+    } catch {
+      quizSwitchNavigatedRef.current = false;
+      setQuizModeSwitching(false);
+      setQuizModeSwitchTarget(null);
     }
-  }, [currentFile?.id, isQuizFile, quizMode, navigate]);
+  }, [
+    currentFile?.id,
+    flushBeforeSave,
+    isQuizFile,
+    navigate,
+    onSave,
+    quizMode,
+    quizModeSwitching,
+  ]);
 
   useEffect(() => {
-    if (!quizMode) setQuizToolbarNode(null);
+    if (!quizModeSwitching || !quizSwitchNavigatedRef.current || !quizModeSwitchTarget) {
+      return undefined;
+    }
+    const arrived =
+      quizModeSwitchTarget === 'quiz'
+        ? isQuizAppPathname(location.pathname)
+        : !isQuizAppPathname(location.pathname);
+    if (!arrived || isSaving) return undefined;
+
+    const frameId = window.requestAnimationFrame(() => {
+      setQuizModeSwitching(false);
+      setQuizModeSwitchTarget(null);
+      quizSwitchNavigatedRef.current = false;
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isSaving, location.pathname, quizModeSwitchTarget, quizModeSwitching]);
+
+  useEffect(() => {
+    if (!quizMode) {
+      setQuizToolbarNode(null);
+      setQuizFileManagement(null);
+    }
   }, [quizMode, currentFile?.id]);
+
+  useEffect(() => {
+    if (!quizMode) {
+      quizHasUnsavedProgressRef.current = null;
+      quizFlushBeforeSaveRef.current = null;
+      return undefined;
+    }
+    quizHasUnsavedProgressRef.current =
+      quizFileManagement?.hasUnsavedProgress ?? null;
+    quizFlushBeforeSaveRef.current =
+      quizFileManagement?.flushBeforeSave ?? null;
+    return () => {
+      quizHasUnsavedProgressRef.current = null;
+      quizFlushBeforeSaveRef.current = null;
+    };
+  }, [quizMode, quizFileManagement, quizHasUnsavedProgressRef, quizFlushBeforeSaveRef]);
 
   const documentSettings = useMemo(() => {
     const { meta } = parseDocumentSettingsMeta(editorContent ?? '');
@@ -184,19 +267,35 @@ export default function EditorPane({
   }, [editorContent]);
 
   const handleToolbarSave = useCallback(() => {
-    novelFlushBeforeSaveRef.current?.();
+    flushBeforeSave();
     onSave?.();
-  }, [onSave]);
+  }, [flushBeforeSave, onSave]);
+
+  useEffect(() => {
+    if (!quizMode) return undefined;
+    const onKeyDown = (event) => {
+      if (event.isComposing || event.keyCode === 229) return;
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (event.key.toLowerCase() !== 's') return;
+      event.preventDefault();
+      event.stopPropagation();
+      handleToolbarSave();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [quizMode, handleToolbarSave]);
 
   const handleToolbarRefreshFromDisk = useCallback(() => {
     novelFlushBeforeSaveRef.current?.();
+    quizFlushBeforeSaveRef.current?.();
     onRefreshFromDisk?.();
-  }, [onRefreshFromDisk]);
+  }, [onRefreshFromDisk, quizFlushBeforeSaveRef]);
 
   const handlePullFromRemote = useCallback(() => {
     novelFlushBeforeSaveRef.current?.();
+    quizFlushBeforeSaveRef.current?.();
     onPullFromRemote?.();
-  }, [onPullFromRemote]);
+  }, [onPullFromRemote, quizFlushBeforeSaveRef]);
 
   const handleApplyDocumentSettings = useCallback((nextSettings) => {
     const nextMarkdown = upsertDocumentSettingsMeta(editorContent ?? '', nextSettings);
@@ -223,6 +322,7 @@ export default function EditorPane({
     setCopyingFormattedHtml(true);
     try {
       novelFlushBeforeSaveRef.current?.();
+      quizFlushBeforeSaveRef.current?.();
       const candidates = collectImgbbCopyCandidates();
       if (candidates.length > 0) {
         setImgbbCopyCandidates(candidates);
@@ -239,7 +339,7 @@ export default function EditorPane({
     } finally {
       setCopyingFormattedHtml(false);
     }
-  }, [copyingFormattedHtml, finishCopyFormattedHtml, imgbbCopyUploading, showAlert]);
+  }, [copyingFormattedHtml, finishCopyFormattedHtml, imgbbCopyUploading, quizFlushBeforeSaveRef, showAlert]);
 
   const handleConfirmImgbbCopyUpload = useCallback(async () => {
     if (imgbbCopyUploading) return;
@@ -818,6 +918,32 @@ export default function EditorPane({
                     다운로드
                   </button>
                 ) : null}
+                {quizMode && quizFileManagement?.extractWrongQuestions ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft"
+                    onClick={() => {
+                      void quizFileManagement.extractWrongQuestions();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <ClipboardList size={14} />
+                    틀린문제 새 quiz로 추출
+                  </button>
+                ) : null}
+                {quizMode && quizFileManagement?.shuffleChoiceOptions ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft"
+                    onClick={() => {
+                      quizFileManagement.shuffleChoiceOptions();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <Shuffle size={14} />
+                    선택지 순서 변경
+                  </button>
+                ) : null}
                 {currentFile.type !== 'session' ? (
                 <button
                   type="button"
@@ -927,8 +1053,12 @@ export default function EditorPane({
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={toggleQuizEditMode}
+                    onClick={() => {
+                      void toggleQuizEditMode();
+                    }}
+                    disabled={quizModeSwitching || isSaving}
                     aria-label={quizMode ? '마크다운 편집' : '퀴즈 모드'}
+                    aria-busy={quizModeSwitching || isSaving}
                     className={`shrink-0 ${QUIZ_MODE_TOGGLE_BTN_CLASS}`}
                   >
                     {quizMode ? <PenLine size={14} /> : <ClipboardList size={14} />}
@@ -1074,8 +1204,10 @@ export default function EditorPane({
             <div className="text-sm text-gray-500 dark:text-odp-muted">파일 불러오는 중…</div>
           </div>
         ) : viewer === 'markdown' ? (
-          quizMode ? (
-            <Suspense fallback={<EditorPaneSuspenseFallback />}>
+          quizModeSwitching ? (
+            <QuizModeTransitionLoading target={quizModeSwitchTarget} />
+          ) : quizMode ? (
+            <Suspense fallback={<EditorPaneSuspenseFallback message="퀴즈 모드 로딩 중…" />}>
               <QuizPane
                 content={editorContent}
                 onChange={onChangeEditor}
@@ -1083,6 +1215,7 @@ export default function EditorPane({
                 llmProviderProfiles={llmProviderProfiles}
                 isActiveFile={isActiveFile}
                 registerToolbar={setQuizToolbarNode}
+                registerFileManagement={setQuizFileManagement}
               />
             </Suspense>
           ) : (
@@ -1096,7 +1229,7 @@ export default function EditorPane({
                   theme={theme}
                 />
               ) : (
-                <Suspense fallback={<EditorPaneSuspenseFallback />}>
+                <Suspense fallback={<EditorPaneSuspenseFallback message="에디터 로딩 중…" />}>
                   {effectiveEditorType === EDITOR_TYPE_NOVEL ? (
                     <NovelMarkdownEditor
                       key={currentFile?.id ?? 'novel-md'}

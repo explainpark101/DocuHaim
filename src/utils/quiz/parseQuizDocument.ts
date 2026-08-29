@@ -3,6 +3,7 @@ import {
   parseQuizConfigComment,
   QUIZ_CONFIG_DEFAULT,
 } from '@/utils/quiz/quizFileConfig';
+import { getActiveSourcePaths, type QuizSourcePathConfig } from '@/utils/quiz/quizSourcePathState';
 import {
   filterQuizSessionForQuestions,
   isQuizSessionEmpty,
@@ -290,7 +291,7 @@ export function parseQuizDocument(markdown: string): QuizDocument {
   const questionIds = new Set(questions.map((q) => q.id));
   const session =
     rawSession && questionIds.size > 0
-      ? filterQuizSessionForQuestions(rawSession, questionIds)
+      ? filterQuizSessionForQuestions(rawSession, questionIds, questions)
       : rawSession;
 
   return {
@@ -306,13 +307,13 @@ export function parseMarkdownToQuestions(markdown: string): QuizQuestion[] {
 }
 
 export function resolveEffectiveSourcePaths(
-  fileConfig: { sourcePaths?: string[] } | null | undefined,
+  fileConfig: QuizSourcePathConfig | null | undefined,
   question: { sourcePaths?: string[] } | null | undefined,
 ): string[] {
   if (question?.sourcePaths && question.sourcePaths.length > 0) {
     return [...question.sourcePaths];
   }
-  return [...(fileConfig?.sourcePaths || [])];
+  return getActiveSourcePaths(fileConfig);
 }
 
 export { QUIZ_CONFIG_DEFAULT };

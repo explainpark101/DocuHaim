@@ -1,5 +1,10 @@
 import { escapeJsonForComment } from '@/utils/quiz/quizFileConfig';
 import {
+  isWrongChoiceExplanationsEmpty,
+  normalizeWrongChoiceExplanations,
+  filterWrongChoiceExplanations,
+} from '@/utils/quiz/quizWrongChoiceExplanations';
+import {
   isQuizTimeLogEmpty,
   normalizeQuizTimeLog,
 } from '@/utils/quiz/quizTimeLog';
@@ -91,6 +96,9 @@ export function normalizeQuizPersistedSession(
   raw: Partial<QuizPersistedSession> | null | undefined,
 ): QuizPersistedSession {
   const timeLog = normalizeQuizTimeLog(raw?.timeLog);
+  const wrongChoiceExplanations = normalizeWrongChoiceExplanations(
+    raw?.wrongChoiceExplanations,
+  );
   return {
     version: 1,
     userAnswers: normalizeUserAnswers(raw?.userAnswers),
@@ -98,6 +106,9 @@ export function normalizeQuizPersistedSession(
     subjectiveGrades: normalizeSubjectiveGrades(raw?.subjectiveGrades),
     isSubmitted: Boolean(raw?.isSubmitted),
     ...(isQuizTimeLogEmpty(timeLog) ? {} : { timeLog }),
+    ...(isWrongChoiceExplanationsEmpty(wrongChoiceExplanations)
+      ? {}
+      : { wrongChoiceExplanations }),
   };
 }
 
@@ -107,7 +118,8 @@ export function isQuizSessionEmpty(session: QuizPersistedSession): boolean {
     Object.keys(session.gradedQuestions).length === 0 &&
     Object.keys(session.subjectiveGrades).length === 0 &&
     !session.isSubmitted &&
-    isQuizTimeLogEmpty(session.timeLog)
+    isQuizTimeLogEmpty(session.timeLog) &&
+    isWrongChoiceExplanationsEmpty(session.wrongChoiceExplanations)
   );
 }
 
@@ -115,6 +127,7 @@ export function isQuizSessionEmpty(session: QuizPersistedSession): boolean {
 export function filterQuizSessionForQuestions(
   session: QuizPersistedSession,
   questionIds: ReadonlySet<string> | readonly string[],
+  questions?: readonly { id: string; options?: string[] }[],
 ): QuizPersistedSession {
   const ids = questionIds instanceof Set ? questionIds : new Set(questionIds);
   const pick = <T extends Record<string, unknown>>(record: T): T => {
@@ -126,6 +139,18 @@ export function filterQuizSessionForQuestions(
     }
     return out;
   };
+  const optionCountByQuestion = new Map<string, number>();
+  if (questions) {
+    for (const q of questions) {
+      if (!ids.has(q.id)) continue;
+      optionCountByQuestion.set(q.id, q.options?.length || 0);
+    }
+  }
+  const wrongChoiceExplanations = filterWrongChoiceExplanations(
+    session.wrongChoiceExplanations || {},
+    ids,
+    optionCountByQuestion.size > 0 ? optionCountByQuestion : undefined,
+  );
   return normalizeQuizPersistedSession({
     version: 1,
     userAnswers: pick(session.userAnswers),
@@ -133,6 +158,9 @@ export function filterQuizSessionForQuestions(
     subjectiveGrades: pick(session.subjectiveGrades),
     isSubmitted: session.isSubmitted,
     ...(session.timeLog ? { timeLog: session.timeLog } : {}),
+    ...(isWrongChoiceExplanationsEmpty(wrongChoiceExplanations)
+      ? {}
+      : { wrongChoiceExplanations }),
   });
 }
 
@@ -188,6 +216,9 @@ export function serializeQuizSessionComment(session: QuizPersistedSession): stri
     subjectiveGrades: normalized.subjectiveGrades,
     isSubmitted: normalized.isSubmitted,
     ...(normalized.timeLog ? { timeLog: normalized.timeLog } : {}),
+    ...(normalized.wrongChoiceExplanations
+      ? { wrongChoiceExplanations: normalized.wrongChoiceExplanations }
+      : {}),
   };
   const json = JSON.stringify(payload);
   return `<!-- quiz-session ${escapeJsonForComment(json)} -->`;

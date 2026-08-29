@@ -1,3 +1,13 @@
+export {
+  collectWrongQuizQuestions,
+  isQuizQuestionWrong,
+  renumberQuizQuestionsForExtract,
+} from '@/utils/quiz/collectWrongQuizQuestions';
+export { buildWrongQuestionsExtractQuiz } from '@/utils/quiz/buildWrongQuestionsExtractQuiz';
+export {
+  proposeWrongQuizExtractPath,
+  resolveWrongQuizExtractPath,
+} from '@/utils/quiz/quizWrongExtractPath';
 export { isQuizMdPath, quizBasename, QUIZ_MD_EXTENSION } from '@/utils/quiz/quizPath';
 export type * from '@/utils/quiz/quizTypes';
 export {
@@ -16,6 +26,13 @@ export {
   resolveEffectiveSourcePaths,
 } from '@/utils/quiz/parseQuizDocument';
 export {
+  countQuizSourcePathUsage,
+  getActiveSourcePaths,
+  isQuizSourcePathEnabled,
+  removeQuizSourcePathFromConfig,
+  setQuizSourcePathEnabled,
+} from '@/utils/quiz/quizSourcePathState';
+export {
   serializeQuizDocument,
   serializeQuizDocumentFromDoc,
 } from '@/utils/quiz/serializeQuizDocument';
@@ -27,6 +44,12 @@ export {
   parseQuizSessionComment,
   serializeQuizSessionComment,
 } from '@/utils/quiz/quizSessionPersist';
+export {
+  areQuizPersistedSessionsEqual,
+  buildQuizSessionForPersist,
+  hasQuizInProgressSession,
+  hasQuizSessionAnswer,
+} from '@/utils/quiz/quizSessionBuild';
 export {
   appendQuizTimeLogEvent,
   appendQuizQuestionTimeEntry,

@@ -105,6 +105,13 @@ export function isQuizStopwatchRunning(log: QuizTimeLog | null | undefined): boo
   return tail?.type === 'start' || tail?.type === 'resume';
 }
 
+/** True while an exam session is open (started or paused), until explicit stop. */
+export function isQuizExamStopwatchActive(log: QuizTimeLog | null | undefined): boolean {
+  const tail = getQuizTimeLogTail(log);
+  if (!tail) return false;
+  return tail.type !== 'stop';
+}
+
 export function getQuizStopwatchBaseElapsedMs(log: QuizTimeLog | null | undefined): number {
   const tail = getQuizTimeLogTail(log);
   return tail?.elapsedMs ?? 0;

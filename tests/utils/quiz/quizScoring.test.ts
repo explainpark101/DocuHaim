@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { computeQuizScoreBoard } from '@/utils/quiz/quizScoring';
+import { computeQuizScoreBoard, getQuizQuestionGradeStatus } from '@/utils/quiz/quizScoring';
 import type { QuizQuestion } from '@/utils/quiz/quizTypes';
 
 const choice = (id: string, answer: number): QuizQuestion => ({
@@ -58,5 +58,66 @@ describe('computeQuizScoreBoard', () => {
       subjectiveGrades: {},
     });
     expect(board.scorePercent).toBeNull();
+  });
+});
+
+describe('getQuizQuestionGradeStatus', () => {
+  test('returns ungraded when answered but not graded', () => {
+    expect(
+      getQuizQuestionGradeStatus({
+        question: choice('1', 2),
+        userAnswers: { '1': 2 },
+        gradedQuestions: {},
+        isSubmitted: false,
+        subjectiveGrades: {},
+      }),
+    ).toBe('ungraded');
+  });
+
+  test('returns null when unanswered and ungraded', () => {
+    expect(
+      getQuizQuestionGradeStatus({
+        question: choice('1', 2),
+        userAnswers: {},
+        gradedQuestions: {},
+        isSubmitted: false,
+        subjectiveGrades: {},
+      }),
+    ).toBeNull();
+  });
+
+  test('returns correct and wrong for choice', () => {
+    expect(
+      getQuizQuestionGradeStatus({
+        question: choice('1', 2),
+        userAnswers: { '1': 2 },
+        gradedQuestions: { '1': true },
+        isSubmitted: false,
+        subjectiveGrades: {},
+      }),
+    ).toBe('correct');
+    expect(
+      getQuizQuestionGradeStatus({
+        question: choice('1', 2),
+        userAnswers: { '1': 1 },
+        gradedQuestions: { '1': true },
+        isSubmitted: false,
+        subjectiveGrades: {},
+      }),
+    ).toBe('wrong');
+  });
+
+  test('returns subjective verdicts', () => {
+    expect(
+      getQuizQuestionGradeStatus({
+        question: subjective('2'),
+        userAnswers: { '2': 'x' },
+        gradedQuestions: { '2': true },
+        isSubmitted: false,
+        subjectiveGrades: {
+          '2': { verdict: 'partial', score: 40, feedback: 'ok' },
+        },
+      }),
+    ).toBe('partial');
   });
 });

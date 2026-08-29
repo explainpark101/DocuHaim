@@ -6,6 +6,7 @@ import {
   formatQuizElapsedMs,
   getQuizStopwatchBaseElapsedMs,
   isQuizStopwatchRunning,
+  isQuizExamStopwatchActive,
   isQuizTimeLogEmpty,
   normalizeQuizTimeLog,
 } from '@/utils/quiz/quizTimeLog';
@@ -35,7 +36,25 @@ describe('quizTimeLog', () => {
 
     log = appendQuizTimeLogEvent(log, 'stop', 45_000, '2026-08-30T10:01:32.500Z');
     expect(isQuizStopwatchRunning(log)).toBe(false);
+    expect(isQuizExamStopwatchActive(log)).toBe(false);
     expect(log.events).toHaveLength(4);
+  });
+
+  it('tracks exam active through pause until stop', () => {
+    let log = createEmptyQuizTimeLog();
+    expect(isQuizExamStopwatchActive(log)).toBe(false);
+
+    log = appendQuizTimeLogEvent(log, 'start', 0);
+    expect(isQuizExamStopwatchActive(log)).toBe(true);
+
+    log = appendQuizTimeLogEvent(log, 'pause', 1000);
+    expect(isQuizExamStopwatchActive(log)).toBe(true);
+
+    log = appendQuizTimeLogEvent(log, 'resume', 1000);
+    expect(isQuizExamStopwatchActive(log)).toBe(true);
+
+    log = appendQuizTimeLogEvent(log, 'stop', 2000);
+    expect(isQuizExamStopwatchActive(log)).toBe(false);
   });
 
   it('formats elapsed ms', () => {

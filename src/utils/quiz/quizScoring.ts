@@ -1,4 +1,21 @@
 import type { QuizQuestion, SubjectiveGradeResult } from '@/utils/quiz/quizTypes';
+import { hasQuizSessionAnswer } from '@/utils/quiz/quizSessionBuild';
+
+export type QuizQuestionGradeStatus = 'correct' | 'partial' | 'wrong' | 'ungraded';
+
+export const QUIZ_GRADE_STATUS_DOT_CLASS: Record<QuizQuestionGradeStatus, string> = {
+  correct: 'bg-emerald-500',
+  partial: 'bg-amber-500',
+  wrong: 'bg-rose-500',
+  ungraded: 'bg-slate-400 dark:bg-slate-500',
+};
+
+export const QUIZ_GRADE_STATUS_LABEL: Record<QuizQuestionGradeStatus, string> = {
+  correct: '정답',
+  partial: '부분',
+  wrong: '오답',
+  ungraded: '미채점',
+};
 
 export type QuizScoreBoard = {
   correct: number;
@@ -18,6 +35,34 @@ function subjectiveWeight(grade: SubjectiveGradeResult | undefined): number | nu
   if (grade.verdict === 'correct') return 1;
   if (grade.verdict === 'partial') return 0.5;
   return 0;
+}
+
+export function getQuizQuestionGradeStatus(params: {
+  question: QuizQuestion;
+  userAnswers: Record<string, number | string>;
+  gradedQuestions: Record<string, boolean>;
+  isSubmitted: boolean;
+  subjectiveGrades: Record<string, SubjectiveGradeResult>;
+}): QuizQuestionGradeStatus | null {
+  const { question, userAnswers, gradedQuestions, isSubmitted, subjectiveGrades } =
+    params;
+  const isGraded = isSubmitted || gradedQuestions[question.id];
+  const answered = hasQuizSessionAnswer(userAnswers[question.id]);
+
+  if (!isGraded) {
+    return answered ? 'ungraded' : null;
+  }
+
+  if (question.kind === 'choice') {
+    if (!answered) return null;
+    return userAnswers[question.id] === question.answer ? 'correct' : 'wrong';
+  }
+
+  const verdict = subjectiveGrades[question.id]?.verdict;
+  if (verdict === 'correct') return 'correct';
+  if (verdict === 'partial') return 'partial';
+  if (verdict === 'wrong') return 'wrong';
+  return null;
 }
 
 /**
