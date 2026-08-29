@@ -17,6 +17,7 @@ import {
 } from '@/utils/printPageLayout';
 import {
   clampZoomPercent,
+  DEFAULT_PRINT_PREVIEW_VIEW,
   loadPrintPreviewView,
   savePrintPreviewView,
   type PrintPreviewViewState,
@@ -160,14 +161,21 @@ export function useExportPdfPrintLayout({
     };
   }, []);
 
-  const effectiveNavigation = coverEditMode ? 'scroll' : previewView.navigation;
-  const effectivePages = coverEditMode ? 1 : previewView.pages;
-  const isLiveScroll1 = effectiveNavigation === 'scroll' && effectivePages === 1;
-  const viewControlsLocked = Boolean(coverEditMode);
+  // Preview is locked to scroll + 1 page (2-page / flip modes are disabled).
+  const effectiveNavigation = 'scroll' as const;
+  const effectivePages = 1 as const;
+  const isLiveScroll1 = true;
 
   const updatePreviewView = useCallback((partial: Partial<PrintPreviewViewState>) => {
     setPreviewView((prev) => {
-      const next = { ...prev, ...partial };
+      const next = {
+        ...prev,
+        ...partial,
+        // Keep preview locked to scroll + 1 page while alternate modes are disabled.
+        navigation: DEFAULT_PRINT_PREVIEW_VIEW.navigation,
+        pages: DEFAULT_PRINT_PREVIEW_VIEW.pages,
+        firstPageSingle: DEFAULT_PRINT_PREVIEW_VIEW.firstPageSingle,
+      };
       if (Object.prototype.hasOwnProperty.call(partial, 'zoomPercent')) {
         next.zoomPercent = clampZoomPercent(partial.zoomPercent ?? prev.zoomPercent);
       }
@@ -275,7 +283,6 @@ export function useExportPdfPrintLayout({
     effectiveNavigation,
     effectivePages,
     isLiveScroll1,
-    viewControlsLocked,
     updatePreviewView,
     handleStageZoomChange,
     updatePrintLayout,

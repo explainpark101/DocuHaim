@@ -207,11 +207,7 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       coverEditMode={cover.coverEditMode}
       parsedCover={doc.parsedCover}
       updatePrintLayout={layout.updatePrintLayout}
-      effectiveNavigation={layout.effectiveNavigation}
-      viewControlsLocked={layout.viewControlsLocked}
       updatePreviewView={layout.updatePreviewView}
-      setFlipIndex={layout.setFlipIndex}
-      effectivePages={layout.effectivePages}
       previewView={layout.previewView}
       tocVisible={toc.tocVisible}
       setTocVisible={toc.setTocVisible}

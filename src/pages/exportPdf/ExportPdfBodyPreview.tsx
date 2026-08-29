@@ -3,7 +3,7 @@ import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import CoverSlide from '@/components/noteCover/CoverSlide';
 import PrintPreviewStage from '@/components/print/PrintPreviewStage';
-import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
+import { MD_EDITOR_EXPORT_PDF_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import type { NoteCover } from '@/utils/noteCover';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
@@ -148,7 +148,7 @@ export function ExportPdfBodyPreview({
               id={EDITOR_ID}
               theme="light"
               language="ko-KR"
-              codeTheme={MD_EDITOR_CODE_THEME}
+              codeTheme={MD_EDITOR_EXPORT_PDF_CODE_THEME}
               customIcon={MD_EDITOR_CUSTOM_ICONS}
               value={bodyMarkdown}
               mdHeadingId={headingId}

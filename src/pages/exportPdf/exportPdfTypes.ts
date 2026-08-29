@@ -29,7 +29,7 @@ export type ExportPdfWikiImageModalState = {
 } | null;
 
 export type ExportPdfFreeTransformState = {
-  kind: 'wiki' | 'markdown';
+  kind: 'wiki' | 'markdown' | 'mermaid';
   key: string;
   occurrence: number;
   widthPx: number;

@@ -15,8 +15,10 @@ describe('exportPdf paged styles', () => {
     expect(css).toContain('font-size: 16px');
     expect(css).toContain('line-height: 1.7');
     expect(css).toContain('line-height: 1.35');
+    expect(css).toContain('#fafafa');
+    expect(css).toContain('break-inside: auto');
+    expect(css).not.toContain('.md-editor-code {\n  break-inside: avoid');
     expect(css).toContain('rgba(135, 131, 120, 0.15)');
-    expect(css).toContain('#282c34');
     expect(css).toContain('.md-editor-copy-button');
     expect(css).toContain('.md-editor-mermaid[data-processed]');
     expect(css).toContain('.md-editor-mermaid-action');

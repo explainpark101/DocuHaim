@@ -27,6 +27,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [footnotes.md](./footnotes.md) | `[^1]` + `<!-- footnotes {json} -->` | 에디터 / 미리보기 / 인쇄 |
 | [document-settings.md](./document-settings.md) | `<!-- document-settings {json} -->` | 에디터 / 미리보기 / 인쇄 |
 | [preview-hard-break.md](./preview-hard-break.md) | `<br/>` (Mirror Edit Enter) | 에디터 / 미리보기 |
+| [mermaid-fence-size.md](./mermaid-fence-size.md) | ` ```mermaid width=… height=…` | 에디터 / 미리보기 / 인쇄 |
 
 ## Spec conventions (all features)
 

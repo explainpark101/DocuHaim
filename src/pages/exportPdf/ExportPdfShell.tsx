@@ -3,9 +3,6 @@ import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lu
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
-import PrintPreviewFirstPageSingleSwitch from '@/components/print/PrintPreviewFirstPageSingleSwitch';
-import PrintPreviewNavSelect from '@/components/print/PrintPreviewNavSelect';
-import PrintPreviewPagesSelect from '@/components/print/PrintPreviewPagesSelect';
 import PrintPreviewZoomControls from '@/components/print/PrintPreviewZoomControls';
 import PrintVisiblePageBadge from '@/components/print/PrintVisiblePageBadge';
 import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
@@ -71,11 +68,7 @@ export type ExportPdfShellProps = {
   coverEditMode: boolean;
   parsedCover: NoteCover | null | undefined;
   updatePrintLayout: (partial: Partial<PrintPageLayout>) => void;
-  effectiveNavigation: PrintPreviewViewState['navigation'];
-  viewControlsLocked: boolean;
   updatePreviewView: (partial: Partial<PrintPreviewViewState>) => void;
-  setFlipIndex: (index: number) => void;
-  effectivePages: PrintPreviewViewState['pages'];
   previewView: PrintPreviewViewState;
   tocVisible: boolean;
   setTocVisible: React.Dispatch<React.SetStateAction<boolean>>;
@@ -156,11 +149,7 @@ export function ExportPdfShell({
   coverEditMode,
   parsedCover,
   updatePrintLayout,
-  effectiveNavigation,
-  viewControlsLocked,
   updatePreviewView,
-  setFlipIndex,
-  effectivePages,
   previewView,
   tocVisible,
   setTocVisible,
@@ -320,31 +309,6 @@ export function ExportPdfShell({
               value={printLayout.pageSizeId}
               onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}
             />
-            <PrintPreviewNavSelect
-              value={effectiveNavigation}
-              disabled={viewControlsLocked}
-              onValueChange={(navigation) => {
-                updatePreviewView({ navigation });
-                setFlipIndex(0);
-              }}
-            />
-            <PrintPreviewPagesSelect
-              value={effectivePages}
-              disabled={viewControlsLocked}
-              onValueChange={(pages) => {
-                updatePreviewView({ pages });
-                setFlipIndex(0);
-              }}
-            />
-            {effectivePages === 2 && !viewControlsLocked ? (
-              <PrintPreviewFirstPageSingleSwitch
-                checked={previewView.firstPageSingle}
-                onCheckedChange={(firstPageSingle) => {
-                  updatePreviewView({ firstPageSingle });
-                  setFlipIndex(0);
-                }}
-              />
-            ) : null}
             <PrintPreviewZoomControls
               value={previewView.zoomPercent}
               onChange={(zoomPercent) => updatePreviewView({ zoomPercent })}
@@ -561,7 +525,7 @@ export function ExportPdfShell({
           onClick={() => setFreeTransformConfirmOpen(true)}
           className="fixed z-70 bottom-4 left-1/2 -translate-x-1/2 max-w-[min(92vw,680px)] rounded-lg border border-blue-300/60 bg-blue-950/85 px-3 py-2 text-left text-[11px] leading-4 text-blue-50 shadow-lg backdrop-blur-sm print:hidden"
         >
-          <span className="block font-semibold mb-1">이미지 자유변형 안내</span>
+          <span className="block font-semibold mb-1">자유변형 안내</span>
           <span className="block">- Shift + 드래그: 원본 비율 유지 / 일반 드래그: 비율 무시</span>
           <span className="block">- 터치 드래그: 원본 비율 유지</span>
           <span className="block">- 다른 곳 클릭(이 토스트 포함): 변형 완료 확인</span>

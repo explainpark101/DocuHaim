@@ -135,20 +135,20 @@ export function buildExportPdfPagedStyles(
   print-color-adjust: exact;
 }
 
-/* Fenced code block — distinct from white page bg; padding above/below */
+/* Fenced code block — light chrome; may fragment across pages */
 .export-pdf-paged-source .md-editor-code,
 .pagedjs_page_content .md-editor-code {
-  --md-theme-code-block-color: #abb2bf;
-  --md-theme-code-block-bg-color: #282c34;
-  --md-theme-code-before-bg-color: #21252b;
+  --md-theme-code-block-color: #383a42;
+  --md-theme-code-block-bg-color: #fafafa;
+  --md-theme-code-before-bg-color: #f0f0f0;
   display: block;
   margin: 1.25em 0;
   padding: 0;
-  border: 1px solid #3e4452;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: none;
-  background-color: #282c34;
+  background-color: #fafafa;
   line-height: 1.6;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -167,20 +167,26 @@ export function buildExportPdfPagedStyles(
 .pagedjs_page_content .md-editor-code pre {
   margin: 0;
   padding: 0;
-  background-color: #282c34;
+  background-color: #fafafa;
+  overflow: visible;
 }
 
 .export-pdf-paged-source .md-editor-code pre code,
 .pagedjs_page_content .md-editor-code pre code {
   display: block;
-  background-color: #282c34;
-  color: #abb2bf;
+  background-color: #fafafa;
+  color: #383a42;
   border: none;
   border-radius: 0;
   padding: 1em 1.2em;
   line-height: 1.6;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+
+.export-pdf-paged-source .md-editor-code pre code .md-editor-code-block,
+.pagedjs_page_content .md-editor-code pre code .md-editor-code-block {
+  color: unset;
 }
 
 .export-pdf-paged-source table,
@@ -248,6 +254,24 @@ export function buildExportPdfPagedStyles(
   margin-inline: auto;
 }
 
+.export-pdf-paged-source .md-editor-mermaid[data-mermaid-sized],
+.export-pdf-paged-source .md-editor-mermaid[data-print-free-transform],
+.pagedjs_page_content .md-editor-mermaid[data-mermaid-sized],
+.pagedjs_page_content .md-editor-mermaid[data-print-free-transform] {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.export-pdf-paged-source .md-editor-mermaid[data-mermaid-sized] svg,
+.export-pdf-paged-source .md-editor-mermaid[data-print-free-transform] svg,
+.pagedjs_page_content .md-editor-mermaid[data-mermaid-sized] svg,
+.pagedjs_page_content .md-editor-mermaid[data-print-free-transform] svg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
 .export-pdf-paged-source .md-editor-mermaid-action,
 .pagedjs_page_content .md-editor-mermaid-action {
   display: none !important;
@@ -267,10 +291,17 @@ export function buildExportPdfPagedStyles(
 
 figure,
 table,
-.md-editor-mermaid,
-.md-editor-code {
+.md-editor-mermaid {
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+/* Code fences may split across pages when taller than the page box. */
+.md-editor-code,
+.md-editor-code pre,
+.md-editor-code pre code {
+  break-inside: auto;
+  page-break-inside: auto;
 }
 
 img {

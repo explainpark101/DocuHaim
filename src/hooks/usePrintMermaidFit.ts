@@ -41,6 +41,14 @@ export function usePrintMermaidFit(
           ...root.querySelectorAll<HTMLElement>('.md-editor-mermaid[data-processed]'),
         ];
         for (const host of hosts) {
+          if (
+            host.hasAttribute('data-print-free-transform')
+            || host.getAttribute('data-mermaid-sized') === '1'
+            || host.hasAttribute('data-mermaid-width')
+            || host.hasAttribute('data-mermaid-height')
+          ) {
+            continue;
+          }
           clearMermaidFit(host);
           const svg = host.querySelector('svg');
           const naturalWidth = Math.max(
@@ -93,7 +101,7 @@ export function usePrintMermaidFit(
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['data-processed', 'data-content'],
+      attributeFilter: ['data-processed', 'data-content', 'data-mermaid-sized', 'data-print-free-transform'],
     });
 
     return () => {

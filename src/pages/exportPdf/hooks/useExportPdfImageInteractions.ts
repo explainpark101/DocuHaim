@@ -14,6 +14,10 @@ import {
   updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
+import {
+  getMermaidOccurrenceInContainer,
+  updateMermaidFenceSizeInMarkdown,
+} from '@/utils/mermaidFenceSize';
 import type { ExportPdfDocumentState } from '@/pages/exportPdf/hooks/useExportPdfDocument';
 import type { ExportPdfPreviewRefs } from '@/pages/exportPdf/hooks/useExportPdfPreviewRefs';
 import type {
@@ -40,6 +44,13 @@ type UseExportPdfImageInteractionsArgs = Pick<
     'previewContainerRef' | 'pagesHostRef' | 'paperContentRef'
   >;
 };
+
+
+function listMermaidHosts(root: ParentNode): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>('.md-editor-mermaid')].filter(
+    (el) => !el.closest('.haim-mermaid-embed-source'),
+  );
+}
 
 export function useExportPdfImageInteractions({
   previewValue,
@@ -104,6 +115,48 @@ export function useExportPdfImageInteractions({
           ? pagesHostRef.current
           : paperContentRef.current;
       if (!contentRoot) return;
+
+      const mermaid =
+        target instanceof Element
+          ? (target.closest?.('.md-editor-mermaid') as HTMLElement | null)
+          : null;
+      if (
+        mermaid
+        && contentRoot.contains(mermaid)
+        && !mermaid.closest('.haim-mermaid-embed-source')
+        && mermaid.getAttribute('data-processed') != null
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        const occurrence = getMermaidOccurrenceInContainer(contentRoot, mermaid);
+        if (occurrence < 0) return;
+        const rect = mermaid.getBoundingClientRect();
+        const widthPx = Math.max(24, Math.round(rect.width));
+        const heightPx = Math.max(24, Math.round(rect.height));
+        const next: ExportPdfFreeTransformState = {
+          kind: 'mermaid',
+          key: mermaid.getAttribute('data-content') || `mermaid-${occurrence}`,
+          occurrence,
+          widthPx,
+          heightPx,
+          originalWidthPx: widthPx,
+          originalHeightPx: heightPx,
+        };
+        mermaid.style.width = `${widthPx}px`;
+        mermaid.style.height = `${heightPx}px`;
+        mermaid.style.maxWidth = 'none';
+        mermaid.style.overflow = 'hidden';
+        mermaid.style.transform = '';
+        mermaid.style.marginRight = '';
+        mermaid.style.marginBottom = '';
+        mermaid.removeAttribute('data-print-mermaid-fit');
+        mermaid.setAttribute('data-print-free-transform', '1');
+        activeTransformRef.current = next;
+        setFreeTransformState(next);
+        setFreeTransformConfirmOpen(false);
+        setWikiImageModalState(null);
+        return;
+      }
 
       const img =
         target instanceof Element
@@ -300,10 +353,14 @@ export function useExportPdfImageInteractions({
     [currentFile, getImgbbApiKey, previewValue, setPreviewValue, wikiImageModalState],
   );
 
-  const findResizableImageElement = useCallback(
+  const findResizableTarget = useCallback(
     (target: ExportPdfFreeTransformState | ExportPdfWikiImageModalState) => {
       const root = previewContainerRef.current;
-      if (!root || !target?.kind || !target?.key) return null;
+      if (!root || !target) return null;
+      if (target.kind === 'mermaid') {
+        return listMermaidHosts(root)[target.occurrence ?? 0] ?? null;
+      }
+      if (!('key' in target) || !target.key) return null;
       const selector =
         target.kind === 'wiki' ? 'img[data-wiki-path]' : 'img[data-md-src]';
       const images = [...root.querySelectorAll<HTMLImageElement>(selector)];
@@ -319,37 +376,62 @@ export function useExportPdfImageInteractions({
     [previewContainerRef],
   );
 
+  const beginFreeTransformOnElement = useCallback(
+    (
+      el: HTMLElement,
+      meta: {
+        kind: 'wiki' | 'markdown' | 'mermaid';
+        key: string;
+        occurrence: number;
+      },
+    ) => {
+      const rect = el.getBoundingClientRect();
+      const widthPx = Math.max(24, Math.round(rect.width));
+      const heightPx = Math.max(24, Math.round(rect.height));
+      const next: ExportPdfFreeTransformState = {
+        kind: meta.kind,
+        key: meta.key,
+        occurrence: meta.occurrence,
+        widthPx,
+        heightPx,
+        originalWidthPx: widthPx,
+        originalHeightPx: heightPx,
+      };
+      el.style.width = `${widthPx}px`;
+      el.style.height = `${heightPx}px`;
+      el.style.maxWidth = 'none';
+      el.style.overflow = 'hidden';
+      el.style.transform = '';
+      el.style.marginRight = '';
+      el.style.marginBottom = '';
+      el.removeAttribute('data-print-mermaid-fit');
+      el.setAttribute('data-print-free-transform', '1');
+      activeTransformRef.current = next;
+      setFreeTransformState(next);
+      setFreeTransformConfirmOpen(false);
+      setWikiImageModalState(null);
+    },
+    [],
+  );
+
   const startFreeTransform = useCallback(() => {
     const modal = wikiImageModalState;
     if (!modal?.kind || !modal?.key) return;
-    const img = findResizableImageElement(modal);
+    const img = findResizableTarget(modal);
     if (!img) return;
-    const rect = img.getBoundingClientRect();
-    const widthPx = Math.max(24, Math.round(rect.width));
-    const heightPx = Math.max(24, Math.round(rect.height));
-    const next: ExportPdfFreeTransformState = {
+    beginFreeTransformOnElement(img, {
       kind: modal.kind,
       key: modal.key,
       occurrence: modal.occurrence ?? 0,
-      widthPx,
-      heightPx,
-      originalWidthPx: widthPx,
-      originalHeightPx: heightPx,
-    };
-    img.style.width = `${widthPx}px`;
-    img.style.height = `${heightPx}px`;
-    img.setAttribute('data-print-free-transform', '1');
-    activeTransformRef.current = next;
-    setFreeTransformState(next);
-    setFreeTransformConfirmOpen(false);
-  }, [findResizableImageElement, wikiImageModalState]);
+    });
+  }, [beginFreeTransformOnElement, findResizableTarget, wikiImageModalState]);
 
   useEffect(() => {
     if (!freeTransformState) {
       setFreeTransformOverlayRect(null);
       return undefined;
     }
-    const img = findResizableImageElement(freeTransformState);
+    const img = findResizableTarget(freeTransformState);
     if (!img) {
       setFreeTransformState(null);
       setFreeTransformOverlayRect(null);
@@ -368,11 +450,11 @@ export function useExportPdfImageInteractions({
     };
     rafId = requestAnimationFrame(updateRect);
     return () => cancelAnimationFrame(rafId);
-  }, [findResizableImageElement, freeTransformState]);
+  }, [findResizableTarget, freeTransformState]);
 
   useEffect(() => {
     if (!freeTransformState) return undefined;
-    const target = findResizableImageElement(freeTransformState);
+    const target = findResizableTarget(freeTransformState);
     if (!target) return undefined;
 
     const onHandleDown = (event: PointerEvent) => {
@@ -442,9 +524,9 @@ export function useExportPdfImageInteractions({
           : null;
       const clickedImage =
         event.target instanceof Element
-          ? event.target.closest?.('img[data-wiki-path], img[data-md-src]')
+          ? event.target.closest?.('img[data-wiki-path], img[data-md-src], .md-editor-mermaid')
           : null;
-      if (clickedHandle || clickedImage === target) return;
+      if (clickedHandle || clickedImage === target || (clickedImage && target.contains(clickedImage))) return;
       setFreeTransformConfirmOpen(true);
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -467,56 +549,79 @@ export function useExportPdfImageInteractions({
       document.removeEventListener('pointerdown', onOutsidePointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
     };
-  }, [findResizableImageElement, freeTransformState]);
+  }, [findResizableTarget, freeTransformState]);
 
   const handleConfirmTransformApply = useCallback(() => {
     const active = activeTransformRef.current || freeTransformState;
-    if (!active?.key) return;
+    if (!active) return;
     const width = `${Math.round(active.widthPx)}px`;
     const height = `${Math.round(active.heightPx)}px`;
-    const next =
-      active.kind === 'wiki'
-        ? updateWikiImageSizeInMarkdown(previewValue, {
-            path: active.key,
-            occurrence: active.occurrence ?? 0,
-            width,
-            height,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JS util infers null-only width/height
-          } as any)
-        : updateMarkdownImageSizeInMarkdown(previewValue, {
-            src: active.key,
-            occurrence: active.occurrence ?? 0,
-            width,
-            height,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JS util infers null-only width/height
-          } as any);
-    if (next.updated && next.markdown !== previewValue) {
-      setPreviewValue(next.markdown);
+
+    let nextMarkdown = previewValue;
+    let updated = false;
+    if (active.kind === 'mermaid') {
+      const next = updateMermaidFenceSizeInMarkdown(previewValue, {
+        occurrence: active.occurrence ?? 0,
+        width,
+        height,
+      });
+      updated = next.updated;
+      nextMarkdown = next.markdown;
+    } else if (active.key) {
+      const next =
+        active.kind === 'wiki'
+          ? updateWikiImageSizeInMarkdown(previewValue, {
+              path: active.key,
+              occurrence: active.occurrence ?? 0,
+              width,
+              height,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JS util infers null-only width/height
+            } as any)
+          : updateMarkdownImageSizeInMarkdown(previewValue, {
+              src: active.key,
+              occurrence: active.occurrence ?? 0,
+              width,
+              height,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JS util infers null-only width/height
+            } as any);
+      updated = next.updated;
+      nextMarkdown = next.markdown;
+    }
+
+    if (updated && nextMarkdown !== previewValue) {
+      setPreviewValue(nextMarkdown);
       setPendingPrintReturnState({
         currentFile,
-        editorContent: next.markdown,
+        editorContent: nextMarkdown,
       });
     }
-    const img = findResizableImageElement(active);
-    img?.removeAttribute('data-print-free-transform');
+    const el = findResizableTarget(active);
+    if (el) {
+      el.removeAttribute('data-print-free-transform');
+      if (active.kind === 'mermaid') {
+        el.setAttribute('data-mermaid-width', width);
+        el.setAttribute('data-mermaid-height', height);
+        el.setAttribute('data-mermaid-sized', '1');
+      }
+    }
     setFreeTransformState(null);
     activeTransformRef.current = null;
     setFreeTransformConfirmOpen(false);
-  }, [currentFile, findResizableImageElement, freeTransformState, previewValue, setPreviewValue]);
+  }, [currentFile, findResizableTarget, freeTransformState, previewValue, setPreviewValue]);
 
   const handleConfirmTransformReset = useCallback(() => {
     const active = activeTransformRef.current || freeTransformState;
     if (!active) return;
-    const img = findResizableImageElement(active);
-    if (img) {
-      img.style.width = `${active.originalWidthPx}px`;
-      img.style.height = `${active.originalHeightPx}px`;
-      img.removeAttribute('data-print-free-transform');
+    const el = findResizableTarget(active);
+    if (el) {
+      el.style.width = `${active.originalWidthPx}px`;
+      el.style.height = `${active.originalHeightPx}px`;
+      el.removeAttribute('data-print-free-transform');
     }
     setFreeTransformState(null);
     activeTransformRef.current = null;
     setFreeTransformConfirmOpen(false);
-  }, [findResizableImageElement, freeTransformState]);
+  }, [findResizableTarget, freeTransformState]);
 
   return {
     wikiImageModalState,

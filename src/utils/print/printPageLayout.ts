@@ -138,7 +138,12 @@ function formatPrintImageMaxPx(value: number): string {
 export function stepPrintImageMaxPx(
   raw: string,
   direction: 1 | -1,
-  options?: { shiftKey?: boolean; altKey?: boolean; emptyFallback?: string },
+  options?: {
+    shiftKey?: boolean;
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+    emptyFallback?: string;
+  },
 ): string | null {
   const source = String(raw ?? '').trim() || options?.emptyFallback || '';
   const normalized =
@@ -147,7 +152,10 @@ export function stepPrintImageMaxPx(
   if (!normalized) return null;
   const current = Number(normalized.slice(0, -2));
   if (!Number.isFinite(current)) return null;
-  const step = options?.altKey ? 1 : options?.shiftKey ? 50 : 10;
+  const mod = Boolean(options?.ctrlKey || options?.metaKey);
+  const shift = Boolean(options?.shiftKey);
+  // Arrow/wheel: 1px · Shift 10 · Ctrl/Cmd 50 · Ctrl/Cmd+Shift 100
+  const step = mod && shift ? 100 : mod ? 50 : shift ? 10 : 1;
   return formatPrintImageMaxPx(current + direction * step);
 }
 

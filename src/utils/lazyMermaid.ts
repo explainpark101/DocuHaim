@@ -105,6 +105,17 @@ function buildProcessedMermaidHost(
   if (line != null) host.setAttribute('data-line', line);
   const replaceKey = el.getAttribute('data-haim-imgbb-replace-key');
   if (replaceKey) host.setAttribute('data-haim-imgbb-replace-key', replaceKey);
+  const width = el.getAttribute('data-mermaid-width');
+  const height = el.getAttribute('data-mermaid-height');
+  if (width) host.setAttribute('data-mermaid-width', width);
+  if (height) host.setAttribute('data-mermaid-height', height);
+  if (width || height) {
+    host.setAttribute('data-mermaid-sized', '1');
+    if (width) host.style.width = width;
+    if (height) host.style.height = height;
+    host.style.maxWidth = '100%';
+    host.style.overflow = 'hidden';
+  }
   host.innerHTML = svg;
   host.children[0]?.removeAttribute('height');
   bindFunctions?.(host);

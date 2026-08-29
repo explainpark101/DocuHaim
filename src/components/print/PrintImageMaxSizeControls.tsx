@@ -11,7 +11,7 @@ type Props = {
 };
 
 const HINT =
-  '↑↓/휠: 10px · Shift+↑↓/휠: 50px · Alt+↑↓/휠: 1px';
+  '↑↓/휠: 1px · Shift: 10px · ⌘/Ctrl: 50px · ⌘/Ctrl+Shift: 100px';
 
 /** Horizontal padding (px-2) + border breathing room for pretext fit. */
 const INPUT_EXTRA_PX = 22;
@@ -91,7 +91,7 @@ export default function PrintImageMaxSizeControls({
     axis: 'width' | 'height',
     el: HTMLInputElement,
     direction: 1 | -1,
-    modifiers: { shiftKey: boolean; altKey: boolean },
+    modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   ) => {
     const {
       maxWidth: currentMaxWidth,
@@ -103,7 +103,8 @@ export default function PrintImageMaxSizeControls({
     const fallback = axis === 'width' ? widthEmptyFallback : heightEmptyFallback;
     const next = stepPrintImageMaxPx(el.value, direction, {
       shiftKey: modifiers.shiftKey,
-      altKey: modifiers.altKey,
+      ctrlKey: modifiers.ctrlKey,
+      metaKey: modifiers.metaKey,
       emptyFallback: fallback,
     });
     if (next === null) return;
@@ -134,7 +135,8 @@ export default function PrintImageMaxSizeControls({
         const direction: 1 | -1 = event.deltaY < 0 ? 1 : -1;
         applyStep(axis, el, direction, {
           shiftKey: event.shiftKey,
-          altKey: event.altKey,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
         });
       };
       el.addEventListener('wheel', onWheel, { passive: false });
@@ -164,7 +166,8 @@ export default function PrintImageMaxSizeControls({
     const direction: 1 | -1 = event.key === 'ArrowUp' ? 1 : -1;
     applyStep(axis, event.currentTarget, direction, {
       shiftKey: event.shiftKey,
-      altKey: event.altKey,
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
     });
   };
 

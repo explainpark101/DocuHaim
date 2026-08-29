@@ -151,16 +151,10 @@ export function loadPrintPreviewView(): PrintPreviewViewState {
     if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_PRINT_PREVIEW_VIEW };
     const record = parsed as Record<string, unknown>;
     return {
-      navigation: isPrintPreviewNavigation(record.navigation)
-        ? record.navigation
-        : DEFAULT_PRINT_PREVIEW_VIEW.navigation,
-      pages: isPrintPreviewPageCount(record.pages)
-        ? record.pages
-        : DEFAULT_PRINT_PREVIEW_VIEW.pages,
-      firstPageSingle:
-        typeof record.firstPageSingle === 'boolean'
-          ? record.firstPageSingle
-          : DEFAULT_PRINT_PREVIEW_VIEW.firstPageSingle,
+      // 2-page / flip preview modes are disabled; always coerce to scroll + 1 page.
+      navigation: DEFAULT_PRINT_PREVIEW_VIEW.navigation,
+      pages: DEFAULT_PRINT_PREVIEW_VIEW.pages,
+      firstPageSingle: DEFAULT_PRINT_PREVIEW_VIEW.firstPageSingle,
       zoomPercent: clampZoomPercent(
         typeof record.zoomPercent === 'number'
           ? record.zoomPercent

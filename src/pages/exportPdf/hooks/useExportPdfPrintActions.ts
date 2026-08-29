@@ -66,17 +66,6 @@ export function useExportPdfPrintActions({
       'print-font-settings': () => setFontModalOpen(true),
       'print-export': () => handleExport(),
       'print-toggle-toc': () => setTocVisible((v) => !v),
-      'print-view-scroll': () => updatePreviewView({ navigation: 'scroll' }),
-      'print-view-flip': () => updatePreviewView({ navigation: 'flip' }),
-      'print-view-pages-1': () => updatePreviewView({ pages: 1 }),
-      'print-view-pages-2': () => updatePreviewView({ pages: 2 }),
-      'print-toggle-first-page-single': () => {
-        setPreviewView((prev) => {
-          const next = { ...prev, firstPageSingle: !prev.firstPageSingle };
-          savePrintPreviewView(next);
-          return next;
-        });
-      },
       'print-zoom-in': () => {
         setPreviewView((prev) => {
           const next = { ...prev, zoomPercent: stepZoomPercent(prev.zoomPercent, 1) };

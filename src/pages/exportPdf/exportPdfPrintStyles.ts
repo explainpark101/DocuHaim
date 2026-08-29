@@ -108,32 +108,36 @@ export const printFontStyles = `
     font-family: var(--print-font-code, var(--font-mono-builtin));
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code {
-    --md-theme-code-block-color: #abb2bf;
-    --md-theme-code-block-bg-color: #282c34;
-    --md-theme-code-before-bg-color: #21252b;
+    --md-theme-code-block-color: #383a42;
+    --md-theme-code-block-bg-color: #fafafa;
+    --md-theme-code-before-bg-color: #f0f0f0;
     margin: 1.25em 0;
-    border: 1px solid #3e4452;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
-    overflow: hidden;
+    overflow: visible;
     box-shadow: none;
-    background-color: #282c34;
+    background-color: #fafafa;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head {
     display: none !important;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre {
     margin: 0;
-    background-color: #282c34;
+    background-color: #fafafa;
+    overflow: visible;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code {
-    background-color: #282c34;
-    color: #abb2bf;
+    background-color: #fafafa;
+    color: #383a42;
     border: none;
     border-radius: 0;
     padding: 1em 1.2em;
     line-height: 1.6;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code .md-editor-code-block {
+    color: unset;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview :not(pre) > code {
     background-color: rgba(135, 131, 120, 0.15);
@@ -163,6 +167,26 @@ export const printFontStyles = `
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-processed] svg,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-mermaid[data-processed] svg {
     margin-inline: auto;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-print-free-transform],
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-mermaid-sized],
+  [data-export-pdf-pages] .md-editor-mermaid[data-print-free-transform],
+  [data-export-pdf-pages] .md-editor-mermaid[data-mermaid-sized],
+  .export-pdf-preview-stage .md-editor-mermaid[data-print-free-transform],
+  .export-pdf-preview-stage .md-editor-mermaid[data-mermaid-sized] {
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-print-free-transform] svg,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-mermaid-sized] svg,
+  [data-export-pdf-pages] .md-editor-mermaid[data-print-free-transform] svg,
+  [data-export-pdf-pages] .md-editor-mermaid[data-mermaid-sized] svg,
+  .export-pdf-preview-stage .md-editor-mermaid[data-print-free-transform] svg,
+  .export-pdf-preview-stage .md-editor-mermaid[data-mermaid-sized] svg {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid-action,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-mermaid-action {
@@ -274,10 +298,10 @@ export const printFontStyles = `
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code {
     display: block;
     margin: 1.25em 0;
-    border: 1px solid #3e4452;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
-    overflow: hidden;
-    background-color: #282c34;
+    overflow: visible;
+    background-color: #fafafa;
     line-height: 1.6;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -309,13 +333,14 @@ export const printFontStyles = `
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code pre,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code pre {
     margin: 0;
-    background-color: #282c34;
+    background-color: #fafafa;
+    overflow: visible;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code pre code,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code pre code {
     display: block;
-    background-color: #282c34;
-    color: #abb2bf;
+    background-color: #fafafa;
+    color: #383a42;
     border: none;
     border-radius: 0;
     padding: 1em 1.2em;
