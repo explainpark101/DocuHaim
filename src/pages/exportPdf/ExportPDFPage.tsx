@@ -6,6 +6,7 @@ import type { ExportPDFPageProps } from '@/pages/exportPdf/exportPdfTypes';
 import { useExportPdfCover } from '@/pages/exportPdf/hooks/useExportPdfCover';
 import { useExportPdfCoverChrome } from '@/pages/exportPdf/hooks/useExportPdfCoverChrome';
 import { useExportPdfDocument } from '@/pages/exportPdf/hooks/useExportPdfDocument';
+import { useExportPdfHaimTableInteractions } from '@/pages/exportPdf/hooks/useExportPdfHaimTableInteractions';
 import { useExportPdfImageInteractions } from '@/pages/exportPdf/hooks/useExportPdfImageInteractions';
 import { useExportPdfPreviewRefs } from '@/pages/exportPdf/hooks/useExportPdfPreviewRefs';
 import { useExportPdfPrintActions } from '@/pages/exportPdf/hooks/useExportPdfPrintActions';
@@ -57,6 +58,12 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
     setPreviewValue: doc.setPreviewValue,
     currentFile: doc.currentFile,
     currentFileRef: doc.currentFileRef,
+    previewValueRef: doc.previewValueRef,
+    refs,
+  });
+  const tables = useExportPdfHaimTableInteractions({
+    previewValue: doc.previewValue,
+    setPreviewValue: doc.setPreviewValue,
     previewValueRef: doc.previewValueRef,
     refs,
   });
@@ -252,6 +259,8 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       handleConfirmTransformReset={images.handleConfirmTransformReset}
       headingPgbrModalState={toc.headingPgbrModalState}
       handleInsertPgbrBeforeHeading={toc.handleInsertPgbrBeforeHeading}
+      haimTableEdit={tables.haimTableEdit}
+      onHaimTableEditFailed={tables.onEditFailed}
     />
   );
 }

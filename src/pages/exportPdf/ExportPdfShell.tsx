@@ -7,6 +7,8 @@ import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
 import PrintPreviewZoomControls from '@/components/print/PrintPreviewZoomControls';
 import PrintVisiblePageBadge from '@/components/print/PrintVisiblePageBadge';
 import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
+import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
+import { TableEditModal } from '@/components/haimTable/TableEditModal';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import PreviewFootnoteTooltips from '@/components/PreviewFootnoteTooltips';
@@ -19,7 +21,9 @@ import type { PrintPageLayout } from '@/utils/printPageLayout';
 import type { PrintPreviewViewState } from '@/utils/printPreviewView';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { findExportPdfOverlayPortal } from '@/utils/cssZoom';
+import { findHaimTablePreviewRoot } from '@/utils/haimTable';
 import { printFontStyles } from '@/pages/exportPdf/exportPdfPrintStyles';
+import type { HaimTableEditState } from '@/hooks/useHaimTableEdit';
 import type {
   ExportPdfDocumentFile,
   ExportPdfFreeTransformState,
@@ -37,6 +41,17 @@ import type { NoteCover } from '@/utils/noteCover';
 import { DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
 
 type PrintFontsState = typeof DEFAULT_PRINT_FONTS;
+
+type HaimTableEditApi = {
+  editState: HaimTableEditState | null;
+  isOpen: boolean;
+  close: () => void;
+  apply: (
+    meta: NonNullable<HaimTableEditState>['meta'],
+    grid: NonNullable<HaimTableEditState>['grid'],
+  ) => void;
+  openPreviewTable: (table: HTMLTableElement, previewRoot: Element) => boolean;
+};
 
 export type ExportPdfShellProps = {
   isDocumentLoading: boolean;
@@ -117,6 +132,8 @@ export type ExportPdfShellProps = {
   handleConfirmTransformReset: () => void;
   headingPgbrModalState: ExportPdfHeadingPgbrModalState;
   handleInsertPgbrBeforeHeading: () => void;
+  haimTableEdit: HaimTableEditApi;
+  onHaimTableEditFailed: () => void;
 };
 
 export function ExportPdfShell({
@@ -196,6 +213,8 @@ export function ExportPdfShell({
   handleConfirmTransformReset,
   headingPgbrModalState,
   handleInsertPgbrBeforeHeading,
+  haimTableEdit,
+  onHaimTableEditFailed,
 }: ExportPdfShellProps) {
   if (isDocumentLoading) {
     return (
@@ -492,6 +511,24 @@ export function ExportPdfShell({
         containerRef={previewContainerRef}
         getMarkdown={() => previewValueRef.current ?? ''}
         setMarkdown={(next) => setPreviewValue(next)}
+        enabled={!haimTableEdit.isOpen}
+      />
+      <PreviewTableContextMenu
+        containerRef={previewContainerRef}
+        getMarkdown={() => previewValueRef.current ?? ''}
+        setMarkdown={(next) => setPreviewValue(next)}
+        onEditTable={haimTableEdit.openPreviewTable}
+        onEditFailed={onHaimTableEditFailed}
+        findPreviewRoot={findHaimTablePreviewRoot}
+        mobileMenuTitle="PDF 표"
+        mobileMenuSubtitle="표 편집"
+      />
+      <TableEditModal
+        isOpen={haimTableEdit.isOpen}
+        initialMeta={haimTableEdit.editState?.meta ?? null}
+        initialGrid={haimTableEdit.editState?.grid ?? { rows: [['']], aligns: [null] }}
+        onClose={haimTableEdit.close}
+        onSave={haimTableEdit.apply}
       />
       {freeTransformState && freeTransformOverlayRect && typeof document !== 'undefined'
         ? (() => {

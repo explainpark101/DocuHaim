@@ -68,7 +68,7 @@ export function findExportPdfOverlayPortal(
       ? container.querySelector(EXPORT_PDF_OVERLAY_PORTAL_SELECTOR)
       : null;
   if (scoped instanceof HTMLElement) return scoped;
-  if (container instanceof Element && container.matches(EXPORT_PDF_OVERLAY_PORTAL_SELECTOR)) {
+  if (container instanceof HTMLElement && container.matches(EXPORT_PDF_OVERLAY_PORTAL_SELECTOR)) {
     return container;
   }
   return null;

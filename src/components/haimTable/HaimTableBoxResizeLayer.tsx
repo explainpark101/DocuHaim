@@ -21,6 +21,7 @@ import {
   visualDeltaToLayoutDelta,
   type OverlayRect,
 } from '@/utils/cssZoom';
+import { findHaimTablePreviewRoot } from '@/utils/haimTable';
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
 
@@ -52,17 +53,7 @@ const HANDLE_POS: Record<Corner, CSSProperties> = {
 };
 
 function findPreviewRoot(container: HTMLElement | null): Element | null {
-  if (!container) return null;
-  if (container.classList?.contains('md-editor-preview')) return container;
-  if (container.hasAttribute?.('data-export-pdf-preview') || container.id === 'export-pdf-preview') {
-    return container.querySelector('.md-editor-preview') ?? container;
-  }
-  return (
-    container.querySelector('.md-editor-preview')
-    ?? container.querySelector('#export-pdf-preview .md-editor-preview')
-    ?? container.querySelector('[data-export-pdf-preview] .md-editor-preview')
-    ?? container
-  );
+  return findHaimTablePreviewRoot(container);
 }
 
 /**

@@ -14,10 +14,8 @@ import {
   updateWikiImagePathInMarkdown,
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
-import {
-  getMermaidOccurrenceInContainer,
-  updateMermaidFenceSizeInMarkdown,
-} from '@/utils/mermaidFenceSize';
+import { getMermaidOccurrenceInContainer } from '@/utils/mermaidFenceSize';
+import { upsertMermaidSizeInMarkdown } from '@/utils/mermaidSizeComment';
 import type { ExportPdfDocumentState } from '@/pages/exportPdf/hooks/useExportPdfDocument';
 import type { ExportPdfPreviewRefs } from '@/pages/exportPdf/hooks/useExportPdfPreviewRefs';
 import type {
@@ -596,7 +594,7 @@ export function useExportPdfImageInteractions({
     let nextMarkdown = previewValue;
     let updated = false;
     if (active.kind === 'mermaid') {
-      const next = updateMermaidFenceSizeInMarkdown(previewValue, {
+      const next = upsertMermaidSizeInMarkdown(previewValue, {
         occurrence: active.occurrence ?? 0,
         width,
         height,

@@ -20,8 +20,11 @@ import {
 } from '@/utils/mermaidBase64Fence';
 import {
   buildMermaidSizeStyle,
-  parseMermaidFenceInfoSize,
 } from '@/utils/mermaidFenceSize';
+import {
+  mergeMermaidFenceSize,
+  readMermaidSizeCommentFromSrcLines,
+} from '@/utils/mermaidSizeComment';
 
 const PREFIX = 'md-editor';
 
@@ -43,8 +46,12 @@ function escapeAttr(value: string): string {
     .replace(/</g, '&lt;');
 }
 
-function sizeAttrsFromInfo(info: string): string[] {
-  const size = parseMermaidFenceInfoSize(info);
+function sizeAttrsFromInfo(info: string, fenceEnv?: FenceEnv, fenceLine?: number): string[] {
+  const comment =
+    fenceLine != null && fenceEnv?.srcLines?.length
+      ? readMermaidSizeCommentFromSrcLines(fenceEnv.srcLines, fenceLine)
+      : null;
+  const size = mergeMermaidFenceSize(info, comment);
   const attrs: string[] = [];
   if (size.width) attrs.push(`data-mermaid-width="${escapeAttr(size.width)}"`);
   if (size.height) attrs.push(`data-mermaid-height="${escapeAttr(size.height)}"`);
@@ -62,11 +69,16 @@ function buildMermaidAttrs(
   theme: string,
   info: string,
 ): string {
+  const fenceLine = token.map?.[0];
   const attrs: string[] = [
     `class="${PREFIX}-mermaid"`,
     `data-mermaid-theme="${theme}"`,
     `data-haim-mermaid-lazy="1"`,
-    ...sizeAttrsFromInfo(info),
+    ...sizeAttrsFromInfo(
+      info,
+      fenceEnv,
+      typeof fenceLine === 'number' ? fenceLine : undefined,
+    ),
   ];
   if (token.map && token.level === 0) {
     attrs.push(`data-closed="${String(isFenceClosed(token, fenceEnv))}"`);
@@ -127,7 +139,12 @@ export function mermaidFenceMarkdownItPlugin(md: MarkdownItInstance): void {
     const imageSrc = extractMermaidBase64ImageSrc(trimmed);
     const langLabel = isMermaidLang ? 'mermaid' : 'Mermaid';
     const summary = summarizeMermaidEmbedSource(trimmed);
-    const sizeExtra = sizeAttrsFromInfo(info);
+    const fenceLine = token.map?.[0];
+    const sizeExtra = sizeAttrsFromInfo(
+      info,
+      fenceEnv,
+      typeof fenceLine === 'number' ? fenceLine : undefined,
+    );
 
     if (imageSrc) {
       const renderHtml =
@@ -148,7 +165,12 @@ export function mermaidFenceMarkdownItPlugin(md: MarkdownItInstance): void {
     token.attrSet('class', `${PREFIX}-mermaid`);
     token.attrSet('data-mermaid-theme', theme);
     token.attrSet('data-haim-mermaid-lazy', '1');
-    const size = parseMermaidFenceInfoSize(info);
+    const size = mergeMermaidFenceSize(
+      info,
+      typeof fenceLine === 'number' && fenceEnv?.srcLines?.length
+        ? readMermaidSizeCommentFromSrcLines(fenceEnv.srcLines, fenceLine)
+        : null,
+    );
     if (size.width) token.attrSet('data-mermaid-width', size.width);
     if (size.height) token.attrSet('data-mermaid-height', size.height);
     if (size.width || size.height) {
