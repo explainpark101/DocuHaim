@@ -256,6 +256,9 @@ pub fn run() {
     #[cfg(not(mobile))]
     {
         builder = builder.plugin(tauri_plugin_biometry::init());
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
     }
 
     #[cfg(mobile)]

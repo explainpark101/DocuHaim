@@ -9,6 +9,8 @@ export function isVaultPathStorageType(
   return VAULT_PATH_STORAGE_TYPES.includes(type as VaultPathStorageType);
 }
 
+import type { SessionWorkspace, SessionWorkspacesMap } from '@/utils/sessionWorkspace';
+
 /** §3–4 vault / storage trees + backends (owned by VaultProvider / useVaultDomain). */
 export type VaultValue = {
   storageMode: string;
@@ -16,7 +18,12 @@ export type VaultValue = {
   s3Tree: any[];
   localTree: any[];
   webdavTree: any[];
-  sessionWorkspace: any;
+  sessionWorkspaces: SessionWorkspacesMap;
+  setSessionWorkspaces: (
+    ws: SessionWorkspacesMap | ((prev: SessionWorkspacesMap) => SessionWorkspacesMap),
+  ) => void;
+  upsertSessionWorkspace: (workspace: SessionWorkspace) => void;
+  removeSessionWorkspace: (sessionId: string) => void;
   localRootHandle: any;
   localVaultFsPath: string | null;
   webdavConfig: any;
@@ -40,7 +47,6 @@ export type VaultValue = {
   setS3Tree: (...args: any[]) => any;
   setLocalTree: (...args: any[]) => any;
   setWebdavTree: (...args: any[]) => any;
-  setSessionWorkspace: (...args: any[]) => any;
   setLocalRootHandle: (...args: any[]) => any;
   setLocalVaultFsPath: (...args: any[]) => any;
   setIsLocalTreeLoading: (...args: any[]) => any;

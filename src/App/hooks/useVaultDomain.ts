@@ -31,7 +31,9 @@ import {
 } from '@/utils/localVaultPathStore';
 import {
   pickTauriLocalVaultDirectory,
+  loadTauriLocalTreeInitial,
   readTauriLocalDirectoryTree,
+  createTauriLocalBackend,
 } from '@/utils/storage/tauriLocalBackend';
 import type { VaultValue } from '@/App/context/VaultContext';
 
@@ -50,7 +52,7 @@ export function useVaultDomain(): VaultValue {
     setLocalTree,
     webdavTree,
     setWebdavTree,
-    sessionWorkspace,
+    sessionWorkspaces,
     localRootHandle,
     setLocalRootHandle,
     localVaultFsPath,
@@ -165,12 +167,19 @@ export function useVaultDomain(): VaultValue {
 
   const loadLocalFolderChildren = useCallback(
     async (folderNode: any) => {
-      if (!folderNode?.handle || folderNode.childrenLoaded === true) return;
+      if (!folderNode || folderNode.childrenLoaded === true) return;
       const folderPath = folderNode.path;
       if (!folderPath || localFolderLoadInFlightRef.current.has(folderPath)) return;
       localFolderLoadInFlightRef.current.add(folderPath);
       setLocalFolderLoadingPath(folderPath);
       try {
+        if (!folderNode.handle && localVaultFsPath) {
+          const backend = createTauriLocalBackend(localVaultFsPath);
+          const children = await backend.listChildren(folderPath);
+          setLocalTree((prev) => patchLocalTreeChildren(prev, folderPath, children));
+          return;
+        }
+        if (!folderNode?.handle) return;
         const children = await readLocalDirectoryLevel(
           folderNode.handle,
           folderPath,
@@ -184,7 +193,7 @@ export function useVaultDomain(): VaultValue {
         );
       }
     },
-    [setLocalFolderLoadingPath, setLocalTree],
+    [localVaultFsPath, setLocalFolderLoadingPath, setLocalTree],
   );
 
   const openLocalFolder = useCallback(async () => {
@@ -198,7 +207,10 @@ export function useVaultDomain(): VaultValue {
         setStorageMode(STORAGE_MODE_LOCAL);
         setIsLocalTreeLoading(true);
         try {
-          const tree = await readTauriLocalDirectoryTree(abs);
+          const tree = await loadTauriLocalTreeInitial(
+            abs,
+            loadExpandedFolderPaths().local,
+          );
           setLocalTree(tree);
         } finally {
           setIsLocalTreeLoading(false);
@@ -291,7 +303,7 @@ export function useVaultDomain(): VaultValue {
       s3Tree,
       localTree,
       webdavTree,
-      sessionWorkspace,
+      sessionWorkspaces,
       localRootHandle,
       localVaultFsPath,
       webdavConfig,
@@ -316,7 +328,9 @@ export function useVaultDomain(): VaultValue {
       setS3Tree,
       setLocalTree,
       setWebdavTree,
-      setSessionWorkspace: owned.setSessionWorkspace,
+      setSessionWorkspaces: owned.setSessionWorkspaces,
+      upsertSessionWorkspace: owned.upsertSessionWorkspace,
+      removeSessionWorkspace: owned.removeSessionWorkspace,
       setLocalRootHandle,
       setLocalVaultFsPath,
       setIsLocalTreeLoading,
@@ -328,7 +342,7 @@ export function useVaultDomain(): VaultValue {
       s3Tree,
       localTree,
       webdavTree,
-      sessionWorkspace,
+      sessionWorkspaces,
       localRootHandle,
       localVaultFsPath,
       webdavConfig,
@@ -352,7 +366,9 @@ export function useVaultDomain(): VaultValue {
       setS3Tree,
       setLocalTree,
       setWebdavTree,
-      owned.setSessionWorkspace,
+      owned.setSessionWorkspaces,
+      owned.upsertSessionWorkspace,
+      owned.removeSessionWorkspace,
       setLocalRootHandle,
       setLocalVaultFsPath,
       setIsLocalTreeLoading,

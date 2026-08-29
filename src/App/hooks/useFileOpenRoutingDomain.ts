@@ -24,7 +24,8 @@ import { hasStoredLocalRootHandle, loadLastLocalFolderName } from '@/utils/local
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { loadLocalVaultFsPath } from '@/utils/localVaultPathStore';
-import { readTauriLocalDirectoryTree } from '@/utils/storage/tauriLocalBackend';
+import { readTauriLocalDirectoryTree, loadTauriLocalTreeInitial } from '@/utils/storage/tauriLocalBackend';
+import { loadExpandedFolderPaths } from '@/utils/expandedFoldersStore';
 import { ensureAndroidDefaultLocalVaultRoot } from '@/utils/storage/androidLocalVault';
 import {
   resolveDesktopOpenPaths,
@@ -758,7 +759,10 @@ export function useFileOpenRoutingDomain() {
       if (localVaultFsPath !== abs) setLocalVaultFsPath(abs);
       setIsLocalTreeLoading(true);
       try {
-        const tree = await readTauriLocalDirectoryTree(abs);
+        const tree = await loadTauriLocalTreeInitial(
+          abs,
+          loadExpandedFolderPaths().local,
+        );
         if (!cancelled) setLocalTree(tree);
       } catch (e) {
         console.warn('Failed to restore Tauri local vault tree:', e);

@@ -702,91 +702,94 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
   }
 
   const list: AppCommand[] = [...APP_COMMANDS];
+  const openMdFile = isOpenMarkdownFile(context?.currentFile)
+    ? context?.currentFile
+    : null;
 
-  // Exactly one of enable/disable, matching current localStorage preference.
-  const autocompleteOn = context?.editorAutocompleteEnabled !== false;
-  list.push(
-    autocompleteOn
-      ? {
-          id: 'editor-autocomplete-toggle',
-          title: '자동완성 추천 끄기',
-          description: '에디터 자동완성 추천을 이 기기에서 끕니다',
-          path: '',
-          keywords: [
-            'autocomplete',
-            'completion',
-            'suggestion',
-            '자동완성',
-            '추천',
-            '끄기',
-            'off',
-            'disable',
-          ],
-        }
-      : {
-          id: 'editor-autocomplete-toggle',
-          title: '자동완성 추천 켜기',
-          description: '에디터 자동완성 추천을 이 기기에서 켭니다',
-          path: '',
-          keywords: [
-            'autocomplete',
-            'completion',
-            'suggestion',
-            '자동완성',
-            '추천',
-            '켜기',
-            'on',
-            'enable',
-          ],
-        },
-  );
-
-  const mirrorEditOn = context?.editorMirrorEditEnabled === true;
-  // Safari: Mirror Edit UI and sync are disabled — omit the AS toggle too.
-  if (!isSafariBrowser()) {
+  if (openMdFile) {
+    // Exactly one of enable/disable, matching current localStorage preference.
+    const autocompleteOn = context?.editorAutocompleteEnabled !== false;
     list.push(
-      mirrorEditOn
+      autocompleteOn
         ? {
-            id: 'editor-mirror-edit-toggle',
-            title: 'Mirror Edit 끄기',
-            description: '양쪽 커서·즉시 프리뷰 동기화를 끕니다',
+            id: 'editor-autocomplete-toggle',
+            title: '자동완성 추천 끄기',
+            description: '에디터 자동완성 추천을 이 기기에서 끕니다',
             path: '',
             keywords: [
-              'mirror edit',
-              'mirror',
-              'preview edit',
-              'contenteditable',
-              '더블클릭',
-              '프리뷰 편집',
+              'autocomplete',
+              'completion',
+              'suggestion',
+              '자동완성',
+              '추천',
               '끄기',
               'off',
               'disable',
             ],
           }
         : {
-            id: 'editor-mirror-edit-toggle',
-            title: 'Mirror Edit 켜기',
-            description: '프리뷰·마크다운에 커서를 함께 두고 즉시 동기화합니다',
+            id: 'editor-autocomplete-toggle',
+            title: '자동완성 추천 켜기',
+            description: '에디터 자동완성 추천을 이 기기에서 켭니다',
             path: '',
             keywords: [
-              'mirror edit',
-              'mirror',
-              'preview edit',
-              'contenteditable',
-              '더블클릭',
-              '프리뷰 편집',
+              'autocomplete',
+              'completion',
+              'suggestion',
+              '자동완성',
+              '추천',
               '켜기',
               'on',
               'enable',
             ],
           },
     );
-  }
 
-  if (isOpenMarkdownFile(context?.currentFile)) {
+    const mirrorEditOn = context?.editorMirrorEditEnabled === true;
+    // Safari: Mirror Edit UI and sync are disabled — omit the AS toggle too.
+    if (!isSafariBrowser()) {
+      list.push(
+        mirrorEditOn
+          ? {
+              id: 'editor-mirror-edit-toggle',
+              title: 'Mirror Edit 끄기',
+              description: '양쪽 커서·즉시 프리뷰 동기화를 끕니다',
+              path: '',
+              keywords: [
+                'mirror edit',
+                'mirror',
+                'preview edit',
+                'contenteditable',
+                '더블클릭',
+                '프리뷰 편집',
+                '끄기',
+                'off',
+                'disable',
+              ],
+            }
+          : {
+              id: 'editor-mirror-edit-toggle',
+              title: 'Mirror Edit 켜기',
+              description: '프리뷰·마크다운에 커서를 함께 두고 즉시 동기화합니다',
+              path: '',
+              keywords: [
+                'mirror edit',
+                'mirror',
+                'preview edit',
+                'contenteditable',
+                '더블클릭',
+                '프리뷰 편집',
+                '켜기',
+                'on',
+                'enable',
+              ],
+            },
+      );
+    }
+
     const name =
-      String(context.currentFile.name || '').trim() ||
-      String(context.currentFile.id || '')
+      String(openMdFile.name || '').trim() ||
+      String(openMdFile.id || '')
         .split('/')
         .filter(Boolean)
         .pop() ||
@@ -1142,6 +1145,9 @@ function isCoreCommandVisible(
   query: string,
   context?: AppCommandContext,
 ): boolean {
+  if (command.id === 'export-pdf') {
+    return isOpenMarkdownFile(context?.currentFile);
+  }
   if (isSettingsSectionCommand(command.id)) {
     return normalize(query).length > 0;
   }

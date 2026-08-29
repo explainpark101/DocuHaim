@@ -21,14 +21,14 @@ import { readMeta, sortGroupsKo } from '@/utils/chatWithMyself';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { webdavHead } from '@/utils/webdavClient';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { buildSessionTree } from '@/utils/sessionWorkspace';
+import { buildSessionTree, listSessionWorkspaces } from '@/utils/sessionWorkspace';
 
 /**
  * useAdvancedSearchTabsDomain: context-owned domain handlers.
  */
 export function useAdvancedSearchTabsDomain() {
   const { s3Creds } = useAuth();
-  const { getS3Client, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspace, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
+  const { getS3Client, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspaces, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
   const { restorePersistedWorkspaceTabsRef, selectFileRawRef } = useFileSessionOwned();
   const { activateWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab, openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, setState: setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
   const advancedSearchTreesRef = useRef({
@@ -36,14 +36,14 @@ export function useAdvancedSearchTabsDomain() {
     s3Tree,
     localTree,
     webdavTree,
-    sessionWorkspace,
+    sessionWorkspaces,
   });
   advancedSearchTreesRef.current = {
     storageMode,
     s3Tree,
     localTree,
     webdavTree,
-    sessionWorkspace,
+    sessionWorkspaces,
   };
 
   const getAdvancedSearchTrees = useCallback(() => {
@@ -52,8 +52,8 @@ export function useAdvancedSearchTabsDomain() {
     if (cur.storageMode === STORAGE_MODE_LOCAL) trees.push(cur.localTree);
     else if (cur.storageMode === STORAGE_MODE_WEBDAV) trees.push(cur.webdavTree);
     else trees.push(cur.s3Tree);
-    if (cur.sessionWorkspace) {
-      trees.push(buildSessionTree(cur.sessionWorkspace));
+    for (const ws of listSessionWorkspaces(cur.sessionWorkspaces)) {
+      trees.push(buildSessionTree(ws));
     }
     return trees;
   }, []);

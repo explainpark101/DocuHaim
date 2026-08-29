@@ -68,13 +68,15 @@ fn emit_log(app: &AppHandle, level: &str, message: impl Into<String>) {
 }
 
 #[tauri::command]
-pub fn as_index_open(
+pub async fn as_index_open(
     app: AppHandle,
     state: State<'_, AsIndexState>,
     snapshot: Option<Vec<u8>>,
 ) -> Result<String, String> {
     let store = state.ensure_store(&app)?;
-    let session_id = store.open(snapshot)?;
+    let session_id = tauri::async_runtime::spawn_blocking(move || store.open(snapshot))
+        .await
+        .map_err(|e| format!("open join: {e}"))??;
     emit_log(
         &app,
         "info",

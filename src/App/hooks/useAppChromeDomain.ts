@@ -17,6 +17,7 @@ import {
 import { flushEditorIntoActiveFileTab } from '@/utils/workspaceTabs/appBridge';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
+import { whenIdle } from '@/utils/advancedSearch/yieldToMain';
 import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 
@@ -26,7 +27,7 @@ import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 export function useAppChromeDomain() {
   const { isUnlocked, s3Creds } = useAuth();
   const { isMobile, setSidebarOpen, setSidebarCollapsed } = useChromeOwned();
-  const { getBackendForType, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspace, storageMode, webdavConfig, webdavTree } = useVault();
+  const { getBackendForType, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspaces, storageMode, webdavConfig, webdavTree } = useVault();
   const { closeCurrentFileRef, currentFileRef, editedFileNameRef, editorContentRef, flushSessionEditorToWorkspaceRef, maybeAutoSaveOnFocusChangeRef, navGuardRef, saveFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
   const { saveFile } = useFileSession();
   const { pendingCloseTabId, setPendingCloseTabId, setShowCloseFileConfirmModal } = useModalsOwned();
@@ -126,14 +127,14 @@ export function useAppChromeDomain() {
     s3Tree,
     localTree,
     webdavTree,
-    sessionWorkspace,
+    sessionWorkspaces,
   });
   advancedSearchTreesRef.current = {
     storageMode,
     s3Tree,
     localTree,
     webdavTree,
-    sessionWorkspace,
+    sessionWorkspaces,
   };
 
   // Tauri Android: never build/load lucivy inverted index (filename/path search only).
@@ -170,15 +171,19 @@ export function useAppChromeDomain() {
     const backend = getBackendForType(storageMode);
     if (!backend?.isReady?.()) return undefined;
     let cancelled = false;
-    void (async () => {
-      // Load existing index if any — never auto-rebuild when missing.
-      // Checkpoint presence is refreshed so Settings can offer resume vs fresh.
-      await advancedSearchEngine.ensureLoaded();
-      if (cancelled) return;
-      await advancedSearchEngine.refreshCheckpointStatus();
-    })();
+    const idleId = whenIdle(() => {
+      void (async () => {
+        // Defer index load until after first paint so Tauri startup stays responsive.
+        await advancedSearchEngine.ensureLoaded();
+        if (cancelled) return;
+        await advancedSearchEngine.refreshCheckpointStatus();
+      })();
+    }, 5000);
     return () => {
       cancelled = true;
+      if (idleId != null && typeof cancelIdleCallback === 'function') {
+        cancelIdleCallback(idleId);
+      }
     };
   }, [isUnlocked, storageMode, getBackendForType, localRootHandle, s3Creds.bucket, webdavConfig]);
 

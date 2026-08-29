@@ -92,9 +92,10 @@ export async function openTauriIndexSession(
     }
   }
   const { invoke } = await coreApi();
-  const snap =
-    snapshot && snapshot.byteLength > 0 ? Array.from(snapshot) : null;
-  const id = await invoke<string>('as_index_open', { snapshot: snap });
+  const id = await invoke<string>('as_index_open', {
+    snapshot:
+      snapshot && snapshot.byteLength > 0 ? snapshot : null,
+  });
   sessionId = id;
   return id;
 }

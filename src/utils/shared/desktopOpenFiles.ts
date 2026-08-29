@@ -136,7 +136,7 @@ export async function resolveDesktopOpenPaths(
             : 'application/octet-stream',
       });
       const workspace = await workspaceFromInputFiles(
-        [{ relativePath: name, file }],
+        [{ relativePath: name, file, localAbsPath: abs }],
         'md',
         name,
       );

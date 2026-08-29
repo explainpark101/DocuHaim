@@ -88,3 +88,41 @@ export async function prepareSessionMarkdownForVault(options: {
 
   return { markdown, images, missing: bundled.missing };
 }
+
+function parentDirAbsPath(filePath: string): string {
+  const normalized = String(filePath || '').replace(/\\/g, '/');
+  const idx = normalized.lastIndexOf('/');
+  return idx > 0 ? normalized.slice(0, idx) : normalized;
+}
+
+function absPathJoin(dir: string, rel: string): string {
+  const base = String(dir || '').replace(/\/+$/, '');
+  const tail = String(rel || '').replace(/^\/+/, '').replace(/\\/g, '/');
+  return `${base}/${tail}`;
+}
+
+/** Bundle markdown + sidecar images for writing next to a local absolute file path. */
+export async function prepareSessionMarkdownForLocalAbs(options: {
+  markdown: string;
+  sessionNotePath: string;
+  destAbsPath: string;
+  readBytes: (path: string) => Promise<Uint8Array>;
+}): Promise<{
+  markdown: string;
+  files: Array<{ absPath: string; data: Uint8Array }>;
+  missing: string[];
+}> {
+  const destName = basename(options.destAbsPath);
+  const prepared = await prepareSessionMarkdownForVault({
+    markdown: options.markdown,
+    sessionNotePath: options.sessionNotePath,
+    destNotePath: destName,
+    readBytes: options.readBytes,
+  });
+  const parentDir = parentDirAbsPath(options.destAbsPath);
+  const files = prepared.images.map((image) => ({
+    absPath: absPathJoin(parentDir, image.path),
+    data: image.data,
+  }));
+  return { markdown: prepared.markdown, files, missing: prepared.missing };
+}

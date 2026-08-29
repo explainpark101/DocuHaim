@@ -39,6 +39,8 @@ import {
   SESSION_STORAGE_TYPE,
   addEmptyUntitledSessionFile,
   createEmptyUntitledSessionWorkspace,
+  resolveSessionFileRef,
+  sessionFileKey,
 } from '@/utils/sessionWorkspace';
 
 /**
@@ -48,8 +50,8 @@ export function useTempChatRecordingDomain() {
   const { addIndicator, removeIndicator } = useActivityIndicator();
   const { showAlert } = useAlertModal();
   const { isUnlocked, s3Creds } = useAuth();
-  const { canScanStorageUsage, getS3Client, loadS3Files, localRootHandle, localTree, refreshLocalTree, refreshWebdavTree, s3Tree, setSessionWorkspace, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
-  const { applySessionFileToEditorRef, currentFile, editedFileName, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, revokeSessionObjectUrlsRef, selectFileRef, sessionVaultBindingsRef, sessionWorkspaceRef } = useFileSessionOwned();
+  const { canScanStorageUsage, getS3Client, loadS3Files, localRootHandle, localTree, refreshLocalTree, refreshWebdavTree, s3Tree, upsertSessionWorkspace, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
+  const { applySessionFileToEditorRef, currentFile, currentFileRef, editedFileName, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, revokeSessionObjectUrlsRef, selectFileRef, sessionVaultBindingsRef, sessionWorkspacesRef } = useFileSessionOwned();
   const { saveCurrentMarkdownBeforeSwitch, selectFileRaw } = useFileSession();
   const { confirmAndCancelEditorImageUploadRef, setSelectedIds } = useTreeOpsOwned();
   const { lastSelectedIdRef, requestNewFile, toSelectKey } = useTreeOps();
@@ -65,28 +67,46 @@ export function useTempChatRecordingDomain() {
   });
 
   const requestNewTempFile = useCallback(() => {
-    flushSessionEditorToWorkspaceRef.current?.();
-    const existing = sessionWorkspaceRef.current;
-    if (existing) {
-      const { workspace, path } = addEmptyUntitledSessionFile(existing);
-      sessionWorkspaceRef.current = workspace;
-      setSessionWorkspace(workspace);
-      applySessionFileToEditorRef.current?.(path, workspace);
+    void (async () => {
+      await flushSessionEditorToWorkspaceRef.current?.();
+      const map = sessionWorkspacesRef.current ?? {};
+      const curRef =
+        currentFileRef.current?.type === SESSION_STORAGE_TYPE
+          ? resolveSessionFileRef(map, currentFileRef.current.id)
+          : null;
+      if (curRef) {
+        const { workspace, path } = addEmptyUntitledSessionFile(curRef.workspace);
+        const nextMap = { ...map, [workspace.id]: workspace };
+        sessionWorkspacesRef.current = nextMap;
+        upsertSessionWorkspace(workspace);
+        await applySessionFileToEditorRef.current?.(
+          sessionFileKey(workspace.id, path),
+          workspace,
+        );
+        if (isMobile) setSidebarOpen(false);
+        return;
+      }
+      const workspace = createEmptyUntitledSessionWorkspace();
+      revokeSessionObjectUrlsRef.current?.();
+      sessionVaultBindingsRef.current = Object.create(null);
+      const nextMap = { ...map, [workspace.id]: workspace };
+      sessionWorkspacesRef.current = nextMap;
+      upsertSessionWorkspace(workspace);
+      await applySessionFileToEditorRef.current?.(
+        sessionFileKey(workspace.id, 'untitled.md'),
+        workspace,
+      );
       if (isMobile) setSidebarOpen(false);
-      return;
-    }
-    const workspace = createEmptyUntitledSessionWorkspace();
-    revokeSessionObjectUrlsRef.current?.();
-    sessionVaultBindingsRef.current = Object.create(null);
-    sessionWorkspaceRef.current = workspace;
-    setSessionWorkspace(workspace);
-    applySessionFileToEditorRef.current?.('untitled.md', workspace);
-    if (isMobile) setSidebarOpen(false);
+    })();
   }, [
     applySessionFileToEditorRef,
+    currentFileRef,
     flushSessionEditorToWorkspaceRef,
     isMobile,
     revokeSessionObjectUrlsRef,
+    sessionVaultBindingsRef,
+    sessionWorkspacesRef,
+    upsertSessionWorkspace,
   ]);
 
   usePwaNewFileShortcut({

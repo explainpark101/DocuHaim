@@ -10,158 +10,309 @@ import { useNavigate } from 'react-router';
 import { markAutoSaveTimestamp } from '@/App/hooks/autoSaveBridge';
 import { getActiveTab } from '@/utils/workspaceTabs';
 import {
+  decryptEncMdContent,
+  encryptEncMdContent,
+  getEncMdPassword,
+  isEncMdPath,
+  setEncMdPassword,
+  tryUnlockEncMdContent,
+} from '@/utils/encMd';
+import {
   SESSION_STORAGE_TYPE,
+  bindSessionLocalAbsBindings,
   buildSessionDownload,
   decodeSessionText,
+  ensureSessionWorkspaceId,
   mimeForSessionFileName,
+  parseSessionFileKey,
   pickDefaultSessionOpenPath,
+  resolveSessionFileRef,
+  sessionFileKey,
   sessionViewerForName,
   updateSessionFileText,
   workspaceFromDataTransfer,
   workspaceFromDirectoryHandle,
   workspaceFromFileList,
   workspaceFromOsPaths,
+  type SessionWorkspacesMap,
 } from '@/utils/sessionWorkspace';
 
 /**
  * useSessionWorkspaceDomain: context-owned domain handlers.
  */
 export function useSessionWorkspaceDomain() {
-  const { setSessionWorkspace } = useVault();
-  const { applySessionFileToEditorRef, clearOpenFileStateRef, closeCurrentFileRef, currentFileRef, downloadSessionWorkspaceRef, editorContentRef, flushSessionEditorToWorkspaceRef, getSessionObjectUrlRef, hasUnsavedEditorChangesRef, openSessionWorkspaceRef, revokeOpenFileObjectUrlRef, revokeSessionObjectUrlsRef, sessionObjectUrlsRef, sessionVaultBindingsRef, sessionWorkspaceRef, setCurrentFile, setEditorContent, setIsOpeningSession } = useFileSessionOwned();
+  const {
+    sessionWorkspaces,
+    upsertSessionWorkspace,
+    removeSessionWorkspace,
+  } = useVault();
+  const {
+    applySessionFileToEditorRef,
+    clearOpenFileStateRef,
+    closeCurrentFileRef,
+    currentFileRef,
+    downloadSessionWorkspaceRef,
+    editorContentRef,
+    flushSessionEditorToWorkspaceRef,
+    getSessionObjectUrlRef,
+    hasUnsavedEditorChangesRef,
+    openSessionWorkspaceRef,
+    revokeOpenFileObjectUrlRef,
+    revokeSessionObjectUrlsRef,
+    sessionObjectUrlsRef,
+    sessionVaultBindingsRef,
+    sessionWorkspacesRef,
+    setCurrentFile,
+    setEditorContent,
+    setEncMdPrompt,
+    setIsOpeningSession,
+  } = useFileSessionOwned();
   const { commitOpenFile } = useFileSession();
   const { triggerBlobDownload } = useModalsOwned();
   const { isMobile, setOperationStatus, setSidebarOpen } = useChromeOwned();
   const { closeWorkspaceTabById, workspaceTabsRef } = useWorkspaceTabsCtx();
   const navigate = useNavigate();
 
+  const syncSessionWorkspacesRef = useCallback(
+    (map: SessionWorkspacesMap) => {
+      sessionWorkspacesRef.current = map;
+    },
+    [sessionWorkspacesRef],
+  );
+
   const revokeSessionObjectUrls = useCallback(() => {
     for (const url of sessionObjectUrlsRef.current.values()) {
       URL.revokeObjectURL(url);
     }
     sessionObjectUrlsRef.current.clear();
-  }, []);
+  }, [sessionObjectUrlsRef]);
 
-  const getSessionObjectUrl = useCallback((path: any, bytes: any, mime: any) => {
-    const existing = sessionObjectUrlsRef.current.get(path);
-    if (existing) return existing;
-    const url = URL.createObjectURL(new Blob([bytes], { type: mime || 'application/octet-stream' }));
-    sessionObjectUrlsRef.current.set(path, url);
-    return url;
-  }, []);
+  const getSessionObjectUrl = useCallback(
+    (path: any, bytes: any, mime: any) => {
+      const existing = sessionObjectUrlsRef.current.get(path);
+      if (existing) return existing;
+      const url = URL.createObjectURL(
+        new Blob([bytes], { type: mime || 'application/octet-stream' }),
+      );
+      sessionObjectUrlsRef.current.set(path, url);
+      return url;
+    },
+    [sessionObjectUrlsRef],
+  );
 
-  const flushSessionEditorToWorkspace = useCallback(() => {
+  const unlockEncMdOrPrompt = useCallback(
+    async (passwordKey: string, ciphertext: string) => {
+      const first = await tryUnlockEncMdContent(passwordKey, ciphertext);
+      if (first.status !== 'need-password') return first.text;
+
+      return new Promise<string | null>((resolve) => {
+        const run = (password: string) => {
+          void (async () => {
+            try {
+              const plain = await decryptEncMdContent(ciphertext, password);
+              setEncMdPassword(passwordKey, password);
+              setEncMdPrompt(null);
+              resolve(plain);
+            } catch {
+              setEncMdPrompt((prev: any) =>
+                prev
+                  ? { ...prev, error: '비밀번호가 올바르지 않습니다.' }
+                  : prev,
+              );
+            }
+          })();
+        };
+        setEncMdPrompt({
+          title: '암호화된 노트',
+          message: '비밀번호를 입력하세요.',
+          confirmLabel: '열기',
+          error: '',
+          resolve: run,
+          reject: () => {
+            setEncMdPrompt(null);
+            resolve(null);
+          },
+        });
+      });
+    },
+    [setEncMdPrompt],
+  );
+
+  const flushSessionEditorToWorkspace = useCallback(async () => {
     const cur = currentFileRef.current;
-    const ws = sessionWorkspaceRef.current;
-    if (!cur || cur.type !== SESSION_STORAGE_TYPE || !cur.id || !ws) return ws;
-    const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(cur.viewer || 'markdown');
-    if (!editable) return ws;
-    const next = updateSessionFileText(ws, cur.id, editorContentRef.current ?? '');
-    sessionWorkspaceRef.current = next;
-    setSessionWorkspace(next);
-    return next;
-  }, []);
+    const map = sessionWorkspacesRef.current ?? {};
+    if (!cur || cur.type !== SESSION_STORAGE_TYPE || !cur.id) return map;
 
-  const closeSessionWorkspace = useCallback(() => {
-    if (
-      currentFileRef.current?.type === SESSION_STORAGE_TYPE &&
-      (hasUnsavedEditorChangesRef.current?.() ?? false) &&
-      !window.confirm('저장하지 않은 변경이 있습니다. 세션을 닫으면 사라집니다. 닫을까요?')
-    ) {
-      return;
+    const ref = resolveSessionFileRef(map, cur.id);
+    if (!ref) return map;
+
+    const { workspace, sessionId, path } = ref;
+    const record = workspace.files[path];
+    if (!record) return map;
+
+    const viewer = cur.viewer || sessionViewerForName(record.name);
+    const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer);
+    if (!editable) return map;
+
+    let textToStore = editorContentRef.current ?? '';
+    if (isEncMdPath(record.name)) {
+      const passwordKey = sessionFileKey(sessionId, path);
+      let pw = getEncMdPassword(passwordKey) || getEncMdPassword(path);
+      if (!pw) return map;
+      try {
+        textToStore = await encryptEncMdContent(textToStore, pw);
+        setEncMdPassword(passwordKey, pw);
+      } catch {
+        return map;
+      }
     }
-    revokeSessionObjectUrls();
-    sessionVaultBindingsRef.current = Object.create(null);
-    sessionWorkspaceRef.current = null;
-    setSessionWorkspace(null);
-    if (currentFileRef.current?.type === SESSION_STORAGE_TYPE) {
-      clearOpenFileStateRef.current?.();
-      navigate('/');
-    }
-  }, [clearOpenFileStateRef, hasUnsavedEditorChangesRef, navigate, revokeSessionObjectUrls]);
+
+    const nextWorkspace = updateSessionFileText(workspace, path, textToStore);
+    const nextMap = { ...map, [sessionId]: nextWorkspace };
+    sessionWorkspacesRef.current = nextMap;
+    upsertSessionWorkspace(nextWorkspace);
+    return nextMap;
+  }, [currentFileRef, editorContentRef, sessionWorkspacesRef, upsertSessionWorkspace]);
+
+  const closeSessionWorkspace = useCallback(
+    (sessionId?: string) => {
+      const map = sessionWorkspacesRef.current ?? {};
+      const ids = sessionId ? [sessionId] : Object.keys(map);
+      if (!ids.length) return;
+
+      const cur = currentFileRef.current;
+      const curParsed = cur?.type === SESSION_STORAGE_TYPE ? parseSessionFileKey(cur.id) : null;
+      const closingActive =
+        curParsed && ids.includes(curParsed.sessionId) && cur?.type === SESSION_STORAGE_TYPE;
+
+      if (
+        closingActive &&
+        (hasUnsavedEditorChangesRef.current?.() ?? false) &&
+        !window.confirm('저장하지 않은 변경이 있습니다. 세션을 닫으면 사라집니다. 닫을까요?')
+      ) {
+        return;
+      }
+
+      const nextMap = { ...map };
+      for (const id of ids) {
+        delete nextMap[id];
+        removeSessionWorkspace(id);
+      }
+      sessionWorkspacesRef.current = nextMap;
+
+      if (closingActive) {
+        clearOpenFileStateRef.current?.();
+        navigate('/');
+      }
+    },
+    [
+      clearOpenFileStateRef,
+      currentFileRef,
+      hasUnsavedEditorChangesRef,
+      navigate,
+      removeSessionWorkspace,
+      sessionWorkspacesRef,
+    ],
+  );
 
   const applySessionFileToEditor = useCallback(
-    (path: any, workspace: any, options: any = {}) => {
+    async (fileKey: any, workspace: any, options: any = {}) => {
+      const parsed = parseSessionFileKey(fileKey);
+      const path = parsed?.path ?? String(fileKey || '');
+      const sessionId = parsed?.sessionId ?? workspace?.id;
+      if (!sessionId || !path) return false;
+
       const record = workspace?.files?.[path];
       if (!record) return false;
+
       const skipNavigate = (options as { skipNavigate?: boolean }).skipNavigate === true;
+      const compositeId = sessionFileKey(sessionId, path);
       const viewer = sessionViewerForName(record.name);
       const size = record.bytes.byteLength;
       const mime = mimeForSessionFileName(record.name);
 
       if (viewer === 'image' || viewer === 'pdf' || viewer === 'audio' || viewer === 'video') {
-        const url = getSessionObjectUrl(path, record.bytes, mime);
+        const url = getSessionObjectUrl(compositeId, record.bytes, mime);
         const file = {
           type: SESSION_STORAGE_TYPE,
-          id: path,
+          id: compositeId,
           name: record.name,
           viewer,
           objectUrl: url,
           size,
         };
         commitOpenFile(file, '');
-        if (!skipNavigate) navigate(`/view/${path}`);
+        if (!skipNavigate) navigate(`/view/${encodeURIComponent(compositeId)}`);
         return true;
       }
 
       if (viewer === 'unsupported') {
         const file = {
           type: SESSION_STORAGE_TYPE,
-          id: path,
+          id: compositeId,
           name: record.name,
           viewer: 'unsupported',
           size,
         };
         commitOpenFile(file, '');
-        if (!skipNavigate) navigate(`/view/${path}`);
+        if (!skipNavigate) navigate(`/view/${encodeURIComponent(compositeId)}`);
         return true;
       }
 
-      const text = decodeSessionText(record.bytes);
+      const rawText = decodeSessionText(record.bytes);
+      let text = rawText;
+      let encMd = false;
+      if (isEncMdPath(record.name)) {
+        const plain = await unlockEncMdOrPrompt(compositeId, rawText);
+        if (plain == null) return false;
+        text = plain;
+        encMd = true;
+      }
+
       const file = {
         type: SESSION_STORAGE_TYPE,
-        id: path,
+        id: compositeId,
         name: record.name,
         content: text,
         viewer,
         size,
+        ...(encMd ? { encMd: true } : {}),
       };
       commitOpenFile(file, text);
-      if (!skipNavigate) navigate(`/view/${path}`);
+      if (!skipNavigate) navigate(`/view/${encodeURIComponent(compositeId)}`);
       return true;
     },
-    [getSessionObjectUrl, navigate, commitOpenFile],
+    [getSessionObjectUrl, navigate, commitOpenFile, unlockEncMdOrPrompt],
   );
 
   const openSessionWorkspace = useCallback(
-    async (workspace: any) => {
-      if (
-        sessionWorkspaceRef.current &&
-        !window.confirm('이미 열린 다운로드 세션이 있습니다. 새 파일로 바꾸면 현재 세션은 사라집니다. 계속할까요?')
-      ) {
-        return false;
-      }
-      revokeSessionObjectUrls();
-      sessionVaultBindingsRef.current = Object.create(null);
-      sessionWorkspaceRef.current = workspace;
-      setSessionWorkspace(workspace);
+    async (workspaceInput: any) => {
+      const workspace = ensureSessionWorkspaceId(workspaceInput);
+      const nextMap = {
+        ...(sessionWorkspacesRef.current ?? {}),
+        [workspace.id]: workspace,
+      };
+      sessionWorkspacesRef.current = nextMap;
+      upsertSessionWorkspace(workspace);
+      bindSessionLocalAbsBindings(workspace, sessionVaultBindingsRef.current);
+
       const path = pickDefaultSessionOpenPath(workspace);
       if (!path) {
         alert('열 수 있는 파일이 없습니다.');
         return false;
       }
-      applySessionFileToEditor(path, workspace);
+      await applySessionFileToEditor(sessionFileKey(workspace.id, path), workspace);
       if (isMobile) setSidebarOpen(false);
       return true;
     },
-    [applySessionFileToEditor, isMobile, revokeSessionObjectUrls],
+    [applySessionFileToEditor, isMobile, upsertSessionWorkspace, sessionWorkspacesRef],
   );
 
   const handleOpenSessionFiles = useCallback(
     async (fileList: any, origin: any) => {
       setIsOpeningSession(true);
       try {
-        const workspace = await workspaceFromFileList(fileList, origin);
+        const workspace = ensureSessionWorkspaceId(await workspaceFromFileList(fileList, origin));
         return await openSessionWorkspace(workspace);
       } catch (error: any) {
         console.error('Session open failed:', error);
@@ -171,7 +322,7 @@ export function useSessionWorkspaceDomain() {
         setIsOpeningSession(false);
       }
     },
-    [openSessionWorkspace],
+    [openSessionWorkspace, setIsOpeningSession],
   );
 
   const handleOpenSessionDirectory = useCallback(async () => {
@@ -182,7 +333,7 @@ export function useSessionWorkspaceDomain() {
     setIsOpeningSession(true);
     try {
       const dirHandle = await (window as any).showDirectoryPicker();
-      const workspace = await workspaceFromDirectoryHandle(dirHandle);
+      const workspace = ensureSessionWorkspaceId(await workspaceFromDirectoryHandle(dirHandle));
       await openSessionWorkspace(workspace);
     } catch (error: any) {
       if (error?.name === 'AbortError') return;
@@ -191,13 +342,13 @@ export function useSessionWorkspaceDomain() {
     } finally {
       setIsOpeningSession(false);
     }
-  }, [openSessionWorkspace]);
+  }, [openSessionWorkspace, setIsOpeningSession]);
 
   const handleDropSessionTransfer = useCallback(
     async (dataTransfer: any) => {
       setIsOpeningSession(true);
       try {
-        const workspace = await workspaceFromDataTransfer(dataTransfer);
+        const workspace = ensureSessionWorkspaceId(await workspaceFromDataTransfer(dataTransfer));
         await openSessionWorkspace(workspace);
       } catch (error: any) {
         console.error('Session drop failed:', error);
@@ -206,14 +357,14 @@ export function useSessionWorkspaceDomain() {
         setIsOpeningSession(false);
       }
     },
-    [openSessionWorkspace],
+    [openSessionWorkspace, setIsOpeningSession],
   );
 
   const handleDropSessionPaths = useCallback(
     async (paths: string[]) => {
       setIsOpeningSession(true);
       try {
-        const workspace = await workspaceFromOsPaths(paths);
+        const workspace = ensureSessionWorkspaceId(await workspaceFromOsPaths(paths));
         await openSessionWorkspace(workspace);
       } catch (error: any) {
         console.error('Session OS drop failed:', error);
@@ -222,24 +373,34 @@ export function useSessionWorkspaceDomain() {
         setIsOpeningSession(false);
       }
     },
-    [openSessionWorkspace],
+    [openSessionWorkspace, setIsOpeningSession],
   );
 
   const downloadSessionWorkspace = useCallback(async () => {
-    const flushed = flushSessionEditorToWorkspace() ?? sessionWorkspaceRef.current;
+    await flushSessionEditorToWorkspace();
+    const cur = currentFileRef.current;
+    const map = sessionWorkspacesRef.current ?? {};
+    const ref =
+      cur?.type === SESSION_STORAGE_TYPE
+        ? resolveSessionFileRef(map, cur.id)
+        : null;
+    const flushed = ref?.workspace;
     if (!flushed) return;
+
     const { blob, fileName } = await buildSessionDownload(flushed);
     triggerBlobDownload(blob, fileName);
     markAutoSaveTimestamp();
-    const cur = currentFileRef.current;
-    if (cur?.type === SESSION_STORAGE_TYPE && cur.id) {
-      const record = flushed.files[cur.id];
+
+    if (cur?.type === SESSION_STORAGE_TYPE && cur.id && ref) {
+      const record = flushed.files[ref.path];
       const text = editorContentRef.current ?? '';
       setCurrentFile((prev: any) => {
         if (!prev || prev.type !== SESSION_STORAGE_TYPE || prev.id !== cur.id) return prev;
         const next = {
           ...prev,
-          content: ['markdown', 'json', 'raw', 'html', 'svg'].includes(prev.viewer || '') ? text : prev.content,
+          content: ['markdown', 'json', 'raw', 'html', 'svg'].includes(prev.viewer || '')
+            ? text
+            : prev.content,
           size: record?.bytes.byteLength ?? prev.size,
         };
         currentFileRef.current = next;
@@ -247,7 +408,15 @@ export function useSessionWorkspaceDomain() {
       });
     }
     setOperationStatus(`다운로드: ${fileName}`);
-  }, [flushSessionEditorToWorkspace, triggerBlobDownload]);
+  }, [
+    flushSessionEditorToWorkspace,
+    triggerBlobDownload,
+    currentFileRef,
+    editorContentRef,
+    sessionWorkspacesRef,
+    setCurrentFile,
+    setOperationStatus,
+  ]);
 
   const closeCurrentFile = () => {
     const active = getActiveTab(workspaceTabsRef.current);
@@ -265,8 +434,6 @@ export function useSessionWorkspaceDomain() {
     navigate('/');
   };
 
-  /** Logo / brand: go to `/` home (keep tabs open; clear active selection). */
-
   const api = {
     flushSessionEditorToWorkspace,
     closeSessionWorkspace,
@@ -280,6 +447,7 @@ export function useSessionWorkspaceDomain() {
     closeCurrentFile,
     getSessionObjectUrl,
     revokeSessionObjectUrls,
+    syncSessionWorkspacesRef,
   };
   flushSessionEditorToWorkspaceRef.current = flushSessionEditorToWorkspace;
   applySessionFileToEditorRef.current = applySessionFileToEditor;
@@ -288,5 +456,6 @@ export function useSessionWorkspaceDomain() {
   downloadSessionWorkspaceRef.current = downloadSessionWorkspace;
   getSessionObjectUrlRef.current = getSessionObjectUrl;
   revokeSessionObjectUrlsRef.current = revokeSessionObjectUrls;
+  sessionWorkspacesRef.current = sessionWorkspaces;
   return api;
 }

@@ -99,7 +99,7 @@ export function useAppLogicSetupDomain() {
     webdavConfig,
     s3Tree,
     webdavTree,
-    sessionWorkspace,
+    sessionWorkspaces,
     storageMode,
   } = useVault();
   const fileOwned = useFileSessionOwned();
@@ -115,7 +115,7 @@ export function useAppLogicSetupDomain() {
     setSavingTabIds,
     savingTabIdsRef,
     saveFileRef,
-    sessionWorkspaceRef,
+    sessionWorkspacesRef,
     suppressUnsavedNavGuardRef,
     s3TreeRef,
     webdavTreeRef,
@@ -350,8 +350,8 @@ export function useAppLogicSetupDomain() {
     webdavTreeRef.current = webdavTree;
   }, [webdavTree]);
   useEffect(() => {
-    sessionWorkspaceRef.current = sessionWorkspace;
-  }, [sessionWorkspace]);
+    sessionWorkspacesRef.current = sessionWorkspaces;
+  }, [sessionWorkspaces]);
   useEffect(() => {
     currentFileRef.current = currentFile;
   }, [currentFile]);

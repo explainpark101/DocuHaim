@@ -11,6 +11,13 @@ import {
   checkServiceWorkerUpdate,
   getLocalAppBuildId,
 } from '@/utils/pwaUpdate';
+import {
+  checkTauriDesktopUpdate,
+  initTauriDesktopUpdaterPolling,
+  installPendingTauriDesktopUpdate,
+  setTauriDesktopUpdateListener,
+} from '@/utils/tauriDesktopUpdater';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
 import { createWebdavBackend } from '@/utils/storage';
 
@@ -88,6 +95,31 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   });
 
   useEffect(() => {
+    if (!isTauriDesktopPlatform()) return undefined;
+
+    setTauriDesktopUpdateListener((result) => {
+      if (!result.updateAvailable) return;
+      setAppBuildLocalId(result.localVersion);
+      setAppBuildRemoteId(result.remoteVersion ?? '');
+      setAppUpdateCheckError('');
+      setAppUpdateAvailable(true);
+      setShowAppUpdateConfirmModal(true);
+    });
+    initTauriDesktopUpdaterPolling();
+
+    return () => {
+      setTauriDesktopUpdateListener(null);
+    };
+  }, [
+    setAppBuildLocalId,
+    setAppBuildRemoteId,
+    setAppUpdateCheckError,
+    setAppUpdateAvailable,
+    setShowAppUpdateConfirmModal,
+  ]);
+
+  useEffect(() => {
+    if (isTauriDesktopPlatform()) return undefined;
     if (!swRegistration) return undefined;
 
     const checkForUpdate = () => {
@@ -139,6 +171,20 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   const handleCheckAppUpdate = useCallback(async () => {
     setIsCheckingAppUpdate(true);
     try {
+      if (isTauriDesktopPlatform()) {
+        const desktopCheck = await checkTauriDesktopUpdate();
+        setAppBuildLocalId(desktopCheck.localVersion || '');
+        setAppBuildRemoteId(desktopCheck.remoteVersion ?? '');
+        if (desktopCheck.ok) {
+          setAppUpdateCheckError('');
+          setAppUpdateAvailable(desktopCheck.updateAvailable);
+        } else {
+          setAppUpdateCheckError(desktopCheck.error || 'unknown');
+          setAppUpdateAvailable(Boolean(desktopCheck.updateAvailable));
+        }
+        return;
+      }
+
       const buildCheck = await checkAppBuildUpdate();
       setAppBuildLocalId(buildCheck.localId || getLocalAppBuildId());
 
@@ -184,6 +230,16 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   const handleConfirmAppUpdate = useCallback(async () => {
     setShowAppUpdateConfirmModal(false);
     setHidePwaUpdateToast(true);
+    if (isTauriDesktopPlatform()) {
+      try {
+        setIsApplyingPwaUpdate(true);
+        await installPendingTauriDesktopUpdate();
+      } catch (error) {
+        console.error('Tauri desktop update apply failed:', error);
+        setIsApplyingPwaUpdate(false);
+      }
+      return;
+    }
     const buildMismatch = Boolean(
       appBuildLocalId && appBuildRemoteId && appBuildLocalId !== appBuildRemoteId,
     );

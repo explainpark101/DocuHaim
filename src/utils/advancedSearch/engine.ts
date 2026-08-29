@@ -23,6 +23,7 @@ import {
   docsToObjectAsync,
   gzipJsonBytes,
   gunzipBytes,
+  gunzipBytesAsync,
   loadDocsAndManifestFromVault,
   saveIndexToVault,
   type AdvancedSearchBackend,
@@ -517,6 +518,7 @@ class AdvancedSearchEngine {
     if (this.loaded && this.lucivyReady) return;
     if (!this.backend?.isReady?.()) return;
     try {
+      await yieldToMain();
       if (!isSearchIsolationReady()) {
         const { index } = await loadDocsAndManifestFromVault(this.backend);
         this.index = index;
@@ -532,6 +534,7 @@ class AdvancedSearchEngine {
       }
 
       const { index, luceGz } = await loadDocsAndManifestFromVault(this.backend);
+      await yieldToMain();
       this.index = index;
       this.docIdMap = hydrateDocIdMapFromDocs(
         index.docs,
@@ -542,11 +545,12 @@ class AdvancedSearchEngine {
       let snapshot: Uint8Array | null = null;
       if (luceGz?.byteLength) {
         try {
-          snapshot = gunzipBytes(luceGz);
+          snapshot = await gunzipBytesAsync(luceGz);
         } catch {
           snapshot = null;
         }
       }
+      await yieldToMain();
       await api.openOrCreateLucivyIndex(snapshot);
       this.lucivyReady = true;
       this.loaded = true;

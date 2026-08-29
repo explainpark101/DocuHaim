@@ -7,6 +7,7 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from 'react';
+import type { SessionWorkspacesMap } from '@/utils/sessionWorkspace';
 import { loadEditorType } from '@/utils/editorTypeSettings';
 
 export type FileSessionOwnedApi = {
@@ -33,7 +34,7 @@ export type FileSessionOwnedApi = {
   setIsRefreshingFromDisk: (v: boolean | ((prev: boolean) => boolean)) => void;
   isPullingFromRemote: boolean;
   setIsPullingFromRemote: (v: boolean | ((prev: boolean) => boolean)) => void;
-  sessionWorkspaceRef: MutableRefObject<any>;
+  sessionWorkspacesRef: MutableRefObject<SessionWorkspacesMap>;
   sessionObjectUrlsRef: MutableRefObject<Map<string, string>>;
   sessionVaultBindingsRef: MutableRefObject<Record<string, any>>;
   writeSessionFileToHaimRef: MutableRefObject<any>;
@@ -51,7 +52,7 @@ export type FileSessionOwnedApi = {
   /** Late-bound AppLogic session helpers (domains below FileSession fill these). */
   flushSessionEditorToWorkspaceRef: MutableRefObject<(() => any) | null>;
   applySessionFileToEditorRef: MutableRefObject<
-    ((path: string, workspace: any, options?: any) => boolean) | null
+    ((fileKey: string, workspace: any, options?: any) => boolean | Promise<boolean>) | null
   >;
   handleRequestSessionSaveChooserRef: MutableRefObject<(() => void) | null>;
   connectedHaimStorageTypeRef: MutableRefObject<(() => string) | null>;
@@ -110,7 +111,7 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
   const [encMdPrompt, setEncMdPrompt] = useState<any>(null);
   const [isRefreshingFromDisk, setIsRefreshingFromDisk] = useState(false);
   const [isPullingFromRemote, setIsPullingFromRemote] = useState(false);
-  const sessionWorkspaceRef = useRef<any>(null);
+  const sessionWorkspacesRef = useRef<SessionWorkspacesMap>({});
   const sessionObjectUrlsRef = useRef(new Map<string, string>());
   const sessionVaultBindingsRef = useRef(Object.create(null) as Record<string, any>);
   const writeSessionFileToHaimRef = useRef<any>(null);
@@ -122,7 +123,7 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
   const suppressUnsavedNavGuardRef = useRef(false);
   const flushSessionEditorToWorkspaceRef = useRef<(() => any) | null>(null);
   const applySessionFileToEditorRef = useRef<
-    ((path: string, workspace: any, options?: any) => boolean) | null
+    ((fileKey: string, workspace: any, options?: any) => boolean | Promise<boolean>) | null
   >(null);
   const handleRequestSessionSaveChooserRef = useRef<(() => void) | null>(null);
   const connectedHaimStorageTypeRef = useRef<(() => string) | null>(null);
@@ -181,7 +182,7 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
       setIsRefreshingFromDisk,
       isPullingFromRemote,
       setIsPullingFromRemote,
-      sessionWorkspaceRef,
+      sessionWorkspacesRef,
       sessionObjectUrlsRef,
       sessionVaultBindingsRef,
       writeSessionFileToHaimRef,

@@ -85,6 +85,7 @@ import type { ExpandedFolderPaths } from '@/utils/expandedFoldersStore';
 import type { TreeTransferBusyEntry } from '@/utils/treeTransferBusy';
 import { useAdvancedSearchIndexFolderIcons } from '@/hooks/useAdvancedSearchIndexFolderIcons';
 import type { SessionTreeNode, SessionWorkspace } from '@/utils/sessionWorkspace';
+import { buildSessionTree, parseSessionFileKey, sessionFileKey } from '@/utils/sessionWorkspace';
 
 type TreeNodeDropHandler = NonNullable<ComponentProps<typeof TreeNode>['onDropOnFolder']>;
 type RootDropHandler = NonNullable<ComponentProps<typeof RootDropZone>['onDropOnFolder']>;
@@ -248,9 +249,8 @@ export type SidebarProps = {
   onDropToChatAttach?: (items: TreeMoveItem[]) => void;
   onBrandClick?: () => void;
   onStorageModeChange?: (mode: string) => void;
-  sessionWorkspace?: SessionWorkspace | null;
-  sessionTree?: SessionTreeNode[];
-  onCloseSessionWorkspace?: () => void;
+  sessionWorkspaces?: SessionWorkspace[];
+  onCloseSessionWorkspace?: (sessionId: string) => void;
   isMobileLayout?: boolean;
   fileTabContextMenuRef?: FileTabContextMenuRef | null;
 };
@@ -480,8 +480,7 @@ export default function Sidebar({
   onDropToChatAttach,
   onBrandClick,
   onStorageModeChange,
-  sessionWorkspace = null,
-  sessionTree = [],
+  sessionWorkspaces = [],
   onCloseSessionWorkspace,
   isMobileLayout = false,
   fileTabContextMenuRef = null,
@@ -608,7 +607,11 @@ export default function Sidebar({
   const findTreeNode = useCallback(
     (storageType: string, path: string): SidebarTreeNode | SessionTreeNode | null => {
       if (storageType === 'session') {
-        return findNodeByPath(sessionTree, path) as SessionTreeNode | null;
+        const parsed = parseSessionFileKey(path);
+        if (!parsed) return null;
+        const workspace = sessionWorkspaces.find((ws) => ws.id === parsed.sessionId);
+        if (!workspace) return null;
+        return findNodeByPath(buildSessionTree(workspace), parsed.path) as SessionTreeNode | null;
       }
       const tree =
         storageType === 's3'
@@ -618,7 +621,7 @@ export default function Sidebar({
             : localTree;
       return findNodeByPath(tree, path) as SidebarTreeNode | null;
     },
-    [s3Tree, localTree, webdavTree, sessionTree],
+    [s3Tree, localTree, webdavTree, sessionWorkspaces],
   );
 
   const resolveDropTargetNode = useCallback(
@@ -1604,33 +1607,54 @@ export default function Sidebar({
         role="tree"
         aria-label="파일 트리"
       >
-        {sessionWorkspace ? (
-          <div>
-            <div className="sticky top-0 z-9999 mb-1 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2 text-xs font-semibold tracking-wider text-gray-400 uppercase dark:border-odp-surface dark:bg-odp-bgSoft">
-              <span className="flex min-w-0 items-center gap-1">
-                <Download size={14} />
-                <span className="truncate">다운로드 세션</span>
-              </span>
-              {typeof onCloseSessionWorkspace === 'function' ? (
-                <button
-                  type="button"
-                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-focusBg dark:hover:text-odp-fg"
-                  title="세션 닫기"
-                  aria-label="세션 닫기"
-                  onClick={onCloseSessionWorkspace}
-                >
-                  <X size={14} />
-                </button>
-              ) : null}
-            </div>
-            <p className="px-3 pb-1 text-[11px] text-gray-400 dark:text-odp-muted truncate" title={sessionWorkspace.originName}>
-              {sessionWorkspace.originName}
-            </p>
-            <SessionTreeList
-              nodes={sessionTree}
-              currentPath={treeCurrentFile?.type === 'session' ? treeCurrentFile.id : null}
-              onSelectFile={(node) => onSelectFile?.('session', node, {})}
-            />
+        {sessionWorkspaces.length > 0 ? (
+          <div className="space-y-4">
+            {sessionWorkspaces.map((workspace) => {
+              const sessionTree = buildSessionTree(workspace);
+              const curParsed =
+                treeCurrentFile?.type === 'session'
+                  ? parseSessionFileKey(treeCurrentFile.id)
+                  : null;
+              const sessionCurrentPath =
+                curParsed?.sessionId === workspace.id ? curParsed.path : null;
+              return (
+                <div key={workspace.id}>
+                  <div className="sticky top-0 z-9999 mb-1 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2 text-xs font-semibold tracking-wider text-gray-400 uppercase dark:border-odp-surface dark:bg-odp-bgSoft">
+                    <span className="flex min-w-0 items-center gap-1">
+                      <Download size={14} />
+                      <span className="truncate">다운로드 세션</span>
+                    </span>
+                    {typeof onCloseSessionWorkspace === 'function' ? (
+                      <button
+                        type="button"
+                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-focusBg dark:hover:text-odp-fg"
+                        title="세션 닫기"
+                        aria-label="세션 닫기"
+                        onClick={() => onCloseSessionWorkspace(workspace.id)}
+                      >
+                        <X size={14} />
+                      </button>
+                    ) : null}
+                  </div>
+                  <p
+                    className="px-3 pb-1 text-[11px] text-gray-400 dark:text-odp-muted truncate"
+                    title={workspace.originName}
+                  >
+                    {workspace.originName}
+                  </p>
+                  <SessionTreeList
+                    nodes={sessionTree}
+                    currentPath={sessionCurrentPath}
+                    onSelectFile={(node) =>
+                      onSelectFile?.('session', {
+                        ...node,
+                        path: sessionFileKey(workspace.id, node.path),
+                      }, {})
+                    }
+                  />
+                </div>
+              );
+            })}
           </div>
         ) : null}
         {/* S3 Section */}

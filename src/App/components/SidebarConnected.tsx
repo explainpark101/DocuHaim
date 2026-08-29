@@ -3,7 +3,7 @@ import { useVault } from '@/App/hooks/useVault';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useFileSession } from '@/App/hooks/useFileSession';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
-import { buildSessionTree } from '@/utils/sessionWorkspace';
+import { listSessionWorkspaces } from '@/utils/sessionWorkspace';
 
 export type ChromeProps = Pick<
   SidebarProps,
@@ -70,9 +70,7 @@ export default function SidebarConnected(props: ChromeProps) {
         onRefreshLocal: vault.refreshLocalTree,
         onOpenLocalFolder: vault.openLocalFolder,
         onRefreshS3: vault.loadS3Files,
-        sessionWorkspace: vault.sessionWorkspace,
-        sessionTree:
-          vault.sessionWorkspace ? buildSessionTree(vault.sessionWorkspace) : [],
+        sessionWorkspaces: listSessionWorkspaces(vault.sessionWorkspaces),
         currentFile: file.currentFile,
         selectedIds: treeOps.selectedIds,
         onSelectFile: treeOps.handleTreeNodeSelect,

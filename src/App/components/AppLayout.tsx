@@ -178,7 +178,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     webdavReady,
     canScanStorageUsage,
     scanActiveStorageUsageTree,
-    sessionWorkspace,
+    sessionWorkspaces,
   } = vault;
 
   const {
@@ -879,7 +879,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     s3Tree,
                     localTree,
                     webdavTree,
-                    sessionWorkspace,
+                    sessionWorkspaces,
                     onOpenFile: openAdvancedSearchFile,
                   }}
                 />

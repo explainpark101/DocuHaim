@@ -85,6 +85,8 @@ import { buildZipBlob } from '@/utils/zipBuilder';
 import {
   SESSION_STORAGE_TYPE,
   buildSessionTree,
+  listSessionWorkspaces,
+  sessionFileKey,
 } from '@/utils/sessionWorkspace';
 import {
   isMarkdownFileName,
@@ -109,7 +111,7 @@ export function useTreeOpsDomain() {
     s3Tree,
     localTree,
     webdavTree,
-    sessionWorkspace,
+    sessionWorkspaces,
     localRootHandle,
     localVaultFsPath,
     webdavConfig,
@@ -628,9 +630,11 @@ export function useTreeOpsDomain() {
           : storageType === 'webdav'
             ? webdavTree
             : storageType === SESSION_STORAGE_TYPE
-              ? sessionWorkspace
-                ? buildSessionTree(sessionWorkspace)
-                : []
+              ? listSessionWorkspaces(sessionWorkspaces).flatMap((ws) =>
+                  flattenTreeToPaths(buildSessionTree(ws)).map((p) =>
+                    sessionFileKey(ws.id, p),
+                  ),
+                )
               : localTree;
       const flatPaths = flattenTreeToPaths(tree);
       const path = node.path;
@@ -685,7 +689,7 @@ export function useTreeOpsDomain() {
         await selectFileRaw(storageType, node);
       }
     },
-    [s3Tree, localTree, webdavTree, sessionWorkspace, selectFileRaw, saveCurrentMarkdownBeforeSwitch, isMobile, setSidebarOpen]
+    [s3Tree, localTree, webdavTree, sessionWorkspaces, selectFileRaw, saveCurrentMarkdownBeforeSwitch, isMobile, setSidebarOpen]
   );
 
   const handleDownloadNode = async (storageType, node) => {

@@ -732,7 +732,7 @@ export default function EditorPane({
                     }}
                   >
                     <IconSave size={14} />
-                    내 노트에 저장
+                    내 Haim에 저장
                   </button>
                 ) : null}
                 {isSessionMarkdown && typeof onRequestSessionTransformDownload === 'function' ? (

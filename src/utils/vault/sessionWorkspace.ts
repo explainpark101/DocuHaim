@@ -1,6 +1,7 @@
 import { BlobReader, Uint8ArrayWriter, ZipReader } from '@zip.js/zip.js';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
+import { isEncMdPath } from '@/utils/encMd';
 import { readOpenPathBytes } from '@/utils/shared/desktopOpenFiles';
 import { flattenOsDropPaths, guessMimeTypeFromFileName } from '@/utils/treeOsDropPaths';
 import { normalizePathToNfc } from '@/utils/unicodeNfc';
@@ -14,13 +15,82 @@ export type SessionFileRecord = {
   path: string;
   name: string;
   bytes: Uint8Array;
+  /** Tauri: absolute OS path when opened from disk. */
+  localAbsPath?: string;
 };
 
 export type SessionWorkspace = {
+  /** Unique id for multi-session sidebar / tab routing. */
+  id: string;
   origin: SessionOrigin;
   originName: string;
   files: Record<string, SessionFileRecord>;
 };
+
+export type SessionWorkspacesMap = Record<string, SessionWorkspace>;
+
+/** Separator between session id and vault-relative file path in composite keys. */
+export const SESSION_FILE_KEY_SEP = '#';
+
+export function createSessionWorkspaceId(): string {
+  return `ds-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function ensureSessionWorkspaceId(
+  workspace: SessionWorkspace | Omit<SessionWorkspace, 'id'>,
+): SessionWorkspace {
+  const id = 'id' in workspace && workspace.id ? workspace.id : createSessionWorkspaceId();
+  return { ...workspace, id };
+}
+
+/** Composite tab / currentFile id: `{sessionId}#{filePath}`. */
+export function sessionFileKey(sessionId: string, filePath: string): string {
+  return `${sessionId}${SESSION_FILE_KEY_SEP}${normalizeSessionPath(filePath)}`;
+}
+
+export function parseSessionFileKey(
+  key: string | null | undefined,
+): { sessionId: string; path: string } | null {
+  const raw = String(key || '');
+  const sep = raw.indexOf(SESSION_FILE_KEY_SEP);
+  if (sep <= 0) return null;
+  const sessionId = raw.slice(0, sep);
+  const path = normalizeSessionPath(raw.slice(sep + 1));
+  if (!sessionId || !path) return null;
+  return { sessionId, path };
+}
+
+export function resolveSessionFileRef(
+  workspaces: SessionWorkspacesMap | null | undefined,
+  fileKey: string | null | undefined,
+): { workspace: SessionWorkspace; sessionId: string; path: string } | null {
+  const map = workspaces ?? {};
+  const parsed = parseSessionFileKey(fileKey);
+  if (parsed) {
+    const workspace = map[parsed.sessionId];
+    if (!workspace) return null;
+    return { workspace, sessionId: parsed.sessionId, path: parsed.path };
+  }
+  const legacyPath = normalizeSessionPath(String(fileKey || ''));
+  if (!legacyPath) return null;
+  for (const workspace of Object.values(map)) {
+    if (workspace.files[legacyPath]) {
+      return { workspace, sessionId: workspace.id, path: legacyPath };
+    }
+  }
+  return null;
+}
+
+export function listSessionWorkspaces(
+  workspaces: SessionWorkspacesMap | null | undefined,
+): SessionWorkspace[] {
+  return Object.values(workspaces ?? {}).sort((a, b) =>
+    a.originName.localeCompare(b.originName, undefined, {
+      sensitivity: 'base',
+      numeric: true,
+    }),
+  );
+}
 
 export type SessionTreeNode = {
   name: string;
@@ -33,6 +103,7 @@ export type SessionTreeNode = {
 export type SessionInputFile = {
   relativePath: string;
   file: File;
+  localAbsPath?: string;
 };
 
 const TEXT_EXTS = new Set([
@@ -177,6 +248,9 @@ export async function workspaceFromInputFiles(
     .map((item) => ({
       relativePath: normalizeSessionPath(item.relativePath || item.file.name),
       file: item.file,
+      localAbsPath: String(item.localAbsPath || '').trim()
+        ? normalizePathToNfc(String(item.localAbsPath).trim())
+        : undefined,
     }))
     .filter((item) => item.relativePath && !shouldSkipArchivePath(item.relativePath));
 
@@ -198,11 +272,12 @@ export async function workspaceFromInputFiles(
         path,
         name: basenameOfPath(path),
         bytes: new Uint8Array(await item.file.arrayBuffer()),
+        ...(cleaned[index]?.localAbsPath ? { localAbsPath: cleaned[index].localAbsPath } : {}),
       };
     }),
   );
 
-  return { origin, originName, files };
+  return ensureSessionWorkspaceId({ origin, originName, files });
 }
 
 export async function workspaceFromMarkdownFile(file: File): Promise<SessionWorkspace> {
@@ -402,6 +477,7 @@ export async function workspaceFromOsPaths(paths: string[]): Promise<SessionWork
       return {
         relativePath: entry.relativePath,
         file,
+        localAbsPath: entry.absolutePath,
       };
     }),
   );
@@ -411,7 +487,7 @@ export async function workspaceFromOsPaths(paths: string[]): Promise<SessionWork
 
 export function listSessionMarkdownPaths(workspace: SessionWorkspace): string[] {
   return Object.keys(workspace.files)
-    .filter((path) => isMarkdownFileName(path))
+    .filter((path) => isMarkdownFileName(path) || isEncMdPath(path))
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }));
 }
 
@@ -440,7 +516,7 @@ export function allocateUntitledSessionPath(
 /** Empty single-file session for Cmd/Ctrl+N temp-file mode. */
 export function createEmptyUntitledSessionWorkspace(): SessionWorkspace {
   const path = 'untitled.md';
-  return {
+  return ensureSessionWorkspaceId({
     origin: 'md',
     originName: 'untitled',
     files: {
@@ -450,7 +526,7 @@ export function createEmptyUntitledSessionWorkspace(): SessionWorkspace {
         bytes: encodeSessionText(''),
       },
     },
-  };
+  });
 }
 
 /** Append an empty untitled markdown file to an existing session workspace. */
@@ -528,6 +604,7 @@ export function updateSessionFileText(
     path: key,
     name: prev?.name || basenameOfPath(key),
     bytes: encodeSessionText(text),
+    ...(prev?.localAbsPath ? { localAbsPath: prev.localAbsPath } : {}),
   };
   return {
     ...workspace,
@@ -544,6 +621,7 @@ export function putSessionFileBytes(
   bytes: Uint8Array,
 ): SessionWorkspace {
   const key = normalizeSessionPath(path);
+  const prev = workspace.files[key];
   return {
     ...workspace,
     files: {
@@ -552,6 +630,7 @@ export function putSessionFileBytes(
         path: key,
         name: basenameOfPath(key),
         bytes,
+        ...(prev?.localAbsPath ? { localAbsPath: prev.localAbsPath } : {}),
       },
     },
   };
@@ -578,6 +657,7 @@ export function renameSessionFile(
         path: nextPath,
         name: basenameOfPath(nextPath),
         bytes: prev.bytes,
+        ...(prev.localAbsPath ? { localAbsPath: prev.localAbsPath } : {}),
       },
     },
   };
@@ -585,6 +665,29 @@ export function renameSessionFile(
 
 export function countSessionFiles(workspace: SessionWorkspace): number {
   return Object.keys(workspace.files).length;
+}
+
+/** Absolute OS path for a session file when opened from Tauri disk. */
+export function getSessionFileLocalAbsPath(
+  workspace: SessionWorkspace | null | undefined,
+  filePath: string,
+): string | null {
+  const key = normalizeSessionPath(filePath);
+  const abs = workspace?.files?.[key]?.localAbsPath;
+  return abs ? normalizePathToNfc(String(abs)) : null;
+}
+
+/** Wire Tauri local-abs bindings for every file opened from disk in a workspace. */
+export function bindSessionLocalAbsBindings(
+  workspace: SessionWorkspace,
+  bindings: Record<string, unknown>,
+): void {
+  for (const [path, record] of Object.entries(workspace.files)) {
+    if (!record.localAbsPath) continue;
+    bindings[sessionFileKey(workspace.id, path)] = {
+      localAbsPath: record.localAbsPath,
+    };
+  }
 }
 
 export async function buildSessionDownload(workspace: SessionWorkspace): Promise<{
@@ -595,9 +698,17 @@ export async function buildSessionDownload(workspace: SessionWorkspace): Promise
   const onlyPath = paths.length === 1 ? paths[0] : null;
   const onlyRecord = onlyPath ? workspace.files[onlyPath] : undefined;
 
-  if (onlyRecord && (workspace.origin === 'md' || isMarkdownFileName(onlyRecord.name))) {
+  if (
+    onlyRecord &&
+    (workspace.origin === 'md' ||
+      isMarkdownFileName(onlyRecord.name) ||
+      isEncMdPath(onlyRecord.name))
+  ) {
+    const mime = isEncMdPath(onlyRecord.name)
+      ? 'application/json;charset=utf-8'
+      : 'text/markdown;charset=utf-8';
     return {
-      blob: new Blob([onlyRecord.bytes as BlobPart], { type: 'text/markdown;charset=utf-8' }),
+      blob: new Blob([onlyRecord.bytes as BlobPart], { type: mime }),
       fileName: onlyRecord.name || 'untitled.md',
     };
   }

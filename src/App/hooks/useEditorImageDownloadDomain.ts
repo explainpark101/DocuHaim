@@ -18,7 +18,13 @@ import { readLocalDirectoryTree } from '@/utils/localTree';
 import { isLocalVaultReady } from '@/utils/localVaultReady';
 import { readTauriLocalDirectoryTree } from '@/utils/storage/tauriLocalBackend';
 import { resolveStorageImagePath } from '@/utils/storageImagePath';
-import { SESSION_STORAGE_TYPE, mimeForSessionFileName, putSessionFileBytes } from '@/utils/sessionWorkspace';
+import {
+  SESSION_STORAGE_TYPE,
+  createEmptyUntitledSessionWorkspace,
+  mimeForSessionFileName,
+  putSessionFileBytes,
+  resolveSessionFileRef,
+} from '@/utils/sessionWorkspace';
 
 /**
  * useEditorImageDownloadDomain: context-owned domain handlers.
@@ -36,12 +42,12 @@ export function useEditorImageDownloadDomain() {
     refreshWebdavTree,
     setIsLocalTreeLoading,
     setLocalTree,
-    setSessionWorkspace,
+    upsertSessionWorkspace,
     storageMode,
     webdavConfig,
     webdavReady,
   } = useVault();
-  const { currentFile, flushSessionEditorToWorkspaceRef, getSessionObjectUrlRef, sessionObjectUrlsRef, sessionWorkspaceRef } = useFileSessionOwned();
+  const { currentFile, flushSessionEditorToWorkspaceRef, getSessionObjectUrlRef, sessionObjectUrlsRef, sessionWorkspacesRef } = useFileSessionOwned();
   const { confirmAndCancelEditorImageUploadRef } = useTreeOpsOwned();
   const { setOperationStatus } = useChromeOwned();
 
@@ -226,18 +232,23 @@ export function useEditorImageDownloadDomain() {
             if (uploadController.signal.aborted) {
               throw new DOMException('Aborted', 'AbortError');
             }
-            const nextWs = putSessionFileBytes(
-              flushSessionEditorToWorkspaceRef.current?.() ?? sessionWorkspaceRef.current ?? {
-                origin: 'md',
-                originName: 'untitled',
-                files: {},
-              },
-              path,
-              body,
-            );
-            sessionWorkspaceRef.current = nextWs;
-            setSessionWorkspace(nextWs);
-            sessionObjectUrlsRef.current.delete(path);
+            const map: import('@/utils/sessionWorkspace').SessionWorkspacesMap =
+              (await flushSessionEditorToWorkspaceRef.current?.()) ??
+              sessionWorkspacesRef.current ??
+              {};
+            const ref =
+              currentFile?.id
+                ? resolveSessionFileRef(map, currentFile.id)
+                : null;
+            const baseWs =
+              ref?.workspace ??
+              Object.values(map)[0] ??
+              createEmptyUntitledSessionWorkspace();
+            const nextWs = putSessionFileBytes(baseWs, path, body);
+            const nextMap = { ...map, [nextWs.id]: nextWs };
+            sessionWorkspacesRef.current = nextMap;
+            upsertSessionWorkspace(nextWs);
+            sessionObjectUrlsRef.current.delete(currentFile?.id ?? path);
             reportProgress(file, 100);
           } else {
             path = await uploadEditorImage(client, s3Creds.bucket, file, {
@@ -304,16 +315,23 @@ export function useEditorImageDownloadDomain() {
       // Cover / single-file export may store data: URIs in note-cover paths.
       if (/^(https?:|data:|blob:|\/\/)/i.test(trimmed)) return trimmed;
       if (currentFile?.type === SESSION_STORAGE_TYPE) {
-        const ws = sessionWorkspaceRef.current;
+        const ref = resolveSessionFileRef(sessionWorkspacesRef.current, currentFile.id);
+        const ws = ref?.workspace;
+        const sessionNotePath = ref?.path ?? currentFile.id;
         const candidates = [
           trimmed,
           trimmed.replace(/^\/+/, ''),
-          resolveStorageImagePath(trimmed, currentFile.id),
+          resolveStorageImagePath(trimmed, sessionNotePath),
         ].filter(Boolean);
         for (const key of candidates as string[]) {
           const record = ws?.files?.[key];
           if (record) {
-            return getSessionObjectUrlRef.current?.(record.path, record.bytes, mimeForSessionFileName(record.name));
+            const objectKey = currentFile.id ?? record.path;
+            return getSessionObjectUrlRef.current?.(
+              objectKey,
+              record.bytes,
+              mimeForSessionFileName(record.name),
+            );
           }
         }
         console.warn('[wiki-image] getPresignedUrlForPath: session failed', { path: trimmed });

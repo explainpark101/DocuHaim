@@ -59,6 +59,8 @@
       ]
     },
     "os:default",
-    "upload:default"
+    "upload:default",
+    "updater:default",
+    "process:default"
   ]
 }

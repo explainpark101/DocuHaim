@@ -12,8 +12,16 @@ export type VaultOwnedApi = {
   setLocalTree: (tree: any[] | ((prev: any[]) => any[])) => void;
   webdavTree: any[];
   setWebdavTree: (tree: any[] | ((prev: any[]) => any[])) => void;
-  sessionWorkspace: any;
-  setSessionWorkspace: (ws: any | ((prev: any) => any)) => void;
+  sessionWorkspaces: Record<string, import('@/utils/sessionWorkspace').SessionWorkspace>;
+  setSessionWorkspaces: (
+    ws:
+      | Record<string, import('@/utils/sessionWorkspace').SessionWorkspace>
+      | ((
+          prev: Record<string, import('@/utils/sessionWorkspace').SessionWorkspace>,
+        ) => Record<string, import('@/utils/sessionWorkspace').SessionWorkspace>),
+  ) => void;
+  upsertSessionWorkspace: (workspace: import('@/utils/sessionWorkspace').SessionWorkspace) => void;
+  removeSessionWorkspace: (sessionId: string) => void;
   localRootHandle: any;
   setLocalRootHandle: (h: any | ((prev: any) => any)) => void;
   localVaultFsPath: string;
@@ -48,7 +56,9 @@ export function AppVaultStateProvider({ children }: { children: ReactNode }) {
   const [s3Tree, setS3Tree] = useState<any[]>([]);
   const [localTree, setLocalTree] = useState<any[]>([]);
   const [webdavTree, setWebdavTree] = useState<any[]>([]);
-  const [sessionWorkspace, setSessionWorkspace] = useState<any>(null);
+  const [sessionWorkspaces, setSessionWorkspaces] = useState<
+    Record<string, import('@/utils/sessionWorkspace').SessionWorkspace>
+  >({});
   const [localRootHandle, setLocalRootHandle] = useState<any>(null);
   const [localVaultFsPath, setLocalVaultFsPath] = useState(() =>
     isDesktopApp() ? loadLocalVaultFsPath() : '',
@@ -58,6 +68,24 @@ export function AppVaultStateProvider({ children }: { children: ReactNode }) {
   const [isWebdavTreeLoading, setIsWebdavTreeLoading] = useState(false);
   const [localFolderLoadingPath, setLocalFolderLoadingPath] = useState<string | null>(null);
   const [webdavFolderLoadingPath, setWebdavFolderLoadingPath] = useState<string | null>(null);
+
+  const upsertSessionWorkspace = (
+    workspace: import('@/utils/sessionWorkspace').SessionWorkspace,
+  ) => {
+    setSessionWorkspaces((prev) => ({
+      ...prev,
+      [workspace.id]: workspace,
+    }));
+  };
+
+  const removeSessionWorkspace = (sessionId: string) => {
+    setSessionWorkspaces((prev) => {
+      if (!prev[sessionId]) return prev;
+      const next = { ...prev };
+      delete next[sessionId];
+      return next;
+    });
+  };
 
   const value = useMemo(
     () => ({
@@ -69,8 +97,10 @@ export function AppVaultStateProvider({ children }: { children: ReactNode }) {
       setLocalTree,
       webdavTree,
       setWebdavTree,
-      sessionWorkspace,
-      setSessionWorkspace,
+      sessionWorkspaces,
+      setSessionWorkspaces,
+      upsertSessionWorkspace,
+      removeSessionWorkspace,
       localRootHandle,
       setLocalRootHandle,
       localVaultFsPath,
@@ -91,7 +121,7 @@ export function AppVaultStateProvider({ children }: { children: ReactNode }) {
       s3Tree,
       localTree,
       webdavTree,
-      sessionWorkspace,
+      sessionWorkspaces,
       localRootHandle,
       localVaultFsPath,
       webdavConfig,

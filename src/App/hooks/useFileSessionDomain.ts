@@ -65,7 +65,11 @@ import {
 import {
   SESSION_STORAGE_TYPE,
   renameSessionFile,
+  resolveSessionFileRef,
+  sessionFileKey,
+  getSessionFileLocalAbsPath,
 } from '@/utils/sessionWorkspace';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
@@ -118,7 +122,7 @@ export function useFileSessionDomain() {
     loadS3Files,
     refreshLocalTree,
     refreshWebdavTree,
-    setSessionWorkspace,
+    upsertSessionWorkspace,
   } = useVault();
 
   const {
@@ -138,7 +142,7 @@ export function useFileSessionDomain() {
     setIsPullingFromRemote,
     sessionVaultBindingsRef,
     writeSessionFileToHaimRef,
-    sessionWorkspaceRef,
+    sessionWorkspacesRef,
     saveFileRef,
     selectFileRef,
     applyWorkspaceFilePathRetargetRef,
@@ -812,10 +816,15 @@ export function useFileSessionDomain() {
         ...(isEncMdPath(node.path) ? { encMd: true } : {}),
       }, contentToUse, { baselineContent });
     } else if (type === SESSION_STORAGE_TYPE) {
-      flushSessionEditorToWorkspaceRef.current?.();
-      const workspace = sessionWorkspaceRef.current;
-      if (!workspace) return;
-      applySessionFileToEditorRef.current?.(node.path, workspace, { skipNavigate });
+      await flushSessionEditorToWorkspaceRef.current?.();
+      const map = sessionWorkspacesRef.current ?? {};
+      const ref = resolveSessionFileRef(map, node.path);
+      if (!ref) return;
+      await applySessionFileToEditorRef.current?.(
+        node.path,
+        ref.workspace,
+        { skipNavigate },
+      );
     }
     } finally {
       try {
@@ -984,8 +993,17 @@ export function useFileSessionDomain() {
 
     if (fileToSave.type === SESSION_STORAGE_TYPE) {
       const binding = sessionVaultBindingsRef.current?.[fileToSave.id];
+      const sessionRef = resolveSessionFileRef(sessionWorkspacesRef.current, fileToSave.id);
+      const localAbsPath =
+        binding?.localAbsPath ??
+        (sessionRef ? getSessionFileLocalAbsPath(sessionRef.workspace, sessionRef.path) : null);
+      if (localAbsPath && isDesktopApp() && !binding?.localAbsPath) {
+        sessionVaultBindingsRef.current[fileToSave.id] = { localAbsPath };
+      }
       const bindingOk =
-        Boolean(binding?.destPath) && binding.storageType === connectedHaimStorageTypeRef.current?.();
+        Boolean(localAbsPath && isDesktopApp()) ||
+        (Boolean(binding?.destPath) &&
+          binding.storageType === connectedHaimStorageTypeRef.current?.());
       if (!bindingOk) {
         if (fileOverride || background) return;
         handleRequestSessionSaveChooserRef.current?.();
@@ -1150,11 +1168,12 @@ export function useFileSessionDomain() {
         }
       } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
         const binding = sessionVaultBindingsRef.current?.[fileToSave.id];
-        if (!binding?.destPath) {
+        const destPath = binding?.destPath ?? binding?.localAbsPath;
+        if (!destPath) {
           throw new Error('저장 위치를 찾지 못했습니다.');
         }
         await writeSessionFileToHaimRef.current?.({
-          destPath: binding.destPath,
+          destPath,
           sessionFile: fileToSave,
           content: vaultBody,
         });
@@ -1640,14 +1659,20 @@ export function useFileSessionDomain() {
       } else if (currentFile.type === 'local') {
         updated = await renameLocalFile(currentFile, trimmed);
       } else if (currentFile.type === SESSION_STORAGE_TYPE) {
-        const ws = flushSessionEditorToWorkspaceRef.current?.() ?? sessionWorkspaceRef.current;
-        if (!ws) return null;
-        const nextWs = renameSessionFile(ws, currentFile.id, trimmed);
-        sessionWorkspaceRef.current = nextWs;
-        setSessionWorkspace(nextWs);
-        const lastSlash = String(currentFile.id || '').lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? currentFile.id.slice(0, lastSlash + 1) : '';
-        const newKey = dirPrefix + trimmed;
+        const map =
+          (await flushSessionEditorToWorkspaceRef.current?.()) ??
+          sessionWorkspacesRef.current ??
+          {};
+        const ref = resolveSessionFileRef(map, currentFile.id);
+        if (!ref) return null;
+        const nextWs = renameSessionFile(ref.workspace, ref.path, trimmed);
+        const nextMap = { ...map, [ref.sessionId]: nextWs };
+        sessionWorkspacesRef.current = nextMap;
+        upsertSessionWorkspace(nextWs);
+        const lastSlash = String(ref.path || '').lastIndexOf('/');
+        const dirPrefix = lastSlash >= 0 ? ref.path.slice(0, lastSlash + 1) : '';
+        const newRelPath = dirPrefix + trimmed;
+        const newKey = sessionFileKey(ref.sessionId, newRelPath);
         const bindingsRef = sessionVaultBindingsRef;
         const prevBinding = bindingsRef?.current?.[currentFile.id];
         if (bindingsRef && prevBinding && newKey !== currentFile.id) {
@@ -1693,7 +1718,7 @@ export function useFileSessionDomain() {
     editorContent,
     renameS3File,
     renameLocalFile,
-    setSessionWorkspace,
+    upsertSessionWorkspace,
     webdavConfig,
     refreshWebdavTree,
     applyOpenFileIdentityChange,

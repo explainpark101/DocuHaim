@@ -6,7 +6,7 @@ import { advancedSearchEngine } from '@/utils/advancedSearch';
 import type { ContentSearchFileHit } from '@/utils/advancedSearch/contentSearchSnippets';
 import { tokenizeForIndexAsync } from '@/utils/advancedSearch/tokenize';
 import { contentSearchPathname } from '@/utils/appHref';
-import { buildSessionTree, type SessionWorkspace } from '@/utils/sessionWorkspace';
+import { buildSessionTree, listSessionWorkspaces, type SessionWorkspacesMap } from '@/utils/sessionWorkspace';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 
 type TreeNode = {
@@ -21,7 +21,7 @@ export type ContentSearchPageProps = {
   s3Tree?: TreeNode[] | null;
   localTree?: TreeNode[] | null;
   webdavTree?: TreeNode[] | null;
-  sessionWorkspace?: SessionWorkspace | null;
+  sessionWorkspaces?: SessionWorkspacesMap | null;
   onOpenFile: (path: string) => void | Promise<void>;
   isActive?: boolean;
 };
@@ -41,7 +41,7 @@ export default function ContentSearchPage({
   s3Tree,
   localTree,
   webdavTree,
-  sessionWorkspace,
+  sessionWorkspaces,
   onOpenFile,
   isActive = true,
 }: ContentSearchPageProps) {
@@ -94,11 +94,11 @@ export default function ContentSearchPage({
     if (storageMode === STORAGE_MODE_LOCAL) trees.push(localTree || []);
     else if (storageMode === STORAGE_MODE_WEBDAV) trees.push(webdavTree || []);
     else trees.push(s3Tree || []);
-    if (sessionWorkspace) {
-      trees.push(buildSessionTree(sessionWorkspace));
+    for (const ws of listSessionWorkspaces(sessionWorkspaces)) {
+      trees.push(buildSessionTree(ws));
     }
     return trees;
-  }, [storageMode, s3Tree, localTree, webdavTree, sessionWorkspace]);
+  }, [storageMode, s3Tree, localTree, webdavTree, sessionWorkspaces]);
 
   useEffect(() => {
     if (!isActive) return undefined;

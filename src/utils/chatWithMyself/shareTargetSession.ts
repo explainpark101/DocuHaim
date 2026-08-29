@@ -1,4 +1,5 @@
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
+import { isEncMdPath } from '@/utils/encMd';
 import type { SessionOrigin } from '@/utils/sessionWorkspace';
 
 const MARKDOWN_MIME_TYPES = new Set([
@@ -22,6 +23,7 @@ export function isShareTargetMarkdownFile(
 ): boolean {
   if (!file) return false;
   if (isMarkdownFileName(file.name)) return true;
+  if (isEncMdPath(file.name)) return true;
   return isShareTargetMarkdownMime(file.type);
 }
 

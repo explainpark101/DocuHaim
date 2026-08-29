@@ -88,19 +88,34 @@ jobs:
               ;;
           esac
 
+      - name: Resolve updater signing mode
+        id: updater_signing
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [[ -n "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and upload release (unsigned)
         if: steps.signing.outputs.signed == 'false'
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: |
-            Desktop builds (DMG / NSIS).
+            Desktop builds (DMG / NSIS) with auto-update manifest.
 
             - macOS: universal DMG
             - Windows: NSIS installer (.exe)
+            - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
 
             Unsigned builds if signing secrets are not configured — see docs/desktop/code-signing.md.
           releaseDraft: false
@@ -112,6 +127,8 @@ jobs:
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -122,10 +139,11 @@ jobs:
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: |
-            Desktop builds (DMG / NSIS).
+            Desktop builds (DMG / NSIS) with auto-update manifest.
 
             - macOS: universal DMG
             - Windows: NSIS installer (.exe)
+            - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
 
             Unsigned builds if signing secrets are not configured — see docs/desktop/code-signing.md.
           releaseDraft: false
@@ -137,16 +155,19 @@ jobs:
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         with:
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: |
-            Desktop builds (DMG / NSIS).
+            Desktop builds (DMG / NSIS) with auto-update manifest.
 
             - macOS: universal DMG
             - Windows: NSIS installer (.exe)
+            - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
 
             Unsigned builds if signing secrets are not configured — see docs/desktop/code-signing.md.
           releaseDraft: false

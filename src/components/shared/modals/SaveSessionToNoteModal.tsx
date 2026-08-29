@@ -222,9 +222,9 @@ export default function SaveSessionToNoteModal({
       }
     >
       <div className="flex max-h-[90vh] flex-col gap-4 p-6">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">내 노트에 저장</h2>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">내 Haim에 저장</h2>
         <p className="text-xs text-gray-500 dark:text-odp-muted">
-          현재 다운로드 세션 문서를 연결된 저장소에 노트로 저장합니다.
+          현재 다운로드 세션 문서를 연결된 원격 저장소에 노트로 저장합니다.
         </p>
         <label className="block text-xs font-medium text-gray-500 dark:text-odp-muted">
           파일명
