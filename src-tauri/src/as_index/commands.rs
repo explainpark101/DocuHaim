@@ -86,6 +86,25 @@ pub async fn as_index_open(
 }
 
 #[tauri::command]
+pub async fn as_index_open_from_file(
+    app: AppHandle,
+    state: State<'_, AsIndexState>,
+    snapshot_path: String,
+) -> Result<String, String> {
+    let store = state.ensure_store(&app)?;
+    let path = std::path::PathBuf::from(snapshot_path);
+    let session_id = tauri::async_runtime::spawn_blocking(move || store.open_from_gzip_file(&path))
+        .await
+        .map_err(|e| format!("open from file join: {e}"))??;
+    emit_log(
+        &app,
+        "info",
+        format!("opened native index session {session_id} from file"),
+    );
+    Ok(session_id)
+}
+
+#[tauri::command]
 pub fn as_index_close(
     app: AppHandle,
     state: State<'_, AsIndexState>,

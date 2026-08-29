@@ -25,6 +25,7 @@ import {
   gunzipBytes,
   gunzipBytesAsync,
   loadDocsAndManifestFromVault,
+  resolveVaultAbsPath,
   saveIndexToVault,
   type AdvancedSearchBackend,
 } from '@/utils/advancedSearch/store';
@@ -71,8 +72,10 @@ import { indexRebuildConcurrency } from '@/utils/advancedSearch/mapPool';
 import {
   emptyDocIdMap,
   hydrateDocIdMapFromDocs,
+  hydrateDocIdMapFromDocsAsync,
   type DocIdMapState,
 } from '@/utils/advancedSearch/docIdMap';
+import { luceKey } from '@/utils/advancedSearch/paths';
 import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
 import { isTauriApp } from '@/utils/tauriPlatform';
 import {
@@ -262,6 +265,7 @@ class AdvancedSearchEngine {
   private logListeners = new Set<() => void>();
   private lucivyApi: LucivyApi | null = null;
   private searchGeneration = 0;
+  private loadPromise: Promise<void> | null = null;
 
   constructor() {
     this.unsub = subscribeAdvancedSearchChanges((event) => {
@@ -517,12 +521,30 @@ class AdvancedSearchEngine {
   async ensureLoaded(): Promise<void> {
     if (this.loaded && this.lucivyReady) return;
     if (!this.backend?.isReady?.()) return;
+    if (this.loadPromise) return this.loadPromise;
+    this.loadPromise = this.loadIndexFromVault().finally(() => {
+      this.loadPromise = null;
+    });
+    return this.loadPromise;
+  }
+
+  private async loadIndexFromVault(): Promise<void> {
+    if (!this.backend?.isReady?.()) return;
     try {
       await yieldToMain();
+      const tauriLuceAbs =
+        isTauriApp() && this.backend
+          ? resolveVaultAbsPath(this.backend, luceKey())
+          : null;
+      const skipLuceBytes = Boolean(tauriLuceAbs);
+
       if (!isSearchIsolationReady()) {
-        const { index } = await loadDocsAndManifestFromVault(this.backend);
+        const { index } = await loadDocsAndManifestFromVault(this.backend, {
+          skipLuceBytes,
+        });
+        await yieldToMain();
         this.index = index;
-        this.docIdMap = hydrateDocIdMapFromDocs(
+        this.docIdMap = await hydrateDocIdMapFromDocsAsync(
           index.docs,
           index.manifest.nextNumericId,
         );
@@ -533,17 +555,20 @@ class AdvancedSearchEngine {
         return;
       }
 
-      const { index, luceGz } = await loadDocsAndManifestFromVault(this.backend);
+      const { index, luceGz } = await loadDocsAndManifestFromVault(
+        this.backend,
+        { skipLuceBytes },
+      );
       await yieldToMain();
       this.index = index;
-      this.docIdMap = hydrateDocIdMapFromDocs(
+      this.docIdMap = await hydrateDocIdMapFromDocsAsync(
         index.docs,
         index.manifest.nextNumericId,
       );
 
       const api = await this.loadLucivyApi();
       let snapshot: Uint8Array | null = null;
-      if (luceGz?.byteLength) {
+      if (!skipLuceBytes && luceGz?.byteLength) {
         try {
           snapshot = await gunzipBytesAsync(luceGz);
         } catch {
@@ -551,7 +576,9 @@ class AdvancedSearchEngine {
         }
       }
       await yieldToMain();
-      await api.openOrCreateLucivyIndex(snapshot);
+      await api.openOrCreateLucivyIndex(snapshot, {
+        snapshotFilePath: tauriLuceAbs,
+      });
       this.lucivyReady = true;
       this.loaded = true;
       this.lastError = null;

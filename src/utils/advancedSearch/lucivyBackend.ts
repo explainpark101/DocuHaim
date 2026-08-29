@@ -107,10 +107,16 @@ export async function ensureLucivyRuntime(): Promise<LucivyRuntimeApi | null> {
 
 export async function openOrCreateLucivyIndex(
   snapshot: Uint8Array | null,
+  options?: { snapshotFilePath?: string | null },
 ): Promise<LucivyIndexApi | null> {
   if (useNative()) {
     const api = await tauriApi();
-    await api.openTauriIndexSession(snapshot);
+    const filePath = options?.snapshotFilePath?.trim();
+    if (filePath) {
+      await api.openTauriIndexFromSnapshotFile(filePath);
+    } else {
+      await api.openTauriIndexSession(snapshot);
+    }
     nativeOpen = true;
     indexHandle = null;
     return null;

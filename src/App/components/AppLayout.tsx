@@ -981,14 +981,16 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               </>
             ) : (
               <span className="truncate text-gray-500 dark:text-odp-muted shrink-0">
-                <MessagesSquare className="size-3" />
-                {storageMode === 's3'
-                  ? ` · S3${s3Creds.bucket ? ` (${s3Creds.bucket})` : ''}`
-                  : storageMode === 'local'
-                    ? ' · 로컬'
-                    : storageMode === 'webdav'
-                      ? ' · WebDAV'
-                      : ''}
+                <span className='flex items-center gap-1'>
+                  <MessagesSquare className="size-3" />
+                  {storageMode === 's3'
+                    ? `S3`
+                    : storageMode === 'local'
+                      ? '로컬'
+                      : storageMode === 'webdav'
+                        ? 'WebDAV'
+                        : ''}
+                </span>
               </span>
             )}
           </div>

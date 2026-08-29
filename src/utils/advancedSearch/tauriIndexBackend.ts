@@ -100,6 +100,26 @@ export async function openTauriIndexSession(
   return id;
 }
 
+/** Open from vault `.advanced-search/index.luce.gz` on disk (no JS IPC copy). */
+export async function openTauriIndexFromSnapshotFile(
+  absPath: string,
+): Promise<string> {
+  await ensureEventListeners();
+  if (sessionId) {
+    try {
+      await closeTauriIndexSession();
+    } catch {
+      // ignore
+    }
+  }
+  const { invoke } = await coreApi();
+  const id = await invoke<string>('as_index_open_from_file', {
+    snapshotPath: absPath,
+  });
+  sessionId = id;
+  return id;
+}
+
 export async function requireTauriSessionId(): Promise<string> {
   if (sessionId) return sessionId;
   return openTauriIndexSession(null);

@@ -277,6 +277,7 @@ pub fn run() {
             system_fonts::list_system_font_families,
             desktop_menu::sync_desktop_menu_ui,
             as_index::commands::as_index_open,
+            as_index::commands::as_index_open_from_file,
             as_index::commands::as_index_close,
             as_index::commands::as_index_upsert_batch,
             as_index::commands::as_index_remove,

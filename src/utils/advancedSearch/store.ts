@@ -1,4 +1,4 @@
-import { gzip, gunzip, gunzipSync, strToU8, strFromU8 } from 'fflate';
+import { gzip, gunzip, gunzipSync, strToU8 } from 'fflate';
 import {
   docsKey,
   luceKey,
@@ -6,6 +6,7 @@ import {
   postingsKey,
   advancedSearchFolderPrefix,
 } from '@/utils/advancedSearch/paths';
+import { loadDocsObjectFromGzip } from '@/utils/advancedSearch/loadIndexDocsAsync';
 import {
   emptyIndex,
   emptyManifest,
@@ -107,15 +108,47 @@ export function objectToDocs(
   return map;
 }
 
-async function readGzipJson<T>(
+export async function objectToDocsAsync(
+  obj: Record<string, DocMeta> | null | undefined,
+  yieldEvery = 200,
+): Promise<Map<string, DocMeta>> {
+  const map = new Map<string, DocMeta>();
+  if (!obj || typeof obj !== 'object') return map;
+  let i = 0;
+  for (const [id, meta] of Object.entries(obj)) {
+    if (!meta || typeof meta !== 'object') continue;
+    map.set(id, meta);
+    i += 1;
+    if (i % yieldEvery === 0) {
+      await new Promise<void>((r) => setTimeout(r, 0));
+    }
+  }
+  return map;
+}
+
+/** Absolute path to vault-relative key when backend exposes `vaultRoot` (Tauri local). */
+export function resolveVaultAbsPath(
+  backend: AdvancedSearchBackend,
+  relPath: string,
+): string | null {
+  const root = (backend as { vaultRoot?: string }).vaultRoot;
+  if (!root) return null;
+  const base = String(root).replace(/[/\\]+$/, '');
+  const rel = String(relPath || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '');
+  if (!rel) return base;
+  return `${base}/${rel}`.replace(/\\/g, '/');
+}
+
+async function readDocsGzipJson(
   backend: AdvancedSearchBackend,
   path: string,
-): Promise<T | null> {
+): Promise<Record<string, DocMeta> | null> {
   if (!backend.readBytes) return null;
   try {
     const { body } = await backend.readBytes(path);
-    const raw = await gunzipBytesAsync(body);
-    return JSON.parse(strFromU8(raw)) as T;
+    return loadDocsObjectFromGzip(body);
   } catch {
     return null;
   }
@@ -133,12 +166,22 @@ async function writeGzipJson(
   await backend.writeBytes(path, compressed, 'application/gzip');
 }
 
+export type LoadDocsOptions = {
+  /** Skip reading LUCE bytes (Tauri opens snapshot from disk path instead). */
+  skipLuceBytes?: boolean;
+};
+
 export async function loadDocsAndManifestFromVault(
   backend: AdvancedSearchBackend,
-): Promise<{ index: InMemoryIndex; luceGz: Uint8Array | null }> {
+  options: LoadDocsOptions = {},
+): Promise<{
+  index: InMemoryIndex;
+  luceGz: Uint8Array | null;
+  luceSnapshotAbsPath: string | null;
+}> {
   const index = emptyIndex();
   if (typeof backend.isReady === 'function' && !backend.isReady()) {
-    return { index, luceGz: null };
+    return { index, luceGz: null, luceSnapshotAbsPath: null };
   }
 
   let manifest: IndexManifest | null = null;
@@ -152,12 +195,13 @@ export async function loadDocsAndManifestFromVault(
   }
 
   if (!manifest || manifest.schemaVersion !== INDEX_SCHEMA_VERSION) {
-    return { index, luceGz: null };
+    return { index, luceGz: null, luceSnapshotAbsPath: null };
   }
 
-  const docsObj = await readGzipJson<Record<string, DocMeta>>(backend, docsKey());
+  const docsObj = await readDocsGzipJson(backend, docsKey());
   let luceGz: Uint8Array | null = null;
-  if (backend.readBytes) {
+  const luceSnapshotAbsPath = resolveVaultAbsPath(backend, luceKey());
+  if (!options.skipLuceBytes && backend.readBytes) {
     try {
       const { body } = await backend.readBytes(luceKey());
       luceGz = body;
@@ -174,8 +218,8 @@ export async function loadDocsAndManifestFromVault(
       manifest.initialized === true ||
       (docsObj != null && Object.keys(docsObj).length > 0),
   };
-  index.docs = objectToDocs(docsObj);
-  return { index, luceGz };
+  index.docs = await objectToDocsAsync(docsObj);
+  return { index, luceGz, luceSnapshotAbsPath };
 }
 
 /** @deprecated use loadDocsAndManifestFromVault + Lucivy import */

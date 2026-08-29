@@ -1,6 +1,7 @@
 //! Index session: ShardedHandle + work directory lifecycle.
 
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -178,6 +179,13 @@ impl SessionStore {
         self.work_root.join(session_id)
     }
 
+    /// Read a gzip-compressed LUCE snapshot from disk and open a session.
+    /// Missing or empty files create an empty index (same as `open(None)`).
+    pub fn open_from_gzip_file(&self, gzip_path: &Path) -> Result<String, String> {
+        let snapshot = read_optional_gunzip_file(gzip_path)?;
+        self.open(snapshot)
+    }
+
     pub fn open(&self, snapshot: Option<Vec<u8>>) -> Result<String, String> {
         let session_id = Self::next_session_id();
         let work_dir = self.session_dir(&session_id);
@@ -245,4 +253,23 @@ fn remove_dir_best_effort(dir: &Path) {
     if dir.exists() {
         let _ = std::fs::remove_dir_all(dir);
     }
+}
+
+fn read_optional_gunzip_file(path: &Path) -> Result<Option<Vec<u8>>, String> {
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let raw = std::fs::read(path).map_err(|e| format!("read snapshot file: {e}"))?;
+    if raw.is_empty() {
+        return Ok(None);
+    }
+    let mut decoder = flate2::read::GzDecoder::new(&raw[..]);
+    let mut out = Vec::new();
+    decoder
+        .read_to_end(&mut out)
+        .map_err(|e| format!("gunzip snapshot file: {e}"))?;
+    if out.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(out))
 }
