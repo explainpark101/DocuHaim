@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import { useRef, type ReactNode, type RefObject } from 'react';
 import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import CoverSlide from '@/components/noteCover/CoverSlide';
@@ -15,6 +15,7 @@ import {
   EDITOR_ID,
   headingId,
 } from '@/pages/exportPdf/exportPdfPrintStyles';
+import { useExportPdfPreviewZoomClip } from '@/pages/exportPdf/hooks/useExportPdfPreviewZoomClip';
 
 export type ExportPdfBodyPreviewProps = {
   coverPages: ReactNode;
@@ -65,6 +66,14 @@ export function ExportPdfBodyPreview({
   bodyMarkdown,
   previewFootnotesRenderKey,
 }: ExportPdfBodyPreviewProps) {
+  const coverStackRef = useRef<HTMLDivElement | null>(null);
+  const zoomClipHeight = useExportPdfPreviewZoomClip(
+    coverStackRef,
+    previewViewZoomPercent,
+    packLayoutKey,
+    isLiveScroll1,
+  );
+
   return (
     <>
       {!isLiveScroll1 ? (
@@ -100,12 +109,21 @@ export function ExportPdfBodyPreview({
         </div>
       ) : null}
       <div
-        className={`export-pdf-cover-stack relative mx-auto w-full print:mx-0 ${
-          isLiveScroll1 ? '' : 'export-pdf-source-measure'
-        }`}
-        style={isLiveScroll1 ? { zoom: previewViewZoomPercent / 100 } : undefined}
-        aria-hidden={isLiveScroll1 ? undefined : true}
+        className={`export-pdf-zoom-clip mx-auto w-full ${isLiveScroll1 ? '' : 'h-auto'}`}
+        style={
+          isLiveScroll1 && zoomClipHeight != null
+            ? { height: zoomClipHeight }
+            : undefined
+        }
       >
+        <div
+          ref={coverStackRef}
+          className={`export-pdf-cover-stack relative mx-auto w-full print:mx-0 ${
+            isLiveScroll1 ? '' : 'export-pdf-source-measure'
+          }`}
+          style={isLiveScroll1 ? { zoom: previewViewZoomPercent / 100 } : undefined}
+          aria-hidden={isLiveScroll1 ? undefined : true}
+        >
         {isLiveScroll1 ? (
           <div
             className="export-pdf-overlay-portal pointer-events-none absolute inset-0 z-100040 print:hidden"
@@ -163,6 +181,7 @@ export function ExportPdfBodyPreview({
               showCodeRowNumber={false}
             />
           </div>
+        </div>
         </div>
       </div>
     </>

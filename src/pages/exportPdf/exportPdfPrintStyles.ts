@@ -418,6 +418,9 @@ export const printFontStyles = `
     align-items: center;
     gap: 1.5rem;
   }
+  .export-pdf-zoom-clip {
+    overflow: hidden;
+  }
   .export-pdf-source-measure {
     position: absolute;
     left: 0;
@@ -510,6 +513,10 @@ export const printFontStyles = `
       align-items: stretch !important;
       /* Preview CSS zoom must not scale print layout / paper size. */
       zoom: 1 !important;
+    }
+    .export-pdf-zoom-clip {
+      height: auto !important;
+      overflow: visible !important;
     }
     .export-pdf-cover {
       /* Same aspect as editor full page, fitted inside @page margins so the
