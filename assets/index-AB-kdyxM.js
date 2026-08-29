@@ -1,0 +1,193 @@
+import { R as u, j as t, C as U } from "./index-DPH8WKK6.js";
+import { B as Z } from "./index-DPH8WKK6.js";
+import "./vendor-react-BFxggocB.js";
+import "./vendor-md-editor-B7IajafM.js";
+import "./vendor-aws-CXsSaYOG.js";
+import "./vendor-lucide-BiQHrkcf.js";
+import "./vendor-zip-Bez6qchM.js";
+import "./vendor-motion-b8oTnHK_.js";
+import "./vendor-radix-ACO_3onn.js";
+import "./vendor-google-genai-DGp6lEvQ.js";
+var l;
+(function(e) {
+  e[e.Start = 0] = "Start", e[e.Current = 1] = "Current", e[e.End = 2] = "End";
+})(l || (l = {}));
+function f(e) {
+  return { isFile: e.isFile, isDirectory: e.isDirectory, isSymlink: e.isSymlink, size: e.size, mtime: e.mtime !== null ? new Date(e.mtime) : null, atime: e.atime !== null ? new Date(e.atime) : null, birthtime: e.birthtime !== null ? new Date(e.birthtime) : null, readonly: e.readonly, fileAttributes: e.fileAttributes, dev: e.dev, ino: e.ino, mode: e.mode, nlink: e.nlink, uid: e.uid, gid: e.gid, rdev: e.rdev, blksize: e.blksize, blocks: e.blocks };
+}
+function g(e) {
+  const n = new Uint8ClampedArray(e), i = n.byteLength;
+  let r = 0;
+  for (let o = 0; o < i; o++) {
+    const s = n[o];
+    r *= 256, r += s;
+  }
+  return r;
+}
+class w extends u {
+  async read(n) {
+    if (n.byteLength === 0) return 0;
+    const i = await t("plugin:fs|read", { rid: this.rid, len: n.byteLength }), r = g(i.slice(-8)), o = i instanceof ArrayBuffer ? new Uint8Array(i) : i;
+    return n.set(o.slice(0, o.length - 8)), r === 0 ? null : r;
+  }
+  async seek(n, i) {
+    return await t("plugin:fs|seek", { rid: this.rid, offset: n, whence: i });
+  }
+  async stat() {
+    const n = await t("plugin:fs|fstat", { rid: this.rid });
+    return f(n);
+  }
+  async truncate(n) {
+    await t("plugin:fs|ftruncate", { rid: this.rid, len: n });
+  }
+  async write(n) {
+    return await t("plugin:fs|write", { rid: this.rid, data: n });
+  }
+}
+async function M(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  const i = await t("plugin:fs|create", { path: e instanceof URL ? e.toString() : e, options: n });
+  return new w(i);
+}
+async function R(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  const i = await t("plugin:fs|open", { path: e instanceof URL ? e.toString() : e, options: n });
+  return new w(i);
+}
+async function v(e, n, i) {
+  if (e instanceof URL && e.protocol !== "file:" || n instanceof URL && n.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  await t("plugin:fs|copy_file", { fromPath: e instanceof URL ? e.toString() : e, toPath: n instanceof URL ? n.toString() : n, options: i });
+}
+async function k(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  await t("plugin:fs|mkdir", { path: e instanceof URL ? e.toString() : e, options: n });
+}
+async function F(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  return await t("plugin:fs|read_dir", { path: e instanceof URL ? e.toString() : e, options: n });
+}
+async function D(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  const i = await t("plugin:fs|read_file", { path: e instanceof URL ? e.toString() : e, options: n });
+  return i instanceof ArrayBuffer ? new Uint8Array(i) : Uint8Array.from(i);
+}
+async function z(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  const i = await t("plugin:fs|read_text_file", { path: e instanceof URL ? e.toString() : e, options: n }), r = i instanceof ArrayBuffer ? i : Uint8Array.from(i);
+  return new TextDecoder((n == null ? void 0 : n.encoding) ?? "utf-8").decode(r);
+}
+async function B(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  const i = e instanceof URL ? e.toString() : e;
+  return await Promise.resolve({ path: i, rid: null, async next() {
+    const r = new TextDecoder((n == null ? void 0 : n.encoding) ?? "utf-8");
+    if (this.rid === null) {
+      const d = r.encoding;
+      this.rid = await t("plugin:fs|read_text_file_lines", { path: i, options: n != null ? { ...n, encoding: d } : void 0 });
+    }
+    const o = await t("plugin:fs|read_text_file_lines_next", { rid: this.rid }), s = o instanceof ArrayBuffer ? new Uint8Array(o) : Uint8Array.from(o), c = s[s.byteLength - 1] === 1;
+    return c ? (this.rid = null, { value: null, done: c }) : { value: r.decode(s.slice(0, s.byteLength - 1)), done: c };
+  }, [Symbol.asyncIterator]() {
+    return this;
+  } });
+}
+async function C(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  await t("plugin:fs|remove", { path: e instanceof URL ? e.toString() : e, options: n });
+}
+async function I(e, n, i) {
+  if (e instanceof URL && e.protocol !== "file:" || n instanceof URL && n.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  await t("plugin:fs|rename", { oldPath: e instanceof URL ? e.toString() : e, newPath: n instanceof URL ? n.toString() : n, options: i });
+}
+async function J(e, n) {
+  const i = await t("plugin:fs|stat", { path: e instanceof URL ? e.toString() : e, options: n });
+  return f(i);
+}
+async function N(e, n) {
+  const i = await t("plugin:fs|lstat", { path: e instanceof URL ? e.toString() : e, options: n });
+  return f(i);
+}
+async function O(e, n, i) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  await t("plugin:fs|truncate", { path: e instanceof URL ? e.toString() : e, len: n, options: i });
+}
+async function j(e, n, i) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  if (n instanceof ReadableStream) {
+    const r = await R(e, { read: false, create: true, write: true, ...i }), o = n.getReader();
+    try {
+      for (; ; ) {
+        const { done: s, value: c } = await o.read();
+        if (s) break;
+        await r.write(c);
+      }
+    } finally {
+      o.releaseLock(), await r.close();
+    }
+  } else await t("plugin:fs|write_file", n, { headers: { path: encodeURIComponent(e instanceof URL ? e.toString() : e), options: JSON.stringify(i) } });
+}
+async function H(e, n, i) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  const r = new TextEncoder();
+  await t("plugin:fs|write_text_file", r.encode(n), { headers: { path: encodeURIComponent(e instanceof URL ? e.toString() : e), options: JSON.stringify(i) } });
+}
+async function W(e, n) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  return await t("plugin:fs|exists", { path: e instanceof URL ? e.toString() : e, options: n });
+}
+class L extends u {
+}
+async function y(e, n, i) {
+  const r = Array.isArray(e) ? e : [e];
+  for (const a of r) if (a instanceof URL && a.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  const o = new U();
+  o.onmessage = n;
+  const s = await t("plugin:fs|watch", { paths: r.map((a) => a instanceof URL ? a.toString() : a), options: i, onEvent: o }), c = new L(s);
+  return () => {
+    c.close();
+  };
+}
+async function q(e, n, i) {
+  return await y(e, n, { delayMs: 2e3, ...i });
+}
+async function G(e, n, i) {
+  return await y(e, n, { ...i, delayMs: void 0 });
+}
+async function K(e) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  return await t("plugin:fs|size", { path: e instanceof URL ? e.toString() : e });
+}
+async function Q(e) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  await t("plugin:fs|start_accessing_security_scoped_resource", { path: e instanceof URL ? e.toString() : e });
+}
+async function V(e) {
+  if (e instanceof URL && e.protocol !== "file:") throw new TypeError("Must be a file URL.");
+  await t("plugin:fs|stop_accessing_security_scoped_resource", { path: e instanceof URL ? e.toString() : e });
+}
+export {
+  Z as BaseDirectory,
+  w as FileHandle,
+  l as SeekMode,
+  v as copyFile,
+  M as create,
+  W as exists,
+  N as lstat,
+  k as mkdir,
+  R as open,
+  F as readDir,
+  D as readFile,
+  z as readTextFile,
+  B as readTextFileLines,
+  C as remove,
+  I as rename,
+  K as size,
+  Q as startAccessingSecurityScopedResource,
+  J as stat,
+  V as stopAccessingSecurityScopedResource,
+  O as truncate,
+  q as watch,
+  G as watchImmediate,
+  j as writeFile,
+  H as writeTextFile
+};
