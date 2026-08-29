@@ -177,6 +177,7 @@ import {
   notifyMirrorEditCaretUpdate,
   registerMirrorEditCaretHandler,
 } from '@/utils/mirrorEditCaretBridge';
+import { cmEditorGlyphRepaintFix } from '@/utils/cmEditorGlyphRepaintFix';
 import { createMirrorEditPreviewRemirror } from '@/utils/mirrorEditPreviewRemirror';
 import { createPreviewScrollFollow } from '@/utils/previewScrollFollow';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
@@ -511,6 +512,11 @@ config({
         extension: drawSelection(),
       });
     }
+
+    nextExtensions.push({
+      type: 'cmGlyphRepaintFix',
+      extension: cmEditorGlyphRepaintFix(),
+    });
 
     nextExtensions.push(
       {
