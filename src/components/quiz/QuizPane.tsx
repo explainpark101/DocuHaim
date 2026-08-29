@@ -15,8 +15,9 @@ import {
   Wand2,
   X,
 } from 'lucide-react';
-import { DropdownMenu } from 'radix-ui';
+import { DropdownMenu, Switch } from 'radix-ui';
 import Button from '@/components/Button';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import QuizMdPreview from '@/components/quiz/QuizMdPreview';
 import QuizAddQuestionModal from '@/components/quiz/QuizAddQuestionModal';
 import QuizBulkImportModal from '@/components/quiz/QuizBulkImportModal';
@@ -83,6 +84,34 @@ import {
 
 const SOURCES_DOCK_WIDTH = 320;
 const QUIZ_AUTOSAVE_DEBOUNCE_MS = 20_000;
+const QUIZ_SOURCE_REMOVE_CONFIRM_KEY = 's3haim_quiz_source_remove_confirm';
+
+const SOURCE_REMOVE_SWITCH_ROOT_CLASS = (checked: boolean) =>
+  [
+    'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-violet-400',
+    checked
+      ? 'border-violet-500 bg-violet-500 shadow-sm dark:border-violet-500 dark:bg-violet-500'
+      : 'border-transparent bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong',
+  ].join(' ');
+
+const SOURCE_REMOVE_SWITCH_THUMB_CLASS =
+  'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
+
+function readQuizSourceRemoveConfirm(): boolean {
+  try {
+    return localStorage.getItem(QUIZ_SOURCE_REMOVE_CONFIRM_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeQuizSourceRemoveConfirm(value: boolean): void {
+  try {
+    localStorage.setItem(QUIZ_SOURCE_REMOVE_CONFIRM_KEY, String(value));
+  } catch {
+    // ignore
+  }
+}
 
 type TreeNode = {
   name: string;
@@ -251,6 +280,8 @@ export default function QuizPane({
   const [filter, setFilter] = useState<FilterMode>('all');
   const [tocOpen, setTocOpen] = useState(false);
   const [sourcesDockOpen, setSourcesDockOpen] = useState(false);
+  const [confirmSourceRemove, setConfirmSourceRemove] = useState(readQuizSourceRemoveConfirm);
+  const [pendingSourceRemove, setPendingSourceRemove] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editQ, setEditQ] = useState<QuizQuestion | null>(null);
@@ -398,6 +429,31 @@ export default function QuizPane({
       persistDocument(synced, session);
     },
     [buildSessionFromState, persistDocument],
+  );
+
+  const removeSourcePath = useCallback(
+    (path: string) => {
+      const current = docRef.current;
+      commitDoc({
+        ...current,
+        config: {
+          ...current.config,
+          sourcePaths: current.config.sourcePaths.filter((x) => x !== path),
+        },
+      });
+    },
+    [commitDoc],
+  );
+
+  const handleSourceRemove = useCallback(
+    (path: string) => {
+      if (confirmSourceRemove) {
+        setPendingSourceRemove(path);
+        return;
+      }
+      removeSourcePath(path);
+    },
+    [confirmSourceRemove, removeSourcePath],
   );
 
   const {
@@ -1653,36 +1709,51 @@ export default function QuizPane({
                 className="flex h-full min-h-0 flex-col"
                 style={{ width: SOURCES_DOCK_WIDTH }}
               >
-                <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 dark:border-odp-borderSoft">
-                  <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-                    <Library size={16} className="text-violet-600 dark:text-violet-400" />
-                    파일 근거
+                <div className="border-b border-slate-200 dark:border-odp-borderSoft">
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
+                      <Library size={16} className="text-violet-600 dark:text-violet-400" />
+                      파일 근거
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="근거 패널 닫기"
+                      className="rounded p-1 hover:bg-slate-100 dark:hover:bg-odp-focusBg"
+                      onClick={() => setSourcesDockOpen(false)}
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    aria-label="근거 패널 닫기"
-                    className="rounded p-1 hover:bg-slate-100 dark:hover:bg-odp-focusBg"
-                    onClick={() => setSourcesDockOpen(false)}
-                  >
-                    <X size={16} />
-                  </button>
+                  <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
+                    <label
+                      htmlFor="quiz-source-remove-confirm"
+                      className="text-[11px] font-medium text-slate-600 dark:text-odp-muted"
+                    >
+                      삭제 시 확인
+                    </label>
+                    <Switch.Root
+                      id="quiz-source-remove-confirm"
+                      className={SOURCE_REMOVE_SWITCH_ROOT_CLASS(confirmSourceRemove)}
+                      checked={confirmSourceRemove}
+                      onCheckedChange={(checked) => {
+                        setConfirmSourceRemove(checked);
+                        writeQuizSourceRemoveConfirm(checked);
+                      }}
+                      aria-label="근거 문서 삭제 시 확인"
+                    >
+                      <Switch.Thumb className={SOURCE_REMOVE_SWITCH_THUMB_CLASS} />
+                    </Switch.Root>
+                  </div>
                 </div>
                 <div
                   ref={handleDockDropHostChange}
                   className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-3"
                 >
                   <QuizSourcePathsChips
+                    layout="dock"
                     paths={doc.config.sourcePaths}
                     label="선택된 문서"
-                    onRemove={(p) =>
-                      commitDoc({
-                        ...doc,
-                        config: {
-                          ...doc.config,
-                          sourcePaths: doc.config.sourcePaths.filter((x) => x !== p),
-                        },
-                      })
-                    }
+                    onRemove={handleSourceRemove}
                     onOpenPicker={() =>
                       setSourcePicker({
                         paths: doc.config.sourcePaths,
@@ -1788,6 +1859,24 @@ export default function QuizPane({
           }}
         />
       ) : null}
+
+      <ConfirmModal
+        isOpen={pendingSourceRemove != null}
+        title="근거 문서 제거"
+        message={
+          pendingSourceRemove
+            ? `「${pendingSourceRemove}」을(를) 파일 근거에서 제거할까요?`
+            : ''
+        }
+        confirmLabel="제거"
+        cancelLabel="취소"
+        variant="danger"
+        onConfirm={() => {
+          if (pendingSourceRemove) removeSourcePath(pendingSourceRemove);
+          setPendingSourceRemove(null);
+        }}
+        onCancel={() => setPendingSourceRemove(null)}
+      />
 
       <QuizGenerationQueuePanel
         jobs={genQueue.jobs}
