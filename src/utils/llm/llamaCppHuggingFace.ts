@@ -3,8 +3,9 @@ import {
   isValidHuggingFaceRepoId,
   parseHuggingFaceModelUrl,
   repoIdToCacheDirEntryName,
+  resolveHfModelDiskBytes,
 } from '@/utils/llm/mlxVlmHuggingFace';
-import { formatByteSize, sumHfSiblingBytes } from '@/utils/llm/mlxVlmModelSizing';
+import { formatByteSize, sumHfGgufRepoFileEntryBytes, sumHfSiblingBytes } from '@/utils/llm/mlxVlmModelSizing';
 
 export {
   cacheDirEntryToRepoId,
@@ -31,28 +32,9 @@ export function isLikelyGgufRepo(hit: Pick<HfGgufSearchHit, 'id' | 'tags'>): boo
 
 /** Sum LFS/file sizes for siblings whose name ends with .gguf. */
 export function sumHfGgufSiblingBytes(siblings: unknown): number | undefined {
-  if (!Array.isArray(siblings)) return undefined;
-  const ggufOnly = siblings.filter((item) => {
-    if (!item || typeof item !== 'object') return false;
-    const name = String((item as { rfilename?: unknown }).rfilename || '');
-    return name.toLowerCase().endsWith('.gguf');
-  });
-  if (!ggufOnly.length) return sumHfSiblingBytes(siblings);
-  return sumHfSiblingBytes(ggufOnly);
-}
-
-async function fetchHfModelRecord(
-  repoId: string,
-  signal?: AbortSignal,
-): Promise<Record<string, unknown> | null> {
-  const id = String(repoId || '').trim();
-  if (!isValidHuggingFaceRepoId(id)) return null;
-  const res = await fetch(`${HF_MODELS_API}/${encodeURIComponent(id)}`, {
-    ...(signal ? { signal } : {}),
-    headers: { Accept: 'application/json' },
-  });
-  if (!res.ok) return null;
-  return (await res.json()) as Record<string, unknown>;
+  const ggufBytes = sumHfGgufRepoFileEntryBytes(siblings);
+  if (ggufBytes != null) return ggufBytes;
+  return sumHfSiblingBytes(siblings);
 }
 
 export async function enrichHfGgufSearchHit(
@@ -60,8 +42,10 @@ export async function enrichHfGgufSearchHit(
   options?: { signal?: AbortSignal },
 ): Promise<HfGgufSearchHit> {
   if (hit.diskBytes != null && hit.diskBytes > 0) return hit;
-  const rec = await fetchHfModelRecord(hit.id, options?.signal);
-  const diskBytes = rec ? sumHfGgufSiblingBytes(rec.siblings) : undefined;
+  const diskBytes = await resolveHfModelDiskBytes(hit.id, {
+    ...(options?.signal ? { signal: options.signal } : {}),
+    ggufOnly: true,
+  });
   return {
     ...hit,
     ...(diskBytes != null ? { diskBytes } : {}),

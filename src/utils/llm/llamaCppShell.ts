@@ -862,6 +862,60 @@ export async function downloadLlamaCppModel(
   }
 }
 
+async function sumPathBytes(path: string): Promise<number> {
+  const { readDir, stat } = await import('@tauri-apps/plugin-fs');
+  const { join } = await import('@tauri-apps/api/path');
+  const info = await stat(path);
+  if (!info.isDirectory) return info.size ?? 0;
+
+  let total = 0;
+  const entries = await readDir(path);
+  for (const entry of entries) {
+    total += await sumPathBytes(await join(path, entry.name));
+  }
+  return total;
+}
+
+export async function measureLlamaCppModelBytes(
+  model: LlamaCppInstalledModel,
+): Promise<number> {
+  const localPath = String(model.localPath || '').trim();
+  if (localPath) {
+    try {
+      const { exists, stat } = await import('@tauri-apps/plugin-fs');
+      if (await exists(localPath)) {
+        const info = await stat(localPath);
+        if (!info.isDirectory) return info.size ?? 0;
+        return await sumPathBytes(localPath);
+      }
+    } catch {
+      // fall through to HF cache measurement
+    }
+  }
+
+  const repoId = String(model.repoId || model.id || '').trim();
+  if (!isValidHuggingFaceRepoId(repoId)) return 0;
+
+  const { measureHuggingFaceCacheRepoBytes } = await import('@/utils/llm/mlxVlmShell');
+  return measureHuggingFaceCacheRepoBytes(repoId);
+}
+
+export async function measureInstalledLlamaCppModelsBytes(
+  models: readonly LlamaCppInstalledModel[],
+): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  await Promise.all(
+    models.map(async (model) => {
+      const bytes = await measureLlamaCppModelBytes(model);
+      out[model.id] = bytes;
+      if (model.repoId && model.repoId !== model.id) {
+        out[model.repoId] = bytes;
+      }
+    }),
+  );
+  return out;
+}
+
 export function hasInstalledLlamaCppModelsDelta(
   current: LlamaCppInstalledModel[],
   merged: LlamaCppInstalledModel[],

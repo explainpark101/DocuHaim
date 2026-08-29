@@ -2,6 +2,13 @@ export type MlxVlmFeasibility = 'ok' | 'tight' | 'unlikely' | 'unknown';
 
 const BYTES_PER_GB = 1024 ** 3;
 
+export type HfRepoFileEntry = {
+  path?: string;
+  rfilename?: string;
+  size?: number;
+  lfs?: { size?: number; pointerSize?: number };
+};
+
 export function formatByteSize(bytes: number | undefined): string {
   if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return '—';
   if (bytes >= BYTES_PER_GB) return `${(bytes / BYTES_PER_GB).toFixed(1)} GB`;
@@ -10,30 +17,52 @@ export function formatByteSize(bytes: number | undefined): string {
   return `${Math.round(bytes)} B`;
 }
 
-/** Sum HF sibling sizes (download footprint on disk). Prefer LFS payload size when present. */
-export function sumHfSiblingBytes(siblings: unknown): number | undefined {
-  if (!Array.isArray(siblings)) return undefined;
+export function getHfRepoFileEntryName(entry: HfRepoFileEntry): string {
+  return String(entry.path || entry.rfilename || '').trim();
+}
+
+/** Prefer LFS payload size when present (HF tree + legacy sibling records). */
+export function getHfRepoFileEntryBytes(entry: HfRepoFileEntry): number | undefined {
+  const lfsSize = entry.lfs?.size;
+  if (typeof lfsSize === 'number' && Number.isFinite(lfsSize) && lfsSize > 0) {
+    return lfsSize;
+  }
+  const size = entry.size;
+  if (typeof size === 'number' && Number.isFinite(size) && size > 0) {
+    return size;
+  }
+  return undefined;
+}
+
+/** Sum HF repo file sizes from siblings or /tree entries. */
+export function sumHfRepoFileEntryBytes(entries: unknown): number | undefined {
+  if (!Array.isArray(entries)) return undefined;
   let total = 0;
   let seen = false;
-  for (const item of siblings) {
+  for (const item of entries) {
     if (!item || typeof item !== 'object') continue;
-    const rec = item as Record<string, unknown>;
-    const lfs = rec.lfs;
-    if (lfs && typeof lfs === 'object') {
-      const lfsSize = (lfs as { size?: unknown }).size;
-      if (typeof lfsSize === 'number' && Number.isFinite(lfsSize) && lfsSize > 0) {
-        total += lfsSize;
-        seen = true;
-        continue;
-      }
-    }
-    const size = rec.size;
-    if (typeof size === 'number' && Number.isFinite(size) && size > 0) {
-      total += size;
-      seen = true;
-    }
+    const bytes = getHfRepoFileEntryBytes(item as HfRepoFileEntry);
+    if (bytes == null) continue;
+    total += bytes;
+    seen = true;
   }
   return seen ? total : undefined;
+}
+
+/** Sum *.gguf sizes when present; otherwise fall back to all entries. */
+export function sumHfGgufRepoFileEntryBytes(entries: unknown): number | undefined {
+  if (!Array.isArray(entries)) return undefined;
+  const ggufOnly = entries.filter((item) => {
+    if (!item || typeof item !== 'object') return false;
+    return getHfRepoFileEntryName(item as HfRepoFileEntry).toLowerCase().endsWith('.gguf');
+  });
+  if (ggufOnly.length) return sumHfRepoFileEntryBytes(ggufOnly);
+  return sumHfRepoFileEntryBytes(entries);
+}
+
+/** Sum HF sibling sizes (download footprint on disk). Prefer LFS payload size when present. */
+export function sumHfSiblingBytes(siblings: unknown): number | undefined {
+  return sumHfRepoFileEntryBytes(siblings);
 }
 
 function parseParamBillions(modelId: string): number | undefined {

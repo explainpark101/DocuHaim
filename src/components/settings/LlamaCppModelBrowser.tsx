@@ -15,6 +15,7 @@ import {
   searchHuggingFaceGgufModels,
   type HfGgufSearchHit,
 } from '@/utils/llamaCppHuggingFace';
+import { formatByteSize } from '@/utils/llm/mlxVlmModelSizing';
 import {
   addInstalledLlamaCppModel,
   isLlamaCppRepoInstalled,
@@ -30,6 +31,7 @@ import {
   abortLlamaCppDownload,
   downloadLlamaCppModel,
   isLlamaCppDownloadAbortedError,
+  measureInstalledLlamaCppModelsBytes,
   rememberLlamaCppDownloadTarget,
   removeInstalledLlamaCppModel,
   setSelectedLlamaCppModelId,
@@ -37,6 +39,7 @@ import {
 import { LLAMA_CPP_REDOWNLOAD_FOCUS_EVENT } from '@/utils/llm/llamaCppLoadErrorHelp';
 import type { MlxVlmDownloadProgressSnapshot } from '@/utils/llm/mlxVlmDownloadProgress';
 import MlxVlmVirtualLogPanel from '@/components/settings/MlxVlmVirtualLogPanel';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
 type LlamaCppModelBrowserProps = {
   settings: LlamaCppSettings;
@@ -75,6 +78,30 @@ export default function LlamaCppModelBrowser({
   const [downloadLogOpen, setDownloadLogOpen] = useState(false);
   const [downloadLogLines, setDownloadLogLines] = useState(() => getLlamaCppDownloadLogLines());
   const [aliasTick, setAliasTick] = useState(0);
+  const [modelBytesById, setModelBytesById] = useState<Record<string, number>>({});
+  const [modelBytesLoading, setModelBytesLoading] = useState(false);
+
+  const refreshInstalledModelBytes = useCallback(async () => {
+    const models = settings.installedModels;
+    if (!models.length || !isTauriDesktopPlatform()) {
+      setModelBytesById({});
+      setModelBytesLoading(false);
+      return;
+    }
+    setModelBytesLoading(true);
+    try {
+      const bytes = await measureInstalledLlamaCppModelsBytes(models);
+      setModelBytesById(bytes);
+    } catch {
+      setModelBytesById({});
+    } finally {
+      setModelBytesLoading(false);
+    }
+  }, [settings.installedModels]);
+
+  useEffect(() => {
+    void refreshInstalledModelBytes();
+  }, [refreshInstalledModelBytes]);
 
   useEffect(
     () => subscribeLlamaCppDownloadLog(() => setDownloadLogLines(getLlamaCppDownloadLogLines())),
@@ -272,6 +299,14 @@ export default function LlamaCppModelBrowser({
               void aliasTick;
               const selected = settings.selectedModelId === model.id;
               const alias = getLocalLlmModelAlias('llama-cpp', model.id);
+              const diskBytes =
+                modelBytesById[model.id] ?? modelBytesById[model.repoId || ''] ?? 0;
+              const sizeLabel =
+                diskBytes > 0
+                  ? formatByteSize(diskBytes)
+                  : modelBytesLoading
+                    ? null
+                    : '—';
               return (
                 <div
                   key={model.id}
@@ -305,6 +340,9 @@ export default function LlamaCppModelBrowser({
                         </span>
                       ) : null}
                     </button>
+                    <span className="mt-0.5 block text-[10px] text-gray-500 dark:text-odp-muted">
+                      {sizeLabel ? `용량 ${sizeLabel}` : '용량 확인 중…'}
+                    </span>
                     <LocalLlmModelAliasField
                       scope="llama-cpp"
                       modelId={model.id}

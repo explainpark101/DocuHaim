@@ -3,6 +3,8 @@ import {
   estimateMlxRamBytes,
   feasibilityLabel,
   formatByteSize,
+  sumHfGgufRepoFileEntryBytes,
+  sumHfRepoFileEntryBytes,
   sumHfSiblingBytes,
   type MlxVlmFeasibility,
 } from '@/utils/llm/mlxVlmModelSizing';
@@ -23,6 +25,13 @@ export type HfModelSearchHit = {
 
 const HF_MODELS_API = 'https://huggingface.co/api/models';
 const HF_REPO_ID_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+
+function hfModelApiUrl(repoId: string, suffix = ''): string | null {
+  const id = String(repoId || '').trim();
+  if (!isValidHuggingFaceRepoId(id)) return null;
+  // HF hub expects a literal org/model path; encodeURIComponent(id) breaks /tree routes.
+  return `${HF_MODELS_API}/${id}${suffix}`;
+}
 
 export function isValidHuggingFaceRepoId(value: string): boolean {
   return HF_REPO_ID_RE.test(String(value || '').trim());
@@ -187,14 +196,49 @@ async function fetchHfModelRecord(
   repoId: string,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown> | null> {
-  const id = String(repoId || '').trim();
-  if (!isValidHuggingFaceRepoId(id)) return null;
-  const res = await fetch(`${HF_MODELS_API}/${encodeURIComponent(id)}`, {
+  const url = hfModelApiUrl(repoId);
+  if (!url) return null;
+  const res = await fetch(url, {
     ...(signal ? { signal } : {}),
     headers: { Accept: 'application/json' },
   });
   if (!res.ok) return null;
   return (await res.json()) as Record<string, unknown>;
+}
+
+/** HF model tree listing; includes LFS sizes when /models siblings omit them. */
+export async function fetchHfRepoTreeEntries(
+  repoId: string,
+  signal?: AbortSignal,
+): Promise<unknown[] | null> {
+  const url = hfModelApiUrl(repoId, '/tree/main?recursive=1');
+  if (!url) return null;
+  const res = await fetch(url, {
+    ...(signal ? { signal } : {}),
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) return null;
+  const data: unknown = await res.json();
+  return Array.isArray(data) ? data : null;
+}
+
+export async function resolveHfModelDiskBytes(
+  repoId: string,
+  options?: { signal?: AbortSignal; ggufOnly?: boolean },
+): Promise<number | undefined> {
+  const rec = await fetchHfModelRecord(repoId, options?.signal);
+  const fromSiblings = rec
+    ? options?.ggufOnly
+      ? sumHfGgufRepoFileEntryBytes(rec.siblings) ?? sumHfSiblingBytes(rec.siblings)
+      : sumHfSiblingBytes(rec.siblings)
+    : undefined;
+  if (fromSiblings != null) return fromSiblings;
+
+  const tree = await fetchHfRepoTreeEntries(repoId, options?.signal);
+  if (!tree?.length) return undefined;
+  return options?.ggufOnly
+    ? sumHfGgufRepoFileEntryBytes(tree)
+    : sumHfRepoFileEntryBytes(tree);
 }
 
 function hitFromRecord(rec: Record<string, unknown>, id: string): HfModelSearchHit {
@@ -226,8 +270,9 @@ export async function enrichHfModelHit(
     return applyModelResourceEstimates(hit, hit.diskBytes, availableRamBytes);
   }
 
-  const rec = await fetchHfModelRecord(hit.id, options?.signal);
-  const diskBytes = rec ? sumHfSiblingBytes(rec.siblings) : undefined;
+  const diskBytes = await resolveHfModelDiskBytes(hit.id, {
+    ...(options?.signal ? { signal: options.signal } : {}),
+  });
   return applyModelResourceEstimates(hit, diskBytes, availableRamBytes);
 }
 
