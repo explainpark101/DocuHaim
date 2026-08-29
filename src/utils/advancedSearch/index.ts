@@ -15,6 +15,8 @@ export {
   saveAdvancedSearchIncludeOtherFiles,
   loadAdvancedSearchUiAnimationEnabled,
   saveAdvancedSearchUiAnimationEnabled,
+  loadAdvancedSearchBuildLogAutoScroll,
+  saveAdvancedSearchBuildLogAutoScroll,
   loadAdvancedSearchLiveScanLimits,
   saveAdvancedSearchLiveScanLimits,
   normalizeLiveScanLimits,
@@ -22,6 +24,12 @@ export {
   LIVE_SCAN_LIMIT_BOUNDS,
   LIVE_SCAN_UNLIMITED,
   isLiveScanUnlimited,
+  loadAdvancedSearchExcludeFolders,
+  saveAdvancedSearchExcludeFolders,
+  normalizeExcludeFolders,
+  addExcludeFolder,
+  removeExcludeFolder,
+  isPathUnderExcludedFolders,
   type AdvancedSearchLiveScanLimits,
 } from '@/utils/advancedSearch/settings';
 export {

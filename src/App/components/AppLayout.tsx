@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
-import { ChevronsRight } from 'lucide-react';
+import { ChevronsRight, Cloud, MessagesSquare } from 'lucide-react';
 import SidebarConnected from '@/App/components/SidebarConnected';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import WorkspaceMainPanels from '@/components/workspace/WorkspaceMainPanels';
@@ -928,9 +928,10 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                             : '없음'}
                   </span>
                   <span className="hidden md:inline">
-                    저장소:{' '}
+                    <Cloud className="w-4 h-4" />
+                    {' '}
                     {currentFile?.type === 's3'
-                      ? `S3 (${s3Creds.bucket || '-'})`
+                      ? `S3`
                       : currentFile?.type === 'local'
                         ? '로컬'
                         : currentFile?.type === 'webdav'
@@ -958,7 +959,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               </>
             ) : (
               <span className="truncate text-gray-500 dark:text-odp-muted shrink-0">
-                나와의 채팅
+                <MessagesSquare className="w-4 h-4" />
                 {storageMode === 's3'
                   ? ` · S3${s3Creds.bucket ? ` (${s3Creds.bucket})` : ''}`
                   : storageMode === 'local'

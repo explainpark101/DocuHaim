@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import {
@@ -17,6 +17,8 @@ type Props = {
   storageMode?: string;
   onScanTree?: () => Promise<StorageTreeNode[]>;
   canScan?: boolean;
+  /** When true, render as a nested block inside the 역색인 settings card. */
+  embedded?: boolean;
 };
 
 function storageLabel(mode: string | undefined): string {
@@ -54,12 +56,20 @@ function visibleFolderRows(
   return visible;
 }
 
-function CoverageBar({ percent, indexableCount }: { percent: number; indexableCount: number }) {
+function CoverageBar({
+  percent,
+  indexableCount,
+  className = '',
+}: {
+  percent: number;
+  indexableCount: number;
+  className?: string;
+}) {
   const width =
     indexableCount > 0 ? Math.min(100, Math.max(0, percent)) : 0;
   return (
     <div
-      className="h-3 min-w-20 flex-1 overflow-hidden rounded-sm bg-gray-900/90 dark:bg-black/50"
+      className={`h-3 w-28 shrink-0 overflow-hidden rounded-sm bg-gray-900/90 dark:bg-black/50 ${className}`}
       aria-hidden
     >
       <div
@@ -110,6 +120,7 @@ export default function InvertedIndexCoverage({
   storageMode = STORAGE_MODE_S3,
   onScanTree,
   canScan = true,
+  embedded = false,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,11 +129,34 @@ export default function InvertedIndexCoverage({
     () => new Set(),
   );
   const [indexRevision, setIndexRevision] = useState(0);
+  const buildingRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return advancedSearchEngine.subscribe(() => {
+      const status = advancedSearchEngine.getStatus();
+      if (status.building) {
+        // Throttled live refresh while indexing so folder bars track increments.
+        if (buildingRefreshTimer.current) return;
+        buildingRefreshTimer.current = setTimeout(() => {
+          buildingRefreshTimer.current = null;
+          setIndexRevision((n) => n + 1);
+        }, 500);
+        return;
+      }
+      if (buildingRefreshTimer.current) {
+        clearTimeout(buildingRefreshTimer.current);
+        buildingRefreshTimer.current = null;
+      }
       setIndexRevision((n) => n + 1);
     });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (buildingRefreshTimer.current) {
+        clearTimeout(buildingRefreshTimer.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -138,9 +172,17 @@ export default function InvertedIndexCoverage({
     return analyzeIndexCoverage(
       tree,
       advancedSearchEngine.getIndex().docs,
-      { includeOtherFiles: indexStatus.includeOtherFiles },
+      {
+        includeOtherFiles: indexStatus.includeOtherFiles,
+        excludedFolders: indexStatus.excludedFolders,
+      },
     );
-  }, [tree, indexRevision, indexStatus.includeOtherFiles]);
+  }, [
+    tree,
+    indexRevision,
+    indexStatus.includeOtherFiles,
+    indexStatus.excludedFolders,
+  ]);
 
   const folderRows = visibleFolderRows(
     analysis?.folders ?? [],
@@ -181,19 +223,32 @@ export default function InvertedIndexCoverage({
 
   return (
     <div
-      id="settings-inverted-index"
-      tabIndex={-1}
-      className="scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+      className={
+        embedded
+          ? 'space-y-4 border-t border-gray-200 pt-4 dark:border-odp-borderSoft'
+          : 'scroll-mt-4 space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface'
+      }
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">역색인</h3>
+          <h3
+            className={
+              embedded
+                ? 'text-xs font-bold text-gray-700 dark:text-odp-fgStrong'
+                : 'text-sm font-bold text-gray-700 dark:text-odp-fgStrong'
+            }
+          >
+            {embedded ? '폴더별 커버리지' : '역색인'}
+          </h3>
           <p className="mt-1 text-xs text-gray-600 dark:text-odp-muted">
             현재 선택: <span className="font-semibold">{storageLabel(storageMode)}</span>
             . 폴더별로 색인 대상 파일 중 역색인된 비율을 표시합니다.
             {indexStatus.includeOtherFiles
               ? ' (Markdown + 기타 텍스트 파일)'
               : ' (Markdown만)'}
+            {indexStatus.building
+              ? ' 색인 중에는 진행도가 자동으로 갱신됩니다.'
+              : ''}
           </p>
         </div>
         <button
@@ -215,7 +270,7 @@ export default function InvertedIndexCoverage({
 
       {!indexStatus.enabled && (
         <p className="text-xs text-amber-700 dark:text-amber-300">
-          역색인이 꺼져 있습니다. Advanced Search에서 역색인을 켠 뒤 색인을 생성하세요.
+          역색인이 꺼져 있습니다. 위에서 역색인을 켠 뒤 색인을 생성하세요.
         </p>
       )}
 
@@ -262,7 +317,7 @@ export default function InvertedIndexCoverage({
               return (
                 <li
                   key={row.path}
-                  className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded px-1 py-0.5 ${
+                  className={`flex items-center gap-2 rounded px-1 py-0.5 ${
                     clickable
                       ? 'cursor-pointer hover:bg-white/5 focus-visible:outline-1 focus-visible:outline-blue-400'
                       : ''
@@ -275,17 +330,7 @@ export default function InvertedIndexCoverage({
                   <span className="w-5 shrink-0 text-right tabular-nums text-gray-500">
                     {idx + 1}
                   </span>
-                  <CoverageBar
-                    percent={row.percent}
-                    indexableCount={row.indexableCount}
-                  />
-                  <span className="w-12 shrink-0 text-right tabular-nums text-gray-200">
-                    {percentLabel}
-                  </span>
-                  <span className="shrink-0 text-gray-600" aria-hidden>
-                    |
-                  </span>
-                  <span className="min-w-24 flex-1">
+                  <span className="min-w-0 flex-1 overflow-hidden">
                     <TreeIndent
                       depth={row.depth}
                       expandable={row.hasChildFolders}
@@ -293,10 +338,17 @@ export default function InvertedIndexCoverage({
                       label={<span title={row.path}>{row.name}</span>}
                     />
                   </span>
-                  <span className="shrink-0 tabular-nums text-gray-400">
+                  <span className="w-16 shrink-0 text-right tabular-nums text-gray-400">
                     {row.indexableCount > 0
-                      ? `${row.indexedCount.toLocaleString()} / ${row.indexableCount.toLocaleString()}`
+                      ? `${row.indexedCount.toLocaleString()}/${row.indexableCount.toLocaleString()}`
                       : '—'}
+                  </span>
+                  <CoverageBar
+                    percent={row.percent}
+                    indexableCount={row.indexableCount}
+                  />
+                  <span className="w-12 shrink-0 text-right tabular-nums text-gray-200">
+                    {percentLabel}
                   </span>
                 </li>
               );

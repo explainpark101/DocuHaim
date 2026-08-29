@@ -62,26 +62,41 @@ impl IndexSession {
         docs: &[(u64, HashMap<String, String>)],
     ) -> Result<usize, String> {
         self.assert_not_cancelled()?;
+        if docs.is_empty() {
+            return Ok(0);
+        }
         let nid_field = self
             .handle
             .field(NODE_ID_FIELD)
             .ok_or_else(|| "_node_id field missing".to_string())?;
 
-        let mut batch: Vec<(LucivyDocument, u64)> = Vec::with_capacity(docs.len());
-        for (numeric_id, fields) in docs {
-            self.assert_not_cancelled()?;
-            // Update semantics: remove then re-add (same as lucivy-wasm update).
-            let _ = self.handle.delete_by_node_id(*numeric_id);
+        // Resolve schema fields once, then build LucivyDocuments in parallel.
+        let field_ids: Vec<(String, _)> = ["title", "body", "path", "kind", "dateStr"]
+            .into_iter()
+            .filter_map(|name| self.handle.field(name).map(|f| (name.to_string(), f)))
+            .collect();
 
-            let mut doc = LucivyDocument::new();
-            doc.add_u64(nid_field, *numeric_id);
-            for (name, value) in fields {
-                if let Some(field) = self.handle.field(name) {
-                    doc.add_text(field, value);
+        use rayon::prelude::*;
+        let batch: Vec<(LucivyDocument, u64)> = docs
+            .par_iter()
+            .map(|(numeric_id, fields)| {
+                let mut doc = LucivyDocument::new();
+                doc.add_u64(nid_field, *numeric_id);
+                for (name, field) in &field_ids {
+                    if let Some(value) = fields.get(name) {
+                        doc.add_text(*field, value);
+                    }
                 }
-            }
-            batch.push((doc, *numeric_id));
+                (doc, *numeric_id)
+            })
+            .collect();
+
+        // Index mutations stay single-threaded (handle is not Sync for writers).
+        for (numeric_id, _) in docs {
+            self.assert_not_cancelled()?;
+            let _ = self.handle.delete_by_node_id(*numeric_id);
         }
+        self.assert_not_cancelled()?;
         self.handle.add_documents(batch)?;
         Ok(docs.len())
     }

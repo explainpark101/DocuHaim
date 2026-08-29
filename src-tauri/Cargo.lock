@@ -1172,6 +1172,7 @@ dependencies = [
  "ld-lucivy",
  "lucivy-core",
  "ndk-context",
+ "rayon",
  "reqwest 0.12.28",
  "rust-argon2 2.1.0",
  "serde",

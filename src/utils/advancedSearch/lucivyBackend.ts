@@ -193,6 +193,38 @@ export async function lucivyUpdate(
   await index.update(numericId, fieldsRecord(fields));
 }
 
+/**
+ * Upsert many docs in one IPC (Tauri) or sequential WASM calls with yields.
+ */
+export async function lucivyUpsertBatch(
+  docs: Array<{
+    numericId: number;
+    fields: LucivyDocFields;
+    /** When true, call update; otherwise add. */
+    update: boolean;
+  }>,
+): Promise<void> {
+  if (docs.length === 0) return;
+  if (useNative()) {
+    const api = await tauriApi();
+    await api.tauriUpsertBatch(
+      docs.map((d) => ({ numericId: d.numericId, fields: d.fields })),
+    );
+    return;
+  }
+  const index = await requireLucivyIndex();
+  if (!index) throw new Error('Lucivy index not open');
+  const { yieldToMain } = await import('@/utils/advancedSearch/yieldToMain');
+  let i = 0;
+  for (const d of docs) {
+    const record = fieldsRecord(d.fields);
+    if (d.update) await index.update(d.numericId, record);
+    else await index.add(d.numericId, record);
+    i += 1;
+    if (i % 16 === 0) await yieldToMain();
+  }
+}
+
 export async function lucivyRemove(numericId: number): Promise<void> {
   if (useNative()) {
     const api = await tauriApi();

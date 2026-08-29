@@ -11,9 +11,12 @@ import {
 } from '@/utils/advancedSearch/docIdMap';
 import type { LucivyDocFields } from '@/utils/advancedSearch/lucivyBackend';
 import {
-  prepareChatLucivyFields,
-  prepareFileLucivyFields,
-} from '@/utils/advancedSearch/prepareDocument';
+  prepareChatLucivyFieldsBatchOffThread,
+  prepareFileLucivyFieldsOffThread,
+} from '@/utils/advancedSearch/indexPrepWorker';
+import { withIndexWriteLock } from '@/utils/advancedSearch/indexPathLock';
+import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
+import type { PreparedLucivyDoc } from '@/utils/advancedSearch/indexPrepWorker';
 
 export type UpsertOptions = {
   /** Skip recountManifest (bulk rebuild should recount once at the end). */
@@ -23,7 +26,11 @@ export type UpsertOptions = {
   yieldFn?: () => Promise<void>;
   /** When false, only update docs map (Lucivy already written). Default true. */
   writeLucivy?: boolean;
+  /** Chat Lucivy upsert batch size (default 32). */
+  lucivyBatchSize?: number;
 };
+
+const DEFAULT_CHAT_BATCH = 32;
 
 async function lucivyApi() {
   return import('@/utils/advancedSearch/lucivyBackend');
@@ -47,6 +54,19 @@ async function writeLucivyDoc(
   return numericId;
 }
 
+async function flushLucivyBatch(
+  batch: Array<{
+    numericId: number;
+    fields: LucivyDocFields;
+    update: boolean;
+  }>,
+): Promise<void> {
+  if (batch.length === 0) return;
+  const { lucivyUpsertBatch } = await lucivyApi();
+  await lucivyUpsertBatch(batch);
+  batch.length = 0;
+}
+
 export async function upsertFileDocument(
   index: InMemoryIndex,
   map: DocIdMapState,
@@ -56,35 +76,145 @@ export async function upsertFileDocument(
 ): Promise<boolean> {
   const docId = fileDocId(path);
   const contentHash = await hashText(content);
-  const existing = index.docs.get(docId);
-  if (existing?.contentHash === contentHash) return false;
+  const existingEarly = index.docs.get(docId);
+  if (existingEarly?.contentHash === contentHash) return false;
 
-  const prepared = await prepareFileLucivyFields(path, content);
-  const writeLucivy = options.writeLucivy !== false;
-  let numericId = existing?.numericId ?? getNumericId(map, docId) ?? undefined;
-  if (writeLucivy) {
-    numericId = await writeLucivyDoc(
-      map,
-      docId,
-      prepared.fields,
-      Boolean(existing),
-    );
-  } else if (numericId == null) {
-    numericId = allocateNumericId(map, docId);
-  }
-
-  const meta: DocMeta = {
-    kind: 'file',
+  // Prepare off-thread without holding the write lock (parallel workers).
+  const prepared = await prepareFileLucivyFieldsOffThread(
     path,
-    title: prepared.title,
-    preview: prepared.preview,
+    content,
+    `${path}:${contentHash}`,
+  );
+
+  return withIndexWriteLock(async () => {
+    const existing = index.docs.get(docId);
+    if (existing?.contentHash === contentHash) return false;
+
+    const writeLucivy = options.writeLucivy !== false;
+    let numericId = existing?.numericId ?? getNumericId(map, docId) ?? undefined;
+    if (writeLucivy) {
+      numericId = await writeLucivyDoc(
+        map,
+        docId,
+        prepared.fields,
+        Boolean(existing),
+      );
+    } else if (numericId == null) {
+      numericId = allocateNumericId(map, docId);
+    }
+
+    const meta: DocMeta = {
+      kind: 'file',
+      path,
+      title: prepared.title,
+      preview: prepared.preview,
+      contentHash,
+      numericId,
+    };
+    index.docs.set(docId, meta);
+    index.manifest.nextNumericId = map.nextNumericId;
+    if (!options.skipRecount) recountManifest(index);
+    return true;
+  });
+}
+
+export type PreparedFileUpsert = {
+  path: string;
+  contentHash: string;
+  prepared: PreparedLucivyDoc;
+  existed: boolean;
+  skipped: boolean;
+};
+
+/**
+ * Apply already-prepared file docs: update in-memory map + one Lucivy batch.
+ * Used by Tauri parallel rebuild after concurrent read/prepare.
+ */
+export async function applyPreparedFileUpserts(
+  index: InMemoryIndex,
+  map: DocIdMapState,
+  items: PreparedFileUpsert[],
+  options: UpsertOptions = {},
+): Promise<number> {
+  return withIndexWriteLock(async () => {
+    const writeLucivy = options.writeLucivy !== false;
+    const lucivyBatch: Array<{
+      numericId: number;
+      fields: LucivyDocFields;
+      update: boolean;
+    }> = [];
+    let changed = 0;
+
+    for (const item of items) {
+      if (item.skipped) continue;
+      const docId = fileDocId(item.path);
+      const existing = index.docs.get(docId);
+      let numericId =
+        existing?.numericId ?? getNumericId(map, docId) ?? undefined;
+      if (writeLucivy) {
+        numericId = allocateNumericId(map, docId);
+        lucivyBatch.push({
+          numericId,
+          fields: item.prepared.fields,
+          update: item.existed || Boolean(existing),
+        });
+      } else if (numericId == null) {
+        numericId = allocateNumericId(map, docId);
+      }
+      index.docs.set(docId, {
+        kind: 'file',
+        path: item.path,
+        title: item.prepared.title,
+        preview: item.prepared.preview,
+        contentHash: item.contentHash,
+        numericId: numericId!,
+      });
+      changed += 1;
+    }
+
+    index.manifest.nextNumericId = map.nextNumericId;
+    if (writeLucivy) await flushLucivyBatch(lucivyBatch);
+    if (changed > 0 && !options.skipRecount) recountManifest(index);
+    return changed;
+  });
+}
+
+/**
+ * Hash + prepare one file body (off-thread). Does not write Lucivy.
+ */
+export async function prepareFileUpsert(
+  index: InMemoryIndex,
+  path: string,
+  content: string,
+): Promise<PreparedFileUpsert> {
+  const docId = fileDocId(path);
+  const contentHash = await hashText(content);
+  const existing = index.docs.get(docId);
+  if (existing?.contentHash === contentHash) {
+    return {
+      path,
+      contentHash,
+      prepared: {
+        fields: { title: '', body: '', path, kind: 'file' },
+        preview: '',
+        title: '',
+      },
+      existed: Boolean(existing),
+      skipped: true,
+    };
+  }
+  const prepared = await prepareFileLucivyFieldsOffThread(
+    path,
+    content,
+    `${path}:${contentHash}`,
+  );
+  return {
+    path,
     contentHash,
-    numericId,
+    prepared,
+    existed: Boolean(existing),
+    skipped: false,
   };
-  index.docs.set(docId, meta);
-  index.manifest.nextNumericId = map.nextNumericId;
-  if (!options.skipRecount) recountManifest(index);
-  return true;
 }
 
 export async function upsertChatDayDocuments(
@@ -100,8 +230,13 @@ export async function upsertChatDayDocuments(
   if (!dateStr) return 0;
 
   const { messages } = parseDayFile(content);
+
+  return withIndexWriteLock(async () => {
   let changed = 0;
   const writeLucivy = options.writeLucivy !== false;
+  const yieldEvery = options.yieldEvery ?? 0;
+  const yieldFn = options.yieldFn ?? yieldToMain;
+  const batchSize = Math.max(1, options.lucivyBatchSize ?? DEFAULT_CHAT_BATCH);
 
   for (const [docId, meta] of index.docs) {
     if (meta.kind !== 'chat' || meta.dateStr !== dateStr) continue;
@@ -118,9 +253,77 @@ export async function upsertChatDayDocuments(
     }
   }
 
+  type PendingMsg = {
+    messageId: string;
+    group: string;
+    body: string;
+    contentHash: string;
+    existing: DocMeta | undefined;
+    docId: string;
+  };
+
+  const pending: PendingMsg[] = [];
   let msgIndex = 0;
-  const yieldEvery = options.yieldEvery ?? 0;
-  const yieldFn = options.yieldFn;
+
+  const flushPending = async () => {
+    if (pending.length === 0) return;
+    const prepared = await prepareChatLucivyFieldsBatchOffThread(
+      pending.map((p) => ({
+        dateStr,
+        messageId: p.messageId,
+        group: p.group,
+        body: p.body,
+      })),
+    );
+
+    const lucivyBatch: Array<{
+      numericId: number;
+      fields: LucivyDocFields;
+      update: boolean;
+    }> = [];
+
+    for (let i = 0; i < pending.length; i += 1) {
+      const p = pending[i];
+      const prep = prepared[i];
+      if (!p || !prep) continue;
+      const existed = Boolean(p.existing);
+      let numericId =
+        p.existing?.numericId ?? getNumericId(map, p.docId) ?? undefined;
+      if (writeLucivy) {
+        numericId = allocateNumericId(map, p.docId);
+        lucivyBatch.push({
+          numericId,
+          fields: prep.fields,
+          update: existed,
+        });
+      } else if (numericId == null) {
+        numericId = allocateNumericId(map, p.docId);
+      }
+
+      index.docs.set(p.docId, {
+        kind: 'chat',
+        path: `.chat-with-myself/${dateStr}.md`,
+        title: prep.title,
+        dateStr,
+        messageId: p.messageId,
+        group: p.group,
+        preview: prep.preview,
+        contentHash: p.contentHash,
+        numericId: numericId!,
+      });
+      changed += 1;
+
+      if (writeLucivy && lucivyBatch.length >= batchSize) {
+        await flushLucivyBatch(lucivyBatch);
+        await yieldFn();
+      }
+    }
+
+    if (writeLucivy) await flushLucivyBatch(lucivyBatch);
+    pending.length = 0;
+    await yieldFn();
+  };
+
   for (const msg of messages) {
     msgIndex += 1;
     const messageId = String(msg.id || '');
@@ -133,51 +336,26 @@ export async function upsertChatDayDocuments(
     const contentHash = await hashText(payload);
     const existing = index.docs.get(docId);
     if (existing?.contentHash === contentHash) {
-      if (yieldEvery > 0 && yieldFn && msgIndex % yieldEvery === 0) {
+      if (yieldEvery > 0 && msgIndex % yieldEvery === 0) {
         await yieldFn();
       }
       continue;
     }
 
-    const prepared = await prepareChatLucivyFields({
-      dateStr,
-      messageId,
-      group,
-      body,
-    });
-    let numericId = existing?.numericId ?? getNumericId(map, docId) ?? undefined;
-    if (writeLucivy) {
-      numericId = await writeLucivyDoc(
-        map,
-        docId,
-        prepared.fields,
-        Boolean(existing),
-      );
-    } else if (numericId == null) {
-      numericId = allocateNumericId(map, docId);
-    }
-
-    index.docs.set(docId, {
-      kind: 'chat',
-      path: `.chat-with-myself/${dateStr}.md`,
-      title: prepared.title,
-      dateStr,
-      messageId,
-      group,
-      preview: prepared.preview,
-      contentHash,
-      numericId,
-    });
-    changed += 1;
-
-    if (yieldEvery > 0 && yieldFn && msgIndex % yieldEvery === 0) {
+    pending.push({ messageId, group, body, contentHash, existing, docId });
+    if (pending.length >= batchSize) {
+      await flushPending();
+    } else if (yieldEvery > 0 && msgIndex % yieldEvery === 0) {
       await yieldFn();
     }
   }
 
+  await flushPending();
+
   index.manifest.nextNumericId = map.nextNumericId;
   if (changed > 0 && !options.skipRecount) recountManifest(index);
   return changed;
+  });
 }
 
 export async function removeDocument(
@@ -228,6 +406,7 @@ export async function pruneIndexToPaths(
     }
     index.docs.delete(docId);
     removed += 1;
+    if (removed % 32 === 0) await yieldToMain();
   }
   if (removed > 0 && !options.skipRecount) recountManifest(index);
   return removed;

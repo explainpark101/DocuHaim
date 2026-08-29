@@ -363,9 +363,11 @@ Chat with Myself Advanced Search 매핑:
 
 | 항목 | 내용 |
 |------|------|
-| 런타임 | OPFS + Web Worker (`public/lucivy/`) |
+| 런타임 | OPFS + Web Worker (`public/lucivy/`) + Dedicated Worker for scrub/tokenize (`indexPrep.worker.ts`) |
 | Isolation | `SharedArrayBuffer` 필요 → Vite: COOP + COEP `credentialless`; GitHub Pages: [coi-serviceworker](https://github.com/gzuidhof/coi-serviceworker)가 최초 등록·reload, 이후 VitePWA `sw.ts`가 동일 COOP/COEP를 유지 |
-| 폴백 | Lucivy 불가(격리 실패·색인 미생성) 시 **live vault scan**: 노트·채팅 day 파일을 읽어 토큰 AND substring 매칭 (`liveContentSearch.ts`). 파일명·커맨드 fuzzy는 그대로. 상한(파일·채팅 day·히트)은 설정 → Advanced Search **라이브 스캔 제한** (`liveScanLimits`, localStorage); **`-1` = 제한 없음** |
+| 폴백 | Lucivy 불가(격리 실패·색인 미생성) 시 **live vault scan**: 노트·채팅 day 파일을 읽어 토큰 AND substring 매칭 (`liveContentSearch.ts`). 파일명·커맨드 fuzzy는 그대로. 상한(파일·채팅 day·히트)은 설정 → **역색인** 섹션 **라이브 스캔 제한** (`liveScanLimits`, localStorage); **`-1` = 제한 없음** |
+| UI | 색인 중 `getStatus().buildLogs`는 비움. 로그는 `subscribeBuildLogs` + `getBuildLogsAsync`로 비동기 수집 (`AdvancedSearchBuildLog`). 설정 UI는 Advanced Search(애니메이션)와 역색인(색인·제외 폴더·Live Scan·커버리지)으로 분리. 재색인은 **claim queue 워커 풀**(경로당 1회 claim · 파일별 start/end 로그). `indexPathLock`으로 증분 notify와 경로 배타, Lucivy/docs 쓰기는 write lock. **제외 폴더**(`excludedFolders`)는 선택 폴더+하위를 색인·Live Scan에서 제외. Tauri Rust는 upsert 시 rayon 문서 조립 + `spawn_blocking` |
+| 커버리지 | 폴더 트리 행: 폴더명 좌측 · progress bar 우측. 색인 중 증분마다 ~500ms 자동 갱신 |
 
 ### Tauri (desktop + Android) — native lucivy-core
 

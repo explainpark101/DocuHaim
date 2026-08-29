@@ -100,7 +100,7 @@ pub fn as_index_close(
 }
 
 #[tauri::command]
-pub fn as_index_upsert_batch(
+pub async fn as_index_upsert_batch(
     app: AppHandle,
     state: State<'_, AsIndexState>,
     session_id: String,
@@ -113,7 +113,9 @@ pub fn as_index_upsert_batch(
         .map(|d| (d.numeric_id, d.fields))
         .collect();
     let count = pairs.len();
-    let upserted = session.upsert_docs(&pairs)?;
+    let upserted = tauri::async_runtime::spawn_blocking(move || session.upsert_docs(&pairs))
+        .await
+        .map_err(|e| format!("upsert join: {e}"))??;
     let _ = app.emit(
         "as-index-progress",
         AsIndexProgressEvent {
@@ -138,25 +140,42 @@ pub fn as_index_remove(
 }
 
 #[tauri::command]
-pub fn as_index_commit(
-    app: AppHandle,
+pub async fn as_index_commit(
     state: State<'_, AsIndexState>,
     session_id: String,
 ) -> Result<(), String> {
-    let store = state.ensure_store(&app)?;
+    let store = {
+        // ensure_store needs app — keep sync path via State only after open
+        state
+            .0
+            .lock()
+            .map_err(|_| "as-index state lock poisoned".to_string())?
+            .as_ref()
+            .cloned()
+            .ok_or_else(|| "as-index store not initialized".to_string())?
+    };
     let session = store.get(&session_id)?;
-    session.commit()
+    tauri::async_runtime::spawn_blocking(move || session.commit())
+        .await
+        .map_err(|e| format!("commit join: {e}"))?
 }
 
 #[tauri::command]
-pub fn as_index_export_snapshot(
-    app: AppHandle,
+pub async fn as_index_export_snapshot(
     state: State<'_, AsIndexState>,
     session_id: String,
 ) -> Result<Vec<u8>, String> {
-    let store = state.ensure_store(&app)?;
+    let store = state
+        .0
+        .lock()
+        .map_err(|_| "as-index state lock poisoned".to_string())?
+        .as_ref()
+        .cloned()
+        .ok_or_else(|| "as-index store not initialized".to_string())?;
     let session = store.get(&session_id)?;
-    session.export_snapshot()
+    tauri::async_runtime::spawn_blocking(move || session.export_snapshot())
+        .await
+        .map_err(|e| format!("export join: {e}"))?
 }
 
 #[tauri::command]

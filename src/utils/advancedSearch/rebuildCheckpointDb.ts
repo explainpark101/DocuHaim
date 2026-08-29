@@ -21,6 +21,8 @@ export type RebuildCheckpointRecord = {
   key: string;
   schemaVersion: number;
   includeOtherFiles: boolean;
+  /** Sorted exclude-folder list at checkpoint time (optional on legacy rows). */
+  excludedFolders?: string[];
   processedFilePaths: string[];
   processedChatPaths: string[];
   /** Gzipped Lucivy LUCE snapshot (raw snapshot bytes gzipped). */
@@ -45,6 +47,7 @@ export async function saveRebuildCheckpoint(
     key: record.key,
     schemaVersion: record.schemaVersion ?? INDEX_SCHEMA_VERSION,
     includeOtherFiles: record.includeOtherFiles,
+    excludedFolders: record.excludedFolders ? [...record.excludedFolders] : [],
     processedFilePaths: record.processedFilePaths,
     processedChatPaths: record.processedChatPaths,
     luceGz: record.luceGz,
@@ -69,6 +72,9 @@ export async function getRebuildCheckpoint(
     key: row.key,
     schemaVersion: row.schemaVersion,
     includeOtherFiles: row.includeOtherFiles,
+    excludedFolders: Array.isArray(row.excludedFolders)
+      ? row.excludedFolders.filter((x): x is string => typeof x === 'string')
+      : [],
     luceGz: toUint8Array(row.luceGz),
     docsGz: toUint8Array(row.docsGz),
     processedFilePaths: Array.isArray(row.processedFilePaths)
@@ -99,9 +105,15 @@ export async function deleteRebuildCheckpoint(key: string): Promise<void> {
 export function isCheckpointCompatible(
   row: RebuildCheckpointRecord | null | undefined,
   includeOtherFiles: boolean,
+  excludedFolders: readonly string[] = [],
 ): row is RebuildCheckpointRecord {
   if (!row) return false;
   if (row.schemaVersion !== INDEX_SCHEMA_VERSION) return false;
   if (!row.luceGz?.byteLength) return false;
-  return row.includeOtherFiles === includeOtherFiles;
+  if (row.includeOtherFiles !== includeOtherFiles) return false;
+  const a = JSON.stringify(
+    Array.isArray(row.excludedFolders) ? [...row.excludedFolders].sort() : [],
+  );
+  const b = JSON.stringify([...excludedFolders].sort());
+  return a === b;
 }

@@ -69,7 +69,7 @@ const typeConfig = {
   },
   [ActivityTypes.ADVANCED_SEARCH_INDEX]: {
     icon: IconSearch,
-    label: '검색 색인',
+    label: '역색인',
   },
 };
 
@@ -101,7 +101,9 @@ function IndicatorChipContent({ Icon: _Icon, isActive, isError, isDone, displayL
           {indicator.detail}
         </span>
       )}
-      {indicator.progress != null && indicator.progress < 100 && (
+      {typeof indicator.progress === 'number' &&
+        Number.isFinite(indicator.progress) &&
+        indicator.progress < 100 && (
         <span className="text-gray-500 dark:text-odp-muted shrink-0">{indicator.progress}%</span>
       )}
     </>

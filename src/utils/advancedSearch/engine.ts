@@ -10,7 +10,7 @@ import {
 } from '@/utils/advancedSearch/buildIndex';
 import {
   clearIndexInVault,
-  docsToObject,
+  docsToObjectAsync,
   gzipJsonBytes,
   gunzipBytes,
   loadDocsAndManifestFromVault,
@@ -21,9 +21,11 @@ import {
   loadAdvancedSearchIndexEnabled,
   loadAdvancedSearchIncludeOtherFiles,
   loadAdvancedSearchLiveScanLimits,
+  loadAdvancedSearchExcludeFolders,
   saveAdvancedSearchIndexEnabled,
   saveAdvancedSearchIncludeOtherFiles,
   saveAdvancedSearchLiveScanLimits,
+  saveAdvancedSearchExcludeFolders,
   isLiveScanUnlimited,
   type AdvancedSearchLiveScanLimits,
 } from '@/utils/advancedSearch/settings';
@@ -46,6 +48,14 @@ import {
   type RebuildCheckpointRecord,
 } from '@/utils/advancedSearch/rebuildCheckpointDb';
 import {
+  chatIndexClaimKey,
+  fileIndexClaimKey,
+  runClaimedWorkQueue,
+  withIndexPathLock,
+  withIndexWriteLock,
+} from '@/utils/advancedSearch/indexPathLock';
+import { indexRebuildConcurrency } from '@/utils/advancedSearch/mapPool';
+import {
   emptyDocIdMap,
   hydrateDocIdMapFromDocs,
   type DocIdMapState,
@@ -53,6 +63,7 @@ import {
 import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
 import { isTauriApp } from '@/utils/tauriPlatform';
 import { liveScanContentHits } from '@/utils/advancedSearch/liveContentSearch';
+import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
 import { gzip, gunzipSync, strFromU8 } from 'fflate';
 
 export type BuildLogLevel = 'info' | 'ok' | 'warn' | 'error';
@@ -73,6 +84,8 @@ export type EngineStatus = {
   hasIndex: boolean;
   /** Index txt/json/html/… in addition to Markdown. */
   includeOtherFiles: boolean;
+  /** Vault folders (and descendants) skipped by the inverted index. */
+  excludedFolders: string[];
   fileCount: number;
   chatCount: number;
   builtAt: string | null;
@@ -85,7 +98,10 @@ export type EngineStatus = {
   checkpointProcessedCount: number;
   /** 0–1 while building; null when idle. */
   buildProgress: number | null;
-  /** Recent background index log lines (newest last). */
+  /**
+   * Deprecated for UI: always empty. Use `getBuildLogsAsync` / `subscribeBuildLogs`
+   * so log polling does not re-render the whole Settings tree.
+   */
   buildLogs: BuildLogEntry[];
   /** False when SharedArrayBuffer / COOP+COEP isolation is missing (web). Tauri always true. */
   isolationReady: boolean;
@@ -123,19 +139,18 @@ type TreeNode = {
   children?: TreeNode[];
 };
 
-const EMIT_MIN_MS = 250;
-const MAX_BUILD_LOGS = 2000;
-const CHECKPOINT_EVERY = 25;
+const EMIT_MIN_MS = 400;
+const LOG_EMIT_MS = 500;
+/** Soft default; rebuild raises this so every file start/end can be kept. */
+const DEFAULT_MAX_BUILD_LOGS = 2000;
+const ABSOLUTE_MAX_BUILD_LOGS = 100_000;
+const CHECKPOINT_EVERY = 50;
 
 class RebuildCancelledError extends Error {
   constructor() {
     super('REBUILD_CANCELLED');
     this.name = 'RebuildCancelledError';
   }
-}
-
-function yieldToMain(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function gzipBytes(input: Uint8Array): Promise<Uint8Array> {
@@ -162,6 +177,7 @@ class AdvancedSearchEngine {
   private dirty = false;
   private enabled = loadAdvancedSearchIndexEnabled();
   private includeOtherFiles = loadAdvancedSearchIncludeOtherFiles();
+  private excludedFolders: string[] = loadAdvancedSearchExcludeFolders();
   private liveScanLimits: AdvancedSearchLiveScanLimits =
     loadAdvancedSearchLiveScanLimits();
   private backend: AdvancedSearchBackend | null = null;
@@ -172,9 +188,13 @@ class AdvancedSearchEngine {
   private buildProgress: number | null = null;
   private buildLogs: BuildLogEntry[] = [];
   private buildLogSeq = 0;
+  private maxBuildLogs = DEFAULT_MAX_BUILD_LOGS;
   private lastBuildEmitAt = 0;
+  private logEmitTimer: ReturnType<typeof setTimeout> | null = null;
+  private logDirty = false;
   private unsub: (() => void) | null = null;
   private listeners = new Set<() => void>();
+  private logListeners = new Set<() => void>();
   private lucivyApi: LucivyApi | null = null;
   private searchGeneration = 0;
 
@@ -189,6 +209,12 @@ class AdvancedSearchEngine {
     return () => this.listeners.delete(listener);
   }
 
+  /** Log-only subscription — does not fire on progress-only status emits. */
+  subscribeBuildLogs(listener: () => void): () => void {
+    this.logListeners.add(listener);
+    return () => this.logListeners.delete(listener);
+  }
+
   private emit(): void {
     for (const l of this.listeners) {
       try {
@@ -199,6 +225,36 @@ class AdvancedSearchEngine {
     }
   }
 
+  private emitLogListeners(): void {
+    for (const l of this.logListeners) {
+      try {
+        l();
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  private scheduleLogEmit(force = false): void {
+    this.logDirty = true;
+    if (force) {
+      if (this.logEmitTimer) {
+        clearTimeout(this.logEmitTimer);
+        this.logEmitTimer = null;
+      }
+      this.logDirty = false;
+      this.emitLogListeners();
+      return;
+    }
+    if (this.logEmitTimer) return;
+    this.logEmitTimer = setTimeout(() => {
+      this.logEmitTimer = null;
+      if (!this.logDirty) return;
+      this.logDirty = false;
+      this.emitLogListeners();
+    }, LOG_EMIT_MS);
+  }
+
   private appendLog(level: BuildLogLevel, message: string): void {
     this.buildLogSeq += 1;
     this.buildLogs.push({
@@ -207,13 +263,25 @@ class AdvancedSearchEngine {
       level,
       message,
     });
-    if (this.buildLogs.length > MAX_BUILD_LOGS) {
-      this.buildLogs = this.buildLogs.slice(-MAX_BUILD_LOGS);
+    if (this.buildLogs.length > this.maxBuildLogs) {
+      this.buildLogs = this.buildLogs.slice(-this.maxBuildLogs);
     }
+    this.scheduleLogEmit(level === 'error' || level === 'warn');
+  }
+
+  /** Ensure the ring buffer can hold start+end for every rebuild source. */
+  private ensureBuildLogCapacity(fileCount: number, chatDayCount: number): void {
+    const needed = Math.max(
+      DEFAULT_MAX_BUILD_LOGS,
+      fileCount * 2 + chatDayCount * 2 + 64,
+    );
+    this.maxBuildLogs = Math.min(ABSOLUTE_MAX_BUILD_LOGS, needed);
   }
 
   private clearBuildLogs(): void {
     this.buildLogs = [];
+    this.maxBuildLogs = DEFAULT_MAX_BUILD_LOGS;
+    this.scheduleLogEmit(true);
   }
 
   private emitBuildProgress(force = false): void {
@@ -225,6 +293,12 @@ class AdvancedSearchEngine {
 
   getBuildLogs(): BuildLogEntry[] {
     return this.buildLogs;
+  }
+
+  /** Async copy of logs so callers do not block the UI thread on large arrays. */
+  async getBuildLogsAsync(): Promise<BuildLogEntry[]> {
+    await yieldToMain();
+    return this.buildLogs.slice();
   }
 
   hasIndex(): boolean {
@@ -255,6 +329,7 @@ class AdvancedSearchEngine {
       dirty: this.dirty,
       hasIndex: this.hasIndex(),
       includeOtherFiles: this.includeOtherFiles,
+      excludedFolders: [...this.excludedFolders],
       fileCount: this.index.manifest.fileCount,
       chatCount: this.index.manifest.chatCount,
       builtAt: this.index.manifest.builtAt || null,
@@ -263,7 +338,7 @@ class AdvancedSearchEngine {
       hasCheckpoint: this.hasCheckpoint,
       checkpointProcessedCount: this.checkpointProcessedCount,
       buildProgress: this.buildProgress,
-      buildLogs: this.buildLogs,
+      buildLogs: [],
       isolationReady: isSearchIsolationReady(),
       contentSearchMode: this.getContentSearchMode(),
       liveScanLimits: { ...this.liveScanLimits },
@@ -296,6 +371,22 @@ class AdvancedSearchEngine {
     saveAdvancedSearchIncludeOtherFiles(this.includeOtherFiles);
     this.emit();
     void this.refreshCheckpointStatus();
+  }
+
+  setExcludedFolders(paths: readonly string[]): void {
+    this.excludedFolders = saveAdvancedSearchExcludeFolders(paths);
+    this.emit();
+    void this.refreshCheckpointStatus();
+  }
+
+  private indexPathOptions(): {
+    includeOtherFiles: boolean;
+    excludedFolders: string[];
+  } {
+    return {
+      includeOtherFiles: this.includeOtherFiles,
+      excludedFolders: this.excludedFolders,
+    };
   }
 
   setLiveScanLimits(value: Partial<AdvancedSearchLiveScanLimits>): void {
@@ -459,7 +550,7 @@ class AdvancedSearchEngine {
     }
     try {
       const cp = await getRebuildCheckpoint(this.storageKey);
-      if (!isCheckpointCompatible(cp, this.includeOtherFiles)) {
+      if (!isCheckpointCompatible(cp, this.includeOtherFiles, this.excludedFolders)) {
         if (cp) await deleteRebuildCheckpoint(this.storageKey);
         this.hasCheckpoint = false;
         this.checkpointProcessedCount = 0;
@@ -482,7 +573,7 @@ class AdvancedSearchEngine {
     if (!this.storageKey) return null;
     try {
       const cp = await getRebuildCheckpoint(this.storageKey);
-      if (!isCheckpointCompatible(cp, this.includeOtherFiles)) return null;
+      if (!isCheckpointCompatible(cp, this.includeOtherFiles, this.excludedFolders)) return null;
       const processedFileCount = cp.processedFilePaths?.length || 0;
       const processedChatCount = cp.processedChatPaths?.length || 0;
       if (processedFileCount + processedChatCount <= 0) return null;
@@ -523,7 +614,7 @@ class AdvancedSearchEngine {
     if (!this.storageKey) return null;
     try {
       const cp = await getRebuildCheckpoint(this.storageKey);
-      if (!isCheckpointCompatible(cp, this.includeOtherFiles)) {
+      if (!isCheckpointCompatible(cp, this.includeOtherFiles, this.excludedFolders)) {
         if (cp) await deleteRebuildCheckpoint(this.storageKey);
         return null;
       }
@@ -550,12 +641,17 @@ class AdvancedSearchEngine {
     if (!this.storageKey || !this.lucivyApi) return;
     try {
       await this.lucivyApi.lucivyCommit();
+      await yieldToMain();
       const snapshot = await this.lucivyApi.lucivyExportSnapshot();
       const luceGz = await gzipBytes(snapshot);
-      const docsGz = await gzipJsonBytes(docsToObject(this.index.docs));
+      await yieldToMain();
+      const docsObj = await docsToObjectAsync(this.index.docs, 150);
+      await yieldToMain();
+      const docsGz = await gzipJsonBytes(docsObj);
       await saveRebuildCheckpoint({
         key: this.storageKey,
         includeOtherFiles: this.includeOtherFiles,
+        excludedFolders: this.excludedFolders,
         processedFilePaths: [...processedFilePaths],
         processedChatPaths: [...processedChatPaths],
         luceGz,
@@ -566,6 +662,7 @@ class AdvancedSearchEngine {
         `체크포인트 저장 (파일 ${processedFilePaths.length} · 채팅 ${processedChatPaths.length})`,
       );
       this.emitBuildProgress();
+      await yieldToMain();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.appendLog('warn', `체크포인트 저장 실패 — ${msg}`);
@@ -640,12 +737,17 @@ class AdvancedSearchEngine {
           : ((await this.backend.listAll?.()) as TreeNode[]) || [];
       const { filePaths, chatDayPaths } = collectIndexablePathsFromTree(
         tree as TreeNode[],
-        { includeOtherFiles: this.includeOtherFiles },
+        this.indexPathOptions(),
       );
       const total = Math.max(filePaths.length + chatDayPaths.length, 1);
+      this.ensureBuildLogCapacity(filePaths.length, chatDayPaths.length);
       this.appendLog(
         'info',
-        `대상: 파일 ${filePaths.length}${this.includeOtherFiles ? ' (md+기타)' : ' (md)'} · 채팅 day ${chatDayPaths.length}`,
+        `대상: 파일 ${filePaths.length}${this.includeOtherFiles ? ' (md+기타)' : ' (md)'} · 채팅 day ${chatDayPaths.length}${
+          this.excludedFolders.length
+            ? ` · 제외 폴더 ${this.excludedFolders.length}`
+            : ''
+        }`,
       );
       this.emit();
 
@@ -711,10 +813,13 @@ class AdvancedSearchEngine {
         `체크포인트에서 재개 (파일 ${processedFiles.size}/${filePaths.length} · 채팅 ${processedChats.size}/${chatDayPaths.length})`,
       );
       this.emit();
+      await yieldToMain();
       const snapshot = gunzipBytes(checkpoint.luceGz);
+      await yieldToMain();
       let docsMap = new Map<string, import('@/utils/advancedSearch/types').DocMeta>();
       try {
         const raw = gunzipSync(checkpoint.docsGz);
+        await yieldToMain();
         docsMap = new Map(
           Object.entries(
             JSON.parse(strFromU8(raw)) as Record<
@@ -726,6 +831,7 @@ class AdvancedSearchEngine {
       } catch {
         docsMap = new Map();
       }
+      await yieldToMain();
       this.index = {
         docs: docsMap,
         manifest: {
@@ -766,39 +872,95 @@ class AdvancedSearchEngine {
     let fileOk = processedFiles.size;
     let fileFail = 0;
     let sinceCheckpoint = 0;
-    for (const path of remainingFiles) {
-      this.assertNotCancelled();
-      try {
-        const { text: raw } = (await this.backend!.readText?.(path)) || {
-          text: '',
-        };
-        const text = indexableEncMdBody(path, raw);
-        await upsertFileDocument(this.index, this.docIdMap, path, text, bulk);
-        fileOk += 1;
-        this.appendLog('ok', `[파일] ${fileOk}/${filePaths.length} ${path}`);
-      } catch (err) {
-        if (err instanceof RebuildCancelledError) throw err;
-        fileFail += 1;
-        const msg = err instanceof Error ? err.message : String(err);
-        this.appendLog('warn', `[파일 실패] ${path} — ${msg}`);
-      }
-      processedFiles.add(path);
-      n += 1;
-      sinceCheckpoint += 1;
-      this.buildProgress = n / total;
-      this.emitBuildProgress();
-      if (sinceCheckpoint >= CHECKPOINT_EVERY) {
-        await this.writeCheckpoint([...processedFiles], [...processedChats]);
-        sinceCheckpoint = 0;
-      }
-      if (this.cancelRequested) {
-        await this.flushCheckpointBeforeCancel(
-          [...processedFiles],
-          [...processedChats],
-        );
-      }
-      await yieldToMain();
-    }
+    const concurrency = indexRebuildConcurrency();
+    const fileDoneBase = processedFiles.size;
+    this.appendLog(
+      'info',
+      `파일 색인 워커 ${concurrency}개 · claim queue (경로당 1회)`,
+    );
+    this.emit();
+
+    // Workers pull distinct paths from a shared claim queue (no double-index).
+    // Path lock vs incremental notify; Lucivy writes serialized in upsert.
+    await runClaimedWorkQueue(
+      remainingFiles,
+      concurrency,
+      (path) => fileIndexClaimKey(path),
+      async (path, claimOrdinal) => {
+        this.assertNotCancelled();
+        const displayOrdinal = fileDoneBase + claimOrdinal;
+        await withIndexPathLock(fileIndexClaimKey(path), async () => {
+          this.appendLog(
+            'info',
+            `색인 start · 파일 ${displayOrdinal}/${filePaths.length} · ${path}`,
+          );
+          try {
+            const { text: raw } = (await this.backend!.readText?.(path)) || {
+              text: '',
+            };
+            await yieldToMain();
+            const text = indexableEncMdBody(path, raw);
+            await upsertFileDocument(
+              this.index,
+              this.docIdMap,
+              path,
+              text,
+              bulk,
+            );
+            let doneCount = 0;
+            await withIndexWriteLock(async () => {
+              fileOk += 1;
+              doneCount = fileOk;
+              processedFiles.add(path);
+              n += 1;
+              sinceCheckpoint += 1;
+              this.buildProgress = n / total;
+            });
+            this.appendLog(
+              'ok',
+              `색인 end · 파일 ${doneCount}/${filePaths.length} · ${path}`,
+            );
+            this.emitBuildProgress();
+          } catch (err) {
+            if (err instanceof RebuildCancelledError) throw err;
+            await withIndexWriteLock(async () => {
+              fileFail += 1;
+              processedFiles.add(path);
+              n += 1;
+              sinceCheckpoint += 1;
+              this.buildProgress = n / total;
+            });
+            const msg = err instanceof Error ? err.message : String(err);
+            this.appendLog('warn', `색인 end · 파일 실패 · ${path} — ${msg}`);
+            this.emitBuildProgress();
+          }
+        });
+
+        let doCheckpoint = false;
+        let doCancelFlush = false;
+        await withIndexWriteLock(async () => {
+          if (sinceCheckpoint >= CHECKPOINT_EVERY) {
+            sinceCheckpoint = 0;
+            doCheckpoint = true;
+          }
+          if (this.cancelRequested) doCancelFlush = true;
+        });
+        if (doCheckpoint) {
+          await withIndexWriteLock(async () => {
+            await this.writeCheckpoint(
+              [...processedFiles],
+              [...processedChats],
+            );
+          });
+        }
+        if (doCancelFlush) {
+          await this.flushCheckpointBeforeCancel(
+            [...processedFiles],
+            [...processedChats],
+          );
+        }
+      },
+    );
     this.appendLog(
       'info',
       `파일 색인 완료 (성공 ${fileOk} · 실패 ${fileFail})`,
@@ -807,49 +969,95 @@ class AdvancedSearchEngine {
 
     let chatOk = processedChats.size;
     let chatFail = 0;
-    for (const path of remainingChats) {
-      this.assertNotCancelled();
-      try {
-        const { text } = (await this.backend!.readText?.(path)) || { text: '' };
-        const changed = await upsertChatDayDocuments(
-          this.index,
-          this.docIdMap,
-          path,
-          text,
-          {
-            ...bulk,
-            yieldEvery: 8,
-            yieldFn: yieldToMain,
-          },
-        );
-        chatOk += 1;
-        this.appendLog(
-          'ok',
-          `[채팅] ${chatOk}/${chatDayPaths.length} ${path} (+${changed})`,
-        );
-      } catch (err) {
-        if (err instanceof RebuildCancelledError) throw err;
-        chatFail += 1;
-        const msg = err instanceof Error ? err.message : String(err);
-        this.appendLog('warn', `[채팅 실패] ${path} — ${msg}`);
-      }
-      processedChats.add(path);
-      n += 1;
-      sinceCheckpoint += 1;
-      this.buildProgress = n / total;
-      this.emitBuildProgress();
-      if (sinceCheckpoint >= CHECKPOINT_EVERY) {
-        await this.writeCheckpoint([...processedFiles], [...processedChats]);
-        sinceCheckpoint = 0;
-      }
-      if (this.cancelRequested) {
-        await this.flushCheckpointBeforeCancel(
-          [...processedFiles],
-          [...processedChats],
-        );
-      }
-      await yieldToMain();
-    }
+    const chatDoneBase = processedChats.size;
+    this.appendLog(
+      'info',
+      `채팅 색인 워커 ${concurrency}개 · claim queue (day당 1회)`,
+    );
+    this.emit();
+
+    await runClaimedWorkQueue(
+      remainingChats,
+      concurrency,
+      (path) => chatIndexClaimKey(path),
+      async (path, claimOrdinal) => {
+        this.assertNotCancelled();
+        const displayOrdinal = chatDoneBase + claimOrdinal;
+        await withIndexPathLock(chatIndexClaimKey(path), async () => {
+          this.appendLog(
+            'info',
+            `색인 start · 채팅 ${displayOrdinal}/${chatDayPaths.length} · ${path}`,
+          );
+          try {
+            const { text } = (await this.backend!.readText?.(path)) || {
+              text: '',
+            };
+            const changed = await upsertChatDayDocuments(
+              this.index,
+              this.docIdMap,
+              path,
+              text,
+              {
+                ...bulk,
+                yieldEvery: 8,
+                yieldFn: yieldToMain,
+                lucivyBatchSize: isTauriApp() ? 64 : 32,
+              },
+            );
+            let doneCount = 0;
+            await withIndexWriteLock(async () => {
+              chatOk += 1;
+              doneCount = chatOk;
+              processedChats.add(path);
+              n += 1;
+              sinceCheckpoint += 1;
+              this.buildProgress = n / total;
+            });
+            this.appendLog(
+              'ok',
+              `색인 end · 채팅 ${doneCount}/${chatDayPaths.length} · ${path} (+${changed})`,
+            );
+            this.emitBuildProgress();
+          } catch (err) {
+            if (err instanceof RebuildCancelledError) throw err;
+            await withIndexWriteLock(async () => {
+              chatFail += 1;
+              processedChats.add(path);
+              n += 1;
+              sinceCheckpoint += 1;
+              this.buildProgress = n / total;
+            });
+            const msg = err instanceof Error ? err.message : String(err);
+            this.appendLog('warn', `색인 end · 채팅 실패 · ${path} — ${msg}`);
+            this.emitBuildProgress();
+          }
+        });
+
+        let doCheckpoint = false;
+        let doCancelFlush = false;
+        await withIndexWriteLock(async () => {
+          if (sinceCheckpoint >= CHECKPOINT_EVERY) {
+            sinceCheckpoint = 0;
+            doCheckpoint = true;
+          }
+          if (this.cancelRequested) doCancelFlush = true;
+        });
+        if (doCheckpoint) {
+          await withIndexWriteLock(async () => {
+            await this.writeCheckpoint(
+              [...processedFiles],
+              [...processedChats],
+            );
+          });
+        }
+        if (doCancelFlush) {
+          await this.flushCheckpointBeforeCancel(
+            [...processedFiles],
+            [...processedChats],
+          );
+        }
+      },
+    );
     this.assertNotCancelled();
     this.appendLog(
       'info',
@@ -873,7 +1081,7 @@ class AdvancedSearchEngine {
   async indexFile(path: string, content: string): Promise<void> {
     if (!this.enabled) return;
     if (
-      !isIndexableFilePath(path, { includeOtherFiles: this.includeOtherFiles })
+      !isIndexableFilePath(path, this.indexPathOptions())
     ) {
       return;
     }
@@ -881,16 +1089,35 @@ class AdvancedSearchEngine {
     await this.ensureLoaded();
     if (!this.lucivyReady) return;
 
-    const changed = await upsertFileDocument(
-      this.index,
-      this.docIdMap,
-      path,
-      content,
-    );
-    if (changed) {
-      this.index.manifest.initialized = true;
-      this.schedulePersist();
-    }
+    await withIndexPathLock(fileIndexClaimKey(path), async () => {
+      if (!this.building) {
+        this.appendLog('info', `색인 start · 파일 · ${path}`);
+      }
+      try {
+        const changed = await upsertFileDocument(
+          this.index,
+          this.docIdMap,
+          path,
+          content,
+        );
+        if (!this.building) {
+          this.appendLog(
+            'ok',
+            `색인 end · 파일 · ${path}${changed ? '' : ' (unchanged)'}`,
+          );
+        }
+        if (changed) {
+          this.index.manifest.initialized = true;
+          this.schedulePersist();
+        }
+      } catch (err) {
+        if (!this.building) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.appendLog('warn', `색인 end · 파일 실패 · ${path} — ${msg}`);
+        }
+        throw err;
+      }
+    });
   }
 
   async indexChatDay(dateStrOrPath: string, content: string): Promise<void> {
@@ -899,16 +1126,38 @@ class AdvancedSearchEngine {
     await this.ensureLoaded();
     if (!this.lucivyReady) return;
 
-    const changed = await upsertChatDayDocuments(
-      this.index,
-      this.docIdMap,
-      dateStrOrPath,
-      content,
-    );
-    if (changed > 0) {
-      this.index.manifest.initialized = true;
-      this.schedulePersist();
-    }
+    await withIndexPathLock(chatIndexClaimKey(dateStrOrPath), async () => {
+      if (!this.building) {
+        this.appendLog('info', `색인 start · 채팅 · ${dateStrOrPath}`);
+      }
+      try {
+        const changed = await upsertChatDayDocuments(
+          this.index,
+          this.docIdMap,
+          dateStrOrPath,
+          content,
+        );
+        if (!this.building) {
+          this.appendLog(
+            'ok',
+            `색인 end · 채팅 · ${dateStrOrPath} (+${changed})`,
+          );
+        }
+        if (changed > 0) {
+          this.index.manifest.initialized = true;
+          this.schedulePersist();
+        }
+      } catch (err) {
+        if (!this.building) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.appendLog(
+            'warn',
+            `색인 end · 채팅 실패 · ${dateStrOrPath} — ${msg}`,
+          );
+        }
+        throw err;
+      }
+    });
   }
 
   private async handleChangeEvent(
@@ -979,6 +1228,7 @@ class AdvancedSearchEngine {
         trees,
         backend: this.backend,
         includeOtherFiles: this.includeOtherFiles,
+        excludedFolders: this.excludedFolders,
         limits: this.liveScanLimits,
         ...(isLiveScanUnlimited(this.liveScanLimits.maxHits)
           ? {}

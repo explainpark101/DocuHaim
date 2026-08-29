@@ -37,6 +37,7 @@ export type LiveContentSearchOptions = {
   trees: Array<TreeNode[] | null | undefined>;
   backend: AdvancedSearchBackend;
   includeOtherFiles?: boolean;
+  excludedFolders?: readonly string[];
   /** Cap content hits; defaults to limits.maxHits. */
   limit?: number;
   limits?: Partial<AdvancedSearchLiveScanLimits>;
@@ -107,6 +108,7 @@ export async function liveScanContentHits(
   const limit = Math.min(optionCap, hitCap);
   const pathOpts: IndexablePathOptions = {
     includeOtherFiles: Boolean(options.includeOtherFiles),
+    excludedFolders: options.excludedFolders || [],
   };
 
   const filePaths: string[] = [];

@@ -223,8 +223,21 @@ export default function AdvancedSearchHost({
   useAdvancedSearchActivityStatus();
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let pending = false;
     return advancedSearchEngine.subscribe(() => {
+      if (timer) {
+        pending = true;
+        return;
+      }
       setStatus(advancedSearchEngine.getStatus());
+      timer = setTimeout(() => {
+        timer = null;
+        if (pending) {
+          pending = false;
+          setStatus(advancedSearchEngine.getStatus());
+        }
+      }, 400);
     });
   }, []);
 
