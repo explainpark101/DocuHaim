@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-08-29T15:40:00.232Z
+Generated: 2026-08-29T19:18:41.219Z
 
 ============================================================
 Advanced Search
@@ -1504,6 +1504,8 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [footnotes.md](./footnotes.md) | `[^1]` + `<!-- footnotes {json} -->` | 에디터 / 미리보기 / 인쇄 |
 | [document-settings.md](./document-settings.md) | `<!-- document-settings {json} -->` | 에디터 / 미리보기 / 인쇄 |
 | [preview-hard-break.md](./preview-hard-break.md) | `<br/>` (Mirror Edit Enter) | 에디터 / 미리보기 |
+| [mermaid-fence-size.md](./mermaid-fence-size.md) | ` ```mermaid width=… height=…` (legacy) | 에디터 / 미리보기 / 인쇄 |
+| [mermaid-size.md](./mermaid-size.md) | `<!-- mermaid-size … -->` + mermaid fence | 에디터 / 미리보기 / 인쇄 |
 
 ## Spec conventions (all features)
 
@@ -1642,6 +1644,178 @@ Omit empty keys; space-separated. Empty → no `{}` suffix.
 | markdown-it ruler | `src/utils/wikiImageMarkdownIt.js` (`markdown-image-size-attrs`) |
 | storage path | `src/utils/storageImagePath.ts` |
 | Hydration / export | `src/utils/storageImageHydration.ts`, `markdownImageExport.ts` |
+
+============================================================
+Mermaid fence size (`width` / `height` on info line)
+============================================================
+
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/mermaid-fence-size/
+
+# Mermaid fence size (`width` / `height` on info line)
+
+> **Preferred for PDF export:** use the sidecar comment syntax in [mermaid-size.md](./mermaid-size.md). Fence info size is still parsed for backward compatibility.
+
+Export PDF에서 Mermaid 다이어그램을 자유변형한 뒤 저장하면 (legacy) fence info에 크기가 기록될 수 있다. New saves use `<!-- mermaid-size … -->` instead.
+
+## 문법
+
+````markdown
+```mermaid width=420px height=280px
+flowchart TD
+  A --> B
+```
+````
+
+허용 형태 (info 줄, `mermaid` 다음 토큰):
+
+| 형태 | 의미 |
+|------|------|
+| `width=420px` / `w=420` | 가로 |
+| `height=280px` / `h=280` | 세로 |
+| `420x280` | 가로×세로 |
+| bare `420` | 가로만 (`420px`) |
+
+Size value 규칙은 [index.md](./index.md) shared conventions와 같다 (bare digits → `Npx`).
+
+## Spec (interop)
+
+기준 구현: `mermaidFenceSize.ts`, `mermaidFenceMarkdownIt.ts`.
+
+### 1. Grammar
+
+Fence open line:
+
+```
+^```mermaid\b([^\n]*)\r?\n
+```
+
+Info tail tokens after optional language token `mermaid`: whitespace-separated.
+
+### 2. Parse algorithm
+
+1. Split info on whitespace; skip leading `mermaid` (case-insensitive).
+2. For each token:
+   - `NxM` → width=`Npx`, height=`Mpx`
+   - bare digits → width if not yet set
+   - `key=value` with key in `w|width|h|height` → `normalizeSizeValue(value)`
+3. Invalid size values are ignored (token skipped).
+
+### 3. Canonical HTML
+
+On the Mermaid host (`div`/`p.md-editor-mermaid`):
+
+| Attr | When |
+|------|------|
+| `data-mermaid-width` | width set |
+| `data-mermaid-height` | height set |
+| `data-mermaid-sized="1"` | either set |
+| `style` | `width:…;height:…;max-width:100%;overflow:hidden;` for present fields |
+
+Lazy render must **copy** these attrs from placeholder → processed host.
+
+### 4. Update algorithm (host UI)
+
+Given 0-based occurrence among ```mermaid fences in document order, rewrite the open line to:
+
+```
+```mermaid width=<W> height=<H>
+```
+
+Omit a key when that dimension is cleared. Preserve fence body unchanged.
+
+### 5. Non-goals
+
+- Per-theme size
+- Rotating / skew free-transform
+- Applying size to non-`mermaid` language fences (except collapsible base64 embeds that still use a mermaid host)
+
+## 구현
+
+| 역할 | 경로 |
+|------|------|
+| parse / update markdown | `src/utils/mermaidFenceSize.ts` |
+| markdown-it fence | `src/utils/mermaidFenceMarkdownIt.ts` |
+| Export PDF free-transform | `src/pages/exportPdf/hooks/useExportPdfImageInteractions.ts` |
+| Skip auto-fit when sized | `src/hooks/usePrintMermaidFit.ts` |
+| XSS whitelist | `src/utils/appMarkdownItPlugins.ts` |
+
+============================================================
+Mermaid size (`<!-- mermaid-size … -->`)
+============================================================
+
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/mermaid-size/
+
+# Mermaid size (`<!-- mermaid-size … -->`)
+
+PDF export에서 Mermaid 다이어그램 크기를 조절하면 fence 본문은 그대로 두고, 바로 위 HTML 주석에 크기가 저장된다. 문서를 다시 PDF로내면 주석이 파싱되어 동일한 크기가 적용된다.
+
+## Syntax
+
+```markdown
+<!-- mermaid-size width="420px" height="280px" -->
+```mermaid
+flowchart TD
+  A --> B
+```
+```
+
+- 주석은 대상 ```mermaid fence **바로 앞**에 둔다 (사이에 빈 줄만 허용).
+- `width` / `height` (또는 `w` / `h`) 중 하나 이상 필수.
+- Size value 규칙은 [index.md](./index.md) shared conventions과 같다.
+
+레거시 fence info (` ```mermaid width=… height=…`)도 읽을 수 있으나, PDF export UI에서 저장할 때는 **주석이 canonical** 이다 (fence info의 size 키는 제거).
+
+## Spec (interop)
+
+기준 구현: `mermaidSizeComment.ts`, `mermaidFenceMarkdownIt.ts`.
+
+### 1. Grammar
+
+```text
+MERMAID_SIZE := "<!--" WS "mermaid-size" WS ATTRS "-->"
+ATTRS        := ( WS KEY "=" '"' VALUE '"' )*
+KEY          := width | height | w | h
+```
+
+### 2. Placement
+
+Immediately before one ```mermaid fence (0-based occurrence among all mermaid fences in document order). Optional blank lines between comment and fence.
+
+### 3. Parse algorithm
+
+1. When rendering a mermaid fence at source line `L`, scan lines `L-1, L-2, …` skipping blank lines.
+2. First non-blank line must match `<!-- mermaid-size … -->` or stop (no sidecar).
+3. Parse attrs; normalize size values (`normalizeSizeValue`).
+4. Merge with fence info: **comment wins** per dimension; fence info fills missing dimensions.
+
+### 4. Canonical HTML
+
+Same as [mermaid-fence-size.md](./mermaid-fence-size.md): `data-mermaid-width`, `data-mermaid-height`, `data-mermaid-sized="1"`, inline `style`.
+
+### 5. Update algorithm (Export PDF free-transform)
+
+Given 0-based mermaid occurrence:
+
+1. Strip `width`/`height` from fence open line (plain ` ```mermaid`).
+2. Insert or replace preceding `<!-- mermaid-size … -->` with new dimensions.
+3. Omit comment when both dimensions cleared.
+
+### 6. Non-goals
+
+- Rotating / skew transforms
+- Size on non-mermaid fences (except shared host attrs for base64 embeds)
+
+## 구현
+
+| 역할 | 경로 |
+|------|------|
+| parse / upsert markdown | `src/utils/mermaidSizeComment.ts` |
+| markdown-it fence merge | `src/utils/mermaidFenceMarkdownIt.ts` |
+| Export PDF free-transform save | `src/pages/exportPdf/hooks/useExportPdfImageInteractions.ts` |
+| Lazy render attr copy | `src/utils/lazyMermaid.ts` |
+| Skip auto-fit when sized | `src/hooks/usePrintMermaidFit.ts` |
+
+See also: [mermaid-fence-size.md](./mermaid-fence-size.md) (legacy fence info).
 
 ============================================================
 Note cover (`<!-- note-cover … -->`)
@@ -1896,11 +2070,11 @@ Do not leave the literal `<pgbr/>` in HTML output after transform (XSS / printer
 ### 4. Preview vs print (host)
 
 | Context | Expected presentation |
-|---------|----------------------|
+|--------|----------------------|
 | Preview (editor) | Visible rule (CSS on `.md-pgbr`) |
-| Print / PDF Export | Host packs fixed page boxes; `<pgbr/>` forces a **new page** in the packer (`printPagePack.ts`). Markers are not printed as a visual rule. |
+| Print / PDF Export | [Paged.js](https://pagedjs.org/) CSS fragmentation; `.md-pgbr { break-before: page }` forces a **new page**. Markers are not printed as a visual rule. Export PDF **insert UI** (context menu / TOC) only adds markers **before headings**; existing markers elsewhere still paginate. |
 
-CSS `break-after` on `.md-pgbr` may still apply in legacy continuous print hosts; Export PDF uses overflow packing into `.export-pdf-page` nodes instead.
+Export PDF renders markdown (Mermaid, code blocks, wiki images) in a staging `MdPreview`, then runs `Previewer.preview()` into `.pagedjs_page` nodes shared by on-screen preview and `window.print()`. Mermaid chrome (copy / pin) is stripped for print; diagrams are centered. Fenced code blocks always show **line numbers**, wrap long lines (`pre-wrap`), and may **split across pages** at source-line boundaries (`prepareExportPdfCodeBlocksForPaging.ts`).
 
 ### 5. Non-goals
 
@@ -1913,7 +2087,7 @@ CSS `break-after` on `.md-pgbr` may still apply in legacy continuous print hosts
 | 역할 | 경로 |
 |------|------|
 | markdown-it | `src/utils/pageBreakMarkdownIt.js` |
-| 인쇄 패킹 | `printPagePack.ts`, `usePrintPackedPages.ts` |
+| paged.js preview | `src/pages/exportPdf/hooks/usePagedJsPreview.ts`, `exportPdfPagedStyles.ts` |
 | XSS whitelist | `src/config/mdEditorConfig.js` |
 | AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx` |
 
