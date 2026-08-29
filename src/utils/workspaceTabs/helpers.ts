@@ -1,7 +1,9 @@
 import {
   CHAT_TAB_ID,
+  CONTENT_SEARCH_TAB_ID,
   SETTINGS_TAB_ID,
   type ChatWorkspaceTab,
+  type ContentSearchWorkspaceTab,
   type FileStorageType,
   type FileWorkspaceTab,
   type SettingsWorkspaceTab,
@@ -19,6 +21,10 @@ export function createChatTab(): ChatWorkspaceTab {
 
 export function createSettingsTab(): SettingsWorkspaceTab {
   return { id: SETTINGS_TAB_ID, kind: 'settings' };
+}
+
+export function createContentSearchTab(): ContentSearchWorkspaceTab {
+  return { id: CONTENT_SEARCH_TAB_ID, kind: 'content-search' };
 }
 
 export function createFileTab(params: {
@@ -54,6 +60,12 @@ export function isSettingsTab(tab: WorkspaceTab | null | undefined): tab is Sett
   return tab?.kind === 'settings';
 }
 
+export function isContentSearchTab(
+  tab: WorkspaceTab | null | undefined,
+): tab is ContentSearchWorkspaceTab {
+  return tab?.kind === 'content-search';
+}
+
 export function isFileTab(tab: WorkspaceTab | null | undefined): tab is FileWorkspaceTab {
   return tab?.kind === 'file';
 }
@@ -71,6 +83,7 @@ export function anyFileTabDirty(tabs: WorkspaceTab[]): boolean {
 export function tabDisplayTitle(tab: WorkspaceTab): string {
   if (tab.kind === 'chat') return '나와의 채팅';
   if (tab.kind === 'settings') return '설정';
+  if (tab.kind === 'content-search') return '본문 검색';
   const name = tab.editedFileName || String(tab.currentFile.name || '') || tab.path;
   return name.split('/').filter(Boolean).pop() || name || tab.path;
 }

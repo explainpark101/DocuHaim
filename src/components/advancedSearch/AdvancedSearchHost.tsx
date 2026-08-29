@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import AdvancedSearchModal from '@/components/advancedSearch/AdvancedSearchModal';
 import { useAdvancedSearchActivityStatus } from '@/components/advancedSearch/useAdvancedSearchActivityStatus.js';
@@ -84,7 +84,7 @@ import {
   toggleSettingsToggle,
 } from '@/utils/advancedSearch/settingsToggles';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
-import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { exportPdfPathnameForStoragePath, contentSearchPathname } from '@/utils/appHref';
 
 const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
   'print-focus-back': 'back',
@@ -171,6 +171,8 @@ export type AdvancedSearchHostProps = {
   theme?: 'light' | 'dark' | string;
   /** Prefer print-oriented empty hints when on the export page. */
   preferPrintActions?: boolean;
+  /** Open the vault content search tab (workspace tabs aware). */
+  onOpenContentSearch?: (query?: string) => void;
 };
 
 /**
@@ -190,11 +192,13 @@ export default function AdvancedSearchHost({
   snippetConfig,
   theme = 'light',
   preferPrintActions = false,
+  onOpenContentSearch,
 }: AdvancedSearchHostProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [pickerMode, setPickerMode] = useState<AdvancedSearchOpenMode>('default');
   const [browsePath, setBrowsePath] = useState('');
+  const lastSearchQueryRef = useRef('');
   const [status, setStatus] = useState(() => advancedSearchEngine.getStatus());
   const [editorActionsAvailable, setEditorActionsAvailable] = useState(() =>
     hasEditorActions(),
@@ -319,6 +323,13 @@ export default function AdvancedSearchHost({
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [openSearch]);
 
+  useEffect(() => {
+    if (!open) return;
+    if (advancedSearchEngine.isEnabled()) {
+      void advancedSearchEngine.ensureLoaded();
+    }
+  }, [open]);
+
   const handleOpenChange = useCallback((next: boolean) => {
     setOpen(next);
     if (!next) {
@@ -383,6 +394,8 @@ export default function AdvancedSearchHost({
       if (pickerMode === 'circle-number') {
         return listCircleNumberHits(query, 80);
       }
+
+      lastSearchQueryRef.current = query;
 
       const hits = await advancedSearchEngine.search(query, getTrees(), 50, {
         currentFile,
@@ -683,6 +696,15 @@ export default function AdvancedSearchHost({
           openExportPdf({ useCurrentFile: Boolean(currentFile?.id) });
           return;
         }
+        if (commandId === 'content-search') {
+          const q = lastSearchQueryRef.current.trim();
+          if (onOpenContentSearch) {
+            onOpenContentSearch(q || undefined);
+          } else {
+            navigate(contentSearchPathname(q || undefined));
+          }
+          return;
+        }
         if (hit.path) {
           navigate(hit.path);
         }
@@ -701,6 +723,7 @@ export default function AdvancedSearchHost({
       onOpenFile,
       onRequestCreateItem,
       openExportPdf,
+      onOpenContentSearch,
       currentFile,
       defaultCreateParentPath,
       snippetConfig,
@@ -718,6 +741,7 @@ export default function AdvancedSearchHost({
       onSelectHit={handleSelect}
       indexEnabled={status.enabled}
       hasIndex={status.hasIndex}
+      indexLoaded={status.loaded}
       isolationReady={status.isolationReady}
       contentSearchMode={status.contentSearchMode}
       building={status.building}

@@ -85,6 +85,7 @@ export type AppCommandId =
   | 'settings-table-styles'
   | 'settings-app-update'
   | 'chat'
+  | 'content-search'
   | 'chat-settings'
   | 'chat-groups'
   | 'chat-select-group'
@@ -473,6 +474,25 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: '빌드 해시·PWA 캐시 확인',
     path: '/settings#settings-app-update',
     keywords: ['업데이트', 'update', 'pwa', '버전', 'version'],
+  },
+  {
+    id: 'content-search',
+    title: '본문 검색',
+    description: '역색인·본문 단위 검색 페이지 열기',
+    path: '/search',
+    keywords: [
+      'search',
+      '검색',
+      '본문',
+      'content',
+      'find',
+      '찾기',
+      'grep',
+      '역색인',
+      'inverted index',
+      'full text',
+      '풀텍스트',
+    ],
   },
   {
     id: 'chat',

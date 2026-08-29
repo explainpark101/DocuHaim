@@ -30,6 +30,7 @@ import { registerAppLockAction } from '@/utils/advancedSearch/appLockActions';
 import { clearAuthSession, saveAuthSession, tryRestoreAuthSession } from '@/utils/authSession';
 import {
   CHAT_TAB_ID,
+  CONTENT_SEARCH_TAB_ID,
   SETTINGS_TAB_ID,
   pickWorkspaceTabsRestoreSource,
   clearWorkspaceTabsForRestart,
@@ -136,6 +137,7 @@ export function useAppLogicSetupDomain() {
     authWanted,
     isChatRoute,
     isSettingsRoute,
+    isContentSearchRoute,
     setShowTrashFolder,
     setShowHiddenFolders,
     setHideRecordingCompanions,
@@ -158,6 +160,7 @@ export function useAppLogicSetupDomain() {
     closeWorkspaceTabById,
     openChatWorkspaceTab,
     openSettingsWorkspaceTab,
+    openContentSearchWorkspaceTab,
     reorderWorkspaceTabs,
     collapseToLegacyWorkspace,
     cycleWorkspaceTab,
@@ -222,6 +225,8 @@ export function useAppLogicSetupDomain() {
       const active = persisted.tabs.find((t) => {
         if (t.kind === 'chat') return persisted.activeId === CHAT_TAB_ID;
         if (t.kind === 'settings') return persisted.activeId === SETTINGS_TAB_ID;
+        if (t.kind === 'content-search') return persisted.activeId === CONTENT_SEARCH_TAB_ID;
+        if (t.kind !== 'file') return false;
         return (
           persisted.activeId === `${t.type}:${t.path}` ||
           (!persisted.activeId && persisted.tabs[0] === t)
@@ -229,10 +234,12 @@ export function useAppLogicSetupDomain() {
       });
       if (active?.kind === 'chat') return { type: 'chat' };
       if (active?.kind === 'settings') return { type: 'settings' };
+      if (active?.kind === 'content-search') return { type: 'content-search' };
       if (active?.kind === 'file') return { type: active.type, path: active.path };
       const first = persisted.tabs[0];
       if (first?.kind === 'chat') return { type: 'chat' };
       if (first?.kind === 'settings') return { type: 'settings' };
+      if (first?.kind === 'content-search') return { type: 'content-search' };
       if (first?.kind === 'file') return { type: first.type, path: first.path };
     }
     try {
@@ -412,10 +419,20 @@ export function useAppLogicSetupDomain() {
           openChatWorkspaceTab({ navigateUrl: false });
         } else if (isSettingsRoute) {
           openSettingsWorkspaceTab({ navigateUrl: false });
+        } else if (isContentSearchRoute) {
+          openContentSearchWorkspaceTab({ navigateUrl: false });
         }
       }
     });
-  }, [collapseToLegacyWorkspace, isChatRoute, isSettingsRoute, openChatWorkspaceTab, openSettingsWorkspaceTab]);
+  }, [
+    collapseToLegacyWorkspace,
+    isChatRoute,
+    isSettingsRoute,
+    isContentSearchRoute,
+    openChatWorkspaceTab,
+    openSettingsWorkspaceTab,
+    openContentSearchWorkspaceTab,
+  ]);
 
   useEffect(() => {
     const onAutoSaveMode = (event: Event) => {
@@ -582,6 +599,7 @@ export function useAppLogicSetupDomain() {
     closeWorkspaceTabById,
     openChatWorkspaceTab,
     openSettingsWorkspaceTab,
+    openContentSearchWorkspaceTab,
     reorderWorkspaceTabs,
     collapseToLegacyWorkspace,
     cycleWorkspaceTab,

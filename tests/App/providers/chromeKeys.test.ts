@@ -11,6 +11,7 @@ const CHROME_KEYS = [
   'lockChatViewport',
   'isChatRoute',
   'isSettingsRoute',
+  'isContentSearchRoute',
   'appName',
   'handleBrandClick',
   'chatAttachDropHost',
@@ -35,6 +36,6 @@ const CHROME_KEYS = [
 describe('App chrome bag', () => {
   it('stays under 30 chrome keys', () => {
     expect(CHROME_KEYS.length).toBeLessThanOrEqual(30);
-    expect(CHROME_KEYS.length).toBe(28);
+    expect(CHROME_KEYS.length).toBe(29);
   });
 });

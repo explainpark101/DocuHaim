@@ -82,6 +82,18 @@ export function isSettingsAppPathname(pathname: string): boolean {
   return normalized === '/settings' || normalized.endsWith('/settings');
 }
 
+export function isContentSearchAppPathname(pathname: string): boolean {
+  const normalized = stripAppBase(pathname);
+  return normalized === '/search' || normalized.startsWith('/search?') || normalized.endsWith('/search');
+}
+
+/** App pathname for vault content search (`/search`, optional `?q=`). */
+export function contentSearchPathname(query?: string | null): string {
+  const q = String(query || '').trim();
+  if (!q) return '/search';
+  return `/search?q=${encodeURIComponent(q)}`;
+}
+
 export function resolveRelativeNotePath(currentViewPath: string | null | undefined, href: string): string {
   const currentDir = currentViewPath?.includes('/')
     ? currentViewPath.slice(0, currentViewPath.lastIndexOf('/') + 1)

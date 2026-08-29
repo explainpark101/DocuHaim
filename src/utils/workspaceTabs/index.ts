@@ -1,5 +1,6 @@
 export type {
   ChatWorkspaceTab,
+  ContentSearchWorkspaceTab,
   FileStorageType,
   FileWorkspaceTab,
   PersistedWorkspaceTab,
@@ -10,6 +11,7 @@ export type {
 } from '@/utils/workspaceTabs/types';
 export {
   CHAT_TAB_ID,
+  CONTENT_SEARCH_TAB_ID,
   EDITABLE_VIEWERS,
   LAST_FILE_KEY,
   SETTINGS_TAB_ID,
@@ -20,10 +22,12 @@ export {
 export {
   anyFileTabDirty,
   createChatTab,
+  createContentSearchTab,
   createFileTab,
   createSettingsTab,
   fileTabId,
   isChatTab,
+  isContentSearchTab,
   isFileTab,
   isFileTabDirty,
   isSettingsTab,
@@ -47,6 +51,7 @@ export {
   getActiveTab,
   moveTab,
   openOrActivateChat,
+  openOrActivateContentSearch,
   openOrActivateSettings,
   openOrReplaceFileTab,
   patchFileTab,

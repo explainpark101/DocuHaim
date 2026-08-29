@@ -22,7 +22,7 @@ import {
   loadTreeHoverExpandSettings,
   saveTreeHoverExpandSettings,
 } from '@/utils/treeHoverExpandSettings';
-import { isSettingsAppPathname } from '@/utils/appHref';
+import { isSettingsAppPathname, isContentSearchAppPathname } from '@/utils/appHref';
 import { getActiveTab, isChatTab } from '@/utils/workspaceTabs';
 import { useLocation } from 'react-router';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
@@ -64,6 +64,7 @@ export type ChromeOwnedApi = {
   setAuthWanted: (v: boolean | ((p: boolean) => boolean)) => void;
   isChatRoute: boolean;
   isSettingsRoute: boolean;
+  isContentSearchRoute: boolean;
   chatSurfaceActive: boolean;
   lockChatViewport: boolean;
 };
@@ -126,6 +127,7 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.endsWith('/chat');
   const isSettingsRoute = isSettingsAppPathname(location.pathname);
+  const isContentSearchRoute = isContentSearchAppPathname(location.pathname);
   const chatTabActive = isChatTab(activeWorkspaceTab);
   const chatSurfaceActive = workspaceTabsEnabled ? chatTabActive : isChatRoute;
   const lockChatViewport = isMobile && chatSurfaceActive;
@@ -199,6 +201,7 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
       setAuthWanted,
       isChatRoute,
       isSettingsRoute,
+      isContentSearchRoute,
       chatSurfaceActive,
       lockChatViewport,
     }),
@@ -220,6 +223,7 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
       authWanted,
       isChatRoute,
       isSettingsRoute,
+      isContentSearchRoute,
       chatSurfaceActive,
       lockChatViewport,
     ],

@@ -1,5 +1,6 @@
 import {
   CHAT_TAB_ID,
+  CONTENT_SEARCH_TAB_ID,
   SETTINGS_TAB_ID,
   WORKSPACE_TAB_SOFT_CAP,
   type FileWorkspaceTab,
@@ -8,6 +9,7 @@ import {
 } from '@/utils/workspaceTabs/types';
 import {
   createChatTab,
+  createContentSearchTab,
   createFileTab,
   createSettingsTab,
   isFileTab,
@@ -118,6 +120,22 @@ export function openOrActivateSettings(
   return {
     tabs: [...state.tabs, createSettingsTab()],
     activeId: activate ? SETTINGS_TAB_ID : state.activeId,
+  };
+}
+
+export function openOrActivateContentSearch(
+  state: WorkspaceTabsState,
+  now = Date.now(),
+  opts?: { activate?: boolean },
+): WorkspaceTabsState {
+  const activate = opts?.activate !== false;
+  const existing = state.tabs.find((t) => t.kind === 'content-search');
+  if (existing) {
+    return activate ? activateTab(state, CONTENT_SEARCH_TAB_ID, now) : state;
+  }
+  return {
+    tabs: [...state.tabs, createContentSearchTab()],
+    activeId: activate ? CONTENT_SEARCH_TAB_ID : state.activeId,
   };
 }
 

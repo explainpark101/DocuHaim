@@ -12,6 +12,7 @@ export type WorkspaceTabsCtxValue = ReturnType<typeof useWorkspaceTabs> & {
   closeWorkspaceTabById: (...args: any[]) => any;
   openChatWorkspaceTab: (...args: any[]) => any;
   openSettingsWorkspaceTab: (...args: any[]) => any;
+  openContentSearchWorkspaceTab: (...args: any[]) => any;
   reorderWorkspaceTabs: (...args: any[]) => any;
   collapseToLegacyWorkspace: (...args: any[]) => any;
   cycleWorkspaceTab: (...args: any[]) => any;

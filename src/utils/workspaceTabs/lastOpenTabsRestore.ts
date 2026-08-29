@@ -1,5 +1,5 @@
 import type { FileStorageType, PersistedWorkspaceTab, PersistedWorkspaceTabs } from '@/utils/workspaceTabs/types';
-import { CHAT_TAB_ID, SETTINGS_TAB_ID } from '@/utils/workspaceTabs/types';
+import { CHAT_TAB_ID, CONTENT_SEARCH_TAB_ID, SETTINGS_TAB_ID } from '@/utils/workspaceTabs/types';
 import { fileTabId } from '@/utils/workspaceTabs/helpers';
 import type { ClosedTabEntry } from '@/utils/workspaceTabs/closedTabHistory';
 import {
@@ -49,7 +49,7 @@ function removeKey(key: string): void {
 function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (v.kind === 'chat' || v.kind === 'settings') return true;
+  if (v.kind === 'chat' || v.kind === 'settings' || v.kind === 'content-search') return true;
   if (
     v.kind === 'file' &&
     (v.type === 's3' || v.type === 'local' || v.type === 'webdav') &&
@@ -74,7 +74,7 @@ function normalizeSnapshot(raw: unknown): PersistedWorkspaceTabs | null {
 function isClosedTabEntry(value: unknown): value is ClosedTabEntry {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (v.kind === 'chat' || v.kind === 'settings') return true;
+  if (v.kind === 'chat' || v.kind === 'settings' || v.kind === 'content-search') return true;
   if (
     v.kind === 'file' &&
     (v.storageType === 's3' || v.storageType === 'local' || v.storageType === 'webdav') &&
@@ -131,12 +131,14 @@ export function clearLastOpenTabsSnapshot(): void {
 export function persistedTabId(tab: PersistedWorkspaceTab): string {
   if (tab.kind === 'chat') return CHAT_TAB_ID;
   if (tab.kind === 'settings') return SETTINGS_TAB_ID;
+  if (tab.kind === 'content-search') return CONTENT_SEARCH_TAB_ID;
   return fileTabId(tab.type, tab.path);
 }
 
 export function persistedTabToClosedEntry(tab: PersistedWorkspaceTab): ClosedTabEntry | null {
   if (tab.kind === 'chat') return { kind: 'chat' };
   if (tab.kind === 'settings') return { kind: 'settings' };
+  if (tab.kind === 'content-search') return { kind: 'content-search' };
   return {
     kind: 'file',
     storageType: tab.type as Exclude<FileStorageType, 'session'>,

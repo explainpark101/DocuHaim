@@ -15,6 +15,8 @@ import type { AdvancedSearchBackend } from '@/utils/advancedSearch/store';
 import { indexableEncMdBody } from '@/utils/encMd';
 import { parseDayFile } from '@/utils/chatWithMyself/format.js';
 
+import type { IndexedCoverage } from '@/utils/advancedSearch/indexedCoverage';
+import { isIndexedChatMessage, isIndexedFilePath } from '@/utils/advancedSearch/indexedCoverage';
 import type { AdvancedSearchLiveScanLimits } from '@/utils/advancedSearch/settings';
 import {
   isLiveScanUnlimited,
@@ -44,6 +46,13 @@ export type LiveContentSearchOptions = {
   /** Abort when this generation no longer matches (stale query). */
   generation?: number;
   isCurrent?: (generation: number) => boolean;
+  /**
+   * When true with `indexedCoverage`, scan only vault paths/messages not in the
+   * inverted index. Full vault scan when false/omitted.
+   */
+  onlyUnindexed?: boolean;
+  /** Indexed paths from `buildIndexedCoverage` — required when `onlyUnindexed`. */
+  indexedCoverage?: IndexedCoverage | null;
 };
 
 function yieldToMain(): Promise<void> {
@@ -141,6 +150,11 @@ export async function liveScanContentHits(
     : filePaths.slice(0, limits.maxFiles);
   for (const path of filesToScan) {
     if (!isCurrent(gen) || hits.length >= limit) break;
+    if (options.onlyUnindexed && options.indexedCoverage && isIndexedFilePath(options.indexedCoverage, path)) {
+      scanned += 1;
+      if (scanned % YIELD_EVERY === 0) await yieldToMain();
+      continue;
+    }
     try {
       const { text: raw } = (await backend.readText(path)) || { text: '' };
       const text = indexableEncMdBody(path, raw);
@@ -187,6 +201,13 @@ export async function liveScanContentHits(
         if (!haystackMatchesAll(hay, terms)) continue;
         const id = String(msg?.id || '');
         if (!id) continue;
+        if (
+          options.onlyUnindexed &&
+          options.indexedCoverage &&
+          isIndexedChatMessage(options.indexedCoverage, dateStr, id)
+        ) {
+          continue;
+        }
         const hit: AdvancedSearchHit = {
           docId: `chat:${dateStr}:${id}`,
           kind: 'chat',

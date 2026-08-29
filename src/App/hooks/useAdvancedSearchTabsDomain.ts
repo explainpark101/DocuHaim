@@ -30,7 +30,7 @@ export function useAdvancedSearchTabsDomain() {
   const { s3Creds } = useAuth();
   const { getS3Client, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspace, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
   const { restorePersistedWorkspaceTabsRef, selectFileRawRef } = useFileSessionOwned();
-  const { activateWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab, openChatWorkspaceTab, openSettingsWorkspaceTab, setState: setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
+  const { activateWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab, openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, setState: setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
   const advancedSearchTreesRef = useRef({
     storageMode,
     s3Tree,
@@ -145,6 +145,10 @@ export function useAdvancedSearchTabsDomain() {
         openSettingsWorkspaceTab();
         return;
       }
+      if (entry.kind === 'content-search') {
+        openContentSearchWorkspaceTab();
+        return;
+      }
       try {
         const node = await resolveClosedFileNode(entry);
         if (!node) {
@@ -160,7 +164,7 @@ export function useAdvancedSearchTabsDomain() {
         return;
       }
     }
-  }, [openChatWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode]);
+  }, [openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode]);
 
   const restorePersistedWorkspaceTabs = useCallback(
     async (persisted: any, options: any = {}) => {
@@ -180,6 +184,9 @@ export function useAdvancedSearchTabsDomain() {
           restoredAny = true;
         } else if (tab.kind === 'settings') {
           openSettingsWorkspaceTab({ navigateUrl: false, activate: false });
+          restoredAny = true;
+        } else if (tab.kind === 'content-search') {
+          openContentSearchWorkspaceTab({ navigateUrl: false, activate: false });
           restoredAny = true;
         }
       }

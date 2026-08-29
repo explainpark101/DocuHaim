@@ -85,6 +85,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     lockChatViewport,
     isChatRoute,
     isSettingsRoute,
+    isContentSearchRoute,
     appName,
     handleBrandClick,
     chatAttachDropHost,
@@ -177,6 +178,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     webdavReady,
     canScanStorageUsage,
     scanActiveStorageUsageTree,
+    sessionWorkspace,
   } = vault;
 
   const {
@@ -230,6 +232,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const activateWorkspaceTab = tabsCtx.activateWorkspaceTab;
   const closeWorkspaceTabById = tabsCtx.closeWorkspaceTabById;
   const openChatWorkspaceTab = tabsCtx.openChatWorkspaceTab;
+  const openContentSearchWorkspaceTab = tabsCtx.openContentSearchWorkspaceTab;
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
   const setWorkspaceTabs = tabsCtx.setState;
 
@@ -457,6 +460,13 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           editorContent={editorContent}
           snippetConfig={snippetConfig}
           theme={theme}
+          onOpenContentSearch={(query) => {
+            if (workspaceTabsEnabled) {
+              openContentSearchWorkspaceTab({ query });
+              return;
+            }
+            navigate(query ? `/search?q=${encodeURIComponent(query)}` : '/search');
+          }}
         />
       ) : null}
 
@@ -578,6 +588,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                   tabBarPlacement={isTauriDesktopPlatform() ? 'titlebar' : 'inline'}
                   isChatRoute={isChatRoute}
                   isSettingsRoute={isSettingsRoute}
+                  isContentSearchRoute={isContentSearchRoute}
                   vaultDropProps={{
                     storageType: storageMode,
                     localRootHandle,
@@ -861,6 +872,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     localFolderLoadingPath,
                     onAttachDropHostChange: setChatAttachDropHost,
                     onRegisterTreeAttachDrop: handleRegisterChatAttachDrop,
+                  }}
+                  contentSearchPaneProps={{
+                    storageMode,
+                    s3Tree,
+                    localTree,
+                    webdavTree,
+                    sessionWorkspace,
+                    onOpenFile: openAdvancedSearchFile,
                   }}
                 />
               }

@@ -33,7 +33,7 @@ import {
 } from '@/utils/desktopOpenFiles';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isContentSearchAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
 
 /**
  * useFileOpenRoutingDomain: context-owned domain handlers.
@@ -61,7 +61,7 @@ export function useFileOpenRoutingDomain() {
   const { selectFileRaw } = useFileSession();
   const { createModalContext } = useTreeOpsOwned();
   const { handleTreeNodeSelect } = useTreeOps();
-  const { hasRestoredPersistedWorkspaceTabsRef, openChatWorkspaceTab, openSettingsWorkspaceTab, workspaceTabsEnabled, workspaceTabsEnabledRef } = useWorkspaceTabsCtx();
+  const { hasRestoredPersistedWorkspaceTabsRef, openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, workspaceTabsEnabled, workspaceTabsEnabledRef } = useWorkspaceTabsCtx();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -335,6 +335,7 @@ export function useFileOpenRoutingDomain() {
     const onChat =
       location.pathname === '/chat' || location.pathname.endsWith('/chat');
     const onSettings = isSettingsAppPathname(location.pathname);
+    const onContentSearch = isContentSearchAppPathname(location.pathname);
     const openParam =
       typeof window !== 'undefined'
         ? new URLSearchParams(window.location.search).get('open')
@@ -379,6 +380,13 @@ export function useFileOpenRoutingDomain() {
       hasProcessedOpenFromUrlRef.current = true;
       if (workspaceTabsEnabledRef.current) {
         openSettingsWorkspaceTab({ navigateUrl: false });
+      }
+      return;
+    } else if (onContentSearch) {
+      hasRestoredLastFileRef.current = true;
+      hasProcessedOpenFromUrlRef.current = true;
+      if (workspaceTabsEnabledRef.current) {
+        openContentSearchWorkspaceTab({ navigateUrl: false });
       }
       return;
     } else if (isExportPdfAppPathname(location.pathname)) {
@@ -605,15 +613,27 @@ export function useFileOpenRoutingDomain() {
     openSettingsWorkspaceTab({ navigateUrl: false });
   }, [location.pathname, openSettingsWorkspaceTab]);
 
+  useEffect(() => {
+    if (!isContentSearchAppPathname(location.pathname)) return;
+    if (!workspaceTabsEnabledRef.current) return;
+    openContentSearchWorkspaceTab({ navigateUrl: false });
+  }, [location.pathname, openContentSearchWorkspaceTab]);
+
   // Keep the open note in sync with browser history (back/forward, history.back, …).
   useEffect(() => {
     if (!isUnlocked || !hasProcessedOpenFromUrlRef.current) return;
-    if (isChatAppPathname(location.pathname) || isSettingsAppPathname(location.pathname)) {
+    if (
+      isChatAppPathname(location.pathname) ||
+      isSettingsAppPathname(location.pathname) ||
+      isContentSearchAppPathname(location.pathname)
+    ) {
       if (workspaceTabsEnabledRef.current) {
         if (isChatAppPathname(location.pathname)) {
           openChatWorkspaceTab({ navigateUrl: false });
-        } else {
+        } else if (isSettingsAppPathname(location.pathname)) {
           openSettingsWorkspaceTab({ navigateUrl: false });
+        } else {
+          openContentSearchWorkspaceTab({ navigateUrl: false });
         }
       }
       return;

@@ -5,10 +5,11 @@ import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
 import WorkspaceTabHost, {
   WorkspaceKeepAlivePanel,
 } from '@/components/workspace/WorkspaceTabHost';
-import { CHAT_TAB_ID, SETTINGS_TAB_ID, isFileTab } from '@/utils/workspaceTabs';
+import { CHAT_TAB_ID, CONTENT_SEARCH_TAB_ID, SETTINGS_TAB_ID, isFileTab } from '@/utils/workspaceTabs';
 
 const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const ContentSearchPage = lazy(() => import('@/pages/ContentSearchPage'));
 
 function RouteSuspenseFallback() {
   return (
@@ -34,11 +35,13 @@ export default function WorkspaceMainPanels({
   isMobileLayout = false,
   editorPaneProps,
   chatPaneProps,
+  contentSearchPaneProps,
   settingsPaneProps,
   mirrors,
   tabsEnabled = true,
   isChatRoute = false,
   isSettingsRoute = false,
+  isContentSearchRoute = false,
   vaultDropProps = {},
   /** `titlebar` — tab strip lives in DesktopTitlebar; omit inline WorkspaceTabBar. */
   tabBarPlacement = 'inline',
@@ -46,14 +49,19 @@ export default function WorkspaceMainPanels({
   const fileTabs = tabs.filter(isFileTab);
   const hasChatTab = tabs.some((t) => t.kind === 'chat');
   const hasSettingsTab = tabs.some((t) => t.kind === 'settings');
+  const hasContentSearchTab = tabs.some((t) => t.kind === 'content-search');
   const chatActive = tabsEnabled ? activeId === CHAT_TAB_ID : isChatRoute;
   const settingsActive = tabsEnabled ? activeId === SETTINGS_TAB_ID : isSettingsRoute;
+  const contentSearchActive = tabsEnabled
+    ? activeId === CONTENT_SEARCH_TAB_ID
+    : isContentSearchRoute;
   const showChat = tabsEnabled ? hasChatTab : isChatRoute;
   const showSettings = tabsEnabled ? hasSettingsTab : isSettingsRoute;
+  const showContentSearch = tabsEnabled ? hasContentSearchTab : isContentSearchRoute;
   // Home (`activeId` cleared) or no tabs → empty editor shell.
   const showEmpty = tabsEnabled
     ? tabs.length === 0 || activeId == null
-    : !isChatRoute && !isSettingsRoute && !mirrors?.currentFile && fileTabs.length === 0;
+    : !isChatRoute && !isSettingsRoute && !isContentSearchRoute && !mirrors?.currentFile && fileTabs.length === 0;
 
   if (!tabsEnabled) {
     return (
@@ -71,6 +79,12 @@ export default function WorkspaceMainPanels({
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
               <Suspense fallback={<RouteSuspenseFallback />}>
                 <ChatWithMyselfPane {...chatPaneProps} isActive />
+              </Suspense>
+            </div>
+          ) : isContentSearchRoute ? (
+            <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+              <Suspense fallback={<RouteSuspenseFallback />}>
+                <ContentSearchPage {...contentSearchPaneProps} isActive />
               </Suspense>
             </div>
           ) : (
@@ -152,6 +166,14 @@ export default function WorkspaceMainPanels({
                 <SettingsPage {...settingsPaneProps} />
               </Suspense>
             </SettingsVaultDropHost>
+          </WorkspaceKeepAlivePanel>
+        ) : null}
+
+        {showContentSearch ? (
+          <WorkspaceKeepAlivePanel active={contentSearchActive}>
+            <Suspense fallback={<RouteSuspenseFallback />}>
+              <ContentSearchPage {...contentSearchPaneProps} isActive={contentSearchActive} />
+            </Suspense>
           </WorkspaceKeepAlivePanel>
         ) : null}
 

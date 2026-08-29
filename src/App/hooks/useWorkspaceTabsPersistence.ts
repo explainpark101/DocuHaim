@@ -35,7 +35,9 @@ function buildPersistedWorkspaceTabsPayload(
         ? { kind: 'chat' }
         : t.kind === 'settings'
           ? { kind: 'settings' }
-          : { kind: 'file', storageType: t.storageType, path: t.path },
+          : t.kind === 'content-search'
+            ? { kind: 'content-search' }
+            : { kind: 'file', storageType: t.storageType, path: t.path },
     ),
     flushed.activeId,
   );

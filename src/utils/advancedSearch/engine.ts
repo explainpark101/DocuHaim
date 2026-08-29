@@ -74,6 +74,12 @@ import {
 } from '@/utils/advancedSearch/docIdMap';
 import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
 import { isTauriApp } from '@/utils/tauriPlatform';
+import {
+  searchContentPageFromIndex,
+  searchContentPageLive,
+} from '@/utils/advancedSearch/contentSearchPage';
+import type { ContentSearchFileHit } from '@/utils/advancedSearch/contentSearchSnippets';
+import { buildIndexedCoverage } from '@/utils/advancedSearch/indexedCoverage';
 import { liveScanContentHits } from '@/utils/advancedSearch/liveContentSearch';
 import { RebuildCancelledError } from '@/utils/advancedSearch/rebuildCancel';
 import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
@@ -326,13 +332,29 @@ class AdvancedSearchEngine {
     return this.loaded && isIndexInitialized(this.index) && this.lucivyReady;
   }
 
-  /** Live vault scan when index is wanted but Lucivy cannot serve queries (web). */
-  private shouldLiveContentSearch(): boolean {
+  /** Live vault scan allowed (web when backend ready; not used for full vault on Tauri). */
+  private canLiveContentSearch(): boolean {
     if (!this.enabled) return false;
-    if (this.hasIndex()) return false;
-    // Tauri uses native Lucivy — do not fall back to expensive remote body scans.
-    if (isTauriApp()) return false;
     return Boolean(this.backend?.isReady?.());
+  }
+
+  /** Full vault body scan when Lucivy index is unavailable (web only). */
+  private shouldFullLiveContentSearch(): boolean {
+    if (!this.canLiveContentSearch()) return false;
+    if (this.hasIndex()) return false;
+    if (isTauriApp()) return false;
+    return true;
+  }
+
+  /** Scan only paths/messages missing from the inverted index. */
+  private shouldSupplementUnindexedLive(): boolean {
+    if (!this.canLiveContentSearch()) return false;
+    return this.hasIndex();
+  }
+
+  /** @deprecated use shouldFullLiveContentSearch */
+  private shouldLiveContentSearch(): boolean {
+    return this.shouldFullLiveContentSearch();
   }
 
   getContentSearchMode(): 'index' | 'live' | 'off' {
@@ -1476,6 +1498,110 @@ class AdvancedSearchEngine {
     }
   }
 
+  async searchContentPage(
+    query: string,
+    trees: Array<TreeNode[] | null | undefined>,
+    limit = 40,
+  ): Promise<ContentSearchFileHit[]> {
+    if (this.enabled) await this.ensureLoaded();
+    const gen = ++this.searchGeneration;
+    const q = String(query || '').trim();
+    if (!q || !this.backend) return [];
+
+    const useIndex = this.enabled && this.hasIndex();
+    let indexHits: ContentSearchFileHit[] = [];
+    let indexSearchFailed = false;
+
+    if (useIndex) {
+      try {
+        indexHits = await searchContentPageFromIndex({
+          query: q,
+          index: this.index,
+          backend: this.backend,
+          limit,
+          generation: gen,
+          isCurrent: (g) => g === this.searchGeneration,
+          lucivySearch: async (terms, lim) => {
+            const api = await this.loadLucivyApi();
+            const built = api.buildContainsAndQuery('body', terms);
+            if (!built) return [];
+            const rawHits = await api.lucivySearch(built, { limit: lim });
+            return rawHits
+              .map((h) => {
+                const docId = this.docIdMap.numericToString.get(h.docId);
+                if (!docId) return null;
+                return { docId, score: h.score };
+              })
+              .filter((x): x is { docId: string; score: number } => x != null);
+          },
+        });
+      } catch (err) {
+        indexSearchFailed = true;
+        console.warn('[advancedSearch] indexed content page search failed', err);
+      }
+    }
+
+    if (gen !== this.searchGeneration) return indexHits;
+
+    const mergeHits = (base: ContentSearchFileHit[], extra: ContentSearchFileHit[]): ContentSearchFileHit[] => {
+      const byId = new Map(base.map((h) => [h.docId, h]));
+      for (const hit of extra) {
+        if (!byId.has(hit.docId)) byId.set(hit.docId, hit);
+      }
+      return Array.from(byId.values())
+        .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'))
+        .slice(0, limit);
+    };
+
+    if (indexSearchFailed || !useIndex) {
+      if (!this.shouldFullLiveContentSearch() && !(indexSearchFailed && this.canLiveContentSearch())) {
+        return indexHits;
+      }
+      try {
+        return await searchContentPageLive({
+          query: q,
+          trees,
+          backend: this.backend,
+          includeOtherFiles: this.includeOtherFiles,
+          excludedFolders: this.excludedFolders,
+          limits: this.liveScanLimits,
+          limit,
+          generation: gen,
+          isCurrent: (g) => g === this.searchGeneration,
+        });
+      } catch (err) {
+        console.warn('[advancedSearch] live content page search failed', err);
+        return indexHits;
+      }
+    }
+
+    if (!this.shouldSupplementUnindexedLive()) return indexHits;
+
+    const remaining = limit - indexHits.length;
+    if (remaining <= 0) return indexHits;
+
+    try {
+      const liveHits = await searchContentPageLive({
+        query: q,
+        trees,
+        backend: this.backend,
+        includeOtherFiles: this.includeOtherFiles,
+        excludedFolders: this.excludedFolders,
+        limits: this.liveScanLimits,
+        limit: remaining,
+        generation: gen,
+        isCurrent: (g) => g === this.searchGeneration,
+        onlyUnindexed: true,
+        indexedCoverage: buildIndexedCoverage(this.index),
+      });
+      if (gen !== this.searchGeneration) return indexHits;
+      return mergeHits(indexHits, liveHits);
+    } catch (err) {
+      console.warn('[advancedSearch] unindexed content page scan failed', err);
+      return indexHits;
+    }
+  }
+
   async search(
     query: string,
     trees: Array<TreeNode[] | null | undefined>,
@@ -1513,27 +1639,10 @@ class AdvancedSearchEngine {
     if (gen !== this.searchGeneration) return base;
 
     const q = String(query || '').trim();
-    if (!q || useIndex || !this.shouldLiveContentSearch() || !this.backend) {
-      return base;
-    }
+    if (!q || !this.backend) return base;
 
-    try {
-      const liveHits = await liveScanContentHits({
-        query: q,
-        trees,
-        backend: this.backend,
-        includeOtherFiles: this.includeOtherFiles,
-        excludedFolders: this.excludedFolders,
-        limits: this.liveScanLimits,
-        ...(isLiveScanUnlimited(this.liveScanLimits.maxHits)
-          ? {}
-          : { limit: Math.min(limit * 2, this.liveScanLimits.maxHits) }),
-        generation: gen,
-        isCurrent: (g) => g === this.searchGeneration,
-      });
-      if (gen !== this.searchGeneration) return base;
+    const mergeLiveHits = (liveHits: AdvancedSearchHit[]): AdvancedSearchHit[] => {
       if (liveHits.length === 0) return base;
-
       const byId = new Map(base.map((h) => [h.docId, h]));
       for (const hit of liveHits) {
         const prev = byId.get(hit.docId);
@@ -1563,10 +1672,54 @@ class AdvancedSearchEngine {
       return Array.from(byId.values())
         .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'))
         .slice(0, limit);
-    } catch (err) {
-      console.warn('[advancedSearch] live content scan failed', err);
-      return base;
+    };
+
+    const liveScanOpts = {
+      query: q,
+      trees,
+      backend: this.backend,
+      includeOtherFiles: this.includeOtherFiles,
+      excludedFolders: this.excludedFolders,
+      limits: this.liveScanLimits,
+      generation: gen,
+      isCurrent: (g: number) => g === this.searchGeneration,
+    };
+
+    if (useIndex && this.shouldSupplementUnindexedLive()) {
+      try {
+        const liveHits = await liveScanContentHits({
+          ...liveScanOpts,
+          onlyUnindexed: true,
+          indexedCoverage: buildIndexedCoverage(this.index),
+          ...(isLiveScanUnlimited(this.liveScanLimits.maxHits)
+            ? { limit: limit * 2 }
+            : { limit: Math.min(limit * 2, this.liveScanLimits.maxHits) }),
+        });
+        if (gen !== this.searchGeneration) return base;
+        return mergeLiveHits(liveHits);
+      } catch (err) {
+        console.warn('[advancedSearch] unindexed live content scan failed', err);
+        return base;
+      }
     }
+
+    if (!useIndex && this.shouldFullLiveContentSearch()) {
+      try {
+        const liveHits = await liveScanContentHits({
+          ...liveScanOpts,
+          ...(isLiveScanUnlimited(this.liveScanLimits.maxHits)
+            ? {}
+            : { limit: Math.min(limit * 2, this.liveScanLimits.maxHits) }),
+        });
+        if (gen !== this.searchGeneration) return base;
+        return mergeLiveHits(liveHits);
+      } catch (err) {
+        console.warn('[advancedSearch] live content scan failed', err);
+        return base;
+      }
+    }
+
+    return base;
   }
 
   dispose(): void {

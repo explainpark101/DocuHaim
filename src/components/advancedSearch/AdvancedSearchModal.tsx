@@ -35,6 +35,8 @@ export type AdvancedSearchModalProps = {
   onSelectHit: (hit: AdvancedSearchHit) => boolean | void;
   indexEnabled?: boolean;
   hasIndex?: boolean;
+  /** Vault index hydrate finished (may still be building). */
+  indexLoaded?: boolean;
   /** SharedArrayBuffer / COOP+COEP ready for Lucivy (web). */
   isolationReady?: boolean;
   /** Body search path: Lucivy index, live vault scan, or off. */
@@ -251,6 +253,7 @@ export default function AdvancedSearchModal({
   onSelectHit,
   indexEnabled = true,
   hasIndex = false,
+  indexLoaded = false,
   isolationReady = true,
   contentSearchMode = 'off',
   building = false,
@@ -421,9 +424,10 @@ export default function AdvancedSearchModal({
     }
     if (!isolationReady) return '웹 검색 격리 미지원 · 파일명·경로·바로가기';
     if (building) return '색인 생성 중…';
+    if (!indexLoaded) return '색인 로드 중…';
     if (!hasIndex) return '색인 없음 · 파일명·경로·바로가기';
     return null;
-  }, [indexEnabled, contentSearchMode, isolationReady, hasIndex, building]);
+  }, [indexEnabled, contentSearchMode, isolationReady, indexLoaded, hasIndex, building]);
 
   const navHint = vimEnabled
     ? browseDirectoryMode
@@ -522,9 +526,11 @@ export default function AdvancedSearchModal({
           <span className="hidden shrink-0 text-[11px] text-gray-400 dark:text-odp-muted sm:inline">
             {contentSearchMode === 'live'
               ? '직접 검색'
-              : indexEnabled && !hasIndex
-                ? '색인 없음'
-                : null}
+              : indexEnabled && !indexLoaded
+                ? '로드 중'
+                : indexEnabled && !hasIndex
+                  ? '색인 없음'
+                  : null}
           </span>
         ) : null}
         <Dialog.Close asChild>
