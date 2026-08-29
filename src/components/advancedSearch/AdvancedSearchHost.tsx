@@ -706,6 +706,7 @@ export default function AdvancedSearchHost({
       indexEnabled={status.enabled}
       hasIndex={status.hasIndex}
       isolationReady={status.isolationReady}
+      contentSearchMode={status.contentSearchMode}
       building={status.building}
       editorActionsAvailable={editorActionsAvailable}
       printActionsAvailable={printActionsAvailable}

@@ -15,6 +15,14 @@ export {
   saveAdvancedSearchIncludeOtherFiles,
   loadAdvancedSearchUiAnimationEnabled,
   saveAdvancedSearchUiAnimationEnabled,
+  loadAdvancedSearchLiveScanLimits,
+  saveAdvancedSearchLiveScanLimits,
+  normalizeLiveScanLimits,
+  DEFAULT_LIVE_SCAN_LIMITS,
+  LIVE_SCAN_LIMIT_BOUNDS,
+  LIVE_SCAN_UNLIMITED,
+  isLiveScanUnlimited,
+  type AdvancedSearchLiveScanLimits,
 } from '@/utils/advancedSearch/settings';
 export {
   advancedSearchEngine,

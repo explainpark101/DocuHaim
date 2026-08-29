@@ -77,6 +77,7 @@ export type AppCommandId =
   | 'settings-chat'
   | 'settings-og'
   | 'settings-advanced-search'
+  | 'settings-inverted-index'
   | 'settings-wiki-image'
   | 'settings-snippets'
   | 'settings-webfonts'
@@ -382,6 +383,22 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '색인',
       'spotlight',
       '검색 설정',
+    ],
+  },
+  {
+    id: 'settings-inverted-index',
+    title: '설정 · 역색인',
+    description: '폴더별 역색인 커버리지',
+    path: '/settings#settings-inverted-index',
+    keywords: [
+      '역색인',
+      'inverted index',
+      '색인',
+      'index',
+      '폴더',
+      '커버리지',
+      'coverage',
+      'advanced search',
     ],
   },
   {

@@ -20,8 +20,12 @@ import {
 import {
   loadAdvancedSearchIndexEnabled,
   loadAdvancedSearchIncludeOtherFiles,
+  loadAdvancedSearchLiveScanLimits,
   saveAdvancedSearchIndexEnabled,
   saveAdvancedSearchIncludeOtherFiles,
+  saveAdvancedSearchLiveScanLimits,
+  isLiveScanUnlimited,
+  type AdvancedSearchLiveScanLimits,
 } from '@/utils/advancedSearch/settings';
 import {
   emptyIndex,
@@ -47,6 +51,8 @@ import {
   type DocIdMapState,
 } from '@/utils/advancedSearch/docIdMap';
 import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
+import { isTauriApp } from '@/utils/tauriPlatform';
+import { liveScanContentHits } from '@/utils/advancedSearch/liveContentSearch';
 import { gzip, gunzipSync, strFromU8 } from 'fflate';
 
 export type BuildLogLevel = 'info' | 'ok' | 'warn' | 'error';
@@ -81,8 +87,17 @@ export type EngineStatus = {
   buildProgress: number | null;
   /** Recent background index log lines (newest last). */
   buildLogs: BuildLogEntry[];
-  /** False when SharedArrayBuffer / COOP+COEP isolation is missing. */
+  /** False when SharedArrayBuffer / COOP+COEP isolation is missing (web). Tauri always true. */
   isolationReady: boolean;
+  /**
+   * How body content is searched:
+   * - index: Lucivy inverted index
+   * - live: vault file/chat scan fallback (web when Lucivy unavailable)
+   * - off: filename/path/commands only
+   */
+  contentSearchMode: 'index' | 'live' | 'off';
+  /** Caps for web live vault body scan when Lucivy is unavailable. */
+  liveScanLimits: AdvancedSearchLiveScanLimits;
 };
 
 export type RebuildOptions = {
@@ -147,6 +162,8 @@ class AdvancedSearchEngine {
   private dirty = false;
   private enabled = loadAdvancedSearchIndexEnabled();
   private includeOtherFiles = loadAdvancedSearchIncludeOtherFiles();
+  private liveScanLimits: AdvancedSearchLiveScanLimits =
+    loadAdvancedSearchLiveScanLimits();
   private backend: AdvancedSearchBackend | null = null;
   private getTree: (() => TreeNode[]) | null = null;
   private storageKey = '';
@@ -159,6 +176,7 @@ class AdvancedSearchEngine {
   private unsub: (() => void) | null = null;
   private listeners = new Set<() => void>();
   private lucivyApi: LucivyApi | null = null;
+  private searchGeneration = 0;
 
   constructor() {
     this.unsub = subscribeAdvancedSearchChanges((event) => {
@@ -213,6 +231,22 @@ class AdvancedSearchEngine {
     return this.loaded && isIndexInitialized(this.index) && this.lucivyReady;
   }
 
+  /** Live vault scan when index is wanted but Lucivy cannot serve queries (web). */
+  private shouldLiveContentSearch(): boolean {
+    if (!this.enabled) return false;
+    if (this.hasIndex()) return false;
+    // Tauri uses native Lucivy — do not fall back to expensive remote body scans.
+    if (isTauriApp()) return false;
+    return Boolean(this.backend?.isReady?.());
+  }
+
+  getContentSearchMode(): 'index' | 'live' | 'off' {
+    if (!this.enabled) return 'off';
+    if (this.hasIndex()) return 'index';
+    if (this.shouldLiveContentSearch()) return 'live';
+    return 'off';
+  }
+
   getStatus(): EngineStatus {
     return {
       enabled: this.enabled,
@@ -231,6 +265,8 @@ class AdvancedSearchEngine {
       buildProgress: this.buildProgress,
       buildLogs: this.buildLogs,
       isolationReady: isSearchIsolationReady(),
+      contentSearchMode: this.getContentSearchMode(),
+      liveScanLimits: { ...this.liveScanLimits },
     };
   }
 
@@ -247,17 +283,6 @@ class AdvancedSearchEngine {
   }
 
   setEnabled(value: boolean): void {
-    // Tauri Android never runs lucivy inverted index.
-    if (
-      typeof window !== 'undefined' &&
-      ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) &&
-      /Android/i.test(navigator.userAgent || '')
-    ) {
-      this.enabled = false;
-      saveAdvancedSearchIndexEnabled(false);
-      this.emit();
-      return;
-    }
     this.enabled = Boolean(value);
     saveAdvancedSearchIndexEnabled(this.enabled);
     this.emit();
@@ -271,6 +296,11 @@ class AdvancedSearchEngine {
     saveAdvancedSearchIncludeOtherFiles(this.includeOtherFiles);
     this.emit();
     void this.refreshCheckpointStatus();
+  }
+
+  setLiveScanLimits(value: Partial<AdvancedSearchLiveScanLimits>): void {
+    this.liveScanLimits = saveAdvancedSearchLiveScanLimits(value);
+    this.emit();
   }
 
   configure(options: {
@@ -476,6 +506,11 @@ class AdvancedSearchEngine {
     this.cancelRequested = true;
     this.appendLog('warn', '색인 중지 요청…');
     this.emitBuildProgress(true);
+    void this.loadLucivyApi()
+      .then((api) => api.lucivyCancelNative?.())
+      .catch(() => {
+        // ignore
+      });
   }
 
   private assertNotCancelled(): void {
@@ -586,11 +621,12 @@ class AdvancedSearchEngine {
     this.lastError = null;
     this.lastBuildEmitAt = 0;
     this.clearBuildLogs();
+    const engineLabel = isTauriApp() ? 'native Lucivy' : 'Lucivy';
     this.appendLog(
       'info',
       this.includeOtherFiles
-        ? '색인 시작 (Markdown + 기타 텍스트, Lucivy)'
-        : '색인 시작 (Markdown만, Lucivy)',
+        ? `색인 시작 (Markdown + 기타 텍스트, ${engineLabel})`
+        : `색인 시작 (Markdown만, ${engineLabel})`,
     );
     this.emit();
 
@@ -706,7 +742,12 @@ class AdvancedSearchEngine {
         skipRecount: true,
       });
     } else {
-      this.appendLog('info', 'Lucivy OPFS 인덱스 생성 중…');
+      this.appendLog(
+        'info',
+        isTauriApp()
+          ? '네이티브 Lucivy 인덱스 생성 중…'
+          : 'Lucivy OPFS 인덱스 생성 중…',
+      );
       this.emit();
       this.index = emptyIndex();
       this.docIdMap = emptyDocIdMap();
@@ -899,7 +940,9 @@ class AdvancedSearchEngine {
   ): Promise<AdvancedSearchHit[]> {
     if (this.enabled) await this.ensureLoaded();
     const useIndex = this.enabled && this.hasIndex();
-    return runAdvancedSearch({
+    const gen = ++this.searchGeneration;
+
+    const base = await runAdvancedSearch({
       query,
       trees,
       index: this.index,
@@ -922,6 +965,63 @@ class AdvancedSearchEngine {
       limit,
       ...(commandContext ? { commandContext } : {}),
     });
+
+    if (gen !== this.searchGeneration) return base;
+
+    const q = String(query || '').trim();
+    if (!q || useIndex || !this.shouldLiveContentSearch() || !this.backend) {
+      return base;
+    }
+
+    try {
+      const liveHits = await liveScanContentHits({
+        query: q,
+        trees,
+        backend: this.backend,
+        includeOtherFiles: this.includeOtherFiles,
+        limits: this.liveScanLimits,
+        ...(isLiveScanUnlimited(this.liveScanLimits.maxHits)
+          ? {}
+          : { limit: Math.min(limit * 2, this.liveScanLimits.maxHits) }),
+        generation: gen,
+        isCurrent: (g) => g === this.searchGeneration,
+      });
+      if (gen !== this.searchGeneration) return base;
+      if (liveHits.length === 0) return base;
+
+      const byId = new Map(base.map((h) => [h.docId, h]));
+      for (const hit of liveHits) {
+        const prev = byId.get(hit.docId);
+        if (!prev) {
+          byId.set(hit.docId, hit);
+          continue;
+        }
+        const reasons = Array.from(new Set([...prev.reasons, ...hit.reasons]));
+        const merged: AdvancedSearchHit = {
+          docId: prev.docId,
+          kind: hit.kind,
+          path: hit.path,
+          title: hit.title,
+          reasons,
+          score: Math.max(prev.score, hit.score) + 5,
+        };
+        const preview = hit.preview || prev.preview;
+        if (preview !== undefined) merged.preview = preview;
+        if (hit.dateStr !== undefined) merged.dateStr = hit.dateStr;
+        else if (prev.dateStr !== undefined) merged.dateStr = prev.dateStr;
+        if (hit.messageId !== undefined) merged.messageId = hit.messageId;
+        else if (prev.messageId !== undefined) merged.messageId = prev.messageId;
+        if (hit.group !== undefined) merged.group = hit.group;
+        else if (prev.group !== undefined) merged.group = prev.group;
+        byId.set(hit.docId, merged);
+      }
+      return Array.from(byId.values())
+        .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'))
+        .slice(0, limit);
+    } catch (err) {
+      console.warn('[advancedSearch] live content scan failed', err);
+      return base;
+    }
   }
 
   dispose(): void {

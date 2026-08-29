@@ -35,8 +35,10 @@ export type AdvancedSearchModalProps = {
   onSelectHit: (hit: AdvancedSearchHit) => boolean | void;
   indexEnabled?: boolean;
   hasIndex?: boolean;
-  /** SharedArrayBuffer / COOP+COEP ready for Lucivy. */
+  /** SharedArrayBuffer / COOP+COEP ready for Lucivy (web). */
   isolationReady?: boolean;
+  /** Body search path: Lucivy index, live vault scan, or off. */
+  contentSearchMode?: 'index' | 'live' | 'off';
   building?: boolean;
   /** Show editor toolbar shortcuts in empty-state hints. */
   editorActionsAvailable?: boolean;
@@ -250,6 +252,7 @@ export default function AdvancedSearchModal({
   indexEnabled = true,
   hasIndex = false,
   isolationReady = true,
+  contentSearchMode = 'off',
   building = false,
   editorActionsAvailable = false,
   printActionsAvailable = false,
@@ -413,11 +416,14 @@ export default function AdvancedSearchModal({
 
   const listFooterHint = useMemo(() => {
     if (!indexEnabled) return '역색인 꺼짐 · 파일명·경로·바로가기';
-    if (!isolationReady) return '검색 격리 미지원 · 파일명·경로·바로가기';
+    if (contentSearchMode === 'live') {
+      return '본문 직접 검색(폴백) · 파일·채팅 스캔';
+    }
+    if (!isolationReady) return '웹 검색 격리 미지원 · 파일명·경로·바로가기';
     if (building) return '색인 생성 중…';
     if (!hasIndex) return '색인 없음 · 파일명·경로·바로가기';
     return null;
-  }, [indexEnabled, isolationReady, hasIndex, building]);
+  }, [indexEnabled, contentSearchMode, isolationReady, hasIndex, building]);
 
   const navHint = vimEnabled
     ? browseDirectoryMode
@@ -514,7 +520,11 @@ export default function AdvancedSearchModal({
           </span>
         ) : listFooterHint && !building ? (
           <span className="hidden shrink-0 text-[11px] text-gray-400 dark:text-odp-muted sm:inline">
-            {indexEnabled && !hasIndex ? '색인 없음' : null}
+            {contentSearchMode === 'live'
+              ? '직접 검색'
+              : indexEnabled && !hasIndex
+                ? '색인 없음'
+                : null}
           </span>
         ) : null}
         <Dialog.Close asChild>

@@ -1,6 +1,6 @@
 ---
 name: Android Tauri Sideload
-overview: Play 없이 Tauri Android APK를 별도 GitHub Release로 사이드로드 배포하고, S3/WebDAV/Local Vault/.md 기본 연결·세션 열기·생체인증 언락을 지원한다. share_target은 정상 동작을 전제한다. AS 역색인 미사용, WebAuthn PRF(브라우저 패스키)는 제외, 비밀·연결 키는 Stronghold + plugin-biometric.
+overview: Play 없이 Tauri Android APK를 별도 GitHub Release로 사이드로드 배포하고, S3/WebDAV/Local Vault/.md 기본 연결·세션 열기·생체인증 언락을 지원한다. share_target은 정상 동작을 전제한다. AS 역색인은 Tauri native lucivy-core(데스크톱·Android 공통)로 사용. WebAuthn PRF(브라우저 패스키)는 제외, 비밀·연결 키는 Stronghold + plugin-biometric.
 todos:
   - id: platform-helpers
     content: isTauriAndroid() 도입 및 Android 전용 분기 정리 (저장소·언락·openFiles·AS)
@@ -21,8 +21,8 @@ todos:
     content: Android에서 DocuHaim을 .md/.markdown 기본 오프너로 등록·라우팅 (vault vs session)
     status: pending
   - id: as-index-off
-    content: Android에서 AS lucivy 색인 강제 OFF + ensureLoaded 가드
-    status: pending
+    content: "CANCELLED — Android도 Tauri native lucivy-core 역색인 사용 (tauri_as_index_backend 플랜)"
+    status: cancelled
 isProject: false
 ---
 
@@ -33,10 +33,11 @@ isProject: false
 | 포함 | 제외 |
 |------|------|
 | S3 + WebDAV | Google Play / AAB |
-| Local Vault | Advanced Search lucivy 역색인 |
-| `.md` / `.markdown` 앱 연결 (기본 오프너로 DocuHaim 사용) | WebAuthn PRF / 브라우저 패스키 |
-| 마스터 비밀번호 언락 + **생체인증** (지문·얼굴) | iOS |
-| Stronghold 암호화 저장소 + `@tauri-apps/plugin-biometric` 게이트 | `EncryptedSharedPreferences` 별도 Rust 저장소 |
+| Local Vault | WebAuthn PRF / 브라우저 패스키 |
+| Advanced Search lucivy 역색인 (Tauri native lucivy-core) | iOS |
+| `.md` / `.markdown` 앱 연결 (기본 오프너로 DocuHaim 사용) | `EncryptedSharedPreferences` 별도 Rust 저장소 |
+| 마스터 비밀번호 언락 + **생체인증** (지문·얼굴) | |
+| Stronghold 암호화 저장소 + `@tauri-apps/plugin-biometric` 게이트 | |
 | 별도 Android workflow + 별도 GitHub Release | |
 
 **전제:** 기존 PWA [`share_target`](vite.config.ts) / [`ShareTargetGate`](src/components/chatWithMyself/ShareTargetGate.jsx) / chat share intake는 **정상 작동함을 전제**한다. 이 플랜에서 share_target을 재구현·수정하지 않는다. Android 셸은 파일 연결(VIEW/EDIT)과 Local/원격 저장소에 집중한다.
@@ -192,4 +193,4 @@ WebAuthn PRF UI/저장 경로 비활성 → 플랫폼 생체 + Stronghold만. �
 - S3/WebDAV/Local + **생체 등록·언락** (Stronghold 복원, 백그라운드 재잠금)
 - 비밀번호 전용 언락 (생체 미등록 시)
 - WebAuthn PRF UI 없음; 플랫폼 생체(「생체 인식」)만 노출
-- AS 역색인 미기동
+- AS 역색인: Tauri native lucivy-core (데스크톱과 동일)

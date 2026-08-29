@@ -535,7 +535,7 @@ export default function StorageUsageAnalysis({
               !indexStatus.enabled
                 ? '설정에서 역색인을 켠 뒤 사용할 수 있습니다'
                 : !indexStatus.isolationReady
-                  ? '검색 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하세요'
+                  ? '웹에서는 검색 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하세요'
                   : 'Advanced Search 역색인을 백그라운드로 생성합니다'
             }
           >

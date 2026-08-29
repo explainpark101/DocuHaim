@@ -64,6 +64,7 @@ import {
 } from '@/utils/treeHoverExpandSettings';
 import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfilesSettings';
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
+import InvertedIndexCoverage from '@/components/settings/InvertedIndexCoverage';
 import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
 import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLockSettings';
 import MlxVlmSettings from '@/components/settings/MlxVlmSettings';
@@ -80,9 +81,9 @@ import {
   loadAdvancedSearchUiAnimationEnabled,
 } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
+import AdvancedSearchLiveScanLimitsFields from '@/components/settings/AdvancedSearchLiveScanLimitsFields';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
-import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { useSettingsPageScrollSpy } from '@/hooks/useSettingsPageScrollSpy';
 import {
@@ -1066,7 +1067,8 @@ export default function SettingsPage({
             {' / '}
             <kbd className="px-1 rounded bg-gray-100 dark:bg-odp-bgSoft text-[10px]">Ctrl+K</kbd>
             로 Spotlight 검색을 엽니다. 역색인(Lucivy)이 켜져 있으면 문서·채팅 저장 시 해당 항목만 증분
-            색인하고, 「색인」으로 볼트 전체를 백그라운드에서 만듭니다. 인덱스는{' '}
+            색인하고, 「색인」으로 볼트 전체를 백그라운드에서 만듭니다. 웹은 lucivy-wasm(COOP/COEP),
+            Tauri 앱은 네이티브 Lucivy로 동작하며 인덱스는{' '}
             <code className="text-[11px]">.advanced-search/</code>
             (LUCE 스냅샷)에 저장됩니다.
           </p>
@@ -1097,7 +1099,6 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
-          {!isTauriAndroid() && (
           <label className="mt-3 flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
             <button
               type="button"
@@ -1129,13 +1130,6 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
-          )}
-          {isTauriAndroid() && (
-            <p className="mt-3 text-[11px] text-gray-500 dark:text-odp-muted">
-              Android 앱에서는 Lucivy 역색인을 사용하지 않습니다. 파일명·경로·커맨드만 검색합니다.
-            </p>
-          )}
-          {!isTauriAndroid() && (
           <label className="mt-3 flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
             <button
               type="button"
@@ -1170,9 +1164,11 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
-          )}
-          {!isTauriAndroid() && (
-          <>
+          <AdvancedSearchLiveScanLimitsFields
+            limits={advancedSearchStatus.liveScanLimits}
+            disabled={!advancedSearchStatus.enabled}
+            onChange={(next) => advancedSearchEngine.setLiveScanLimits(next)}
+          />
           <div
             className={`mt-3 rounded-md border px-3 py-2 text-xs ${
               advancedSearchStatus.building
@@ -1191,8 +1187,9 @@ export default function SettingsPage({
               </>
             ) : !advancedSearchStatus.isolationReady ? (
               <>
-                검색 엔진 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하거나 SharedArrayBuffer를
-                지원하는 환경에서 다시 시도하세요. 파일명·바로가기는 계속 검색됩니다.
+                {advancedSearchStatus.contentSearchMode === 'live'
+                  ? '검색 격리(COOP/COEP)가 없어 Lucivy 역색인은 쓸 수 없습니다. Spotlight는 볼트 파일을 직접 읽어 본문을 검색합니다(느릴 수 있음).'
+                  : '웹에서는 검색 엔진 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하거나 SharedArrayBuffer를 지원하는 환경에서 다시 시도하세요. 파일명·바로가기는 계속 검색됩니다. Tauri 앱은 네이티브 역색인을 사용합니다.'}
               </>
             ) : advancedSearchStatus.hasIndex ? (
               <>
@@ -1333,9 +1330,13 @@ export default function SettingsPage({
             building={advancedSearchStatus.building}
             progress={advancedSearchStatus.buildProgress}
           />
-          </>
-          )}
         </div>
+
+        <InvertedIndexCoverage
+          storageMode={storageMode}
+          onScanTree={onScanStorageUsage}
+          canScan={canScanStorageUsage}
+        />
             </SettingsPageGroup>
 
             <SettingsPageGroup
