@@ -176,6 +176,15 @@ export const printFontStyles = `
   .export-pdf-preview-stage .md-editor-mermaid[data-mermaid-sized] {
     box-sizing: border-box;
     overflow: hidden;
+    width: auto;
+    max-width: none;
+    margin-inline: 0;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-print-free-transform],
+  [data-export-pdf-pages] .md-editor-mermaid[data-print-free-transform],
+  .export-pdf-preview-stage .md-editor-mermaid[data-print-free-transform] {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-print-free-transform] svg,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-mermaid-sized] svg,

@@ -260,6 +260,15 @@ export function buildExportPdfPagedStyles(
 .pagedjs_page_content .md-editor-mermaid[data-print-free-transform] {
   box-sizing: border-box;
   overflow: hidden;
+  width: auto;
+  max-width: none;
+  margin-inline: 0;
+}
+
+.export-pdf-paged-source .md-editor-mermaid[data-print-free-transform],
+.pagedjs_page_content .md-editor-mermaid[data-print-free-transform] {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 .export-pdf-paged-source .md-editor-mermaid[data-mermaid-sized] svg,

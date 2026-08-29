@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode, RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
@@ -17,6 +18,7 @@ import { buildPrintPageAtRule } from '@/utils/printPageLayout';
 import type { PrintPageLayout } from '@/utils/printPageLayout';
 import type { PrintPreviewViewState } from '@/utils/printPreviewView';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
+import { findExportPdfOverlayPortal } from '@/utils/cssZoom';
 import { printFontStyles } from '@/pages/exportPdf/exportPdfPrintStyles';
 import type {
   ExportPdfDocumentFile,
@@ -491,34 +493,46 @@ export function ExportPdfShell({
         getMarkdown={() => previewValueRef.current ?? ''}
         setMarkdown={(next) => setPreviewValue(next)}
       />
-      {freeTransformState && freeTransformOverlayRect ? (
-        <div
-          className="fixed z-70 pointer-events-none border-2 border-blue-500 print:hidden"
-          style={{
-            left: `${freeTransformOverlayRect.left}px`,
-            top: `${freeTransformOverlayRect.top}px`,
-            width: `${freeTransformOverlayRect.width}px`,
-            height: `${freeTransformOverlayRect.height}px`,
-          }}
-        >
-          {(['nw', 'ne', 'sw', 'se'] as const).map((dir) => (
-            <button
-              key={dir}
-              type="button"
-              data-transform-handle={dir}
-              className="absolute pointer-events-auto h-3 w-3 rounded-full bg-blue-600 border border-white"
-              style={{
-                left: dir.includes('w') ? '-7px' : 'auto',
-                right: dir.includes('e') ? '-7px' : 'auto',
-                top: dir.includes('n') ? '-7px' : 'auto',
-                bottom: dir.includes('s') ? '-7px' : 'auto',
-                cursor: dir === 'nw' || dir === 'se' ? 'nwse-resize' : 'nesw-resize',
-              }}
-              aria-label={`transform-${dir}`}
-            />
-          ))}
-        </div>
-      ) : null}
+      {freeTransformState && freeTransformOverlayRect && typeof document !== 'undefined'
+        ? (() => {
+            const overlayPortal = findExportPdfOverlayPortal(
+              previewPanRoot ?? previewContainerRef.current,
+            );
+            const useZoomRootOverlay =
+              freeTransformOverlayRect.positioning === 'zoom-root-absolute' && overlayPortal;
+            return createPortal(
+              <div
+                className={`pointer-events-none z-100040 border-2 border-blue-500 print:hidden ${
+                  useZoomRootOverlay ? 'absolute' : 'fixed'
+                }`}
+                style={{
+                  left: `${freeTransformOverlayRect.left}px`,
+                  top: `${freeTransformOverlayRect.top}px`,
+                  width: `${freeTransformOverlayRect.width}px`,
+                  height: `${freeTransformOverlayRect.height}px`,
+                }}
+              >
+                {(['nw', 'ne', 'sw', 'se'] as const).map((dir) => (
+                  <button
+                    key={dir}
+                    type="button"
+                    data-transform-handle={dir}
+                    className="pointer-events-auto absolute h-3 w-3 rounded-full border border-white bg-blue-600"
+                    style={{
+                      left: dir.includes('w') ? '-7px' : 'auto',
+                      right: dir.includes('e') ? '-7px' : 'auto',
+                      top: dir.includes('n') ? '-7px' : 'auto',
+                      bottom: dir.includes('s') ? '-7px' : 'auto',
+                      cursor: dir === 'nw' || dir === 'se' ? 'nwse-resize' : 'nesw-resize',
+                    }}
+                    aria-label={`transform-${dir}`}
+                  />
+                ))}
+              </div>,
+              useZoomRootOverlay ? overlayPortal : document.body,
+            );
+          })()
+        : null}
       {freeTransformState ? (
         <button
           type="button"

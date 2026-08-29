@@ -48,4 +48,5 @@ export type ExportPdfOverlayRect = {
   top: number;
   width: number;
   height: number;
+  positioning: 'zoom-root-absolute' | 'viewport-fixed';
 } | null;

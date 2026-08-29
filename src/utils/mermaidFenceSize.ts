@@ -117,6 +117,7 @@ export function getMermaidOccurrenceInContainer(
   const unique: Element[] = [];
   for (const el of container.querySelectorAll('.md-editor-mermaid')) {
     if (el.closest('.haim-mermaid-embed-source')) continue;
+    if (el.closest('.export-pdf-staging')) continue;
     unique.push(el);
   }
   return unique.findIndex((el) => el === host);

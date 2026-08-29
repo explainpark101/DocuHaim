@@ -100,12 +100,18 @@ export function ExportPdfBodyPreview({
         </div>
       ) : null}
       <div
-        className={`export-pdf-cover-stack mx-auto w-full print:mx-0 ${
+        className={`export-pdf-cover-stack relative mx-auto w-full print:mx-0 ${
           isLiveScroll1 ? '' : 'export-pdf-source-measure'
         }`}
         style={isLiveScroll1 ? { zoom: previewViewZoomPercent / 100 } : undefined}
         aria-hidden={isLiveScroll1 ? undefined : true}
       >
+        {isLiveScroll1 ? (
+          <div
+            className="export-pdf-overlay-portal pointer-events-none absolute inset-0 z-100040 print:hidden"
+            aria-hidden
+          />
+        ) : null}
         {coverPages}
         <div
           ref={pagesHostRef}

@@ -30,6 +30,12 @@ import type {
   WikiImageSizeConvertToImgbbPayload,
   WikiImageSizeConvertToWikiPayload,
 } from '@/components/modals/WikiImageSizeModal';
+import {
+  getCumulativeCssZoom,
+  getElementLayoutSize,
+  subscribeFixedOverlayRect,
+  visualDeltaToLayoutDelta,
+} from '@/utils/cssZoom';
 
 type UseExportPdfImageInteractionsArgs = Pick<
   ExportPdfDocumentState,
@@ -46,9 +52,21 @@ type UseExportPdfImageInteractionsArgs = Pick<
 };
 
 
+/**
+ * Mermaid hosts visible in the print preview.
+ * Prefer `[data-export-pdf-pages]` and skip staging MdPreview — that tree is
+ * `visibility:hidden` under the same scroll root and would yield a useless
+ * overlay rect (or clear free-transform when indexed incorrectly).
+ */
 function listMermaidHosts(root: ParentNode): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>('.md-editor-mermaid')].filter(
-    (el) => !el.closest('.haim-mermaid-embed-source'),
+  const pagesRoot =
+    root instanceof Element ? root.querySelector('[data-export-pdf-pages]') : null;
+  const scope = pagesRoot ?? root;
+  return [...scope.querySelectorAll<HTMLElement>('.md-editor-mermaid')].filter(
+    (el) =>
+      !el.closest('.haim-mermaid-embed-source')
+      && !el.closest('.export-pdf-staging')
+      && el.getAttribute('data-processed') != null,
   );
 }
 
@@ -74,6 +92,8 @@ export function useExportPdfImageInteractions({
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] =
     useState<ExportPdfOverlayRect>(null);
   const activeTransformRef = useRef<ExportPdfFreeTransformState>(null);
+  /** Live DOM node for the active free-transform (avoids staging/page duplicate lookup). */
+  const transformTargetElRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const root = previewContainerRef.current;
@@ -130,15 +150,13 @@ export function useExportPdfImageInteractions({
         event.stopPropagation();
         const occurrence = getMermaidOccurrenceInContainer(contentRoot, mermaid);
         if (occurrence < 0) return;
-        const rect = mermaid.getBoundingClientRect();
-        const widthPx = Math.max(24, Math.round(rect.width));
-        const heightPx = Math.max(24, Math.round(rect.height));
+        const { width: widthPx, height: heightPx } = getElementLayoutSize(mermaid);
         const next: ExportPdfFreeTransformState = {
           kind: 'mermaid',
           key: mermaid.getAttribute('data-content') || `mermaid-${occurrence}`,
           occurrence,
-          widthPx,
-          heightPx,
+          widthPx: Math.max(24, widthPx),
+          heightPx: Math.max(24, heightPx),
           originalWidthPx: widthPx,
           originalHeightPx: heightPx,
         };
@@ -151,6 +169,7 @@ export function useExportPdfImageInteractions({
         mermaid.style.marginBottom = '';
         mermaid.removeAttribute('data-print-mermaid-fit');
         mermaid.setAttribute('data-print-free-transform', '1');
+        transformTargetElRef.current = mermaid;
         activeTransformRef.current = next;
         setFreeTransformState(next);
         setFreeTransformConfirmOpen(false);
@@ -358,12 +377,21 @@ export function useExportPdfImageInteractions({
       const root = previewContainerRef.current;
       if (!root || !target) return null;
       if (target.kind === 'mermaid') {
-        return listMermaidHosts(root)[target.occurrence ?? 0] ?? null;
+        const live = transformTargetElRef.current;
+        if (live?.isConnected && live.hasAttribute('data-print-free-transform')) {
+          return live;
+        }
+        const scope = pagesHostRef.current ?? root;
+        return listMermaidHosts(scope)[target.occurrence ?? 0] ?? null;
       }
       if (!('key' in target) || !target.key) return null;
+      const pagesRoot = root.querySelector('[data-export-pdf-pages]');
+      const imageScope = pagesRoot ?? root;
       const selector =
         target.kind === 'wiki' ? 'img[data-wiki-path]' : 'img[data-md-src]';
-      const images = [...root.querySelectorAll<HTMLImageElement>(selector)];
+      const images = [...imageScope.querySelectorAll<HTMLImageElement>(selector)].filter(
+        (img) => !img.closest('.export-pdf-staging'),
+      );
       const matched = images.filter((img) => {
         const key =
           target.kind === 'wiki'
@@ -373,7 +401,7 @@ export function useExportPdfImageInteractions({
       });
       return matched[target.occurrence ?? 0] ?? null;
     },
-    [previewContainerRef],
+    [pagesHostRef, previewContainerRef],
   );
 
   const beginFreeTransformOnElement = useCallback(
@@ -385,15 +413,13 @@ export function useExportPdfImageInteractions({
         occurrence: number;
       },
     ) => {
-      const rect = el.getBoundingClientRect();
-      const widthPx = Math.max(24, Math.round(rect.width));
-      const heightPx = Math.max(24, Math.round(rect.height));
+      const { width: widthPx, height: heightPx } = getElementLayoutSize(el);
       const next: ExportPdfFreeTransformState = {
         kind: meta.kind,
         key: meta.key,
         occurrence: meta.occurrence,
-        widthPx,
-        heightPx,
+        widthPx: Math.max(24, widthPx),
+        heightPx: Math.max(24, heightPx),
         originalWidthPx: widthPx,
         originalHeightPx: heightPx,
       };
@@ -406,6 +432,7 @@ export function useExportPdfImageInteractions({
       el.style.marginBottom = '';
       el.removeAttribute('data-print-mermaid-fit');
       el.setAttribute('data-print-free-transform', '1');
+      transformTargetElRef.current = el;
       activeTransformRef.current = next;
       setFreeTransformState(next);
       setFreeTransformConfirmOpen(false);
@@ -426,36 +453,33 @@ export function useExportPdfImageInteractions({
     });
   }, [beginFreeTransformOnElement, findResizableTarget, wikiImageModalState]);
 
-  useEffect(() => {
-    if (!freeTransformState) {
-      setFreeTransformOverlayRect(null);
-      return undefined;
-    }
-    const img = findResizableTarget(freeTransformState);
-    if (!img) {
-      setFreeTransformState(null);
-      setFreeTransformOverlayRect(null);
-      return undefined;
-    }
-    let rafId = 0;
-    const updateRect = () => {
-      const rect = img.getBoundingClientRect();
-      setFreeTransformOverlayRect({
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-      });
-      rafId = requestAnimationFrame(updateRect);
-    };
-    rafId = requestAnimationFrame(updateRect);
-    return () => cancelAnimationFrame(rafId);
-  }, [findResizableTarget, freeTransformState]);
+  const freeTransformSessionKey = freeTransformState
+    ? `${freeTransformState.kind}|${freeTransformState.key}|${freeTransformState.occurrence}`
+    : null;
 
   useEffect(() => {
-    if (!freeTransformState) return undefined;
-    const target = findResizableTarget(freeTransformState);
-    if (!target) return undefined;
+    if (!freeTransformSessionKey) {
+      setFreeTransformOverlayRect(null);
+      return undefined;
+    }
+    return subscribeFixedOverlayRect(
+      () => {
+        const el = transformTargetElRef.current;
+        return el?.isConnected ? el : null;
+      },
+      setFreeTransformOverlayRect,
+    );
+  }, [freeTransformSessionKey]);
+
+  useEffect(() => {
+    if (!freeTransformSessionKey) return undefined;
+
+    const resolveTarget = () => {
+      const live = transformTargetElRef.current;
+      if (live?.isConnected) return live;
+      const active = activeTransformRef.current;
+      return active ? findResizableTarget(active) : null;
+    };
 
     const onHandleDown = (event: PointerEvent) => {
       const handle =
@@ -463,18 +487,24 @@ export function useExportPdfImageInteractions({
           ? event.target.closest?.('[data-transform-handle]')
           : null;
       if (!handle) return;
+      const target = resolveTarget();
+      if (!target) return;
       event.preventDefault();
       const dir = handle.getAttribute('data-transform-handle');
       if (!dir) return;
       const isTouchResize = event.pointerType === 'touch';
-      const start = activeTransformRef.current || freeTransformState;
+      const start = activeTransformRef.current;
+      if (!start) return;
       const startX = event.clientX;
       const startY = event.clientY;
       const baseRatio = start.heightPx > 0 ? start.widthPx / start.heightPx : 1;
 
       const onMove = (moveEvent: PointerEvent) => {
-        const dx = moveEvent.clientX - startX;
-        const dy = moveEvent.clientY - startY;
+        const el = resolveTarget();
+        if (!el) return;
+        const zoom = getCumulativeCssZoom(el);
+        const dx = visualDeltaToLayoutDelta(moveEvent.clientX - startX, zoom);
+        const dy = visualDeltaToLayoutDelta(moveEvent.clientY - startY, zoom);
         let width = start.widthPx;
         let height = start.heightPx;
         if (dir.includes('e')) width = start.widthPx + dx;
@@ -499,8 +529,8 @@ export function useExportPdfImageInteractions({
 
         width = Math.max(24, Math.round(width));
         height = Math.max(24, Math.round(height));
-        target.style.width = `${width}px`;
-        target.style.height = `${height}px`;
+        el.style.width = `${width}px`;
+        el.style.height = `${height}px`;
         const next = {
           ...(activeTransformRef.current || start),
           widthPx: width,
@@ -518,6 +548,7 @@ export function useExportPdfImageInteractions({
     };
 
     const onOutsidePointerDown = (event: PointerEvent) => {
+      const target = resolveTarget();
       const clickedHandle =
         event.target instanceof Element
           ? event.target.closest?.('[data-transform-handle]')
@@ -526,7 +557,12 @@ export function useExportPdfImageInteractions({
         event.target instanceof Element
           ? event.target.closest?.('img[data-wiki-path], img[data-md-src], .md-editor-mermaid')
           : null;
-      if (clickedHandle || clickedImage === target || (clickedImage && target.contains(clickedImage))) return;
+      if (
+        clickedHandle
+        || (target && (clickedImage === target || (clickedImage && target.contains(clickedImage))))
+      ) {
+        return;
+      }
       setFreeTransformConfirmOpen(true);
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -549,7 +585,7 @@ export function useExportPdfImageInteractions({
       document.removeEventListener('pointerdown', onOutsidePointerDown, true);
       document.removeEventListener('keydown', onKeyDown, true);
     };
-  }, [findResizableTarget, freeTransformState]);
+  }, [findResizableTarget, freeTransformSessionKey]);
 
   const handleConfirmTransformApply = useCallback(() => {
     const active = activeTransformRef.current || freeTransformState;
@@ -604,6 +640,7 @@ export function useExportPdfImageInteractions({
         el.setAttribute('data-mermaid-sized', '1');
       }
     }
+    transformTargetElRef.current = null;
     setFreeTransformState(null);
     activeTransformRef.current = null;
     setFreeTransformConfirmOpen(false);
@@ -618,6 +655,7 @@ export function useExportPdfImageInteractions({
       el.style.height = `${active.originalHeightPx}px`;
       el.removeAttribute('data-print-free-transform');
     }
+    transformTargetElRef.current = null;
     setFreeTransformState(null);
     activeTransformRef.current = null;
     setFreeTransformConfirmOpen(false);
