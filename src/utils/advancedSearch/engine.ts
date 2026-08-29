@@ -26,7 +26,6 @@ import {
   gunzipBytesAsync,
   loadDocsAndManifestFromVault,
   loadManifestFromVault,
-  resolveVaultAbsPath,
   saveIndexToVault,
   type AdvancedSearchBackend,
 } from '@/utils/advancedSearch/store';
@@ -78,7 +77,6 @@ import {
   hydrateDocIdMapFromDocsAsync,
   type DocIdMapState,
 } from '@/utils/advancedSearch/docIdMap';
-import { luceKey } from '@/utils/advancedSearch/paths';
 import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
 import { isTauriApp } from '@/utils/tauriPlatform';
 import {
@@ -271,9 +269,13 @@ class AdvancedSearchEngine {
   private searchGeneration = 0;
   private loadPromise: Promise<void> | null = null;
   private lucivyLoadPromise: Promise<void> | null = null;
+  private warmupPromise: Promise<void> | null = null;
+  /** While > 0, status listeners are notified once when the outer batch ends. */
+  private emitSuppressed = 0;
   private manifestSummaryLoaded = false;
-  /** Deferred Lucivy open payload captured during metadata load. */
-  private pendingLucivyFilePath: string | null = null;
+  /** Deferred Lucivy open target captured during metadata load. */
+  private pendingLucivyDirPath: string | null = null;
+  private pendingLucivyInPlace = false;
   private pendingLucivyGz: Uint8Array | null = null;
 
   constructor() {
@@ -293,13 +295,30 @@ class AdvancedSearchEngine {
     return () => this.logListeners.delete(listener);
   }
 
-  private emit(): void {
+  private notifyStatusListeners(): void {
     for (const l of this.listeners) {
       try {
         l();
       } catch {
         // ignore
       }
+    }
+  }
+
+  private emit(): void {
+    if (this.emitSuppressed > 0) return;
+    this.notifyStatusListeners();
+  }
+
+  private beginEmitBatch(): void {
+    this.emitSuppressed += 1;
+  }
+
+  private endEmitBatch(): void {
+    if (this.emitSuppressed <= 0) return;
+    this.emitSuppressed -= 1;
+    if (this.emitSuppressed === 0) {
+      this.notifyStatusListeners();
     }
   }
 
@@ -575,28 +594,65 @@ class AdvancedSearchEngine {
     return this.lucivyLoadPromise;
   }
 
+  /**
+   * Background warm after unlock: docs map then Lucivy with yields between phases.
+   * Suppresses intermediate status emits until the full warm finishes.
+   */
+  async warmIndexAfterUnlock(): Promise<void> {
+    if (!this.enabled) return;
+    if (!this.backend?.isReady?.()) return;
+    if (this.loaded && this.lucivyReady) {
+      await this.refreshCheckpointStatus();
+      return;
+    }
+    if (this.warmupPromise) return this.warmupPromise;
+
+    this.warmupPromise = (async () => {
+      this.beginEmitBatch();
+      try {
+        await yieldToMain();
+        await this.ensureLoaded();
+        await yieldToMain();
+        await this.refreshCheckpointStatus();
+        if (isSearchIsolationReady()) {
+          await yieldToMain();
+          await this.ensureLucivyReady();
+        }
+      } catch (err) {
+        console.warn('[advancedSearch] warmIndexAfterUnlock failed', err);
+      } finally {
+        this.endEmitBatch();
+        this.warmupPromise = null;
+      }
+    })();
+    return this.warmupPromise;
+  }
+
   private async loadIndexMetadataFromVault(): Promise<void> {
     if (!this.backend?.isReady?.()) return;
     try {
       await yieldToMain();
-      const tauriLuceAbs =
-        isTauriApp() && this.backend
-          ? resolveVaultAbsPath(this.backend, luceKey())
-          : null;
-      const skipLuceBytes = Boolean(tauriLuceAbs);
-      this.pendingLucivyFilePath = tauriLuceAbs;
+      const skipLuceBytes = isTauriApp();
+      this.pendingLucivyDirPath = null;
+      this.pendingLucivyInPlace = false;
       this.pendingLucivyGz = null;
 
-      const { index, luceGz } = await loadDocsAndManifestFromVault(this.backend, {
-        skipLuceBytes,
-      });
+      const { index, luceGz, luceDirAbsPath } = await loadDocsAndManifestFromVault(
+        this.backend,
+        { skipLuceBytes },
+      );
       await yieldToMain();
       this.index = index;
+      await yieldToMain();
       this.docIdMap = await hydrateDocIdMapFromDocsAsync(
         index.docs,
         index.manifest.nextNumericId,
+        50,
       );
-      if (!skipLuceBytes) {
+      if (luceDirAbsPath && isTauriApp()) {
+        this.pendingLucivyDirPath = luceDirAbsPath;
+        this.pendingLucivyInPlace = true;
+      } else if (luceGz?.byteLength) {
         this.pendingLucivyGz = luceGz;
       }
 
@@ -611,7 +667,8 @@ class AdvancedSearchEngine {
       this.lastError = err instanceof Error ? err.message : String(err);
       this.index = emptyIndex();
       this.docIdMap = emptyDocIdMap();
-      this.pendingLucivyFilePath = null;
+      this.pendingLucivyDirPath = null;
+      this.pendingLucivyInPlace = false;
       this.pendingLucivyGz = null;
       this.loaded = true;
       this.lucivyReady = false;
@@ -626,9 +683,10 @@ class AdvancedSearchEngine {
       await yieldToMain();
       const api = await this.loadLucivyApi();
 
-      if (this.pendingLucivyFilePath) {
+      if (this.pendingLucivyDirPath) {
         await api.openOrCreateLucivyIndex(null, {
-          snapshotFilePath: this.pendingLucivyFilePath,
+          indexDirectoryPath: this.pendingLucivyDirPath,
+          inPlace: this.pendingLucivyInPlace,
         });
       } else {
         let snapshot: Uint8Array | null = null;
@@ -704,10 +762,11 @@ class AdvancedSearchEngine {
       this.assertIsolation();
       const api = await this.loadLucivyApi();
       await api.lucivyCommit();
-      const snapshot = await api.lucivyExportSnapshot();
+      const inPlace = api.isLucivyNativeInPlace();
+      const snapshot = inPlace ? null : await api.lucivyExportSnapshot();
       recountManifest(this.index);
       this.index.manifest.nextNumericId = this.docIdMap.nextNumericId;
-      await saveIndexToVault(this.backend, this.index, snapshot);
+      await saveIndexToVault(this.backend, this.index, snapshot, { skipLuce: inPlace });
       this.dirty = false;
       this.lastError = null;
       this.emit();
@@ -731,7 +790,8 @@ class AdvancedSearchEngine {
     this.cancelRequested = true;
     this.index = emptyIndex();
     this.docIdMap = emptyDocIdMap();
-    this.pendingLucivyFilePath = null;
+    this.pendingLucivyDirPath = null;
+    this.pendingLucivyInPlace = false;
     this.pendingLucivyGz = null;
     this.loaded = true;
     this.lucivyReady = false;
@@ -1531,7 +1591,7 @@ class AdvancedSearchEngine {
     );
     this.emit();
     await this.persistNow();
-    this.appendLog('ok', '색인 저장 완료 (.advanced-search/index.luce.gz)');
+    this.appendLog('ok', '색인 저장 완료 (.advanced-search/luce/)');
   }
 
   async indexFile(

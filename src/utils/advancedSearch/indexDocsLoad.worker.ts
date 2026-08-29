@@ -6,7 +6,7 @@
 import { gunzipSync, strFromU8 } from 'fflate';
 import type { DocMeta } from '@/utils/advancedSearch/types';
 
-const BATCH_SIZE = 250;
+const BATCH_SIZE = 80;
 
 export type IndexDocsLoadWorkerRequest = {
   id: number;

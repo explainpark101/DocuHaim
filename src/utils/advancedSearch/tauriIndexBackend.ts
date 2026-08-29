@@ -21,6 +21,7 @@ export type TauriSearchHit = {
 type UnlistenFn = () => void;
 
 let sessionId: string | null = null;
+let nativeInPlace = false;
 let logUnlisten: UnlistenFn | null = null;
 let progressUnlisten: UnlistenFn | null = null;
 let logListener: ((level: string, message: string) => void) | null = null;
@@ -39,6 +40,10 @@ export function isTauriIndexBackendAvailable(): boolean {
 
 export function isTauriIndexOpen(): boolean {
   return sessionId != null;
+}
+
+export function isTauriIndexInPlace(): boolean {
+  return nativeInPlace;
 }
 
 export function setTauriIndexLogListener(
@@ -97,6 +102,30 @@ export async function openTauriIndexSession(
       snapshot && snapshot.byteLength > 0 ? snapshot : null,
   });
   sessionId = id;
+  nativeInPlace = false;
+  return id;
+}
+
+/** Open from vault `.advanced-search/luce/` on disk (in-place; no import copy). */
+export async function openTauriIndexFromDirectory(
+  absDir: string,
+  inPlace = true,
+): Promise<string> {
+  await ensureEventListeners();
+  if (sessionId) {
+    try {
+      await closeTauriIndexSession();
+    } catch {
+      // ignore
+    }
+  }
+  const { invoke } = await coreApi();
+  const id = await invoke<string>('as_index_open_from_directory', {
+    dirPath: absDir,
+    inPlace,
+  });
+  sessionId = id;
+  nativeInPlace = Boolean(inPlace);
   return id;
 }
 
@@ -117,6 +146,7 @@ export async function openTauriIndexFromSnapshotFile(
     snapshotPath: absPath,
   });
   sessionId = id;
+  nativeInPlace = false;
   return id;
 }
 
@@ -129,6 +159,7 @@ export async function closeTauriIndexSession(): Promise<void> {
   if (!sessionId) return;
   const id = sessionId;
   sessionId = null;
+  nativeInPlace = false;
   const { invoke } = await coreApi();
   await invoke('as_index_close', { sessionId: id });
 }
@@ -213,6 +244,7 @@ export async function tauriCancelIndex(sessionIdOverride?: string): Promise<void
 export function terminateTauriIndexRuntime(): void {
   const id = sessionId;
   sessionId = null;
+  nativeInPlace = false;
   if (logUnlisten) {
     try {
       logUnlisten();

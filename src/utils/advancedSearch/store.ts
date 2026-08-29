@@ -1,11 +1,17 @@
 import { gzip, gunzip, gunzipSync, strToU8 } from 'fflate';
 import {
-  docsKey,
+  luceDirPrefix,
   luceKey,
-  manifestKey,
   postingsKey,
   advancedSearchFolderPrefix,
+  manifestKey,
+  docsKey,
 } from '@/utils/advancedSearch/paths';
+import {
+  ensureLuceDirectoryInVault,
+  isLuceDirectoryPresent,
+  saveLuceSnapshotToVaultDirectory,
+} from '@/utils/advancedSearch/luceDirectoryStore';
 import { loadDocsMapFromGzip } from '@/utils/advancedSearch/loadIndexDocsAsync';
 import {
   emptyIndex,
@@ -30,6 +36,13 @@ export type AdvancedSearchBackend = {
   delete?: (path: string) => Promise<void>;
   deletePrefix?: (prefix: string) => Promise<void>;
   listAll?: () => Promise<unknown[]>;
+  listChildren?: (path?: string) => Promise<unknown[]>;
+  head?: (path: string) => Promise<{
+    etag?: string | null;
+    lastModified?: Date | null;
+    contentLength?: number | null;
+    contentType?: string | null;
+  } | null>;
   mkdir?: (path: string) => Promise<void>;
 };
 
@@ -47,15 +60,6 @@ function gzipJsonAsync(value: unknown): Promise<Uint8Array> {
 /** Public alias for callers that need gzipped JSON bytes. */
 export function gzipJsonBytes(value: unknown): Promise<Uint8Array> {
   return gzipJsonAsync(value);
-}
-
-function gzipBytesAsync(input: Uint8Array): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
-    gzip(input, { level: 6 }, (err, data) => {
-      if (err) reject(err);
-      else resolve(data);
-    });
-  });
 }
 
 export function gunzipBytes(body: Uint8Array): Uint8Array {
@@ -167,8 +171,17 @@ async function writeGzipJson(
 }
 
 export type LoadDocsOptions = {
-  /** Skip reading LUCE bytes (Tauri opens snapshot from disk path instead). */
+  /** Skip reading legacy LUCE gzip bytes (Tauri opens directory in-place). */
   skipLuceBytes?: boolean;
+};
+
+export type LoadDocsResult = {
+  index: InMemoryIndex;
+  /** Legacy gzip bytes when directory layout is not used. */
+  luceGz: Uint8Array | null;
+  /** Absolute `.advanced-search/luce/` path (Tauri local in-place open). */
+  luceDirAbsPath: string | null;
+  hasLuceDirectory: boolean;
 };
 
 export async function loadManifestFromVault(
@@ -189,14 +202,15 @@ export async function loadManifestFromVault(
 export async function loadDocsAndManifestFromVault(
   backend: AdvancedSearchBackend,
   options: LoadDocsOptions = {},
-): Promise<{
-  index: InMemoryIndex;
-  luceGz: Uint8Array | null;
-  luceSnapshotAbsPath: string | null;
-}> {
+): Promise<LoadDocsResult> {
   const index = emptyIndex();
   if (typeof backend.isReady === 'function' && !backend.isReady()) {
-    return { index, luceGz: null, luceSnapshotAbsPath: null };
+    return {
+      index,
+      luceGz: null,
+      luceDirAbsPath: null,
+      hasLuceDirectory: false,
+    };
   }
 
   let manifest: IndexManifest | null = null;
@@ -210,13 +224,23 @@ export async function loadDocsAndManifestFromVault(
   }
 
   if (!manifest || manifest.schemaVersion !== INDEX_SCHEMA_VERSION) {
-    return { index, luceGz: null, luceSnapshotAbsPath: null };
+    return {
+      index,
+      luceGz: null,
+      luceDirAbsPath: null,
+      hasLuceDirectory: false,
+    };
   }
 
   const docsMap = await readDocsGzipMap(backend, docsKey());
+  const { luceDirAbsPath, hasDirectory } = await ensureLuceDirectoryInVault(backend);
+
   let luceGz: Uint8Array | null = null;
-  const luceSnapshotAbsPath = resolveVaultAbsPath(backend, luceKey());
-  if (!options.skipLuceBytes && backend.readBytes) {
+  if (
+    !options.skipLuceBytes &&
+    !hasDirectory &&
+    backend.readBytes
+  ) {
     try {
       const { body } = await backend.readBytes(luceKey());
       luceGz = body;
@@ -229,12 +253,18 @@ export async function loadDocsAndManifestFromVault(
     ...emptyManifest(),
     ...manifest,
     schemaVersion: INDEX_SCHEMA_VERSION,
+    ...(hasDirectory ? { luceLayout: 'directory' as const } : {}),
     initialized:
       manifest.initialized === true ||
       (docsMap != null && docsMap.size > 0),
   };
   index.docs = docsMap ?? new Map();
-  return { index, luceGz, luceSnapshotAbsPath };
+  return {
+    index,
+    luceGz,
+    luceDirAbsPath,
+    hasLuceDirectory: hasDirectory,
+  };
 }
 
 /** @deprecated use loadDocsAndManifestFromVault + Lucivy import */
@@ -248,7 +278,8 @@ export async function loadIndexFromVault(
 export async function saveIndexToVault(
   backend: AdvancedSearchBackend,
   index: InMemoryIndex,
-  luceSnapshot: Uint8Array,
+  luceSnapshot: Uint8Array | null,
+  options?: { skipLuce?: boolean },
 ): Promise<void> {
   if (!backend.writeText || !backend.writeBytes) {
     throw new Error('Storage backend cannot persist advanced search index');
@@ -258,6 +289,9 @@ export async function saveIndexToVault(
   } catch {
     // ignore — S3/WebDAV may not need explicit mkdir
   }
+  index.manifest.luceLayout = options?.skipLuce
+    ? 'directory'
+    : (index.manifest.luceLayout ?? 'directory');
   await backend.writeText(
     manifestKey(),
     JSON.stringify(index.manifest, null, 2),
@@ -267,8 +301,9 @@ export async function saveIndexToVault(
   const docsObj = await docsToObjectAsync(index.docs);
   await writeGzipJson(backend, docsKey(), docsObj);
   await new Promise<void>((r) => setTimeout(r, 0));
-  const luceGz = await gzipBytesAsync(luceSnapshot);
-  await backend.writeBytes(luceKey(), luceGz, 'application/gzip');
+  if (!options?.skipLuce && luceSnapshot?.byteLength) {
+    await saveLuceSnapshotToVaultDirectory(backend, luceSnapshot);
+  }
   // Drop legacy v1 postings if present
   try {
     await backend.delete?.(postingsKey());
@@ -295,11 +330,19 @@ export async function clearIndexInVault(
       // ignore missing
     }
   }
+  try {
+    await backend.deletePrefix?.(luceDirPrefix());
+  } catch {
+    // ignore
+  }
 }
 
 export async function readLuceSnapshotFromVault(
   backend: AdvancedSearchBackend,
 ): Promise<Uint8Array | null> {
+  if (await isLuceDirectoryPresent(backend)) {
+    return null;
+  }
   if (!backend.readBytes) return null;
   try {
     const { body } = await backend.readBytes(luceKey());
@@ -309,3 +352,10 @@ export async function readLuceSnapshotFromVault(
     return null;
   }
 }
+
+export {
+  ensureLuceDirectoryInVault,
+  isLuceDirectoryPresent,
+  listVaultFilesUnderPrefix,
+  resolveLuceDirAbsPath,
+} from '@/utils/advancedSearch/luceDirectoryStore';

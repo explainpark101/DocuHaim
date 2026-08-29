@@ -23,6 +23,9 @@ export type ManifestDocEntry = {
   numericId?: number;
 };
 
+/** Lucivy persistence layout in vault (legacy gzip vs on-disk shard dir). */
+export type LuceLayout = 'directory' | 'gzip';
+
 export type IndexManifest = {
   schemaVersion: number;
   builtAt: string;
@@ -32,6 +35,8 @@ export type IndexManifest = {
   initialized: boolean;
   /** Next Lucivy numeric id to allocate. */
   nextNumericId?: number;
+  /** Present on indexes saved after directory layout shipped. */
+  luceLayout?: LuceLayout;
   docs: Record<string, ManifestDocEntry>;
 };
 

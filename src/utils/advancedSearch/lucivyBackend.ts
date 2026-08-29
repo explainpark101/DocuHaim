@@ -66,6 +66,8 @@ let runtime: LucivyRuntimeApi | null = null;
 let indexHandle: LucivyIndexApi | null = null;
 /** True when the open index is the Tauri native session (not wasm). */
 let nativeOpen = false;
+/** Tauri session opened in-place on vault `.advanced-search/luce/`. */
+let nativeInPlaceOpen = false;
 
 function useNative(): boolean {
   return isTauriIndexBackendAvailable();
@@ -93,6 +95,10 @@ export function isLucivyOpen(): boolean {
   return indexHandle != null;
 }
 
+export function isLucivyNativeInPlace(): boolean {
+  return useNative() && nativeInPlaceOpen;
+}
+
 export async function ensureLucivyRuntime(): Promise<LucivyRuntimeApi | null> {
   if (useNative()) return null;
   if (!isSearchIsolationReady()) {
@@ -107,17 +113,33 @@ export async function ensureLucivyRuntime(): Promise<LucivyRuntimeApi | null> {
 
 export async function openOrCreateLucivyIndex(
   snapshot: Uint8Array | null,
-  options?: { snapshotFilePath?: string | null },
+  options?: {
+    snapshotFilePath?: string | null;
+    indexDirectoryPath?: string | null;
+    inPlace?: boolean;
+  },
 ): Promise<LucivyIndexApi | null> {
   if (useNative()) {
     const api = await tauriApi();
+    const dirPath = options?.indexDirectoryPath?.trim();
+    if (dirPath) {
+      await api.openTauriIndexFromDirectory(dirPath, options?.inPlace ?? true);
+      nativeOpen = true;
+      nativeInPlaceOpen = Boolean(options?.inPlace ?? true);
+      indexHandle = null;
+      return null;
+    }
     const filePath = options?.snapshotFilePath?.trim();
     if (filePath) {
       await api.openTauriIndexFromSnapshotFile(filePath);
-    } else {
-      await api.openTauriIndexSession(snapshot);
+      nativeOpen = true;
+      nativeInPlaceOpen = false;
+      indexHandle = null;
+      return null;
     }
+    await api.openTauriIndexSession(snapshot);
     nativeOpen = true;
+    nativeInPlaceOpen = false;
     indexHandle = null;
     return null;
   }
@@ -342,6 +364,7 @@ export async function destroyLucivyIndex(): Promise<void> {
     const api = await tauriApi();
     await api.closeTauriIndexSession();
     nativeOpen = false;
+    nativeInPlaceOpen = false;
     return;
   }
   if (indexHandle) {
@@ -360,6 +383,7 @@ export function terminateLucivyRuntime(): void {
       api.terminateTauriIndexRuntime();
     });
     nativeOpen = false;
+    nativeInPlaceOpen = false;
     return;
   }
   indexHandle = null;

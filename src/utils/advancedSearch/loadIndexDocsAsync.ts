@@ -4,7 +4,7 @@
  */
 
 import { gunzipBytesAsync } from '@/utils/advancedSearch/store';
-import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
+import { yieldIfSlow, yieldToMain } from '@/utils/advancedSearch/yieldToMain';
 import type { DocMeta } from '@/utils/advancedSearch/types';
 import type {
   IndexDocsLoadWorkerRequest,
@@ -12,7 +12,8 @@ import type {
 } from '@/utils/advancedSearch/indexDocsLoad.worker';
 import { strFromU8 } from 'fflate';
 
-const APPLY_BATCH_YIELD_EVERY = 100;
+const APPLY_BATCH_YIELD_EVERY = 40;
+const APPLY_SLICE_BUDGET_MS = 10;
 
 let worker: Worker | null = null;
 let workerFailed = false;
@@ -30,11 +31,15 @@ async function applyEntries(
   entries: Array<[string, DocMeta]>,
 ): Promise<void> {
   let i = 0;
+  let sliceStart = Date.now();
   for (const [docId, meta] of entries) {
     map.set(docId, meta);
     i += 1;
     if (i % APPLY_BATCH_YIELD_EVERY === 0) {
       await yieldToMain();
+      sliceStart = Date.now();
+    } else if (i % 8 === 0) {
+      await yieldIfSlow(sliceStart, APPLY_SLICE_BUDGET_MS);
     }
   }
 }

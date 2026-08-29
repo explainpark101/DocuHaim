@@ -179,10 +179,8 @@ export function useAppChromeDomain() {
         );
         if (cancelled) return;
         await yieldToMain();
-        // Checkpoint only — do not auto-load docs map or Lucivy (causes post-unlock freezes).
-        await advancedSearchEngine.refreshCheckpointStatus();
         if (cancelled) return;
-        void advancedSearchEngine.ensureManifestSummary();
+        await advancedSearchEngine.warmIndexAfterUnlock();
       })();
     }, 5000);
     return () => {

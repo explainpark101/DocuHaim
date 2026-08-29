@@ -48,6 +48,8 @@ pub struct IndexSession {
     pub handle: ShardedHandle,
     pub work_dir: PathBuf,
     pub cancel: AtomicBool,
+    /** When true, `work_dir` is the vault index dir — do not delete on close. */
+    pub in_place: bool,
 }
 
 impl IndexSession {
@@ -186,6 +188,93 @@ impl SessionStore {
         self.open(snapshot)
     }
 
+    /// Open an on-disk shard directory. When `in_place` is true, `index_dir` is used
+    /// directly as the session work dir (vault `.advanced-search/luce/`).
+    pub fn open_from_directory(&self, index_dir: &Path, in_place: bool) -> Result<String, String> {
+        let session_id = Self::next_session_id();
+        let work_dir = index_dir.to_path_buf();
+        let path_str = work_dir
+            .to_str()
+            .ok_or_else(|| "index dir path is not UTF-8".to_string())?;
+
+        let handle = if work_dir.join("_shard_config.json").is_file() {
+            ShardedHandle::open(path_str)?
+        } else {
+            if work_dir.exists() {
+                let _ = std::fs::remove_dir_all(&work_dir);
+            }
+            std::fs::create_dir_all(&work_dir)
+                .map_err(|e| format!("cannot create index dir: {e}"))?;
+            ShardedHandle::create(path_str, &schema_config())?;
+            ShardedHandle::open(path_str)?
+        };
+
+        let session = Arc::new(IndexSession {
+            handle,
+            work_dir,
+            cancel: AtomicBool::new(false),
+            in_place,
+        });
+        self.sessions
+            .lock()
+            .map_err(|_| "session lock poisoned".to_string())?
+            .insert(session_id.clone(), session);
+        Ok(session_id)
+    }
+
+    /// Write a LUCE snapshot blob to `dest_dir` as shard files (replacing existing).
+    pub fn materialize_snapshot_to_directory(
+        snapshot: Option<Vec<u8>>,
+        dest_dir: &Path,
+    ) -> Result<(), String> {
+        if dest_dir.exists() {
+            std::fs::remove_dir_all(dest_dir)
+                .map_err(|e| format!("cannot clear index dir: {e}"))?;
+        }
+        std::fs::create_dir_all(dest_dir)
+            .map_err(|e| format!("cannot create index dir: {e}"))?;
+
+        if let Some(data) = snapshot.filter(|b| !b.is_empty()) {
+            import_from_snapshot(&data, dest_dir)?;
+            return Ok(());
+        }
+
+        let path_str = dest_dir
+            .to_str()
+            .ok_or_else(|| "index dir path is not UTF-8".to_string())?;
+        let handle = ShardedHandle::create(path_str, &schema_config())?;
+        let _ = handle.close();
+        Ok(())
+    }
+
+    /// Gunzip legacy `index.luce.gz` into `dest_dir`, then remove the gzip file.
+    pub fn migrate_gzip_to_directory(gzip_path: &Path, dest_dir: &Path) -> Result<(), String> {
+        let snapshot = read_optional_gunzip_file(gzip_path)?;
+        Self::materialize_snapshot_to_directory(snapshot, dest_dir)?;
+        if gzip_path.is_file() {
+            let _ = std::fs::remove_file(gzip_path);
+        }
+        Ok(())
+    }
+
+    /// Unpack a snapshot blob into a temp dir and return relative path + file bytes.
+    pub fn unpack_snapshot_files(snapshot: Vec<u8>) -> Result<Vec<(String, Vec<u8>)>, String> {
+        if snapshot.is_empty() {
+            return Ok(Vec::new());
+        }
+        let temp = std::env::temp_dir().join(format!(
+            "s3haim-luce-unpack-{}",
+            SESSION_SEQ.fetch_add(1, Ordering::Relaxed)
+        ));
+        if temp.exists() {
+            let _ = std::fs::remove_dir_all(&temp);
+        }
+        import_from_snapshot(&snapshot, &temp)?;
+        let files = collect_directory_files(&temp, &temp)?;
+        let _ = std::fs::remove_dir_all(&temp);
+        Ok(files)
+    }
+
     pub fn open(&self, snapshot: Option<Vec<u8>>) -> Result<String, String> {
         let session_id = Self::next_session_id();
         let work_dir = self.session_dir(&session_id);
@@ -208,6 +297,7 @@ impl SessionStore {
             handle,
             work_dir,
             cancel: AtomicBool::new(false),
+            in_place: false,
         });
         self.sessions
             .lock()
@@ -241,9 +331,11 @@ impl SessionStore {
         };
         if let Some(session) = session {
             let _ = session.handle.close();
-            let dir = session.work_dir.clone();
-            drop(session);
-            remove_dir_best_effort(&dir);
+            if !session.in_place {
+                let dir = session.work_dir.clone();
+                drop(session);
+                remove_dir_best_effort(&dir);
+            }
         }
         Ok(())
     }
@@ -253,6 +345,40 @@ fn remove_dir_best_effort(dir: &Path) {
     if dir.exists() {
         let _ = std::fs::remove_dir_all(dir);
     }
+}
+
+fn collect_directory_files(
+    base: &Path,
+    dir: &Path,
+) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let mut out = Vec::new();
+    let entries = std::fs::read_dir(dir)
+        .map_err(|e| format!("cannot read directory '{}': {e}", dir.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("directory entry error: {e}"))?;
+        let ft = entry
+            .file_type()
+            .map_err(|e| format!("file type error: {e}"))?;
+        let path = entry.path();
+        if ft.is_dir() {
+            out.extend(collect_directory_files(base, &path)?);
+            continue;
+        }
+        if !ft.is_file() {
+            continue;
+        }
+        let rel = path
+            .strip_prefix(base)
+            .map_err(|_| "relative path error".to_string())?;
+        let rel_str = rel
+            .to_str()
+            .ok_or_else(|| format!("non UTF-8 path: {}", rel.display()))?
+            .replace('\\', "/");
+        let data = std::fs::read(&path)
+            .map_err(|e| format!("cannot read file '{}': {e}", path.display()))?;
+        out.push((rel_str, data));
+    }
+    Ok(out)
 }
 
 fn read_optional_gunzip_file(path: &Path) -> Result<Option<Vec<u8>>, String> {

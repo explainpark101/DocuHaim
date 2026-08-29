@@ -86,6 +86,74 @@ pub async fn as_index_open(
 }
 
 #[tauri::command]
+pub async fn as_index_open_from_directory(
+    app: AppHandle,
+    state: State<'_, AsIndexState>,
+    dir_path: String,
+    in_place: Option<bool>,
+) -> Result<String, String> {
+    let store = state.ensure_store(&app)?;
+    let path = std::path::PathBuf::from(dir_path);
+    let in_place = in_place.unwrap_or(true);
+    let session_id = tauri::async_runtime::spawn_blocking(move || {
+        store.open_from_directory(&path, in_place)
+    })
+    .await
+    .map_err(|e| format!("open from directory join: {e}"))??;
+    emit_log(
+        &app,
+        "info",
+        format!("opened native index session {session_id} from directory"),
+    );
+    Ok(session_id)
+}
+
+#[tauri::command]
+pub async fn as_index_materialize_snapshot_to_directory(
+    snapshot: Option<Vec<u8>>,
+    dir_path: String,
+) -> Result<(), String> {
+    let path = std::path::PathBuf::from(dir_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        SessionStore::materialize_snapshot_to_directory(snapshot, &path)
+    })
+    .await
+    .map_err(|e| format!("materialize join: {e}"))?
+}
+
+#[tauri::command]
+pub async fn as_index_migrate_gzip_to_directory(
+    gzip_path: String,
+    dir_path: String,
+) -> Result<(), String> {
+    let gzip = std::path::PathBuf::from(gzip_path);
+    let dir = std::path::PathBuf::from(dir_path);
+    tauri::async_runtime::spawn_blocking(move || SessionStore::migrate_gzip_to_directory(&gzip, &dir))
+        .await
+        .map_err(|e| format!("migrate join: {e}"))?
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LuceFileEntry {
+    pub path: String,
+    pub data: Vec<u8>,
+}
+
+#[tauri::command]
+pub async fn as_index_unpack_snapshot_files(
+    snapshot: Vec<u8>,
+) -> Result<Vec<LuceFileEntry>, String> {
+    let files = tauri::async_runtime::spawn_blocking(move || SessionStore::unpack_snapshot_files(snapshot))
+        .await
+        .map_err(|e| format!("unpack join: {e}"))??;
+    Ok(files
+        .into_iter()
+        .map(|(path, data)| LuceFileEntry { path, data })
+        .collect())
+}
+
+#[tauri::command]
 pub async fn as_index_open_from_file(
     app: AppHandle,
     state: State<'_, AsIndexState>,
