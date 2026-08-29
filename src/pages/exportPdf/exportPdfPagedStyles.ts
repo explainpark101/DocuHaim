@@ -189,6 +189,78 @@ export function buildExportPdfPagedStyles(
   color: unset;
 }
 
+/* Per-line rows: page breaks between lines; wrapped long lines stay on one row. */
+.export-pdf-paged-source .md-editor-code.export-pdf-code-paged,
+.pagedjs_page_content .md-editor-code.export-pdf-code-paged {
+  break-inside: auto;
+  page-break-inside: auto;
+  box-decoration-break: slice;
+  -webkit-box-decoration-break: slice;
+}
+
+/* Page-break continuation: flat edge, no border at the seam. */
+.export-pdf-paged-source .md-editor-code.export-pdf-code-frag-continue,
+.pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue {
+  border-top: none !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  margin-top: 0 !important;
+}
+
+.export-pdf-paged-source .md-editor-code.export-pdf-code-frag-break,
+.pagedjs_page_content .md-editor-code.export-pdf-code-frag-break {
+  border-bottom: none !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.export-pdf-paged-source .md-editor-code.export-pdf-code-paged pre,
+.pagedjs_page_content .md-editor-code.export-pdf-code-paged pre {
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.export-pdf-paged-source .md-editor-code.export-pdf-code-paged pre code,
+.pagedjs_page_content .md-editor-code.export-pdf-code-paged pre code {
+  display: block;
+  padding: 0.75em 0.9em 0.75em 0;
+  background-color: #fafafa;
+}
+
+.export-pdf-paged-source .export-pdf-code-lines,
+.pagedjs_page_content .export-pdf-code-lines {
+  display: block;
+}
+
+.export-pdf-paged-source .export-pdf-code-line,
+.pagedjs_page_content .export-pdf-code-line {
+  display: flex;
+  align-items: flex-start;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.export-pdf-paged-source .export-pdf-code-gutter,
+.pagedjs_page_content .export-pdf-code-gutter {
+  flex: 0 0 3em;
+  padding-inline-end: 0.5em;
+  text-align: right;
+  color: #6b7280;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.export-pdf-paged-source .export-pdf-code-content,
+.pagedjs_page_content .export-pdf-code-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .export-pdf-paged-source table,
 .pagedjs_page_content table {
   max-width: 100%;

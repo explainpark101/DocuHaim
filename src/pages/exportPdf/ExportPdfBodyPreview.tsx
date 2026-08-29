@@ -178,7 +178,7 @@ export function ExportPdfBodyPreview({
               mdHeadingId={headingId}
               noMermaid
               codeFoldable={false}
-              showCodeRowNumber={false}
+              showCodeRowNumber
             />
           </div>
         </div>

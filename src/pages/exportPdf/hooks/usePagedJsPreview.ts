@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
+import { applyExportPdfCodeBlockFragmentChrome } from '@/utils/exportPdf/applyExportPdfCodeBlockFragmentChrome';
+import { prepareExportPdfCodeBlocksForPaging } from '@/utils/exportPdf/prepareExportPdfCodeBlocksForPaging';
 import { buildExportPdfPagedStyles } from '@/pages/exportPdf/exportPdfPagedStyles';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
 
@@ -91,6 +93,8 @@ function buildPagedSourceFromPreview(preview: Element): HTMLElement | null {
     el.remove();
   }
 
+  prepareExportPdfCodeBlocksForPaging(wrapper);
+
   return wrapper;
 }
 
@@ -175,6 +179,7 @@ export function usePagedJsPreview({
         if (cancelled || generation !== generationRef.current) return;
 
         const count = tagBodyPages(scratch);
+        applyExportPdfCodeBlockFragmentChrome(scratch);
         const total =
           typeof flow?.total === 'number' && flow.total > 0 ? flow.total : count;
 

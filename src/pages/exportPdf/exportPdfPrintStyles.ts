@@ -138,6 +138,12 @@ export const printFontStyles = `
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code .md-editor-code-block {
     color: unset;
+    display: block;
+    width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    overflow: visible;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview :not(pre) > code {
     background-color: rgba(135, 131, 120, 0.15);
@@ -356,6 +362,51 @@ export const printFontStyles = `
     line-height: 1.6;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-paged,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-paged {
+    box-decoration-break: slice;
+    -webkit-box-decoration-break: slice;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-continue {
+    border-top: none !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    margin-top: 0 !important;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-break,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-break {
+    border-bottom: none !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-paged pre code,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-paged pre code {
+    padding: 0.75em 0.9em 0.75em 0;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-line,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-line {
+    display: flex;
+    align-items: flex-start;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-gutter,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-gutter {
+    flex: 0 0 3em;
+    padding-inline-end: 0.5em;
+    text-align: right;
+    color: #6b7280;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-content,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .export-pdf-paper .md-pgbr {

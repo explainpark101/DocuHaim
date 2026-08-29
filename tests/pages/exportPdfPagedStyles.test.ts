@@ -17,6 +17,8 @@ describe('exportPdf paged styles', () => {
     expect(css).toContain('line-height: 1.35');
     expect(css).toContain('#fafafa');
     expect(css).toContain('break-inside: auto');
+    expect(css).toContain('.export-pdf-code-line');
+    expect(css).toContain('white-space: pre-wrap');
     expect(css).not.toContain('.md-editor-code {\n  break-inside: avoid');
     expect(css).toContain('rgba(135, 131, 120, 0.15)');
     expect(css).toContain('.md-editor-copy-button');

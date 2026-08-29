@@ -51,7 +51,7 @@ Do not leave the literal `<pgbr/>` in HTML output after transform (XSS / printer
 | Preview (editor) | Visible rule (CSS on `.md-pgbr`) |
 | Print / PDF Export | [Paged.js](https://pagedjs.org/) CSS fragmentation; `.md-pgbr { break-before: page }` forces a **new page**. Markers are not printed as a visual rule. Export PDF **insert UI** (context menu / TOC) only adds markers **before headings**; existing markers elsewhere still paginate. |
 
-Export PDF renders markdown (Mermaid, code blocks, wiki images) in a staging `MdPreview`, then runs `Previewer.preview()` into `.pagedjs_page` nodes shared by on-screen preview and `window.print()`. Mermaid chrome (copy / pin) is stripped for print; diagrams are centered.
+Export PDF renders markdown (Mermaid, code blocks, wiki images) in a staging `MdPreview`, then runs `Previewer.preview()` into `.pagedjs_page` nodes shared by on-screen preview and `window.print()`. Mermaid chrome (copy / pin) is stripped for print; diagrams are centered. Fenced code blocks always show **line numbers**, wrap long lines (`pre-wrap`), and may **split across pages** at source-line boundaries (`prepareExportPdfCodeBlocksForPaging.ts`).
 
 ### 5. Non-goals
 
