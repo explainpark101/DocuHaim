@@ -43,3 +43,4 @@ src-tauri/gen/schemas/
 # Private design / ops notes (not for VitePress or public repo)
 /private/
 src/components/llm/__jsImportProbe.jsx
+temp
