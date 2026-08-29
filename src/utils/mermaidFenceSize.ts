@@ -118,6 +118,7 @@ export function getMermaidOccurrenceInContainer(
   for (const el of container.querySelectorAll('.md-editor-mermaid')) {
     if (el.closest('.haim-mermaid-embed-source')) continue;
     if (el.closest('.export-pdf-staging')) continue;
+    if (el.getAttribute('data-processed') == null) continue;
     unique.push(el);
   }
   return unique.findIndex((el) => el === host);

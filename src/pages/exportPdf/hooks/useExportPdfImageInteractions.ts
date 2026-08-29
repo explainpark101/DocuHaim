@@ -15,7 +15,10 @@ import {
   updateWikiImageSizeInMarkdown,
 } from '@/utils/wikiImageSyntax';
 import { getMermaidOccurrenceInContainer } from '@/utils/mermaidFenceSize';
-import { upsertMermaidSizeInMarkdown } from '@/utils/mermaidSizeComment';
+import {
+  findMermaidFenceOccurrenceBySource,
+  upsertMermaidSizeInMarkdown,
+} from '@/utils/mermaidSizeComment';
 import type { ExportPdfDocumentState } from '@/pages/exportPdf/hooks/useExportPdfDocument';
 import type { ExportPdfPreviewRefs } from '@/pages/exportPdf/hooks/useExportPdfPreviewRefs';
 import type {
@@ -72,7 +75,7 @@ export function useExportPdfImageInteractions({
   previewValue,
   setPreviewValue,
   currentFile,
-  previewValueRef: _previewValueRef,
+  previewValueRef,
   refs,
 }: UseExportPdfImageInteractionsArgs) {
   const { previewContainerRef, pagesHostRef, paperContentRef } = refs;
@@ -546,6 +549,12 @@ export function useExportPdfImageInteractions({
     };
 
     const onOutsidePointerDown = (event: PointerEvent) => {
+      if (
+        event.target instanceof Element
+        && event.target.closest('[data-print-toolbar], [role="dialog"], [role="alertdialog"]')
+      ) {
+        return;
+      }
       const target = resolveTarget();
       const clickedHandle =
         event.target instanceof Element
@@ -590,12 +599,24 @@ export function useExportPdfImageInteractions({
     if (!active) return;
     const width = `${Math.round(active.widthPx)}px`;
     const height = `${Math.round(active.heightPx)}px`;
+    const currentMarkdown = previewValueRef.current ?? previewValue;
 
-    let nextMarkdown = previewValue;
+    let nextMarkdown = currentMarkdown;
     let updated = false;
     if (active.kind === 'mermaid') {
-      const next = upsertMermaidSizeInMarkdown(previewValue, {
-        occurrence: active.occurrence ?? 0,
+      let occurrence = active.occurrence ?? 0;
+      if (occurrence < 0) occurrence = 0;
+      const sourceKey = active.key?.trim() ?? '';
+      if (sourceKey && !sourceKey.startsWith('mermaid-')) {
+        const bySource = findMermaidFenceOccurrenceBySource(
+          currentMarkdown,
+          sourceKey,
+          occurrence,
+        );
+        if (bySource >= 0) occurrence = bySource;
+      }
+      const next = upsertMermaidSizeInMarkdown(currentMarkdown, {
+        occurrence,
         width,
         height,
       });
@@ -604,14 +625,14 @@ export function useExportPdfImageInteractions({
     } else if (active.key) {
       const next =
         active.kind === 'wiki'
-          ? updateWikiImageSizeInMarkdown(previewValue, {
+          ? updateWikiImageSizeInMarkdown(currentMarkdown, {
               path: active.key,
               occurrence: active.occurrence ?? 0,
               width,
               height,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JS util infers null-only width/height
             } as any)
-          : updateMarkdownImageSizeInMarkdown(previewValue, {
+          : updateMarkdownImageSizeInMarkdown(currentMarkdown, {
               src: active.key,
               occurrence: active.occurrence ?? 0,
               width,
@@ -622,7 +643,7 @@ export function useExportPdfImageInteractions({
       nextMarkdown = next.markdown;
     }
 
-    if (updated && nextMarkdown !== previewValue) {
+    if (updated && nextMarkdown !== currentMarkdown) {
       setPreviewValue(nextMarkdown);
       setPendingPrintReturnState({
         currentFile,
@@ -642,7 +663,7 @@ export function useExportPdfImageInteractions({
     setFreeTransformState(null);
     activeTransformRef.current = null;
     setFreeTransformConfirmOpen(false);
-  }, [currentFile, findResizableTarget, freeTransformState, previewValue, setPreviewValue]);
+  }, [currentFile, findResizableTarget, freeTransformState, previewValue, previewValueRef, setPreviewValue]);
 
   const handleConfirmTransformReset = useCallback(() => {
     const active = activeTransformRef.current || freeTransformState;

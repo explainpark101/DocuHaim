@@ -216,6 +216,8 @@ export function ExportPdfShell({
   haimTableEdit,
   onHaimTableEditFailed,
 }: ExportPdfShellProps) {
+  const totalPageCount = (hasEnabledCover ? 1 : 0) + Math.max(1, bodyPageCount);
+
   if (isDocumentLoading) {
     return (
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800">
@@ -267,12 +269,17 @@ export function ExportPdfShell({
             <ArrowLeft size={18} />
             뒤로 가기
           </button>
-          <h2
+          <div
             data-tauri-drag-region
-            className="font-semibold text-gray-800 dark:text-odp-fg truncate flex-1 text-center select-none"
+            className="flex min-w-0 flex-1 flex-col items-center justify-center select-none"
           >
-            PDF로 내보내기
-          </h2>
+            <h2 className="font-semibold text-gray-800 dark:text-odp-fg truncate max-w-full">
+              PDF로 내보내기
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-odp-fg/70 truncate max-w-full">
+              총 페이지수: {totalPageCount} p.
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"

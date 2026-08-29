@@ -91,6 +91,32 @@ export function findMermaidFenceOpenPositions(markdown: string): number[] {
   return positions;
 }
 
+const MERMAID_FENCE_BODY_RE = /^```mermaid[^\n]*\r?\n([\s\S]*?)^```/gm;
+
+/**
+ * Map a rendered mermaid `data-content` string to the Nth ```mermaid fence index.
+ * When several fences share the same body, `sourceOccurrence` picks the Nth match.
+ */
+export function findMermaidFenceOccurrenceBySource(
+  markdown: string,
+  source: string,
+  sourceOccurrence = 0,
+): number {
+  const target = String(source ?? '').trim();
+  if (!target) return -1;
+
+  const matches: number[] = [];
+  const re = new RegExp(MERMAID_FENCE_BODY_RE.source, 'gm');
+  let fenceIdx = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(markdown)) !== null) {
+    const body = (match[1] || '').trim();
+    if (body === target) matches.push(fenceIdx);
+    fenceIdx += 1;
+  }
+  return matches[sourceOccurrence] ?? matches[0] ?? -1;
+}
+
 /** Read sidecar size on the lines above a mermaid fence (markdown-it env). */
 export function readMermaidSizeCommentFromSrcLines(
   srcLines: string[],

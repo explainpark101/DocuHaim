@@ -1,6 +1,8 @@
 # Mermaid fence size (`width` / `height` on info line)
 
-Export PDF에서 Mermaid 다이어그램을 자유변형한 뒤 저장하면 fence info에 크기가 기록된다.
+> **Preferred for PDF export:** use the sidecar comment syntax in [mermaid-size.md](./mermaid-size.md). Fence info size is still parsed for backward compatibility.
+
+Export PDF에서 Mermaid 다이어그램을 자유변형한 뒤 저장하면 (legacy) fence info에 크기가 기록될 수 있다. New saves use `<!-- mermaid-size … -->` instead.
 
 ## 문법
 
