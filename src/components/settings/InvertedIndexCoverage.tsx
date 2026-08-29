@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import {
@@ -130,11 +130,46 @@ export default function InvertedIndexCoverage({
   );
   const [indexRevision, setIndexRevision] = useState(0);
   const buildingRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasBuildingRef = useRef(false);
+  const loadingRef = useRef(false);
+  const onScanTreeRef = useRef(onScanTree);
+  const canScanRef = useRef(canScan);
+
+  useEffect(() => {
+    onScanTreeRef.current = onScanTree;
+    canScanRef.current = canScan;
+  }, [onScanTree, canScan]);
+
+  const loadTree = useCallback(async () => {
+    const scan = onScanTreeRef.current;
+    if (!scan || !canScanRef.current || loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    setError(null);
+    try {
+      const nextTree = await scan();
+      setTree(nextTree);
+      setExpandedFolderPaths(new Set());
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message || '폴더 트리를 불러오지 못했습니다.');
+      setTree(null);
+      setExpandedFolderPaths(new Set());
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     return advancedSearchEngine.subscribe(() => {
       const status = advancedSearchEngine.getStatus();
       if (status.building) {
+        // Auto-load folder tree when a rebuild starts.
+        if (!wasBuildingRef.current) {
+          wasBuildingRef.current = true;
+          void loadTree();
+        }
         // Throttled live refresh while indexing so folder bars track increments.
         if (buildingRefreshTimer.current) return;
         buildingRefreshTimer.current = setTimeout(() => {
@@ -143,13 +178,22 @@ export default function InvertedIndexCoverage({
         }, 500);
         return;
       }
+      wasBuildingRef.current = false;
       if (buildingRefreshTimer.current) {
         clearTimeout(buildingRefreshTimer.current);
         buildingRefreshTimer.current = null;
       }
       setIndexRevision((n) => n + 1);
     });
-  }, []);
+  }, [loadTree]);
+
+  // If Settings opens while a rebuild is already running, load coverage once.
+  useEffect(() => {
+    if (!advancedSearchEngine.getStatus().building) return;
+    if (wasBuildingRef.current) return;
+    wasBuildingRef.current = true;
+    void loadTree();
+  }, [loadTree]);
 
   useEffect(() => {
     return () => {
@@ -163,6 +207,7 @@ export default function InvertedIndexCoverage({
     setTree(null);
     setError(null);
     setExpandedFolderPaths(new Set());
+    wasBuildingRef.current = false;
   }, [storageMode]);
 
   const indexStatus = advancedSearchEngine.getStatus();
@@ -198,22 +243,8 @@ export default function InvertedIndexCoverage({
     });
   };
 
-  const handleScan = async () => {
-    if (!onScanTree || !canScan || loading) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const nextTree = await onScanTree();
-      setTree(nextTree);
-      setExpandedFolderPaths(new Set());
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      setError(message || '폴더 트리를 불러오지 못했습니다.');
-      setTree(null);
-      setExpandedFolderPaths(new Set());
-    } finally {
-      setLoading(false);
-    }
+  const handleScan = () => {
+    void loadTree();
   };
 
   const summary = analysis?.summary;
@@ -247,7 +278,7 @@ export default function InvertedIndexCoverage({
               ? ' (Markdown + 기타 텍스트 파일)'
               : ' (Markdown만)'}
             {indexStatus.building
-              ? ' 색인 중에는 진행도가 자동으로 갱신됩니다.'
+              ? ' 색인 시작 시 폴더 트리를 자동으로 불러오고, 진행도가 갱신됩니다.'
               : ''}
           </p>
         </div>
@@ -295,9 +326,13 @@ export default function InvertedIndexCoverage({
       <div className="max-h-96 overflow-auto rounded-md border border-gray-800 bg-[#1a1b26] p-2 font-mono text-[11px] text-gray-100 dark:border-gray-700">
         {folderRows.length === 0 ? (
           <p className="px-2 py-6 text-center text-gray-500">
-            {tree
-              ? '표시할 폴더가 없습니다.'
-              : '「폴더 트리 불러오기」를 눌러 역색인 현황을 확인하세요.'}
+            {loading
+              ? '폴더 트리를 불러오는 중…'
+              : tree
+                ? '표시할 폴더가 없습니다.'
+                : indexStatus.building
+                  ? '색인 시작에 맞춰 폴더 트리를 불러오는 중…'
+                  : '「폴더 트리 불러오기」를 누르거나 색인을 시작하면 역색인 현황을 확인할 수 있습니다.'}
           </p>
         ) : (
           <ul className="space-y-0.5">

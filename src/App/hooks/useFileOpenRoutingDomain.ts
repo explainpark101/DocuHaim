@@ -15,6 +15,7 @@ import {
   CHAT_TAB_ID,
   SETTINGS_TAB_ID,
   pickWorkspaceTabsRestoreSource,
+  persistedTabId,
   seedTabsRestoreQueueFromSnapshot,
 } from '@/utils/workspaceTabs';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
@@ -276,15 +277,7 @@ export function useFileOpenRoutingDomain() {
     hasSeededTabsRestoreQueueRef.current = true;
     const source = pickWorkspaceTabsRestoreSource();
     if (!source?.tabs?.length) return;
-    const openIds = new Set();
-    if (typeof source.activeId === 'string' && source.activeId) {
-      openIds.add(source.activeId);
-    } else {
-      const first = source.tabs[0];
-      if (first?.kind === 'chat') openIds.add(CHAT_TAB_ID);
-      else if (first?.kind === 'settings') openIds.add(SETTINGS_TAB_ID);
-      else if (first?.kind === 'file') openIds.add(`${first.type}:${first.path}`);
-    }
+    const openIds = new Set(source.tabs.map((tab) => persistedTabId(tab)));
     seedTabsRestoreQueueFromSnapshot(source, openIds as Set<string>);
   }, [isUnlocked, workspaceTabsEnabled]);
 
@@ -403,10 +396,10 @@ export function useFileOpenRoutingDomain() {
         if (workspaceTabsEnabledRef.current) {
           hasProcessedOpenFromUrlRef.current = true;
           if (persisted.tabs.some((t) => t.kind === 'chat')) {
-            openChatWorkspaceTab({ navigateUrl: false });
+            openChatWorkspaceTab({ navigateUrl: false, activate: false });
           }
           if (persisted.tabs.some((t) => t.kind === 'settings')) {
-            openSettingsWorkspaceTab({ navigateUrl: false });
+            openSettingsWorkspaceTab({ navigateUrl: false, activate: false });
           }
           if (persisted.activeId === CHAT_TAB_ID) {
             navigate('/chat');

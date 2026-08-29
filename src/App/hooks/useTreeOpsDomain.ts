@@ -78,6 +78,8 @@ import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { flattenOsDropPaths, guessMimeTypeFromFileName } from '@/utils/treeOsDropPaths';
 import { createVaultUploadRunner } from '@/utils/vaultUploadRunner';
 import { uploadLocalPathToS3 } from '@/utils/s3TauriPathUpload';
+import { notifyAdvancedSearchChange } from '@/utils/advancedSearch';
+import { vaultTrashDestPath } from '@/utils/advancedSearch/paths';
 import { readOpenPathBytes } from '@/utils/shared/desktopOpenFiles';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
@@ -1514,6 +1516,11 @@ export function useTreeOpsDomain() {
           await moveS3FolderToFolder(node, parentPath, trimmed);
           await loadS3Files();
           applyWorkspaceFolderPathRetargetLocalRef.current?.('s3', prefix, destPrefix);
+          notifyAdvancedSearchChange({
+            type: 'retargetPaths',
+            from: prefix,
+            to: destPrefix,
+          });
           if (currentFile && currentFile.type === 's3' && currentFile.id.startsWith(node.path)) {
             const newPath = currentFile.id.replace(prefix, destPrefix);
             applyOpenFileIdentityChange(
@@ -1533,6 +1540,11 @@ export function useTreeOpsDomain() {
             await backend.move(fromRel, toRel);
             await refreshLocalTree();
             applyWorkspaceFolderPathRetargetLocalRef.current?.('local', oldPrefix, newPrefix);
+            notifyAdvancedSearchChange({
+              type: 'retargetPaths',
+              from: oldPrefix,
+              to: newPrefix,
+            });
             if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(oldPrefix) || currentFile.id.startsWith(node.path))) {
               const newPathForFile = currentFile.id.startsWith(oldPrefix)
                 ? newPrefix + currentFile.id.slice(oldPrefix.length)
@@ -1552,6 +1564,11 @@ export function useTreeOpsDomain() {
               node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
             await moveLocalFolderToFolder(node, parentHandle, '', trimmed);
             applyWorkspaceFolderPathRetargetLocalRef.current?.('local', oldPrefix, newPrefix);
+            notifyAdvancedSearchChange({
+              type: 'retargetPaths',
+              from: oldPrefix,
+              to: newPrefix,
+            });
             if (currentFile && currentFile.type === 'local' && (currentFile.id === node.path || currentFile.id.startsWith(oldPrefix) || currentFile.id.startsWith(node.path))) {
               const newPathForFile = currentFile.id.startsWith(oldPrefix)
                 ? newPrefix + currentFile.id.slice(oldPrefix.length)
@@ -1569,6 +1586,11 @@ export function useTreeOpsDomain() {
           const destPrefix = node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
           await moveWebdavFolderToFolder(node, '', trimmed);
           applyWorkspaceFolderPathRetargetLocalRef.current?.('webdav', oldPrefix, destPrefix);
+          notifyAdvancedSearchChange({
+            type: 'retargetPaths',
+            from: oldPrefix,
+            to: destPrefix,
+          });
           if (currentFile && currentFile.type === 'webdav' && currentFile.id.startsWith(node.path)) {
             const newPathForFile = currentFile.id.startsWith(oldPrefix)
               ? destPrefix + currentFile.id.slice(oldPrefix.length)
@@ -1594,6 +1616,11 @@ export function useTreeOpsDomain() {
         const contentOverride = hasUnsaved ? editorContent : null;
 
         const updated = await renameS3File(fileToRename, newName, contentOverride);
+        notifyAdvancedSearchChange({
+          type: 'retargetPaths',
+          from: oldPath,
+          to: updated.id,
+        });
         if (isCurrentFile) {
           applyOpenFileIdentityChange(updated, { oldPath });
         } else {
@@ -1626,6 +1653,11 @@ export function useTreeOpsDomain() {
             await backend.move(oldPath, newPath);
           }
           await refreshLocalTree();
+          notifyAdvancedSearchChange({
+            type: 'retargetPaths',
+            from: oldPath,
+            to: newPath,
+          });
           if (isCurrentFile) {
             applyOpenFileIdentityChange(
               { ...currentFile, id: newPath, name: newName },
@@ -1661,6 +1693,11 @@ export function useTreeOpsDomain() {
           await pHandle.removeEntry(node.name, { recursive: false });
 
           await refreshLocalTree();
+          notifyAdvancedSearchChange({
+            type: 'retargetPaths',
+            from: oldPath,
+            to: newPath,
+          });
 
           if (currentFile && currentFile.type === 'local' && currentFile.id === node.path) {
             applyOpenFileIdentityChange(
@@ -1701,6 +1738,11 @@ export function useTreeOpsDomain() {
           await backend.move(oldPath, newPath);
         }
         await refreshWebdavTree();
+        notifyAdvancedSearchChange({
+          type: 'retargetPaths',
+          from: oldPath,
+          to: newPath,
+        });
         if (isCurrentFile) {
           applyOpenFileIdentityChange(
             { ...currentFile, id: newPath, name: newName },
@@ -1936,6 +1978,11 @@ export function useTreeOpsDomain() {
                   await reloadOpenFileIfPath(srcStorageType, destFilePath);
                 }
               }
+              notifyAdvancedSearchChange({
+                type: 'retargetPaths',
+                from: srcPath,
+                to: destFilePath,
+              });
               lastSuccessName = destName;
             } else {
               if (srcStorageType === 's3') {
@@ -1948,6 +1995,11 @@ export function useTreeOpsDomain() {
               const oldPrefix = srcNode.path.endsWith('/') ? srcNode.path : `${srcNode.path}/`;
               const newPrefix = `${destPath}${destName}/`;
               applyWorkspaceFolderPathRetargetLocalRef.current?.(srcStorageType, oldPrefix, newPrefix);
+              notifyAdvancedSearchChange({
+                type: 'retargetPaths',
+                from: oldPrefix,
+                to: newPrefix,
+              });
               if (
                 currentFileRef.current &&
                 currentFileRef.current.type === srcStorageType &&
@@ -2965,6 +3017,19 @@ export function useTreeOpsDomain() {
           successCount += 1;
           deletedNodesForChat.push(node);
 
+          if (isInTrash) {
+            notifyAdvancedSearchChange({
+              type: 'removePaths',
+              path: node.path,
+            });
+          } else {
+            notifyAdvancedSearchChange({
+              type: 'retargetPaths',
+              from: node.path,
+              to: vaultTrashDestPath(node.path),
+            });
+          }
+
           if (
             currentFile?.id &&
             (node.type === 'folder'
@@ -3047,7 +3112,7 @@ export function useTreeOpsDomain() {
     setIsEmptyingTrash(true);
     setOperationStatus('쓰레기통 비우는 중…');
     try {
-      const { deletedCount } = await executeEmptyTrash({
+      const { deletedCount, deletedPaths, emptiedAll } = await executeEmptyTrash({
         storageType,
         options,
         getS3Client,
@@ -3055,6 +3120,13 @@ export function useTreeOpsDomain() {
         localRootHandle,
         webdavConfig,
       });
+      if (emptiedAll) {
+        notifyAdvancedSearchChange({ type: 'removePaths', path: '.trash' });
+      } else {
+        for (const p of deletedPaths || []) {
+          notifyAdvancedSearchChange({ type: 'removePaths', path: p });
+        }
+      }
       if (storageType === 's3') await loadS3Files();
       else if (storageType === 'local') await refreshLocalTree();
       else if (storageType === 'webdav') await refreshWebdavTree();
@@ -3185,6 +3257,11 @@ export function useTreeOpsDomain() {
         setMoveFileTarget(null);
         setIsMoveModalOpen(false);
         setOperationStatus(`파일 이동 완료: ${destName}`);
+        notifyAdvancedSearchChange({
+          type: 'retargetPaths',
+          from: node.path,
+          to: destFilePath,
+        });
       } finally {
         endTreeTransferBusy(storageType, node.path);
       }
@@ -3242,6 +3319,11 @@ export function useTreeOpsDomain() {
         const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
         const newPrefix = `${destPath}${destName}/`;
         applyWorkspaceFolderPathRetarget(storageType, oldPrefix, newPrefix);
+        notifyAdvancedSearchChange({
+          type: 'retargetPaths',
+          from: oldPrefix,
+          to: newPrefix,
+        });
         if (
           currentFileRef.current &&
           currentFileRef.current.type === storageType &&
@@ -3345,6 +3427,11 @@ export function useTreeOpsDomain() {
         }
         setIsMoveModalOpen(false);
         setOperationStatus(`파일 이동 완료: ${destPath}${destName}`);
+        notifyAdvancedSearchChange({
+          type: 'retargetPaths',
+          from: srcPath,
+          to: destFilePath,
+        });
       } finally {
         endTreeTransferBusy(currentFile.type, srcPath);
       }
@@ -3387,6 +3474,11 @@ export function useTreeOpsDomain() {
         await moveLocalEntryToTrash(target);
         refreshLocalTree();
       }
+      notifyAdvancedSearchChange({
+        type: 'retargetPaths',
+        from: key,
+        to: vaultTrashDestPath(key),
+      });
       setOperationStatus(`삭제됨: ${key.split('/').filter(Boolean).pop() || key}`);
     },
     [

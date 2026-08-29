@@ -5,6 +5,8 @@ import {
 import { indexableEncMdBody } from '@/utils/encMd';
 import {
   pruneIndexToPaths,
+  removeFileDocumentsByPrefix,
+  retargetFileDocumentsByPrefix,
   upsertChatDayDocuments,
   upsertFileDocument,
 } from '@/utils/advancedSearch/buildIndex';
@@ -22,10 +24,12 @@ import {
   loadAdvancedSearchIncludeOtherFiles,
   loadAdvancedSearchLiveScanLimits,
   loadAdvancedSearchExcludeFolders,
+  loadAdvancedSearchCheckpointEvery,
   saveAdvancedSearchIndexEnabled,
   saveAdvancedSearchIncludeOtherFiles,
   saveAdvancedSearchLiveScanLimits,
   saveAdvancedSearchExcludeFolders,
+  saveAdvancedSearchCheckpointEvery,
   isLiveScanUnlimited,
   type AdvancedSearchLiveScanLimits,
 } from '@/utils/advancedSearch/settings';
@@ -63,6 +67,7 @@ import {
 import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
 import { isTauriApp } from '@/utils/tauriPlatform';
 import { liveScanContentHits } from '@/utils/advancedSearch/liveContentSearch';
+import { RebuildCancelledError } from '@/utils/advancedSearch/rebuildCancel';
 import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
 import { gzip, gunzipSync, strFromU8 } from 'fflate';
 
@@ -86,6 +91,8 @@ export type EngineStatus = {
   includeOtherFiles: boolean;
   /** Vault folders (and descendants) skipped by the inverted index. */
   excludedFolders: string[];
+  /** Write a rebuild checkpoint every N completed sources. */
+  checkpointEvery: number;
   fileCount: number;
   chatCount: number;
   builtAt: string | null;
@@ -144,14 +151,6 @@ const LOG_EMIT_MS = 500;
 /** Soft default; rebuild raises this so every file start/end can be kept. */
 const DEFAULT_MAX_BUILD_LOGS = 2000;
 const ABSOLUTE_MAX_BUILD_LOGS = 100_000;
-const CHECKPOINT_EVERY = 50;
-
-class RebuildCancelledError extends Error {
-  constructor() {
-    super('REBUILD_CANCELLED');
-    this.name = 'RebuildCancelledError';
-  }
-}
 
 function gzipBytes(input: Uint8Array): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
@@ -172,12 +171,15 @@ class AdvancedSearchEngine {
   private building = false;
   private cancelRequested = false;
   private lastBuildCancelled = false;
+  /** Dedupe keys for stepwise cancel logs (cleared on rebuild / cancel). */
+  private cancelLogKeys = new Set<string>();
   private hasCheckpoint = false;
   private checkpointProcessedCount = 0;
   private dirty = false;
   private enabled = loadAdvancedSearchIndexEnabled();
   private includeOtherFiles = loadAdvancedSearchIncludeOtherFiles();
   private excludedFolders: string[] = loadAdvancedSearchExcludeFolders();
+  private checkpointEvery = loadAdvancedSearchCheckpointEvery();
   private liveScanLimits: AdvancedSearchLiveScanLimits =
     loadAdvancedSearchLiveScanLimits();
   private backend: AdvancedSearchBackend | null = null;
@@ -330,6 +332,7 @@ class AdvancedSearchEngine {
       hasIndex: this.hasIndex(),
       includeOtherFiles: this.includeOtherFiles,
       excludedFolders: [...this.excludedFolders],
+      checkpointEvery: this.checkpointEvery,
       fileCount: this.index.manifest.fileCount,
       chatCount: this.index.manifest.chatCount,
       builtAt: this.index.manifest.builtAt || null,
@@ -377,6 +380,11 @@ class AdvancedSearchEngine {
     this.excludedFolders = saveAdvancedSearchExcludeFolders(paths);
     this.emit();
     void this.refreshCheckpointStatus();
+  }
+
+  setCheckpointEvery(value: unknown): void {
+    this.checkpointEvery = saveAdvancedSearchCheckpointEvery(value);
+    this.emit();
   }
 
   private indexPathOptions(): {
@@ -595,19 +603,57 @@ class AdvancedSearchEngine {
   cancelRebuild(): void {
     if (!this.building) return;
     this.cancelRequested = true;
-    this.appendLog('warn', '색인 중지 요청…');
+    this.cancelLogKeys.clear();
+    this.logCancelStep(
+      'request',
+      '요청 접수 — 신규 claim 중단 · 진행 중 파일은 즉시 포기 · 완료분만 체크포인트',
+    );
     this.emitBuildProgress(true);
     void this.loadLucivyApi()
-      .then((api) => api.lucivyCancelNative?.())
-      .catch(() => {
-        // ignore
+      .then(async (api) => {
+        if (!this.cancelRequested || !this.building) return;
+        if (typeof api.lucivyCancelNative !== 'function') {
+          this.logCancelStep(
+            'native-skip',
+            '네이티브 Lucivy 취소 신호 없음 (웹/미지원) — 워커 협력 취소만 진행',
+          );
+          return;
+        }
+        this.logCancelStep('native-send', '네이티브 Lucivy 취소 신호 전송');
+        await api.lucivyCancelNative();
+        if (this.cancelRequested && this.building) {
+          this.logCancelStep(
+            'native-done',
+            '네이티브 취소 신호 완료 — 진행 중 워커·체크포인트 정리 대기',
+          );
+        }
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logCancelStep(
+          'native-fail',
+          `네이티브 취소 신호 실패 — ${msg} (워커 협력 취소 계속)`,
+        );
       });
   }
 
-  private assertNotCancelled(): void {
-    if (this.cancelRequested) {
-      throw new RebuildCancelledError();
+  /** Stepwise cancel log (deduped by key). */
+  private logCancelStep(key: string, message: string): void {
+    if (this.cancelLogKeys.has(key)) return;
+    this.cancelLogKeys.add(key);
+    this.appendLog('warn', `중지 · ${message}`);
+  }
+
+  private assertNotCancelled(phase?: string, detail?: string): void {
+    if (!this.cancelRequested) return;
+    if (phase) {
+      const key = detail ? `abort:${phase}:${detail}` : `abort:${phase}`;
+      this.logCancelStep(
+        key,
+        detail ? `${phase} 중단 · ${detail}` : `${phase} 중단`,
+      );
     }
+    throw new RebuildCancelledError();
   }
 
   private async loadCompatibleCheckpoint(): Promise<RebuildCheckpointRecord | null> {
@@ -675,14 +721,40 @@ class AdvancedSearchEngine {
     processedChatPaths: string[],
   ): Promise<void> {
     if (!this.cancelRequested) return;
+    const fileN = processedFilePaths.length;
+    const chatN = processedChatPaths.length;
+    this.logCancelStep(
+      'checkpoint-begin',
+      '최종 체크포인트 단계 시작',
+    );
     try {
-      if (processedFilePaths.length + processedChatPaths.length > 0) {
+      if (fileN + chatN > 0) {
+        this.logCancelStep(
+          'checkpoint-write',
+          `완료분만 체크포인트 저장 중 (파일 ${fileN} · 채팅 ${chatN})`,
+        );
         await this.writeCheckpoint(processedFilePaths, processedChatPaths);
+        this.logCancelStep('checkpoint-done', '체크포인트 저장 완료');
+      } else {
+        this.logCancelStep(
+          'checkpoint-skip',
+          '처리할 항목이 없어 체크포인트 생략',
+        );
       }
     } catch (err) {
       console.warn('[advancedSearch] checkpoint flush on cancel failed', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logCancelStep('checkpoint-fail', `체크포인트 저장 실패 — ${msg}`);
     }
+    this.logCancelStep('loop-exit', '색인 루프 종료');
     throw new RebuildCancelledError();
+  }
+
+  /** Cooperative cancel check used as chat yieldFn during rebuild. */
+  private async yieldOrCancel(phase?: string, detail?: string): Promise<void> {
+    this.assertNotCancelled(phase, detail);
+    await yieldToMain();
+    this.assertNotCancelled(phase, detail);
   }
 
   async rebuild(options: RebuildOptions = {}): Promise<void> {
@@ -713,6 +785,7 @@ class AdvancedSearchEngine {
     }
     this.building = true;
     this.cancelRequested = false;
+    this.cancelLogKeys.clear();
     this.lastBuildCancelled = false;
     this.buildProgress = 0;
     this.lastError = null;
@@ -772,7 +845,7 @@ class AdvancedSearchEngine {
         this.lastError = null;
         this.appendLog(
           'warn',
-          '색인 중지됨 — 체크포인트 유지 (다시 색인 시 이어서/처음부터 선택)',
+          '중지 · 완료 — 체크포인트 유지 (다시 색인 시 이어서/처음부터 선택)',
         );
       } else {
         this.lastError = err instanceof Error ? err.message : String(err);
@@ -864,7 +937,10 @@ class AdvancedSearchEngine {
     this.lucivyReady = true;
     this.loaded = true;
 
-    const bulk = { skipRecount: true as const };
+    const bulk = {
+      skipRecount: true as const,
+      isCancelled: () => this.cancelRequested,
+    };
     let n = processedFiles.size + processedChats.size;
     this.buildProgress = n / total;
     this.emitBuildProgress(true);
@@ -882,85 +958,117 @@ class AdvancedSearchEngine {
 
     // Workers pull distinct paths from a shared claim queue (no double-index).
     // Path lock vs incremental notify; Lucivy writes serialized in upsert.
-    await runClaimedWorkQueue(
-      remainingFiles,
-      concurrency,
-      (path) => fileIndexClaimKey(path),
-      async (path, claimOrdinal) => {
-        this.assertNotCancelled();
-        const displayOrdinal = fileDoneBase + claimOrdinal;
-        await withIndexPathLock(fileIndexClaimKey(path), async () => {
-          this.appendLog(
-            'info',
-            `색인 start · 파일 ${displayOrdinal}/${filePaths.length} · ${path}`,
-          );
-          try {
-            const { text: raw } = (await this.backend!.readText?.(path)) || {
-              text: '',
-            };
-            await yieldToMain();
-            const text = indexableEncMdBody(path, raw);
-            await upsertFileDocument(
-              this.index,
-              this.docIdMap,
-              path,
-              text,
-              bulk,
-            );
-            let doneCount = 0;
-            await withIndexWriteLock(async () => {
-              fileOk += 1;
-              doneCount = fileOk;
-              processedFiles.add(path);
-              n += 1;
-              sinceCheckpoint += 1;
-              this.buildProgress = n / total;
-            });
+    // Cancel: stop new claims immediately; one checkpoint flush after the pool.
+    try {
+      await runClaimedWorkQueue(
+        remainingFiles,
+        concurrency,
+        (path) => fileIndexClaimKey(path),
+        async (path, claimOrdinal) => {
+          this.assertNotCancelled('파일 claim', path);
+          const displayOrdinal = fileDoneBase + claimOrdinal;
+          await withIndexPathLock(fileIndexClaimKey(path), async () => {
+            this.assertNotCancelled('파일 잠금', path);
             this.appendLog(
-              'ok',
-              `색인 end · 파일 ${doneCount}/${filePaths.length} · ${path}`,
+              'info',
+              `색인 start · 파일 ${displayOrdinal}/${filePaths.length} · ${path}`,
             );
-            this.emitBuildProgress();
-          } catch (err) {
-            if (err instanceof RebuildCancelledError) throw err;
-            await withIndexWriteLock(async () => {
-              fileFail += 1;
-              processedFiles.add(path);
-              n += 1;
-              sinceCheckpoint += 1;
-              this.buildProgress = n / total;
-            });
-            const msg = err instanceof Error ? err.message : String(err);
-            this.appendLog('warn', `색인 end · 파일 실패 · ${path} — ${msg}`);
-            this.emitBuildProgress();
-          }
-        });
-
-        let doCheckpoint = false;
-        let doCancelFlush = false;
-        await withIndexWriteLock(async () => {
-          if (sinceCheckpoint >= CHECKPOINT_EVERY) {
-            sinceCheckpoint = 0;
-            doCheckpoint = true;
-          }
-          if (this.cancelRequested) doCancelFlush = true;
-        });
-        if (doCheckpoint) {
-          await withIndexWriteLock(async () => {
-            await this.writeCheckpoint(
-              [...processedFiles],
-              [...processedChats],
-            );
+            try {
+              const { text: raw } = (await this.backend!.readText?.(path)) || {
+                text: '',
+              };
+              this.assertNotCancelled('파일 읽기 후', path);
+              await this.yieldOrCancel('파일 준비', path);
+              const text = indexableEncMdBody(path, raw);
+              this.assertNotCancelled('파일 upsert 전', path);
+              await upsertFileDocument(
+                this.index,
+                this.docIdMap,
+                path,
+                text,
+                bulk,
+              );
+              this.assertNotCancelled('파일 upsert 후', path);
+              let doneCount = 0;
+              await withIndexWriteLock(async () => {
+                fileOk += 1;
+                doneCount = fileOk;
+                processedFiles.add(path);
+                n += 1;
+                sinceCheckpoint += 1;
+                this.buildProgress = n / total;
+              });
+              this.appendLog(
+                'ok',
+                `색인 end · 파일 ${doneCount}/${filePaths.length} · ${path}`,
+              );
+              this.emitBuildProgress();
+            } catch (err) {
+              if (err instanceof RebuildCancelledError) {
+                this.logCancelStep(
+                  `abandon-file:${path}`,
+                  `진행 중이던 파일 색인 즉시 중단 (체크포인트 미포함) · ${path}`,
+                );
+                throw err;
+              }
+              await withIndexWriteLock(async () => {
+                fileFail += 1;
+                processedFiles.add(path);
+                n += 1;
+                sinceCheckpoint += 1;
+                this.buildProgress = n / total;
+              });
+              const msg = err instanceof Error ? err.message : String(err);
+              this.appendLog('warn', `색인 end · 파일 실패 · ${path} — ${msg}`);
+              this.emitBuildProgress();
+            }
           });
-        }
-        if (doCancelFlush) {
-          await this.flushCheckpointBeforeCancel(
-            [...processedFiles],
-            [...processedChats],
-          );
-        }
-      },
-    );
+
+          let doCheckpoint = false;
+          await withIndexWriteLock(async () => {
+            if (
+              !this.cancelRequested &&
+              sinceCheckpoint >= this.checkpointEvery
+            ) {
+              sinceCheckpoint = 0;
+              doCheckpoint = true;
+            }
+          });
+          if (doCheckpoint) {
+            this.assertNotCancelled('파일 주기 체크포인트 전', path);
+            await withIndexWriteLock(async () => {
+              await this.writeCheckpoint(
+                [...processedFiles],
+                [...processedChats],
+              );
+            });
+          }
+          this.assertNotCancelled('파일 작업 완료 후', path);
+        },
+        {
+          shouldStop: () => this.cancelRequested,
+          onStopClaiming: () => {
+            this.logCancelStep(
+              'file-claim-stop',
+              '파일 claim 큐 중단 — 새 파일 없음 · 진행 중 파일은 포기 후 완료분만 저장',
+            );
+          },
+        },
+      );
+      this.assertNotCancelled('파일 풀 종료 후');
+    } catch (err) {
+      if (err instanceof RebuildCancelledError || this.cancelRequested) {
+        this.logCancelStep(
+          'file-pool-drain',
+          '진행 중 파일 포기 완료 — 완료분만 체크포인트로 진행',
+        );
+        await this.flushCheckpointBeforeCancel(
+          [...processedFiles],
+          [...processedChats],
+        );
+      }
+      throw err;
+    }
     this.appendLog(
       'info',
       `파일 색인 완료 (성공 ${fileOk} · 실패 ${fileFail})`,
@@ -976,89 +1084,119 @@ class AdvancedSearchEngine {
     );
     this.emit();
 
-    await runClaimedWorkQueue(
-      remainingChats,
-      concurrency,
-      (path) => chatIndexClaimKey(path),
-      async (path, claimOrdinal) => {
-        this.assertNotCancelled();
-        const displayOrdinal = chatDoneBase + claimOrdinal;
-        await withIndexPathLock(chatIndexClaimKey(path), async () => {
-          this.appendLog(
-            'info',
-            `색인 start · 채팅 ${displayOrdinal}/${chatDayPaths.length} · ${path}`,
-          );
-          try {
-            const { text } = (await this.backend!.readText?.(path)) || {
-              text: '',
-            };
-            const changed = await upsertChatDayDocuments(
-              this.index,
-              this.docIdMap,
-              path,
-              text,
-              {
-                ...bulk,
-                yieldEvery: 8,
-                yieldFn: yieldToMain,
-                lucivyBatchSize: isTauriApp() ? 64 : 32,
-              },
-            );
-            let doneCount = 0;
-            await withIndexWriteLock(async () => {
-              chatOk += 1;
-              doneCount = chatOk;
-              processedChats.add(path);
-              n += 1;
-              sinceCheckpoint += 1;
-              this.buildProgress = n / total;
-            });
+    try {
+      await runClaimedWorkQueue(
+        remainingChats,
+        concurrency,
+        (path) => chatIndexClaimKey(path),
+        async (path, claimOrdinal) => {
+          this.assertNotCancelled('채팅 claim', path);
+          const displayOrdinal = chatDoneBase + claimOrdinal;
+          await withIndexPathLock(chatIndexClaimKey(path), async () => {
+            this.assertNotCancelled('채팅 잠금', path);
             this.appendLog(
-              'ok',
-              `색인 end · 채팅 ${doneCount}/${chatDayPaths.length} · ${path} (+${changed})`,
+              'info',
+              `색인 start · 채팅 ${displayOrdinal}/${chatDayPaths.length} · ${path}`,
             );
-            this.emitBuildProgress();
-          } catch (err) {
-            if (err instanceof RebuildCancelledError) throw err;
-            await withIndexWriteLock(async () => {
-              chatFail += 1;
-              processedChats.add(path);
-              n += 1;
-              sinceCheckpoint += 1;
-              this.buildProgress = n / total;
-            });
-            const msg = err instanceof Error ? err.message : String(err);
-            this.appendLog('warn', `색인 end · 채팅 실패 · ${path} — ${msg}`);
-            this.emitBuildProgress();
-          }
-        });
-
-        let doCheckpoint = false;
-        let doCancelFlush = false;
-        await withIndexWriteLock(async () => {
-          if (sinceCheckpoint >= CHECKPOINT_EVERY) {
-            sinceCheckpoint = 0;
-            doCheckpoint = true;
-          }
-          if (this.cancelRequested) doCancelFlush = true;
-        });
-        if (doCheckpoint) {
-          await withIndexWriteLock(async () => {
-            await this.writeCheckpoint(
-              [...processedFiles],
-              [...processedChats],
-            );
+            try {
+              const { text } = (await this.backend!.readText?.(path)) || {
+                text: '',
+              };
+              this.assertNotCancelled('채팅 읽기 후', path);
+              const changed = await upsertChatDayDocuments(
+                this.index,
+                this.docIdMap,
+                path,
+                text,
+                {
+                  ...bulk,
+                  yieldEvery: 8,
+                  yieldFn: () => this.yieldOrCancel('채팅 메시지 배치', path),
+                  lucivyBatchSize: isTauriApp() ? 64 : 32,
+                },
+              );
+              this.assertNotCancelled('채팅 upsert 후', path);
+              let doneCount = 0;
+              await withIndexWriteLock(async () => {
+                chatOk += 1;
+                doneCount = chatOk;
+                processedChats.add(path);
+                n += 1;
+                sinceCheckpoint += 1;
+                this.buildProgress = n / total;
+              });
+              this.appendLog(
+                'ok',
+                `색인 end · 채팅 ${doneCount}/${chatDayPaths.length} · ${path} (+${changed})`,
+              );
+              this.emitBuildProgress();
+            } catch (err) {
+              if (err instanceof RebuildCancelledError) {
+                this.logCancelStep(
+                  `abandon-chat:${path}`,
+                  `진행 중이던 채팅 day 색인 즉시 중단 (체크포인트 미포함) · ${path}`,
+                );
+                throw err;
+              }
+              await withIndexWriteLock(async () => {
+                chatFail += 1;
+                processedChats.add(path);
+                n += 1;
+                sinceCheckpoint += 1;
+                this.buildProgress = n / total;
+              });
+              const msg = err instanceof Error ? err.message : String(err);
+              this.appendLog('warn', `색인 end · 채팅 실패 · ${path} — ${msg}`);
+              this.emitBuildProgress();
+            }
           });
-        }
-        if (doCancelFlush) {
-          await this.flushCheckpointBeforeCancel(
-            [...processedFiles],
-            [...processedChats],
-          );
-        }
-      },
-    );
-    this.assertNotCancelled();
+
+          let doCheckpoint = false;
+          await withIndexWriteLock(async () => {
+            if (
+              !this.cancelRequested &&
+              sinceCheckpoint >= this.checkpointEvery
+            ) {
+              sinceCheckpoint = 0;
+              doCheckpoint = true;
+            }
+          });
+          if (doCheckpoint) {
+            this.assertNotCancelled('채팅 주기 체크포인트 전', path);
+            await withIndexWriteLock(async () => {
+              await this.writeCheckpoint(
+                [...processedFiles],
+                [...processedChats],
+              );
+            });
+          }
+          this.assertNotCancelled('채팅 작업 완료 후', path);
+        },
+        {
+          shouldStop: () => this.cancelRequested,
+          onStopClaiming: () => {
+            this.logCancelStep(
+              'chat-claim-stop',
+              '채팅 claim 큐 중단 — 새 day 없음 · 진행 중 day는 포기 후 완료분만 저장',
+            );
+          },
+        },
+      );
+      this.assertNotCancelled('채팅 풀 종료 후');
+    } catch (err) {
+      if (err instanceof RebuildCancelledError || this.cancelRequested) {
+        this.logCancelStep(
+          'chat-pool-drain',
+          '진행 중 채팅 포기 완료 — 완료분만 체크포인트로 진행',
+        );
+        await this.flushCheckpointBeforeCancel(
+          [...processedFiles],
+          [...processedChats],
+        );
+      }
+      throw err;
+    }
+    this.assertNotCancelled('채팅 단계 이후');
     this.appendLog(
       'info',
       `채팅 색인 완료 (day 성공 ${chatOk} · 실패 ${chatFail})`,
@@ -1169,6 +1307,47 @@ class AdvancedSearchEngine {
     }
     if (event.type === 'clear') {
       await this.clearCache();
+      return;
+    }
+    if (event.type === 'retargetPaths') {
+      if (!this.enabled) return;
+      if (!isSearchIsolationReady()) return;
+      await this.ensureLoaded();
+      if (!this.index || !this.lucivyReady) return;
+      const changed = await retargetFileDocumentsByPrefix(
+        this.index,
+        this.docIdMap,
+        event.from,
+        event.to,
+      );
+      if (changed > 0) {
+        this.appendLog(
+          'info',
+          `색인 경로 이동 · ${changed}건 · ${event.from} → ${event.to}`,
+        );
+        this.schedulePersist();
+        this.emit();
+      }
+      return;
+    }
+    if (event.type === 'removePaths') {
+      if (!this.enabled) return;
+      if (!isSearchIsolationReady()) return;
+      await this.ensureLoaded();
+      if (!this.index || !this.lucivyReady) return;
+      const removed = await removeFileDocumentsByPrefix(
+        this.index,
+        this.docIdMap,
+        event.path,
+      );
+      if (removed > 0) {
+        this.appendLog(
+          'info',
+          `색인 문서 제거 · ${removed}건 · ${event.path}`,
+        );
+        this.schedulePersist();
+        this.emit();
+      }
       return;
     }
     if (!this.enabled) return;

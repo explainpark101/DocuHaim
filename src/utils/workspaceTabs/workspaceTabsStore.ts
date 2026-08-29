@@ -89,25 +89,35 @@ export function activateTab(state: WorkspaceTabsState, id: string, now = Date.no
   };
 }
 
-export function openOrActivateChat(state: WorkspaceTabsState, now = Date.now()): WorkspaceTabsState {
+export function openOrActivateChat(
+  state: WorkspaceTabsState,
+  now = Date.now(),
+  opts?: { activate?: boolean },
+): WorkspaceTabsState {
+  const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'chat');
   if (existing) {
-    return activateTab(state, CHAT_TAB_ID, now);
+    return activate ? activateTab(state, CHAT_TAB_ID, now) : state;
   }
   return {
     tabs: [...state.tabs, createChatTab()],
-    activeId: CHAT_TAB_ID,
+    activeId: activate ? CHAT_TAB_ID : state.activeId,
   };
 }
 
-export function openOrActivateSettings(state: WorkspaceTabsState, now = Date.now()): WorkspaceTabsState {
+export function openOrActivateSettings(
+  state: WorkspaceTabsState,
+  now = Date.now(),
+  opts?: { activate?: boolean },
+): WorkspaceTabsState {
+  const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'settings');
   if (existing) {
-    return activateTab(state, SETTINGS_TAB_ID, now);
+    return activate ? activateTab(state, SETTINGS_TAB_ID, now) : state;
   }
   return {
     tabs: [...state.tabs, createSettingsTab()],
-    activeId: SETTINGS_TAB_ID,
+    activeId: activate ? SETTINGS_TAB_ID : state.activeId,
   };
 }
 

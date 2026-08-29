@@ -1,5 +1,9 @@
 import { CHAT_FOLDER } from '@/utils/chatWithMyself/paths.js';
-import { ADVANCED_SEARCH_FOLDER } from '@/utils/advancedSearch/paths';
+import {
+  ADVANCED_SEARCH_FOLDER,
+  isSystemIndexExcludedFolder,
+  SYSTEM_INDEX_EXCLUDED_FOLDERS,
+} from '@/utils/advancedSearch/paths';
 import { isPathUnderExcludedFolders } from '@/utils/advancedSearch/settings';
 
 /** Always indexed when Advanced Search index is built. */
@@ -26,10 +30,14 @@ export const INDEXABLE_EXTENSIONS = new Set([
 
 const EXCLUDED_PREFIXES = [
   `${ADVANCED_SEARCH_FOLDER}/`,
+  /** Underscore alias (never create; hide / skip if present). */
+  '.advanced_search/',
   '.trash/',
   '.images/',
   '.pictures/',
 ];
+
+export { SYSTEM_INDEX_EXCLUDED_FOLDERS, isSystemIndexExcludedFolder };
 
 export type IndexablePathOptions = {
   /** When true, also index OTHER_TEXT_EXTENSIONS. Default false. */

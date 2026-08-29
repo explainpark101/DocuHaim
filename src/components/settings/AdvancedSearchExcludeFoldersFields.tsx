@@ -8,6 +8,7 @@ import {
   normalizeExcludeFolderPath,
   removeExcludeFolder,
 } from '@/utils/advancedSearch/settings';
+import { isSystemIndexExcludedFolder } from '@/utils/advancedSearch/paths';
 
 type FolderTreeNode = {
   type?: string;
@@ -25,6 +26,21 @@ type AdvancedSearchExcludeFoldersFieldsProps = {
   canRequestTree?: boolean;
 };
 
+function filterPickerFolderChildren(
+  children: FolderTreeNode[] | undefined,
+): FolderTreeNode[] {
+  if (!children?.length) return [];
+  return children
+    .filter((child) => {
+      if (child.type !== 'folder' || !child.path) return false;
+      return !isSystemIndexExcludedFolder(child.path);
+    })
+    .map((child) => ({
+      ...child,
+      children: filterPickerFolderChildren(child.children),
+    }));
+}
+
 function FolderPickNode({
   node,
   level,
@@ -40,11 +56,13 @@ function FolderPickNode({
 }) {
   const [open, setOpen] = useState(level < 2);
   if (node.type !== 'folder' || !node.path) return null;
+  if (isSystemIndexExcludedFolder(node.path)) return null;
 
   const path = normalizeExcludeFolderPath(node.path);
   const isSelected = selectedPath === path;
   const isDisabled = isPathUnderExcludedFolders(path, excludedFolders);
   const paddingLeft = `${level * 12 + 8}px`;
+  const visibleChildren = filterPickerFolderChildren(node.children);
 
   return (
     <div>
@@ -79,18 +97,16 @@ function FolderPickNode({
         </div>
       </div>
       {open &&
-        node.children?.map((child) =>
-          child.type === 'folder' ? (
-            <FolderPickNode
-              key={child.path}
-              node={child}
-              level={level + 1}
-              onSelect={onSelect}
-              selectedPath={selectedPath}
-              excludedFolders={excludedFolders}
-            />
-          ) : null,
-        )}
+        visibleChildren.map((child) => (
+          <FolderPickNode
+            key={child.path}
+            node={child}
+            level={level + 1}
+            onSelect={onSelect}
+            selectedPath={selectedPath}
+            excludedFolders={excludedFolders}
+          />
+        ))}
     </div>
   );
 }
@@ -209,7 +225,12 @@ export default function AdvancedSearchExcludeFoldersFields({
           ) : (
             <div className="max-h-[min(50vh,360px)] overflow-auto rounded border border-gray-200 dark:border-odp-borderSoft">
               {(tree || [])
-                .filter((n) => n.type === 'folder')
+                .filter(
+                  (n) =>
+                    n.type === 'folder' &&
+                    n.path &&
+                    !isSystemIndexExcludedFolder(n.path),
+                )
                 .map((node) => (
                   <FolderPickNode
                     key={node.path}
@@ -220,7 +241,12 @@ export default function AdvancedSearchExcludeFoldersFields({
                     excludedFolders={folders}
                   />
                 ))}
-              {(tree || []).filter((n) => n.type === 'folder').length === 0 ? (
+              {(tree || []).filter(
+                (n) =>
+                  n.type === 'folder' &&
+                  n.path &&
+                  !isSystemIndexExcludedFolder(n.path),
+              ).length === 0 ? (
                 <p className="p-3 text-xs text-gray-500">표시할 폴더가 없습니다.</p>
               ) : null}
             </div>

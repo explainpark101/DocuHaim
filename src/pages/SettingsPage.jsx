@@ -83,6 +83,7 @@ import {
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import AdvancedSearchLiveScanLimitsFields from '@/components/settings/AdvancedSearchLiveScanLimitsFields';
 import AdvancedSearchExcludeFoldersFields from '@/components/settings/AdvancedSearchExcludeFoldersFields';
+import AdvancedSearchCheckpointEveryField from '@/components/settings/AdvancedSearchCheckpointEveryField';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { isDesktopApp } from '@/utils/isDesktopApp';
@@ -1215,6 +1216,11 @@ export default function SettingsPage({
             canRequestTree={canScanStorageUsage}
             onRequestTree={onScanStorageUsage}
             onChange={(next) => advancedSearchEngine.setExcludedFolders(next)}
+          />
+          <AdvancedSearchCheckpointEveryField
+            value={advancedSearchStatus.checkpointEvery ?? 5}
+            disabled={!advancedSearchStatus.enabled}
+            onChange={(next) => advancedSearchEngine.setCheckpointEvery(next)}
           />
           <AdvancedSearchLiveScanLimitsFields
             limits={advancedSearchStatus.liveScanLimits}

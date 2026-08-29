@@ -387,7 +387,7 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'settings-inverted-index',
     title: '설정 · 역색인',
-    description: '역색인 on/off·제외 폴더·Live Scan·다시 색인·커버리지',
+    description: '역색인 on/off·제외 폴더·체크포인트·Live Scan·다시 색인·커버리지',
     path: '/settings#settings-inverted-index',
     keywords: [
       '역색인',
@@ -399,6 +399,8 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '폴더',
       '제외',
       'exclude',
+      '체크포인트',
+      'checkpoint',
       '커버리지',
       'coverage',
       'advanced search',

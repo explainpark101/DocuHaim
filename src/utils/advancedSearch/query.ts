@@ -1,6 +1,9 @@
 import { tokenizeForIndexAsync } from '@/utils/advancedSearch/tokenize';
 import type { DocMeta, InMemoryIndex } from '@/utils/advancedSearch/types';
-import { collectSearchableFileEntries } from '@/utils/advancedSearch/collectSources';
+import {
+  collectSearchableFileEntries,
+  isExcludedPath,
+} from '@/utils/advancedSearch/collectSources';
 import {
   matchAppCommandsRanked,
   type AppCommandContext,
@@ -166,6 +169,7 @@ export async function runAdvancedSearch(options: {
   if (options.indexEnabled && options.index) {
     for (const [docId, meta] of options.index.docs) {
       if (meta.kind !== 'file') continue;
+      if (isExcludedPath(meta.path)) continue;
       const title = meta.title || pathBasenameSafe(meta.path);
       const nameLower = title.toLowerCase();
       const pathLower = String(meta.path || '').toLowerCase();
@@ -216,6 +220,7 @@ export async function runAdvancedSearch(options: {
         for (const { docId, score } of lucivyHits) {
           const meta: DocMeta | undefined = options.index.docs.get(docId);
           if (!meta) continue;
+          if (meta.kind === 'file' && isExcludedPath(meta.path)) continue;
           if (meta.kind === 'file') {
             upsert({
               docId,
@@ -254,6 +259,7 @@ export async function runAdvancedSearch(options: {
         .filter((t) => t.length >= 2);
       for (const [docId, meta] of options.index.docs) {
         if (meta.kind !== 'file') continue;
+        if (isExcludedPath(meta.path)) continue;
         const pathLower = String(meta.path || '').toLowerCase();
         if (
           !fuzzyMatchText(pathLower, qLower) &&
@@ -274,6 +280,7 @@ export async function runAdvancedSearch(options: {
 
     for (const [docId, meta] of options.index.docs) {
       if (hits.has(docId)) continue;
+      if (meta.kind === 'file' && isExcludedPath(meta.path)) continue;
       const title = meta.title || pathBasenameSafe(meta.path);
       const haystacks = [
         title,

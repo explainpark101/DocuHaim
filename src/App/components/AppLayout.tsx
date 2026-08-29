@@ -928,17 +928,19 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                             : '없음'}
                   </span>
                   <span className="hidden md:inline">
-                    <Cloud className="w-4 h-4" />
-                    {' '}
-                    {currentFile?.type === 's3'
-                      ? `S3`
-                      : currentFile?.type === 'local'
-                        ? '로컬'
-                        : currentFile?.type === 'webdav'
-                          ? 'WebDAV'
-                          : currentFile?.type === SESSION_STORAGE_TYPE
-                            ? '다운로드 세션'
-                            : '없음'}
+                    <span className='flex items-center gap-1'>
+                      <Cloud className="size-3" />
+                      {' '}
+                      {currentFile?.type === 's3'
+                        ? `S3`
+                        : currentFile?.type === 'local'
+                          ? '로컬'
+                          : currentFile?.type === 'webdav'
+                            ? 'WebDAV'
+                            : currentFile?.type === SESSION_STORAGE_TYPE
+                              ? '다운로드 세션'
+                              : '없음'}
+                    </span>
                   </span>
                 </span>
                 {currentFile && (
@@ -959,7 +961,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               </>
             ) : (
               <span className="truncate text-gray-500 dark:text-odp-muted shrink-0">
-                <MessagesSquare className="w-4 h-4" />
+                <MessagesSquare className="size-3" />
                 {storageMode === 's3'
                   ? ` · S3${s3Creds.bucket ? ` (${s3Creds.bucket})` : ''}`
                   : storageMode === 'local'

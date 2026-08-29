@@ -40,6 +40,32 @@ export function releaseDocId(map: DocIdMapState, docId: string): number | null {
   return numeric;
 }
 
+/**
+ * Remap string doc id while keeping the same Lucivy numeric id.
+ * If `toDocId` already maps to a different numeric id, that mapping is dropped
+ * (caller should remove the destination doc from Lucivy if needed).
+ */
+export function remapDocId(
+  map: DocIdMapState,
+  fromDocId: string,
+  toDocId: string,
+): number | null {
+  if (fromDocId === toDocId) {
+    return map.stringToNumeric.get(fromDocId) ?? null;
+  }
+  const n = map.stringToNumeric.get(fromDocId);
+  if (n == null) return null;
+  const existingTo = map.stringToNumeric.get(toDocId);
+  if (existingTo != null && existingTo !== n) {
+    map.stringToNumeric.delete(toDocId);
+    map.numericToString.delete(existingTo);
+  }
+  map.stringToNumeric.delete(fromDocId);
+  map.stringToNumeric.set(toDocId, n);
+  map.numericToString.set(n, toDocId);
+  return n;
+}
+
 export function hydrateDocIdMapFromDocs(
   docs: Map<string, { numericId?: number }>,
   nextNumericIdHint?: number,

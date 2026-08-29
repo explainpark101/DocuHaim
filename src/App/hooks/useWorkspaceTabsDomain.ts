@@ -217,8 +217,8 @@ export function useWorkspaceTabsDomain({
   );
 
   const openChatWorkspaceTab = useCallback(
-    (options: { navigateUrl?: boolean } = {}) => {
-      const { navigateUrl = true } = options;
+    (options: { navigateUrl?: boolean; activate?: boolean } = {}) => {
+      const { navigateUrl = true, activate = true } = options;
       if (!workspaceTabsEnabledRef.current) {
         const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
           editorContent: editorContentRef.current ?? '',
@@ -246,12 +246,14 @@ export function useWorkspaceTabsDomain({
       if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
         onLeavingDirty(leaving.currentFile, leaving.editorContent);
       }
-      const next = openOrActivateChat(flushed);
+      const next = openOrActivateChat(flushed, Date.now(), { activate });
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
-      setCurrentFile(null);
-      currentFileRef.current = null;
-      if (navigateUrl) navigate('/chat');
+      if (activate) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+      }
+      if (navigateUrl && activate) navigate('/chat');
     },
     [
       navigate,
@@ -266,8 +268,8 @@ export function useWorkspaceTabsDomain({
   );
 
   const openSettingsWorkspaceTab = useCallback(
-    (options: { navigateUrl?: boolean; hash?: string } = {}) => {
-      const { navigateUrl = true, hash } = options;
+    (options: { navigateUrl?: boolean; hash?: string; activate?: boolean } = {}) => {
+      const { navigateUrl = true, hash, activate = true } = options;
       const target =
         typeof hash === 'string' && hash
           ? `/settings${hash.startsWith('#') ? hash : `#${hash}`}`
@@ -299,12 +301,14 @@ export function useWorkspaceTabsDomain({
       if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
         onLeavingDirty(leaving.currentFile, leaving.editorContent);
       }
-      const next = openOrActivateSettings(flushed);
+      const next = openOrActivateSettings(flushed, Date.now(), { activate });
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
-      setCurrentFile(null);
-      currentFileRef.current = null;
-      if (navigateUrl) navigate(target);
+      if (activate) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+      }
+      if (navigateUrl && activate) navigate(target);
     },
     [
       navigate,

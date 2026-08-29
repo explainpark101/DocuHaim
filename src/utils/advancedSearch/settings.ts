@@ -1,5 +1,7 @@
 /** Advanced Search inverted-index preferences (localStorage). */
 
+import { isSystemIndexExcludedFolder } from '@/utils/advancedSearch/paths';
+
 const ENABLED_KEY = 's3haim_advanced_search_index_enabled';
 const INCLUDE_OTHER_FILES_KEY = 's3haim_advanced_search_include_other_files';
 const UI_ANIMATION_KEY = 's3haim_advanced_search_ui_animation';
@@ -206,7 +208,8 @@ export function normalizeExcludeFolders(
 ): string[] {
   const cleaned = (paths || [])
     .map(normalizeExcludeFolderPath)
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((p) => !isSystemIndexExcludedFolder(p));
   cleaned.sort((a, b) => a.localeCompare(b));
   const out: string[] = [];
   for (const p of cleaned) {
@@ -239,6 +242,10 @@ export function addExcludeFolder(
 ): string[] {
   const next = normalizeExcludeFolderPath(path);
   if (!next) return normalizeExcludeFolders(current);
+  // System folders (.trash, .advanced-search, …) are always excluded — not selectable.
+  if (isSystemIndexExcludedFolder(next)) {
+    return normalizeExcludeFolders(current);
+  }
   if (isPathUnderExcludedFolders(next, current)) {
     return normalizeExcludeFolders(current);
   }
@@ -278,6 +285,44 @@ export function saveAdvancedSearchExcludeFolders(
   if (typeof window === 'undefined') return next;
   try {
     window.localStorage.setItem(EXCLUDE_FOLDERS_KEY, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+  return next;
+}
+
+const CHECKPOINT_EVERY_KEY = 's3haim_advanced_search_checkpoint_every';
+
+export const DEFAULT_CHECKPOINT_EVERY = 5;
+
+export const CHECKPOINT_EVERY_BOUNDS = { min: 1, max: 200 } as const;
+
+export function normalizeCheckpointEvery(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_CHECKPOINT_EVERY;
+  const rounded = Math.round(n);
+  return Math.min(
+    CHECKPOINT_EVERY_BOUNDS.max,
+    Math.max(CHECKPOINT_EVERY_BOUNDS.min, rounded),
+  );
+}
+
+export function loadAdvancedSearchCheckpointEvery(): number {
+  if (typeof window === 'undefined') return DEFAULT_CHECKPOINT_EVERY;
+  try {
+    const raw = window.localStorage.getItem(CHECKPOINT_EVERY_KEY);
+    if (raw == null || raw === '') return DEFAULT_CHECKPOINT_EVERY;
+    return normalizeCheckpointEvery(Number.parseInt(raw, 10));
+  } catch {
+    return DEFAULT_CHECKPOINT_EVERY;
+  }
+}
+
+export function saveAdvancedSearchCheckpointEvery(value: unknown): number {
+  const next = normalizeCheckpointEvery(value);
+  if (typeof window === 'undefined') return next;
+  try {
+    window.localStorage.setItem(CHECKPOINT_EVERY_KEY, String(next));
   } catch {
     // ignore
   }

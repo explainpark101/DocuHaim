@@ -83,6 +83,7 @@ import {
 import { isLocalVaultReady } from '@/utils/localVaultReady';
 import type { ExpandedFolderPaths } from '@/utils/expandedFoldersStore';
 import type { TreeTransferBusyEntry } from '@/utils/treeTransferBusy';
+import { useAdvancedSearchIndexFolderIcons } from '@/hooks/useAdvancedSearchIndexFolderIcons';
 import type { SessionTreeNode, SessionWorkspace } from '@/utils/sessionWorkspace';
 
 type TreeNodeDropHandler = NonNullable<ComponentProps<typeof TreeNode>['onDropOnFolder']>;
@@ -488,6 +489,8 @@ export default function Sidebar({
   const TREE_STICKY_SECTION_TOP = 33;
   const coarsePointer = useIsCoarsePointer();
   const mobileTree = isMobileLayout || coarsePointer;
+  const { indexEnabled: indexFolderEnabled, excludedFolders: indexExcludedFolders } =
+    useAdvancedSearchIndexFolderIcons();
   const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
   useTauriTreeDragDrop(onDropOnFolder);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
@@ -1780,6 +1783,8 @@ export default function Sidebar({
                     showModifiedDate={showTreeModifiedDate}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
                     mobileTree={mobileTree}
+                    indexEnabled={indexFolderEnabled}
+                    indexExcludedFolders={indexExcludedFolders}
                   />
                 ))
               ) : (
@@ -1967,6 +1972,8 @@ export default function Sidebar({
                     showModifiedDate={showTreeModifiedDate}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
                     mobileTree={mobileTree}
+                    indexEnabled={indexFolderEnabled}
+                    indexExcludedFolders={indexExcludedFolders}
                   />
                 ))
               ) : (
@@ -2119,6 +2126,8 @@ export default function Sidebar({
                     showModifiedDate={showTreeModifiedDate}
                     stickyTopOffset={TREE_STICKY_SECTION_TOP}
                     mobileTree={mobileTree}
+                    indexEnabled={indexFolderEnabled}
+                    indexExcludedFolders={indexExcludedFolders}
                   />
                 ))
               ) : !isWebdavTreeLoading ? (

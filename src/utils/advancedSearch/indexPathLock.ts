@@ -89,12 +89,20 @@ export async function withIndexWriteLock<T>(fn: () => Promise<T>): Promise<T> {
  * Bounded worker pool: each worker claims the next unclaimed item (by key).
  * Duplicate keys in `items` are skipped after the first claim — no two workers
  * process the same path. Claim is synchronous so JS tasks cannot race.
+ *
+ * `shouldStop` (e.g. rebuild cancel) prevents new claims; in-flight work should
+ * also exit ASAP via its own cancel checks.
  */
 export async function runClaimedWorkQueue<T>(
   items: readonly T[],
   concurrency: number,
   keyOf: (item: T) => string,
   fn: (item: T, claimOrdinal: number) => Promise<void>,
+  options?: {
+    shouldStop?: () => boolean;
+    /** Fired once when claiming stops because `shouldStop` became true. */
+    onStopClaiming?: () => void;
+  },
 ): Promise<void> {
   const n = items.length;
   if (n === 0) return;
@@ -102,8 +110,27 @@ export async function runClaimedWorkQueue<T>(
   const claimedKeys = new Set<string>();
   let cursor = 0;
   let ordinal = 0;
+  let stop = false;
+  let stopClaimNotified = false;
+
+  const stopped = () => stop || Boolean(options?.shouldStop?.());
+
+  const notifyStopClaiming = () => {
+    if (stopClaimNotified) return;
+    if (!options?.shouldStop?.()) return;
+    stopClaimNotified = true;
+    try {
+      options.onStopClaiming?.();
+    } catch {
+      // ignore
+    }
+  };
 
   const claimNext = (): { item: T; ordinal: number } | null => {
+    if (stopped()) {
+      notifyStopClaiming();
+      return null;
+    }
     while (cursor < n) {
       const item = items[cursor] as T;
       cursor += 1;
@@ -119,13 +146,29 @@ export async function runClaimedWorkQueue<T>(
   const limit = Math.max(1, Math.min(concurrency, n));
   const worker = async () => {
     while (true) {
+      if (stopped()) {
+        notifyStopClaiming();
+        return;
+      }
       const claimed = claimNext();
       if (!claimed) return;
-      await fn(claimed.item, claimed.ordinal);
+      try {
+        await fn(claimed.item, claimed.ordinal);
+      } catch (err) {
+        stop = true;
+        notifyStopClaiming();
+        throw err;
+      }
     }
   };
 
-  await Promise.all(Array.from({ length: limit }, () => worker()));
+  const results = await Promise.allSettled(
+    Array.from({ length: limit }, () => worker()),
+  );
+  const firstReject = results.find(
+    (r): r is PromiseRejectedResult => r.status === 'rejected',
+  );
+  if (firstReject) throw firstReject.reason;
 }
 
 /**

@@ -24,6 +24,8 @@ import {
   patchFileTab,
   softCapPrompt,
 } from '@/utils/workspaceTabs/appBridge';
+import { closedTabEntryFromWorkspaceTab, pushClosedTab } from '@/utils/workspaceTabs/closedTabHistory';
+import { openOrReplaceFileTab, evictForSoftCap } from '@/utils/workspaceTabs/workspaceTabsStore';
 import { retainOnlyFileTab } from '@/utils/workspaceTabs/legacyMode';
 import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
 import {
@@ -276,6 +278,7 @@ export function useFileSessionDomain() {
     const isCurrentAttempt = () =>
       openFileRequestSeqByKeyRef.current.get(requestKey) === attemptId;
     const skipNavigate = options.skipNavigate === true;
+    const background = options.background === true;
     const goToViewPath = () => {
       if (!skipNavigate) navigate(`/view/${node.path}`);
     };
@@ -284,7 +287,7 @@ export function useFileSessionDomain() {
     const existingBefore = findFileTab(workspaceTabsRef.current, type, node.path);
     let didNavigateEarly = false;
 
-    if (existingBefore) {
+    if (existingBefore && !background) {
       const activeBefore = getActiveFileTab(workspaceTabsRef.current);
       const shouldActivate = activeBefore ? activeBefore.id !== existingBefore.id : true;
       if (shouldActivate) {
@@ -318,7 +321,7 @@ export function useFileSessionDomain() {
         }
         return false;
       }
-      if (!wasActive) {
+      if (!wasActive && !background) {
         const label = String(node.name || file?.name || node.path || '파일');
         showToast({ message: `「${label}」 로딩 완료`, durationMs: 2200 });
       }
@@ -356,6 +359,44 @@ export function useFileSessionDomain() {
         name: node.name,
         viewer: 'loading',
       };
+
+      if (background) {
+        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+          editorContent: editorContentRef.current ?? '',
+          currentFile: currentFileRef.current,
+          editedFileName: editedFileNameRef.current ?? '',
+        });
+        const evictOpts = { promptCloseDirty: softCapPrompt };
+        const evicted = evictForSoftCap(flushed.tabs, evictOpts);
+        if (!evicted) return false;
+        for (const tab of evicted.closed) {
+          pushClosedTab(closedTabEntryFromWorkspaceTab(tab));
+        }
+        const tabId = `${type}:${node.path}`;
+        const next = openOrReplaceFileTab(
+          { ...flushed, tabs: evicted.tabs },
+          {
+            storageType: type,
+            path: node.path,
+            currentFile: placeholder,
+            editorContent: '',
+            editedFileName: String(node.name || ''),
+          },
+          Date.now(),
+          { activate: false },
+        );
+        workspaceTabsRef.current = next;
+        setWorkspaceTabs(next);
+        if (next.activeId === tabId) {
+          setCurrentFile(placeholder);
+          currentFileRef.current = placeholder;
+          setEditorContent('');
+          editorContentRef.current = '';
+          setEditedFileName(String(node.name || ''));
+          editedFileNameRef.current = String(node.name || '');
+        }
+        return true;
+      }
 
       const ok = commitOpenFile(placeholder, '', { activate: true });
       if (ok && !skipNavigate && !didNavigateEarly) {
