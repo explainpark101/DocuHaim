@@ -9,6 +9,7 @@ import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
 import { headObject } from '@/utils/s3Client';
 import {
   CHAT_TAB_ID,
+  CONTENT_SEARCH_TAB_ID,
   SETTINGS_TAB_ID,
   popClosedTab,
   popTabsRestoreQueue,
@@ -16,6 +17,7 @@ import {
 } from '@/utils/workspaceTabs';
 import { findFileTab, softCapPrompt } from '@/utils/workspaceTabs/appBridge';
 import { closedTabEntryFromWorkspaceTab } from '@/utils/workspaceTabs/closedTabHistory';
+import { fileTabId } from '@/utils/workspaceTabs/helpers';
 import { evictForSoftCap, openOrReplaceFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
 import { readMeta, sortGroupsKo } from '@/utils/chatWithMyself';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
@@ -23,30 +25,6 @@ import { webdavHead } from '@/utils/webdavClient';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { buildSessionTree, listSessionWorkspaces } from '@/utils/sessionWorkspace';
 import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
-
-const TAB_RESTORE_FILE_CONCURRENCY = 2;
-
-async function forEachWithConcurrency<T>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<void>,
-): Promise<void> {
-  if (items.length === 0) return;
-  let i = 0;
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    async () => {
-      while (i < items.length) {
-        const idx = i++;
-        const item = items[idx];
-        if (item === undefined) return;
-        await fn(item);
-        await yieldToMain();
-      }
-    },
-  );
-  await Promise.all(workers);
-}
 
 /**
  * useAdvancedSearchTabsDomain: context-owned domain handlers.
@@ -201,37 +179,77 @@ export function useAdvancedSearchTabsDomain() {
 
       const targetActiveId = explicitActiveId ?? persisted.activeId;
       let restoredAny = false;
+      let activatedTarget = false;
 
-      // Phase 1: open chat/settings shells without stealing focus.
+      const maybeActivateTarget = (tabId: string) => {
+        if (activatedTarget || !targetActiveId || tabId !== targetActiveId) return;
+        if (!workspaceTabsRef.current.tabs.some((t) => t.id === tabId)) return;
+        activateWorkspaceTab(tabId, { navigateUrl: navigateActiveUrl && !activatedTarget });
+        activatedTarget = true;
+      };
+
+      const loadFileTabContent = async (tab: { type: string; path: string }) => {
+        try {
+          const node = await resolveClosedFileNode({
+            kind: 'file',
+            storageType: tab.type,
+            path: tab.path,
+          });
+          if ((node as any)?.type !== 'file') return;
+          await selectFileRawRef.current?.(tab.type, node, {
+            skipNavigate: true,
+            background: true,
+          });
+        } catch (err) {
+          console.warn('Failed to restore workspace tab:', tab.path, err);
+        }
+      };
+
+      // Restore one tab at a time so keep-alive editors mount incrementally (avoid startup spikes).
       for (const tab of persisted.tabs) {
         if (tab.kind === 'chat') {
           openChatWorkspaceTab({ navigateUrl: false, activate: false });
           restoredAny = true;
-        } else if (tab.kind === 'settings') {
-          openSettingsWorkspaceTab({ navigateUrl: false, activate: false });
-          restoredAny = true;
-        } else if (tab.kind === 'content-search') {
-          openContentSearchWorkspaceTab({ navigateUrl: false, activate: false });
-          restoredAny = true;
-        }
-      }
-
-      // Phase 2: create file tab shells (loading placeholders) without activation.
-      const fileTabs = persisted.tabs.filter((t: any) => t.kind === 'file');
-      let nextState = workspaceTabsRef.current;
-      for (const tab of fileTabs) {
-        if (findFileTab(nextState, tab.type, tab.path)) {
-          restoredAny = true;
+          maybeActivateTarget(CHAT_TAB_ID);
+          await yieldToMain();
           continue;
         }
+        if (tab.kind === 'settings') {
+          openSettingsWorkspaceTab({ navigateUrl: false, activate: false });
+          restoredAny = true;
+          maybeActivateTarget(SETTINGS_TAB_ID);
+          await yieldToMain();
+          continue;
+        }
+        if (tab.kind === 'content-search') {
+          openContentSearchWorkspaceTab({ navigateUrl: false, activate: false });
+          restoredAny = true;
+          maybeActivateTarget(CONTENT_SEARCH_TAB_ID);
+          await yieldToMain();
+          continue;
+        }
+
+        const tabId = fileTabId(tab.type, tab.path);
+        const existing = findFileTab(workspaceTabsRef.current, tab.type, tab.path);
+        if (existing) {
+          restoredAny = true;
+          maybeActivateTarget(tabId);
+          await yieldToMain();
+          if (existing.currentFile?.viewer === 'loading') {
+            await loadFileTabContent(tab);
+            await yieldToMain();
+          }
+          continue;
+        }
+
         const fallbackName = tab.path.split('/').filter(Boolean).pop() || 'file';
-        const evicted = evictForSoftCap(nextState.tabs, { promptCloseDirty: softCapPrompt });
+        const evicted = evictForSoftCap(workspaceTabsRef.current.tabs, { promptCloseDirty: softCapPrompt });
         if (!evicted) continue;
         for (const closed of evicted.closed) {
           pushClosedTab(closedTabEntryFromWorkspaceTab(closed));
         }
-        nextState = openOrReplaceFileTab(
-          { ...nextState, tabs: evicted.tabs },
+        const nextState = openOrReplaceFileTab(
+          { ...workspaceTabsRef.current, tabs: evicted.tabs },
           {
             storageType: tab.type,
             path: tab.path,
@@ -247,59 +265,21 @@ export function useAdvancedSearchTabsDomain() {
           Date.now(),
           { activate: false },
         );
+        workspaceTabsRef.current = nextState;
+        setWorkspaceTabs(nextState);
         restoredAny = true;
-      }
-      workspaceTabsRef.current = nextState;
-      setWorkspaceTabs(nextState);
-      await yieldToMain();
+        maybeActivateTarget(tabId);
+        await yieldToMain();
 
-      // Phase 3: activate the last-used tab from the start.
-      if (targetActiveId === CHAT_TAB_ID) {
-        if (nextState.tabs.some((t) => t.id === CHAT_TAB_ID)) {
-          activateWorkspaceTab(CHAT_TAB_ID, { navigateUrl: navigateActiveUrl });
-        }
-      } else if (targetActiveId === SETTINGS_TAB_ID) {
-        if (nextState.tabs.some((t) => t.id === SETTINGS_TAB_ID)) {
-          activateWorkspaceTab(SETTINGS_TAB_ID, { navigateUrl: navigateActiveUrl });
-        }
-      } else if (typeof targetActiveId === 'string' && targetActiveId) {
-        const activeExists = nextState.tabs.some((tab) => tab.id === targetActiveId);
-        if (activeExists) {
-          activateWorkspaceTab(targetActiveId, { navigateUrl: navigateActiveUrl });
-        }
+        await loadFileTabContent(tab);
+        await yieldToMain();
       }
 
-      // Phase 4: load file tab contents with limited concurrency (avoid startup spikes).
-      await forEachWithConcurrency(fileTabs, TAB_RESTORE_FILE_CONCURRENCY, async (tab: any) => {
-        try {
-          const node = await resolveClosedFileNode({
-            kind: 'file',
-            storageType: tab.type,
-            path: tab.path,
-          });
-          if ((node as any)?.type !== 'file') return;
-          await selectFileRawRef.current?.(tab.type, node, {
-            skipNavigate: true,
-            background: true,
-          });
-        } catch (err) {
-          console.warn('Failed to restore workspace tab:', tab.path, err);
-        }
-      });
-
-      // Re-activate in case any load briefly changed focus.
-      if (targetActiveId === CHAT_TAB_ID) {
-        if (workspaceTabsRef.current.tabs.some((t) => t.id === CHAT_TAB_ID)) {
-          activateWorkspaceTab(CHAT_TAB_ID, { navigateUrl: false });
-        }
-      } else if (targetActiveId === SETTINGS_TAB_ID) {
-        if (workspaceTabsRef.current.tabs.some((t) => t.id === SETTINGS_TAB_ID)) {
-          activateWorkspaceTab(SETTINGS_TAB_ID, { navigateUrl: false });
-        }
-      } else if (typeof targetActiveId === 'string' && targetActiveId) {
-        if (workspaceTabsRef.current.tabs.some((tab) => tab.id === targetActiveId)) {
-          activateWorkspaceTab(targetActiveId, { navigateUrl: false });
-        }
+      if (
+        targetActiveId &&
+        workspaceTabsRef.current.tabs.some((t) => t.id === targetActiveId)
+      ) {
+        activateWorkspaceTab(targetActiveId, { navigateUrl: false });
       }
 
       return restoredAny;
@@ -307,6 +287,7 @@ export function useAdvancedSearchTabsDomain() {
     [
       activateWorkspaceTab,
       openChatWorkspaceTab,
+      openContentSearchWorkspaceTab,
       openSettingsWorkspaceTab,
       resolveClosedFileNode,
       setWorkspaceTabs,
