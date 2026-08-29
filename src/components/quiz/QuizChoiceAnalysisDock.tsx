@@ -16,7 +16,7 @@ const TocResizeHandle = TocResizeHandleJs as unknown as ComponentType<{
   label?: string;
 }>;
 
-export type QuizChoiceAnalysisDockMode = 'create' | 'regenerate';
+export type QuizChoiceAnalysisDockMode = 'create' | 'regenerate' | 'followup';
 
 type QuizChoiceAnalysisDockProps = {
   open: boolean;
@@ -24,6 +24,7 @@ type QuizChoiceAnalysisDockProps = {
   option: number | null;
   mode: QuizChoiceAnalysisDockMode;
   prompt: string;
+  existingAnalysis?: string;
   busy: boolean;
   onPromptChange: (value: string) => void;
   onClose: () => void;
@@ -31,6 +32,7 @@ type QuizChoiceAnalysisDockProps = {
 };
 
 function dockTitle(isCorrectOption: boolean, mode: QuizChoiceAnalysisDockMode): string {
+  if (mode === 'followup') return '추가 질문';
   const base = isCorrectOption ? '정답 분석' : '오답 분석';
   return mode === 'regenerate' ? `${base} 재생성` : base;
 }
@@ -41,6 +43,7 @@ export default function QuizChoiceAnalysisDock({
   option,
   mode,
   prompt,
+  existingAnalysis = '',
   busy,
   onPromptChange,
   onClose,
@@ -71,14 +74,19 @@ export default function QuizChoiceAnalysisDock({
     ? 'text-emerald-900 dark:text-emerald-100'
     : 'text-rose-900 dark:text-rose-100';
 
+  const isFollowUp = mode === 'followup';
+  const promptRequired = isFollowUp;
+  const canGenerate = !busy && (!promptRequired || prompt.trim().length > 0);
+
   const handlePromptKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (busy) return;
+      if (promptRequired && !prompt.trim()) return;
       if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
       event.preventDefault();
       onGenerate();
     },
-    [busy, onGenerate],
+    [busy, onGenerate, prompt, promptRequired],
   );
 
   return (
@@ -131,19 +139,29 @@ export default function QuizChoiceAnalysisDock({
                   </div>
                   <p className="mt-1 line-clamp-3 opacity-90">{question.question}</p>
                 </div>
+                {isFollowUp && existingAnalysis.trim() ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] text-slate-600 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-muted">
+                    <div className="mb-1 font-semibold text-slate-700 dark:text-odp-fgStrong">
+                      기존 분석
+                    </div>
+                    <p className="line-clamp-6 whitespace-pre-wrap">{existingAnalysis.trim()}</p>
+                  </div>
+                ) : null}
                 <label className="block space-y-1.5">
                   <span className="text-xs font-semibold text-slate-700 dark:text-odp-fgStrong">
-                    궁금한 점
+                    {isFollowUp ? '추가 질문' : '궁금한 점'}
                     <span className="ml-1 font-normal text-slate-500 dark:text-odp-muted">
-                      (선택)
+                      {isFollowUp ? '(필수)' : '(선택)'}
                     </span>
                   </span>
                   <textarea
                     className="quiz-body-field min-h-28 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
                     placeholder={
-                      isCorrectOption
-                        ? '비워 두면 정답/오답 이유를 기본 설명합니다. 예: 왜 이 보기가 정답인지…'
-                        : '비워 두면 오답 이유를 기본 설명합니다. 예: 2번과 3번의 차이…'
+                      isFollowUp
+                        ? '예: 지니 지수와 엔트로피의 수식적 차이가 뭔가요?'
+                        : isCorrectOption
+                          ? '비워 두면 정답/오답 이유를 기본 설명합니다. 예: 왜 이 보기가 정답인지…'
+                          : '비워 두면 오답 이유를 기본 설명합니다. 예: 2번과 3번의 차이…'
                     }
                     value={prompt}
                     disabled={busy}
@@ -151,7 +169,9 @@ export default function QuizChoiceAnalysisDock({
                     onKeyDown={handlePromptKeyDown}
                   />
                   <p className="text-[10px] text-slate-500 dark:text-odp-muted">
-                    비워 두고 생성하면 기본 프롬프트로 설명합니다.{' '}
+                    {isFollowUp
+                      ? '기존 분석과 문제 내용을 바탕으로 답변합니다.'
+                      : '비워 두고 생성하면 기본 프롬프트로 설명합니다.'}{' '}
                     <kbd className="rounded border border-slate-300 bg-slate-100 px-1 py-px font-mono text-[9px] dark:border-odp-borderSoft dark:bg-odp-bgSoft">
                       ⌘/Ctrl+Enter
                     </kbd>
@@ -175,11 +195,11 @@ export default function QuizChoiceAnalysisDock({
                   variant="primary"
                   size="sm"
                   className="flex-1"
-                  disabled={busy}
+                  disabled={!canGenerate}
                   onClick={onGenerate}
                 >
                   <Sparkles size={14} />
-                  {busy ? '생성 중…' : '생성'}
+                  {busy ? '생성 중…' : isFollowUp ? '답변 생성' : '생성'}
                 </Button>
               </div>
             </div>

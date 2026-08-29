@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  appendFollowUpChoiceAnalysis,
   appendRegeneratedChoiceAnalysis,
+  ensureChoiceAnalysisFollowUpHeader,
   flatWrongChoiceExplanations,
+  mergeStreamingFollowUpChoiceAnalysis,
   mergeStreamingRegeneratedChoiceAnalysis,
   nestWrongChoiceExplanations,
   normalizeWrongChoiceExplanations,
@@ -39,6 +42,25 @@ describe('quizWrongChoiceExplanations', () => {
     expect(mergeStreamingRegeneratedChoiceAnalysis('first', 'partial')).toBe(
       'first\n\n---\n\npartial',
     );
+  });
+
+  it('appends follow-up analysis with hr separator and header', () => {
+    const block = '**[추가 질문 답변: 지니 지수와 엔트로피의 수식적 차이]**\nanswer';
+    expect(appendFollowUpChoiceAnalysis('first', block, 'fallback')).toBe(
+      `first\n\n<hr/>\n\n${block}`,
+    );
+    expect(mergeStreamingFollowUpChoiceAnalysis('first', 'partial')).toBe(
+      'first\n\n<hr/>\n\npartial',
+    );
+    expect(
+      ensureChoiceAnalysisFollowUpHeader('body only', '질문 요약'),
+    ).toBe('**[추가 질문 답변: 질문 요약]**\nbody only');
+    expect(
+      ensureChoiceAnalysisFollowUpHeader(
+        '**[추가 질문 답변: already]**\nbody',
+        'ignored',
+      ),
+    ).toBe('**[추가 질문 답변: already]**\nbody');
   });
 
   it('filters by question id and option count', () => {

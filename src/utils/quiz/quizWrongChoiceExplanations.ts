@@ -38,6 +38,51 @@ export function mergeStreamingRegeneratedChoiceAnalysis(
   return `${prev}${REGENERATED_CHOICE_ANALYSIS_SEPARATOR}${chunk}`;
 }
 
+export const CHOICE_ANALYSIS_FOLLOW_UP_SEPARATOR = '<hr/>\n\n';
+
+export const CHOICE_ANALYSIS_FOLLOW_UP_HEADER_RE =
+  /^\*\*\[추가 질문 답변:\s*([^\]]+)\]\*\*\s*\n?/;
+
+export function formatChoiceAnalysisFollowUpHeader(title: string): string {
+  const trimmed = String(title || '').trim() || '추가 질문';
+  return `**[추가 질문 답변: ${trimmed}]**\n`;
+}
+
+/** Ensure streamed/final follow-up text starts with the required header line. */
+export function ensureChoiceAnalysisFollowUpHeader(
+  text: string,
+  fallbackTitle: string,
+): string {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return formatChoiceAnalysisFollowUpHeader(fallbackTitle);
+  if (CHOICE_ANALYSIS_FOLLOW_UP_HEADER_RE.test(trimmed)) return trimmed;
+  return `${formatChoiceAnalysisFollowUpHeader(fallbackTitle)}${trimmed}`;
+}
+
+/** Append a follow-up answer block below existing analysis (`<hr/>` separator). */
+export function appendFollowUpChoiceAnalysis(
+  previous: string,
+  followUpBlock: string,
+  fallbackTitle: string,
+): string {
+  const prev = String(previous || '').trimEnd();
+  const block = ensureChoiceAnalysisFollowUpHeader(followUpBlock, fallbackTitle);
+  if (!prev) return block;
+  if (!block) return prev;
+  return `${prev}\n\n${CHOICE_ANALYSIS_FOLLOW_UP_SEPARATOR}${block}`;
+}
+
+export function mergeStreamingFollowUpChoiceAnalysis(
+  previous: string,
+  streamed: string,
+): string {
+  const prev = String(previous || '').trimEnd();
+  const chunk = String(streamed || '');
+  if (!prev) return chunk;
+  if (!chunk) return prev;
+  return `${prev}\n\n${CHOICE_ANALYSIS_FOLLOW_UP_SEPARATOR}${chunk}`;
+}
+
 export function resolveChoiceAnalysisUserInstructions(
   raw: string,
   isCorrectOption: boolean,

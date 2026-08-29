@@ -616,6 +616,53 @@ ${userBlock}
   );
 }
 
+export async function generateChoiceAnalysisFollowUp(params: {
+  profiles: LlmProviderProfile[];
+  question: QuizQuestion;
+  selectedOption: number;
+  existingAnalysis: string;
+  userQuestion: string;
+  signal?: AbortSignal;
+  onChunk?: (accumulated: string) => void;
+}): Promise<string> {
+  const q = params.question;
+  const opts = q.options || [];
+  const selected = params.selectedOption;
+  const instruction = `수험자가 객관식 문제 풀이 후 아래 분석 내용을 읽고 추가 질문을 했습니다. 문제, 보기, 기존 분석만 근거로 추가 질문에 답하세요.
+
+[문제]
+${q.question}
+
+[보기]
+${opts.map((o, i) => `${i + 1}. ${o}`).join('\n')}
+
+[정답] ${q.answer}번
+[수험자가 선택한 보기] ${selected}번 (${opts[selected - 1] || ''})
+[기존 해설] ${q.explanation || ''}
+
+[기존 오답/정답 분석]
+${params.existingAnalysis.trim()}
+
+[수험자 추가 질문]
+${params.userQuestion.trim()}
+
+응답 형식 (반드시 준수):
+- 첫 줄은 반드시 **[추가 질문 답변: {질문 요약}]** 형식 (마크다운 볼드, 한 줄)
+- 질문 요약은 수험자 질문의 핵심을 짧게 요약 (예: 지니 지수와 엔트로피의 수식적 차이)
+- 그 다음 줄부터 답변 본문 (마크다운 가능)
+- 서두 설명이나 JSON은 넣지 마세요.`;
+
+  return runQuizLlmPrompt(
+    runOpts(
+      params.profiles,
+      instruction,
+      '당신은 시험 해설 튜터입니다. 문제와 기존 분석 내용만 근거로 답하세요.',
+      0.5,
+      streamExtra({ signal: params.signal, onChunk: params.onChunk }),
+    ),
+  );
+}
+
 export async function generateSimilarChoiceQuestion(params: {
   profiles: LlmProviderProfile[];
   question: QuizQuestion;

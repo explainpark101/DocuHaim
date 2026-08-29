@@ -219,6 +219,8 @@ ESSAY_BODY := '>' WS '**📖 모범 답안:**' NL ('>' LINE)*
 
 - Lucivy index is optional for RAG ranking; selected files are always readable via storage `readText`.
 - Wrong-choice AI explanations are persisted in `quiz-session` as `wrongChoiceExplanations` (not inline in question blocks).
+  - **재생성** appends below prior analysis with `---` separator.
+  - **추가질문** appends a follow-up answer below prior analysis with `<hr/>`, block header `**[추가 질문 답변: …]**`.
 - Per-question study memos are persisted in `quiz-session` as `questionMemos` (Markdown; edited via **메모작성** in 퀴즈 모드).
 
 ### AI generation logs (`.quiz/` sidecar)

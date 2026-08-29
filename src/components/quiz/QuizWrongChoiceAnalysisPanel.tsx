@@ -3,7 +3,7 @@ import QuizMdPreview from '@/components/quiz/QuizMdPreview';
 import type { QuizChoiceAnalysisDockMode } from '@/components/quiz/QuizChoiceAnalysisDock';
 import { wrongChoiceExplanationKey } from '@/utils/quiz/quizWrongChoiceExplanations';
 import type { QuizQuestion } from '@/utils/quiz/quizTypes';
-import { RefreshCw, Sparkles, Wand2 } from 'lucide-react';
+import { MessageCircle, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
 import { RadioGroup } from 'radix-ui';
 
 type QuizWrongChoiceAnalysisPanelProps = {
@@ -119,6 +119,16 @@ export default function QuizWrongChoiceAnalysisPanel({
             )}
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={isBusy}
+              onClick={() => onOpenAnalysisDock(focusOption, 'followup')}
+            >
+              <MessageCircle size={14} />
+              추가질문
+            </Button>
             <Button
               type="button"
               variant="secondary"

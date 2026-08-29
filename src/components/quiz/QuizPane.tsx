@@ -66,6 +66,7 @@ import {
   generateSimilarChoiceQuestion,
   generateDerivedQuestion,
   generateWrongChoiceExplanation,
+  generateChoiceAnalysisFollowUp,
   gradeSubjectiveAnswer,
   isQuizLlmSetupIssue,
 } from '@/utils/quiz/quizLlmService';
@@ -116,8 +117,11 @@ import { buildWrongQuestionsExtractQuiz } from '@/utils/quiz/buildWrongQuestions
 import { resolveWrongQuizExtractPath } from '@/utils/quiz/quizWrongExtractPath';
 import {
   appendRegeneratedChoiceAnalysis,
+  appendFollowUpChoiceAnalysis,
+  ensureChoiceAnalysisFollowUpHeader,
   flatWrongChoiceExplanations,
   mergeStreamingRegeneratedChoiceAnalysis,
+  mergeStreamingFollowUpChoiceAnalysis,
   nestWrongChoiceExplanations,
   resolveChoiceAnalysisUserInstructions,
   wrongChoiceExplanationKey,
@@ -1466,6 +1470,55 @@ export default function QuizPane({
     mode: QuizChoiceAnalysisDockMode = 'create',
   ) => {
     const isCorrectOption = selected === q.answer;
+    if (mode === 'followup') {
+      const userQuestion = String(userInstructions || '').trim();
+      if (!userQuestion) {
+        showToast({ message: '추가 질문을 입력하세요.', durationMs: 2200 });
+        return;
+      }
+      if (!(await ensureQuizLlmReady())) return;
+      const key = wrongChoiceExplanationKey(q.id, selected);
+      const previous = String(wrongExpsRef.current[key] || '').trim();
+      if (!previous) {
+        showToast({ message: '먼저 분석을 생성하세요.', durationMs: 2200 });
+        return;
+      }
+      setBusyId(key);
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      const fallbackTitle = userQuestion.slice(0, 60);
+      try {
+        const text = await generateChoiceAnalysisFollowUp({
+          profiles,
+          question: q,
+          selectedOption: selected,
+          existingAnalysis: previous,
+          userQuestion,
+          signal: ac.signal,
+          onChunk: (accumulated) => {
+            const merged = mergeStreamingFollowUpChoiceAnalysis(previous, accumulated);
+            setWrongExps((prev) => ({ ...prev, [key]: merged }));
+          },
+        });
+        const block = ensureChoiceAnalysisFollowUpHeader(text, fallbackTitle);
+        const finalText = appendFollowUpChoiceAnalysis(previous, block, fallbackTitle);
+        const nextWrongExps = { ...wrongExpsRef.current, [key]: finalText };
+        wrongExpsRef.current = nextWrongExps;
+        setWrongExps(nextWrongExps);
+        setChoiceAnalysisDock(null);
+        setChoiceAnalysisPrompt('');
+        await saveAfterAiGenerate(nextWrongExps);
+      } catch (err) {
+        if (ac.signal.aborted) return;
+        setWrongExps((prev) => ({ ...prev, [key]: previous }));
+        reportQuizError('추가 질문 답변 실패', err, '추가 질문 답변 실패');
+      } finally {
+        setBusyId(null);
+      }
+      return;
+    }
+
     const instructions = resolveChoiceAnalysisUserInstructions(
       userInstructions,
       isCorrectOption,
@@ -2338,6 +2391,18 @@ export default function QuizPane({
           option={choiceAnalysisDock?.option ?? null}
           mode={choiceAnalysisDock?.mode ?? 'create'}
           prompt={choiceAnalysisPrompt}
+          existingAnalysis={
+            choiceAnalysisDock && choiceAnalysisDock.mode === 'followup'
+              ? String(
+                  wrongExps[
+                    wrongChoiceExplanationKey(
+                      choiceAnalysisDock.questionId,
+                      choiceAnalysisDock.option,
+                    )
+                  ] || '',
+                )
+              : ''
+          }
           busy={
             choiceAnalysisDock != null &&
             busyId ===
