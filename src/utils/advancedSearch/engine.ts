@@ -1,7 +1,15 @@
 import {
   collectIndexablePathsFromTree,
   isIndexableFilePath,
+  isPathUnderFolder,
 } from '@/utils/advancedSearch/collectSources';
+import {
+  buildFileSizeMapFromTree,
+  countIndexChunksForLength,
+  FILE_INDEX_LARGE_BYTES,
+  isKnownLargeIndexFile,
+  orderFilePathsForIndexing,
+} from '@/utils/advancedSearch/fileIndexChunking';
 import { indexableEncMdBody } from '@/utils/encMd';
 import {
   pruneIndexToPaths,
@@ -129,8 +137,19 @@ export type RebuildOptions = {
    * - true → resume from checkpoint
    * - false → discard checkpoint and rebuild from scratch
    * When no checkpoint, ignored.
+   * Ignored for folder-scoped incremental index.
    */
   resume?: boolean;
+  /**
+   * Index only this vault folder (and descendants). Merges into the existing
+   * Lucivy index (does not wipe / prune the rest of the vault).
+   */
+  folderPath?: string;
+  /**
+   * When true with `folderPath`, ignore user excludedFolders for this run.
+   * System excludes (`.trash`, `.advanced-search`, …) still apply.
+   */
+  ignoreExcludedFolders?: boolean;
 };
 
 export type RebuildCheckpointInfo = {
@@ -783,6 +802,13 @@ class AdvancedSearchEngine {
       this.emit();
       return;
     }
+
+    const folderPath = String(options.folderPath || '').replace(/^\/+/, '');
+    const folderScoped = Boolean(folderPath);
+    const ignoreExcluded = Boolean(
+      folderScoped && options.ignoreExcludedFolders,
+    );
+
     this.building = true;
     this.cancelRequested = false;
     this.cancelLogKeys.clear();
@@ -792,12 +818,21 @@ class AdvancedSearchEngine {
     this.lastBuildEmitAt = 0;
     this.clearBuildLogs();
     const engineLabel = isTauriApp() ? 'native Lucivy' : 'Lucivy';
-    this.appendLog(
-      'info',
-      this.includeOtherFiles
-        ? `색인 시작 (Markdown + 기타 텍스트, ${engineLabel})`
-        : `색인 시작 (Markdown만, ${engineLabel})`,
-    );
+    if (folderScoped) {
+      this.appendLog(
+        'info',
+        `폴더 색인 시작 · ${folderPath}${
+          ignoreExcluded ? ' (제외 폴더 무시)' : ''
+        } · ${engineLabel}`,
+      );
+    } else {
+      this.appendLog(
+        'info',
+        this.includeOtherFiles
+          ? `색인 시작 (Markdown + 기타 텍스트, ${engineLabel})`
+          : `색인 시작 (Markdown만, ${engineLabel})`,
+      );
+    }
     this.emit();
 
     try {
@@ -808,44 +843,86 @@ class AdvancedSearchEngine {
         fromGet.length > 0
           ? fromGet
           : ((await this.backend.listAll?.()) as TreeNode[]) || [];
-      const { filePaths, chatDayPaths } = collectIndexablePathsFromTree(
+      const pathOpts = ignoreExcluded
+        ? {
+            includeOtherFiles: this.includeOtherFiles,
+            excludedFolders: [] as string[],
+            ignoreExcludedFolders: true,
+          }
+        : this.indexPathOptions();
+      let { filePaths, chatDayPaths } = collectIndexablePathsFromTree(
         tree as TreeNode[],
-        this.indexPathOptions(),
+        pathOpts,
       );
+      if (folderScoped) {
+        filePaths = filePaths.filter((p) => isPathUnderFolder(p, folderPath));
+        chatDayPaths = chatDayPaths.filter((p) =>
+          isPathUnderFolder(p, folderPath),
+        );
+      }
+      const fileSizeByPath = buildFileSizeMapFromTree(tree as TreeNode[]);
+      const largeFileCount = filePaths.filter((p) =>
+        isKnownLargeIndexFile(p, fileSizeByPath),
+      ).length;
+      filePaths = orderFilePathsForIndexing(filePaths, fileSizeByPath);
       const total = Math.max(filePaths.length + chatDayPaths.length, 1);
       this.ensureBuildLogCapacity(filePaths.length, chatDayPaths.length);
       this.appendLog(
         'info',
         `대상: 파일 ${filePaths.length}${this.includeOtherFiles ? ' (md+기타)' : ' (md)'} · 채팅 day ${chatDayPaths.length}${
-          this.excludedFolders.length
-            ? ` · 제외 폴더 ${this.excludedFolders.length}`
+          folderScoped
+            ? ` · 폴더 ${folderPath}`
+            : this.excludedFolders.length
+              ? ` · 제외 폴더 ${this.excludedFolders.length}`
+              : ''
+        }${ignoreExcluded ? ' · 제외 폴더 무시' : ''}${
+          largeFileCount > 0
+            ? ` · 대용량(≥${Math.round(FILE_INDEX_LARGE_BYTES / 1024)}KB) ${largeFileCount}개 후순위·청크`
             : ''
         }`,
       );
       this.emit();
 
-      let checkpoint = await this.loadCompatibleCheckpoint();
-      if (checkpoint && options.resume === false) {
-        this.appendLog('info', '체크포인트를 버리고 처음부터 색인합니다.');
+      if (folderScoped) {
+        // Merge into existing index — do not wipe or use full-rebuild checkpoints.
+        await this.ensureLoaded();
+        if (!this.lucivyReady) {
+          throw new Error(
+            searchIsolationBlockedReason() ||
+              'Lucivy index is not ready for folder indexing',
+          );
+        }
+        await this.rebuildWithLucivy(filePaths, chatDayPaths, total, null, {
+          incremental: true,
+        });
+      } else {
+        let checkpoint = await this.loadCompatibleCheckpoint();
+        if (checkpoint && options.resume === false) {
+          this.appendLog('info', '체크포인트를 버리고 처음부터 색인합니다.');
+          await this.clearCheckpoint();
+          checkpoint = null;
+          this.hasCheckpoint = false;
+          this.checkpointProcessedCount = 0;
+        } else if (checkpoint && options.resume !== false) {
+          this.appendLog('info', '저장된 체크포인트에서 이어서 색인합니다.');
+        }
+
+        await this.rebuildWithLucivy(filePaths, chatDayPaths, total, checkpoint, {
+          incremental: false,
+        });
         await this.clearCheckpoint();
-        checkpoint = null;
         this.hasCheckpoint = false;
         this.checkpointProcessedCount = 0;
-      } else if (checkpoint && options.resume !== false) {
-        this.appendLog('info', '저장된 체크포인트에서 이어서 색인합니다.');
       }
-
-      await this.rebuildWithLucivy(filePaths, chatDayPaths, total, checkpoint);
-      await this.clearCheckpoint();
-      this.hasCheckpoint = false;
-      this.checkpointProcessedCount = 0;
     } catch (err) {
       if (err instanceof RebuildCancelledError || this.cancelRequested) {
         this.lastBuildCancelled = true;
         this.lastError = null;
         this.appendLog(
           'warn',
-          '중지 · 완료 — 체크포인트 유지 (다시 색인 시 이어서/처음부터 선택)',
+          folderScoped
+            ? '중지 · 폴더 색인 중단 (완료분까지 저장됨)'
+            : '중지 · 완료 — 체크포인트 유지 (다시 색인 시 이어서/처음부터 선택)',
         );
       } else {
         this.lastError = err instanceof Error ? err.message : String(err);
@@ -856,7 +933,10 @@ class AdvancedSearchEngine {
       this.building = false;
       this.buildProgress = null;
       if (!this.lastError && !this.lastBuildCancelled) {
-        this.appendLog('ok', '백그라운드 색인 종료');
+        this.appendLog(
+          'ok',
+          folderScoped ? '폴더 색인 종료' : '백그라운드 색인 종료',
+        );
       }
       void this.refreshCheckpointStatus();
       this.emit();
@@ -868,6 +948,7 @@ class AdvancedSearchEngine {
     chatDayPaths: string[],
     total: number,
     checkpoint: RebuildCheckpointRecord | null,
+    mode: { incremental: boolean } = { incremental: false },
   ): Promise<void> {
     const api = await this.loadLucivyApi();
     const processedFiles = new Set(
@@ -880,7 +961,14 @@ class AdvancedSearchEngine {
     const remainingFiles = filePaths.filter((p) => !processedFiles.has(p));
     const remainingChats = chatDayPaths.filter((p) => !processedChats.has(p));
 
-    if (checkpoint) {
+    if (mode.incremental) {
+      // Keep current Lucivy + docs; only upsert the scoped paths.
+      this.appendLog(
+        'info',
+        `기존 색인에 병합 · 남은 파일 ${remainingFiles.length} · 채팅 day ${remainingChats.length}`,
+      );
+      this.emit();
+    } else if (checkpoint) {
       this.appendLog(
         'info',
         `체크포인트에서 재개 (파일 ${processedFiles.size}/${filePaths.length} · 채팅 ${processedChats.size}/${chatDayPaths.length})`,
@@ -937,6 +1025,8 @@ class AdvancedSearchEngine {
     this.lucivyReady = true;
     this.loaded = true;
 
+    const skipCheckpoint = mode.incremental;
+
     const bulk = {
       skipRecount: true as const,
       isCancelled: () => this.cancelRequested,
@@ -980,6 +1070,13 @@ class AdvancedSearchEngine {
               this.assertNotCancelled('파일 읽기 후', path);
               await this.yieldOrCancel('파일 준비', path);
               const text = indexableEncMdBody(path, raw);
+              const chunkCount = countIndexChunksForLength(text.length);
+              if (chunkCount > 1) {
+                this.appendLog(
+                  'info',
+                  `대용량 청크 색인 · ${chunkCount}청크 · ${path}`,
+                );
+              }
               this.assertNotCancelled('파일 upsert 전', path);
               await upsertFileDocument(
                 this.index,
@@ -1027,6 +1124,7 @@ class AdvancedSearchEngine {
           let doCheckpoint = false;
           await withIndexWriteLock(async () => {
             if (
+              !skipCheckpoint &&
               !this.cancelRequested &&
               sinceCheckpoint >= this.checkpointEvery
             ) {
@@ -1062,10 +1160,19 @@ class AdvancedSearchEngine {
           'file-pool-drain',
           '진행 중 파일 포기 완료 — 완료분만 체크포인트로 진행',
         );
-        await this.flushCheckpointBeforeCancel(
-          [...processedFiles],
-          [...processedChats],
-        );
+        if (!skipCheckpoint) {
+          await this.flushCheckpointBeforeCancel(
+            [...processedFiles],
+            [...processedChats],
+          );
+        } else {
+          // Folder merge: persist completed upserts without a full-rebuild checkpoint.
+          recountManifest(this.index);
+          this.index.manifest.initialized = true;
+          this.index.manifest.nextNumericId = this.docIdMap.nextNumericId;
+          this.dirty = true;
+          await this.persistNow();
+        }
       }
       throw err;
     }
@@ -1154,6 +1261,7 @@ class AdvancedSearchEngine {
           let doCheckpoint = false;
           await withIndexWriteLock(async () => {
             if (
+              !skipCheckpoint &&
               !this.cancelRequested &&
               sinceCheckpoint >= this.checkpointEvery
             ) {
@@ -1189,10 +1297,18 @@ class AdvancedSearchEngine {
           'chat-pool-drain',
           '진행 중 채팅 포기 완료 — 완료분만 체크포인트로 진행',
         );
-        await this.flushCheckpointBeforeCancel(
-          [...processedFiles],
-          [...processedChats],
-        );
+        if (!skipCheckpoint) {
+          await this.flushCheckpointBeforeCancel(
+            [...processedFiles],
+            [...processedChats],
+          );
+        } else {
+          recountManifest(this.index);
+          this.index.manifest.initialized = true;
+          this.index.manifest.nextNumericId = this.docIdMap.nextNumericId;
+          this.dirty = true;
+          await this.persistNow();
+        }
       }
       throw err;
     }

@@ -7,6 +7,7 @@
 
 import {
   prepareChatLucivyFields,
+  prepareFileChunkLucivyFields,
   prepareFileLucivyFields,
 } from '@/utils/advancedSearch/prepareDocument';
 import type { LucivyDocFields } from '@/utils/advancedSearch/lucivyBackend';
@@ -116,6 +117,30 @@ function postWorker<T>(payload: IndexPrepPayload): Promise<T> {
     const msg: IndexPrepWorkerRequest = { ...payload, id };
     pickWorker(workers).postMessage(msg);
   });
+}
+
+export async function prepareFileChunkLucivyFieldsOffThread(
+  path: string,
+  chunkText: string,
+  chunkIndex: number,
+  totalChunks: number,
+  coalesceKey?: string,
+): Promise<PreparedLucivyDoc> {
+  const run = async (): Promise<PreparedLucivyDoc> => {
+    try {
+      return await postWorker<PreparedLucivyDoc>({
+        type: 'prepareFileChunk',
+        path,
+        chunkText,
+        chunkIndex,
+        totalChunks,
+      });
+    } catch {
+      return prepareFileChunkLucivyFields(path, chunkText, chunkIndex, totalChunks);
+    }
+  };
+  if (!coalesceKey) return run();
+  return coalesceIndexWork(`prep:file-chunk:${coalesceKey}`, run);
 }
 
 export async function prepareFileLucivyFieldsOffThread(

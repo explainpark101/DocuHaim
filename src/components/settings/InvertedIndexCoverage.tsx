@@ -1,11 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { ChevronDown, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react';
+import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search } from 'lucide-react';
+import {
+  AdaptiveContextMenu,
+  AdaptiveMenuItem,
+} from '@/components/contextMenu/AdaptiveContextMenu';
+import {
+  DESKTOP_CONTEXT_MENU_Z_CLASS,
+  MOBILE_CONTEXT_MENU_ITEM_CLASS,
+} from '@/components/contextMenu/mobileContextMenuStyles';
+import { usePressableCardMenu } from '@/components/chatWithMyself/usePressableCardMenu';
+import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import {
   analyzeIndexCoverage,
   formatIndexCoveragePercent,
   type IndexCoverageFolderRow,
 } from '@/utils/advancedSearch/indexCoverageAnalysis';
+import { isSystemIndexExcludedFolder } from '@/utils/advancedSearch/paths';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
@@ -20,6 +39,8 @@ type Props = {
   /** When true, render as a nested block inside the 역색인 settings card. */
   embedded?: boolean;
 };
+
+const coverageMenuContentClass = `${DESKTOP_CONTEXT_MENU_Z_CLASS} min-w-[200px] overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft`;
 
 function storageLabel(mode: string | undefined): string {
   if (mode === STORAGE_MODE_LOCAL) return 'Local Haim';
@@ -113,6 +134,115 @@ function TreeIndent({
       )}
       <span className="min-w-0 truncate">{label}</span>
     </span>
+  );
+}
+
+function CoverageFolderRowItem({
+  row,
+  index,
+  expanded,
+  building,
+  indexEnabled,
+  onToggle,
+  onIndexFolder,
+}: {
+  row: IndexCoverageFolderRow;
+  index: number;
+  expanded: boolean;
+  building: boolean;
+  indexEnabled: boolean;
+  onToggle: (path: string) => void;
+  onIndexFolder: (path: string) => void;
+}) {
+  const mobile = useMobileContextMenuMode();
+  const {
+    contextMenuOpen,
+    setContextMenuOpen,
+    longPressOpenedRef,
+    bindPress,
+  } = usePressableCardMenu({ enabled: true, coarse: mobile });
+
+  const clickable = row.hasChildFolders;
+  const systemFolder = isSystemIndexExcludedFolder(row.path);
+  const canIndex =
+    indexEnabled && !building && !systemFolder;
+  const percentLabel = formatIndexCoveragePercent(
+    row.percent,
+    row.indexableCount,
+  );
+
+  const onRowKeyDown = (e: KeyboardEvent<HTMLLIElement>) => {
+    if (!clickable) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    onToggle(row.path);
+  };
+
+  const rowEl = (
+    <li
+      className={`flex items-center gap-2 rounded px-1 py-0.5 ${
+        clickable
+          ? 'cursor-pointer hover:bg-white/5 focus-visible:outline-1 focus-visible:outline-blue-400'
+          : ''
+      }`}
+      onClick={() => {
+        if (mobile && longPressOpenedRef.current) {
+          longPressOpenedRef.current = false;
+          return;
+        }
+        if (clickable) onToggle(row.path);
+      }}
+      onKeyDown={onRowKeyDown}
+      tabIndex={clickable ? 0 : undefined}
+      aria-expanded={clickable ? expanded : undefined}
+      {...(mobile ? bindPress : {})}
+    >
+      <span className="w-5 shrink-0 text-right tabular-nums text-gray-500">
+        {index + 1}
+      </span>
+      <span className="min-w-0 flex-1 overflow-hidden">
+        <TreeIndent
+          depth={row.depth}
+          expandable={row.hasChildFolders}
+          expanded={expanded}
+          label={<span title={row.path}>{row.name}</span>}
+        />
+      </span>
+      <span className="w-16 shrink-0 text-right tabular-nums text-gray-400">
+        {row.indexableCount > 0
+          ? `${row.indexedCount.toLocaleString()}/${row.indexableCount.toLocaleString()}`
+          : '—'}
+      </span>
+      <CoverageBar percent={row.percent} indexableCount={row.indexableCount} />
+      <span className="w-12 shrink-0 text-right tabular-nums text-gray-200">
+        {percentLabel}
+      </span>
+    </li>
+  );
+
+  return (
+    <AdaptiveContextMenu
+      {...(mobile
+        ? { open: contextMenuOpen, onOpenChange: setContextMenuOpen }
+        : {})}
+      title={row.path.replace(/\/$/, '') || row.name}
+      subtitle="폴더 커버리지"
+      contentClassName={coverageMenuContentClass}
+      trigger={rowEl}
+    >
+      <AdaptiveMenuItem
+        className={MOBILE_CONTEXT_MENU_ITEM_CLASS}
+        disabled={!canIndex}
+        onSelect={() => {
+          if (!canIndex) return;
+          onIndexFolder(row.path);
+        }}
+      >
+        <Search size={14} />
+        이 폴더 역색인
+        {systemFolder ? ' (시스템 제외)' : ''}
+      </AdaptiveMenuItem>
+    </AdaptiveContextMenu>
   );
 }
 
@@ -247,6 +377,13 @@ export default function InvertedIndexCoverage({
     void loadTree();
   };
 
+  const handleIndexFolder = useCallback((folderPath: string) => {
+    void advancedSearchEngine.rebuild({
+      folderPath,
+      ignoreExcludedFolders: true,
+    });
+  }, []);
+
   const summary = analysis?.summary;
   const summaryPercent = summary
     ? formatIndexCoveragePercent(summary.percent, summary.indexableCount)
@@ -336,65 +473,26 @@ export default function InvertedIndexCoverage({
           </p>
         ) : (
           <ul className="space-y-0.5">
-            {folderRows.map((row, idx) => {
-              const expanded = expandedFolderPaths.has(row.path);
-              const clickable = row.hasChildFolders;
-              const percentLabel = formatIndexCoveragePercent(
-                row.percent,
-                row.indexableCount,
-              );
-              const onRowKeyDown = (e: KeyboardEvent<HTMLLIElement>) => {
-                if (!clickable) return;
-                if (e.key !== 'Enter' && e.key !== ' ') return;
-                e.preventDefault();
-                toggleFolder(row.path);
-              };
-              return (
-                <li
-                  key={row.path}
-                  className={`flex items-center gap-2 rounded px-1 py-0.5 ${
-                    clickable
-                      ? 'cursor-pointer hover:bg-white/5 focus-visible:outline-1 focus-visible:outline-blue-400'
-                      : ''
-                  }`}
-                  onClick={clickable ? () => toggleFolder(row.path) : undefined}
-                  onKeyDown={onRowKeyDown}
-                  tabIndex={clickable ? 0 : undefined}
-                  aria-expanded={clickable ? expanded : undefined}
-                >
-                  <span className="w-5 shrink-0 text-right tabular-nums text-gray-500">
-                    {idx + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 overflow-hidden">
-                    <TreeIndent
-                      depth={row.depth}
-                      expandable={row.hasChildFolders}
-                      expanded={expanded}
-                      label={<span title={row.path}>{row.name}</span>}
-                    />
-                  </span>
-                  <span className="w-16 shrink-0 text-right tabular-nums text-gray-400">
-                    {row.indexableCount > 0
-                      ? `${row.indexedCount.toLocaleString()}/${row.indexableCount.toLocaleString()}`
-                      : '—'}
-                  </span>
-                  <CoverageBar
-                    percent={row.percent}
-                    indexableCount={row.indexableCount}
-                  />
-                  <span className="w-12 shrink-0 text-right tabular-nums text-gray-200">
-                    {percentLabel}
-                  </span>
-                </li>
-              );
-            })}
+            {folderRows.map((row, idx) => (
+              <CoverageFolderRowItem
+                key={row.path}
+                row={row}
+                index={idx}
+                expanded={expandedFolderPaths.has(row.path)}
+                building={indexStatus.building}
+                indexEnabled={indexStatus.enabled}
+                onToggle={toggleFolder}
+                onIndexFolder={handleIndexFolder}
+              />
+            ))}
           </ul>
         )}
       </div>
 
       <p className="text-[10px] text-gray-500 dark:text-odp-muted">
-        폴더를 클릭해 하위 폴더를 펼칩니다. 채팅 day 파일은 해당 날짜 메시지가 하나라도 색인되면
-        완료로 집계합니다.
+        폴더를 클릭해 하위 폴더를 펼칩니다. 우클릭(또는 길게 누르기)으로 해당 폴더만
+        역색인할 수 있습니다(제외 폴더 설정을 무시하고 병합 색인). 채팅 day 파일은
+        해당 날짜 메시지가 하나라도 색인되면 완료로 집계합니다.
       </p>
     </div>
   );

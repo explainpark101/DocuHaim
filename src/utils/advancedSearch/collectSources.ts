@@ -47,6 +47,11 @@ export type IndexablePathOptions = {
    * index. Paths are vault-relative without leading/trailing slashes.
    */
   excludedFolders?: readonly string[];
+  /**
+   * When true, ignore `excludedFolders` (user “역색인 제외 폴더”).
+   * System prefixes (`.trash`, `.advanced-search`, …) still apply.
+   */
+  ignoreExcludedFolders?: boolean;
 };
 
 export function isExcludedPath(
@@ -63,8 +68,24 @@ export function isExcludedPath(
     if (/^\.chat-with-myself\/\d{4}-\d{2}-\d{2}\.md$/i.test(p)) return false;
     return true;
   }
-  if (isPathUnderExcludedFolders(p, options.excludedFolders || [])) return true;
+  if (
+    !options.ignoreExcludedFolders &&
+    isPathUnderExcludedFolders(p, options.excludedFolders || [])
+  ) {
+    return true;
+  }
   return false;
+}
+
+/** True when `path` is `folder` or a descendant (`folder/` prefix). */
+export function isPathUnderFolder(path: string, folderPath: string): boolean {
+  const p = String(path || '').replace(/^\/+/, '');
+  const f = String(folderPath || '')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
+  if (!p) return false;
+  if (!f) return true;
+  return p === f || p.startsWith(`${f}/`);
 }
 
 function fileExtension(path: string): string {

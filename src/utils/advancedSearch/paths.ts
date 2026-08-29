@@ -68,6 +68,8 @@ export function postingsKey(): string {
   return `${ADVANCED_SEARCH_FOLDER}/${POSTINGS_FILE}`;
 }
 
+import { vaultPathFromFileDocId } from '@/utils/advancedSearch/fileIndexChunking';
+
 export function fileDocId(path: string): string {
   return `file:${String(path || '').replace(/^\/+/, '')}`;
 }
@@ -77,8 +79,7 @@ export function chatDocId(dateStr: string, messageId: string): string {
 }
 
 export function parseFileDocId(docId: string): string | null {
-  if (!docId.startsWith('file:')) return null;
-  return docId.slice('file:'.length);
+  return vaultPathFromFileDocId(docId);
 }
 
 export function parseChatDocId(

@@ -1,6 +1,12 @@
 import { parseDayFile } from '@/utils/chatWithMyself/format.js';
 import { hashText } from '@/utils/advancedSearch/hash';
 import { chatDocId, fileDocId } from '@/utils/advancedSearch/paths';
+import {
+  fileChunkDocId,
+  normalizeVaultPath,
+  parseFileChunkIndex,
+  splitTextIntoIndexChunks,
+} from '@/utils/advancedSearch/fileIndexChunking';
 import { recountManifest, type DocMeta, type InMemoryIndex } from '@/utils/advancedSearch/types';
 import { chatDateFromPath } from '@/utils/advancedSearch/collectSources';
 import {
@@ -13,6 +19,7 @@ import {
 import type { LucivyDocFields } from '@/utils/advancedSearch/lucivyBackend';
 import {
   prepareChatLucivyFieldsBatchOffThread,
+  prepareFileChunkLucivyFieldsOffThread,
   prepareFileLucivyFieldsOffThread,
 } from '@/utils/advancedSearch/indexPrepWorker';
 import { withIndexWriteLock } from '@/utils/advancedSearch/indexPathLock';
@@ -72,6 +79,71 @@ async function flushLucivyBatch(
   batch.length = 0;
 }
 
+function listFileDocsForPath(
+  index: InMemoryIndex,
+  path: string,
+): Array<{ docId: string; meta: DocMeta }> {
+  const norm = normalizeVaultPath(path);
+  const out: Array<{ docId: string; meta: DocMeta }> = [];
+  for (const [docId, meta] of index.docs) {
+    if (meta.kind !== 'file') continue;
+    if (normalizeVaultPath(meta.path) !== norm) continue;
+    out.push({ docId, meta });
+  }
+  return out;
+}
+
+function fileIndexMatchesContent(
+  index: InMemoryIndex,
+  path: string,
+  contentHash: string,
+  chunkCount: number,
+): boolean {
+  const existing = listFileDocsForPath(index, path);
+  if (existing.length !== chunkCount) return false;
+  const expectedIds = new Set<string>();
+  for (let i = 0; i < chunkCount; i += 1) {
+    expectedIds.add(fileChunkDocId(path, i, chunkCount));
+  }
+  for (const { docId, meta } of existing) {
+    if (!expectedIds.has(docId)) return false;
+    if (meta.contentHash !== contentHash) return false;
+  }
+  return true;
+}
+
+async function removeStaleFileChunkDocs(
+  index: InMemoryIndex,
+  map: DocIdMapState,
+  path: string,
+  chunkCount: number,
+  writeLucivy: boolean,
+  isCancelled?: () => boolean,
+): Promise<void> {
+  const existing = listFileDocsForPath(index, path);
+  for (const { docId } of existing) {
+    throwIfRebuildCancelled(isCancelled);
+    const chunkIdx = parseFileChunkIndex(docId);
+    const isChunkId = docId.includes('#c:');
+    let stale = false;
+    if (chunkCount <= 1) {
+      stale = isChunkId || docId !== fileChunkDocId(path, 0, 1);
+    } else {
+      stale = !isChunkId || chunkIdx >= chunkCount;
+    }
+    if (!stale) continue;
+    const meta = index.docs.get(docId);
+    if (!meta) continue;
+    if (writeLucivy) {
+      const n = releaseDocId(map, docId) ?? meta.numericId;
+      if (typeof n === 'number') await removeLucivyNumericId(n);
+    } else {
+      releaseDocId(map, docId);
+    }
+    index.docs.delete(docId);
+  }
+}
+
 export async function upsertFileDocument(
   index: InMemoryIndex,
   map: DocIdMapState,
@@ -81,53 +153,91 @@ export async function upsertFileDocument(
 ): Promise<boolean> {
   throwIfRebuildCancelled(options.isCancelled);
 
-  const docId = fileDocId(path);
+  const normPath = normalizeVaultPath(path);
   const contentHash = await hashText(content);
   throwIfRebuildCancelled(options.isCancelled);
 
-  const existingEarly = index.docs.get(docId);
-  if (existingEarly?.contentHash === contentHash) return false;
+  const chunks = splitTextIntoIndexChunks(content);
+  const chunkCount = chunks.length;
 
-  // Prepare off-thread without holding the write lock (parallel workers).
-  throwIfRebuildCancelled(options.isCancelled);
-  const prepared = await prepareFileLucivyFieldsOffThread(
-    path,
-    content,
-    `${path}:${contentHash}`,
-  );
-  // Cancel after prepare: do not write Lucivy / docs — file stays out of checkpoint.
+  if (fileIndexMatchesContent(index, normPath, contentHash, chunkCount)) {
+    return false;
+  }
+
+  const yieldFn = options.yieldFn ?? yieldToMain;
+  const preparedChunks: PreparedLucivyDoc[] = [];
+  for (let i = 0; i < chunkCount; i += 1) {
+    throwIfRebuildCancelled(options.isCancelled);
+    const chunkText = chunks[i] ?? '';
+    preparedChunks.push(
+      await prepareFileChunkLucivyFieldsOffThread(
+        normPath,
+        chunkText,
+        i,
+        chunkCount,
+        `${normPath}:${contentHash}:c:${i}`,
+      ),
+    );
+    if (chunkCount > 1 && i + 1 < chunkCount) {
+      await yieldFn();
+    }
+  }
   throwIfRebuildCancelled(options.isCancelled);
 
   return withIndexWriteLock(async () => {
     throwIfRebuildCancelled(options.isCancelled);
-    const existing = index.docs.get(docId);
-    if (existing?.contentHash === contentHash) return false;
-
-    const writeLucivy = options.writeLucivy !== false;
-    let numericId = existing?.numericId ?? getNumericId(map, docId) ?? undefined;
-    if (writeLucivy) {
-      numericId = await writeLucivyDoc(
-        map,
-        docId,
-        prepared.fields,
-        Boolean(existing),
-      );
-    } else if (numericId == null) {
-      numericId = allocateNumericId(map, docId);
+    if (fileIndexMatchesContent(index, normPath, contentHash, chunkCount)) {
+      return false;
     }
 
-    const meta: DocMeta = {
-      kind: 'file',
-      path,
-      title: prepared.title,
-      preview: prepared.preview,
-      contentHash,
-      numericId,
-    };
-    index.docs.set(docId, meta);
+    const writeLucivy = options.writeLucivy !== false;
+    await removeStaleFileChunkDocs(
+      index,
+      map,
+      normPath,
+      chunkCount,
+      writeLucivy,
+      options.isCancelled,
+    );
+
+    let changed = false;
+    for (let i = 0; i < chunkCount; i += 1) {
+      throwIfRebuildCancelled(options.isCancelled);
+      const docId = fileChunkDocId(normPath, i, chunkCount);
+      const existing = index.docs.get(docId);
+      const prepared = preparedChunks[i];
+      if (!prepared) continue;
+
+      let numericId =
+        existing?.numericId ?? getNumericId(map, docId) ?? undefined;
+      if (writeLucivy) {
+        numericId = await writeLucivyDoc(
+          map,
+          docId,
+          prepared.fields,
+          Boolean(existing),
+        );
+      } else if (numericId == null) {
+        numericId = allocateNumericId(map, docId);
+      }
+
+      index.docs.set(docId, {
+        kind: 'file',
+        path: normPath,
+        title: prepared.title,
+        preview: prepared.preview,
+        contentHash,
+        numericId,
+        ...(chunkCount > 1
+          ? { chunkIndex: i, chunkCount }
+          : {}),
+      });
+      changed = true;
+    }
+
     index.manifest.nextNumericId = map.nextNumericId;
-    if (!options.skipRecount) recountManifest(index);
-    return true;
+    if (changed && !options.skipRecount) recountManifest(index);
+    return changed;
   });
 }
 
@@ -401,7 +511,7 @@ export async function removeDocument(
 }
 
 /** Normalize vault path for prefix matching (no leading slash; keep trailing slash sense). */
-function normalizeVaultPath(path: string): string {
+function normalizeVaultPathForPrefix(path: string): string {
   return String(path || '').replace(/^\/+/, '');
 }
 
@@ -414,9 +524,9 @@ export function rewritePathUnderPrefix(
   fromPathOrPrefix: string,
   toPathOrPrefix: string,
 ): string | null {
-  const pathN = normalizeVaultPath(path);
-  const fromN = normalizeVaultPath(fromPathOrPrefix).replace(/\/+$/, '');
-  const toN = normalizeVaultPath(toPathOrPrefix).replace(/\/+$/, '');
+  const pathN = normalizeVaultPathForPrefix(path);
+  const fromN = normalizeVaultPathForPrefix(fromPathOrPrefix).replace(/\/+$/, '');
+  const toN = normalizeVaultPathForPrefix(toPathOrPrefix).replace(/\/+$/, '');
   if (!pathN || !fromN || fromN === toN) return null;
   if (pathN === fromN) return toN;
   if (pathN.startsWith(`${fromN}/`)) {
@@ -448,9 +558,15 @@ export async function retargetFileDocumentsByPrefix(
         toPathOrPrefix,
       );
       if (!nextPath || nextPath === meta.path) continue;
+      const hasChunk = docId.includes('#c:');
+      const chunkIdx = parseFileChunkIndex(docId);
+      const chunkCount = meta.chunkCount ?? (hasChunk ? 2 : 1);
+      const toId = hasChunk
+        ? fileChunkDocId(nextPath, chunkIdx, chunkCount)
+        : fileDocId(nextPath);
       pairs.push({
         fromId: docId,
-        toId: fileDocId(nextPath),
+        toId,
         toPath: nextPath,
         meta,
       });
@@ -503,12 +619,12 @@ export async function removeFileDocumentsByPrefix(
   options: { skipRecount?: boolean; writeLucivy?: boolean } = {},
 ): Promise<number> {
   return withIndexWriteLock(async () => {
-    const prefix = normalizeVaultPath(pathOrPrefix).replace(/\/+$/, '');
+    const prefix = normalizeVaultPathForPrefix(pathOrPrefix).replace(/\/+$/, '');
     if (!prefix) return 0;
     const toRemove: string[] = [];
     for (const [docId, meta] of index.docs) {
       if (meta.kind !== 'file') continue;
-      const p = normalizeVaultPath(meta.path);
+      const p = normalizeVaultPathForPrefix(meta.path);
       if (p === prefix || p.startsWith(`${prefix}/`)) {
         toRemove.push(docId);
       }

@@ -5,8 +5,17 @@
 
 import {
   prepareChatLucivyFields,
+  prepareFileChunkLucivyFields,
   prepareFileLucivyFields,
 } from '@/utils/advancedSearch/prepareDocument';
+
+export type IndexPrepFileChunkPayload = {
+  type: 'prepareFileChunk';
+  path: string;
+  chunkText: string;
+  chunkIndex: number;
+  totalChunks: number;
+};
 
 export type IndexPrepFilePayload = {
   type: 'prepareFile';
@@ -34,6 +43,7 @@ export type IndexPrepChatBatchPayload = {
 
 export type IndexPrepPayload =
   | IndexPrepFilePayload
+  | IndexPrepFileChunkPayload
   | IndexPrepChatPayload
   | IndexPrepChatBatchPayload;
 
@@ -57,6 +67,21 @@ self.onmessage = async (event: MessageEvent<IndexPrepWorkerRequest>) => {
   const requestId = msg.id;
 
   try {
+    if (msg.type === 'prepareFileChunk') {
+      const result = await prepareFileChunkLucivyFields(
+        msg.path,
+        msg.chunkText,
+        msg.chunkIndex,
+        msg.totalChunks,
+      );
+      const response: IndexPrepWorkerResponse = {
+        id: requestId,
+        ok: true,
+        result,
+      };
+      self.postMessage(response);
+      return;
+    }
     if (msg.type === 'prepareFile') {
       const result = await prepareFileLucivyFields(msg.path, msg.content);
       const response: IndexPrepWorkerResponse = {

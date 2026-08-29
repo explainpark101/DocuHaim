@@ -11,6 +11,9 @@ export type DocMeta = {
   contentHash: string;
   /** Lucivy numeric _node_id */
   numericId?: number;
+  /** Present when a vault file is split into multiple index chunks. */
+  chunkIndex?: number;
+  chunkCount?: number;
 };
 
 export type ManifestDocEntry = {
@@ -60,13 +63,14 @@ export function emptyIndex(): InMemoryIndex {
 }
 
 export function recountManifest(index: InMemoryIndex): void {
-  let fileCount = 0;
+  const filePaths = new Set<string>();
   let chatCount = 0;
   let maxNumeric = 0;
   const docs: Record<string, ManifestDocEntry> = {};
   for (const [docId, meta] of index.docs) {
-    if (meta.kind === 'file') fileCount += 1;
-    else chatCount += 1;
+    if (meta.kind === 'file') {
+      filePaths.add(String(meta.path || '').replace(/^\/+/, ''));
+    } else chatCount += 1;
     if (typeof meta.numericId === 'number' && meta.numericId > maxNumeric) {
       maxNumeric = meta.numericId;
     }
@@ -77,6 +81,7 @@ export function recountManifest(index: InMemoryIndex): void {
     if (typeof meta.numericId === 'number') entry.numericId = meta.numericId;
     docs[docId] = entry;
   }
+  const fileCount = filePaths.size;
   const wasInitialized = index.manifest.initialized === true || fileCount + chatCount > 0;
   const prevNext = index.manifest.nextNumericId ?? 1;
   index.manifest = {
