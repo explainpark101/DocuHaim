@@ -37,16 +37,18 @@
   font-style: italic;
 }
 
-/* Export / print: keep One Dark blocks (not light slate) so tokens print correctly */
+/* Export / print: Atom One Light chrome (tokens from one-light hljs). */
 #export-pdf-preview .md-editor-preview .md-editor-code,
 .export-pdf-modal .md-editor-preview .md-editor-code,
 :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code {
-  --md-theme-code-block-color: #abb2bf;
-  --md-theme-code-block-bg-color: #282c34;
-  --md-theme-code-before-bg-color: #21252b;
-  border: 1px solid #3e4452;
-  background-color: #282c34;
+  --md-theme-code-block-color: #383a42;
+  --md-theme-code-block-bg-color: #fafafa;
+  --md-theme-code-before-bg-color: #f0f0f0;
+  border: 1px solid #e5e7eb;
+  background-color: #fafafa;
   box-shadow: none;
+  /* Allow CSS fragmentation across print pages (overflow:hidden blocks breaks). */
+  overflow: visible;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code .md-editor-code-head,
@@ -74,19 +76,19 @@
   .md-editor-code
   .md-editor-code-head
   .md-editor-code-action {
-  color: #abb2bf;
+  color: #383a42;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code pre,
 :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre {
-  background-color: #282c34;
+  background-color: #fafafa;
 }
 
 #export-pdf-preview .md-editor-preview .md-editor-code pre code,
 .export-pdf-modal .md-editor-preview .md-editor-code pre code,
 :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code pre code {
-  background-color: #282c34;
-  color: #abb2bf;
+  background-color: #fafafa;
+  color: #383a42;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -99,4 +101,11 @@
   code
   .md-editor-code-block {
   color: unset;
+}
+
+/* Light theme comments on #fafafa */
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .hljs-comment,
+:is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .hljs-quote {
+  color: #a0a1a7;
+  font-style: italic;
 }

@@ -29,7 +29,10 @@ export {
   normalizeHaimTableMeta,
   setCellStyle,
 } from '@/utils/haimTable/parse';
-export { resolveHaimTableBlockFromPreview } from '@/utils/haimTable/previewResolve';
+export {
+  findHaimTablePreviewRoot,
+  resolveHaimTableBlockFromPreview,
+} from '@/utils/haimTable/previewResolve';
 export { sectionForRow, effectiveHeaderRows } from '@/utils/haimTable/sections';
 export {
   tableLayoutCss,

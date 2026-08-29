@@ -36,6 +36,9 @@ type Props = {
   /** Open table editor for the preview table. Returns false if unresolved. */
   onEditTable: (table: HTMLTableElement, previewRoot: Element) => boolean;
   onEditFailed?: (() => void) | undefined;
+  findPreviewRoot?: (container: HTMLElement) => Element | null;
+  mobileMenuTitle?: string;
+  mobileMenuSubtitle?: string;
 };
 
 const menuContentClass =
@@ -59,6 +62,9 @@ export function PreviewTableContextMenu({
   setMarkdown,
   onEditTable,
   onEditFailed,
+  findPreviewRoot,
+  mobileMenuTitle = '미리보기 표',
+  mobileMenuSubtitle = '마크다운 테이블',
 }: Props) {
   const mobileContextMenu = useMobileContextMenuMode();
   const [open, setOpen] = useState(false);
@@ -76,7 +82,12 @@ export function PreviewTableContextMenu({
     const root = containerRef.current;
     if (!root) return undefined;
 
-    const previewRootOf = () => root.querySelector('.md-editor-preview');
+    const previewRootOf = () => {
+      const container = containerRef.current;
+      if (!container) return null;
+      if (findPreviewRoot) return findPreviewRoot(container);
+      return container.querySelector('.md-editor-preview');
+    };
 
     const onContextMenu = (event: MouseEvent) => {
       if (
@@ -181,7 +192,7 @@ export function PreviewTableContextMenu({
       root.removeEventListener('pointercancel', onPointerUp);
       root.removeEventListener('contextmenu', onContextMenuTouch, true);
     };
-  }, [containerRef, openAt]);
+  }, [containerRef, findPreviewRoot, openAt]);
 
   const handleEdit = () => {
     const t = targetRef.current;
@@ -255,8 +266,8 @@ export function PreviewTableContextMenu({
             setOpen(next);
             if (!next) setTarget(null);
           }}
-          title="미리보기 표"
-          subtitle="마크다운 테이블"
+          title={mobileMenuTitle}
+          subtitle={mobileMenuSubtitle}
         >
           {menuItems}
         </MobileContextMenuModal>

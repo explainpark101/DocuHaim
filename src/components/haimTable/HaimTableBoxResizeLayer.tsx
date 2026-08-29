@@ -13,6 +13,15 @@ import {
   updateHaimTableBoxSizeInMarkdown,
 } from '@/utils/haimTable';
 import { indexOfPreviewTable } from '@/utils/haimTable/boxResize';
+import {
+  findExportPdfOverlayPortal,
+  getCumulativeCssZoom,
+  getElementLayoutSize,
+  subscribeFixedOverlayRect,
+  visualDeltaToLayoutDelta,
+  type OverlayRect,
+} from '@/utils/cssZoom';
+import { findHaimTablePreviewRoot } from '@/utils/haimTable';
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
 
@@ -23,12 +32,7 @@ type ActiveTable = {
   heightPx: number;
 };
 
-type OverlayRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
+type OverlayRectState = OverlayRect | null;
 
 type Props = {
   /** Root that contains `.md-editor-preview` (or the preview element itself). */
@@ -49,17 +53,7 @@ const HANDLE_POS: Record<Corner, CSSProperties> = {
 };
 
 function findPreviewRoot(container: HTMLElement | null): Element | null {
-  if (!container) return null;
-  if (container.classList?.contains('md-editor-preview')) return container;
-  if (container.hasAttribute?.('data-export-pdf-preview') || container.id === 'export-pdf-preview') {
-    return container.querySelector('.md-editor-preview') ?? container;
-  }
-  return (
-    container.querySelector('.md-editor-preview')
-    ?? container.querySelector('#export-pdf-preview .md-editor-preview')
-    ?? container.querySelector('[data-export-pdf-preview] .md-editor-preview')
-    ?? container
-  );
+  return findHaimTablePreviewRoot(container);
 }
 
 /**
@@ -74,7 +68,7 @@ export function HaimTableBoxResizeLayer({
   enabled = true,
 }: Props) {
   const [active, setActive] = useState<ActiveTable | null>(null);
-  const [overlayRect, setOverlayRect] = useState<OverlayRect | null>(null);
+  const [overlayRect, setOverlayRect] = useState<OverlayRectState>(null);
   const activeRef = useRef<ActiveTable | null>(null);
   const draggingRef = useRef(false);
   activeRef.current = active;
@@ -89,30 +83,23 @@ export function HaimTableBoxResizeLayer({
     if (!enabled) clearActive();
   }, [clearActive, enabled]);
 
-  // Keep overlay glued to the selected table
+  // Keep overlay glued to the selected table (scroll + CSS zoom aware).
   useEffect(() => {
     if (!active?.table) {
       setOverlayRect(null);
       return undefined;
     }
     const table = active.table;
-    let raf = 0;
-    const tick = () => {
-      if (!table.isConnected) {
-        clearActive();
-        return;
-      }
-      const rect = table.getBoundingClientRect();
-      setOverlayRect({
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-      });
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return subscribeFixedOverlayRect(
+      () => (table.isConnected ? table : null),
+      (rect) => {
+        if (!rect) {
+          clearActive();
+          return;
+        }
+        setOverlayRect(rect);
+      },
+    );
   }, [active, clearActive]);
 
   // Click table to select; click outside to deselect
@@ -148,12 +135,12 @@ export function HaimTableBoxResizeLayer({
       const tableIndex = indexOfPreviewTable(table, previewRoot);
       if (tableIndex < 0) return;
 
-      const rect = table.getBoundingClientRect();
+      const layout = getElementLayoutSize(table);
       const next: ActiveTable = {
         table,
         tableIndex,
-        widthPx: Math.max(48, Math.round(rect.width)),
-        heightPx: Math.max(32, Math.round(rect.height)),
+        widthPx: Math.max(48, layout.width),
+        heightPx: Math.max(32, layout.height),
       };
       activeRef.current = next;
       setActive(next);
@@ -180,8 +167,9 @@ export function HaimTableBoxResizeLayer({
       let moved = false;
 
       const onMove = (moveEvent: PointerEvent) => {
-        const dx = moveEvent.clientX - startX;
-        const dy = moveEvent.clientY - startY;
+        const zoom = getCumulativeCssZoom(start.table);
+        const dx = visualDeltaToLayoutDelta(moveEvent.clientX - startX, zoom);
+        const dy = visualDeltaToLayoutDelta(moveEvent.clientY - startY, zoom);
         if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved = true;
         let width = baseW;
         let height = baseH;
@@ -235,9 +223,17 @@ export function HaimTableBoxResizeLayer({
     return null;
   }
 
+  const overlayPortal =
+    overlayRect.positioning === 'zoom-root-absolute'
+      ? findExportPdfOverlayPortal(containerRef.current)
+      : null;
+  const useZoomRootOverlay = Boolean(overlayPortal);
+
   return createPortal(
     <div
-        className="pointer-events-none fixed z-100040 border-2 border-blue-500 print:hidden"
+      className={`pointer-events-none z-100040 border-2 border-blue-500 print:hidden ${
+        useZoomRootOverlay ? 'absolute' : 'fixed'
+      }`}
       style={{
         left: overlayRect.left,
         top: overlayRect.top,
@@ -258,6 +254,6 @@ export function HaimTableBoxResizeLayer({
         />
       ))}
     </div>,
-    document.body,
+    useZoomRootOverlay ? overlayPortal! : document.body,
   );
 }

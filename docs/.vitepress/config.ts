@@ -77,6 +77,8 @@ export default defineConfig({
             { text: 'Footnotes / Sources', link: '/custom-markdown/footnotes' },
             { text: 'Document settings', link: '/custom-markdown/document-settings' },
             { text: 'Preview hard break', link: '/custom-markdown/preview-hard-break' },
+            { text: 'Mermaid fence size', link: '/custom-markdown/mermaid-fence-size' },
+            { text: 'Mermaid size comment', link: '/custom-markdown/mermaid-size' },
           ],
         },
       ],

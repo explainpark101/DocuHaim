@@ -3450,17 +3450,20 @@ div.smart-blue-theme hr {
 }
 
 /*
- * Chromium/Electron: glyphs in .cm-content sometimes fail to rasterize until the
- * caret invalidates that line. Own compositor layer + keep text color if native
- * ::selection flashes while drawSelection hides the selection background.
+ * Chromium/Electron: syntax span churn (heading `#` markers, etc.) can leave
+ * earlier glyphs unpainted until the line is invalidated. Do not promote the
+ * whole .cm-content to a GPU layer (translateZ) — that made partial span
+ * updates worse. Anchor base text color on each line + align text-fill with
+ * highlight span color.
  */
 .md-editor .cm-scroller .cm-content {
-  transform: translateZ(0);
+  color: var(--md-color);
 }
 
 .md-editor .cm-scroller .cm-line::selection,
 .md-editor .cm-scroller .cm-line ::selection {
   color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
 }
 
 .md-editor .cm-scroller .cm-content[contenteditable=true] {
@@ -3478,7 +3481,18 @@ div.smart-blue-theme hr {
 }
 
 .md-editor .cm-scroller .cm-line {
-  line-height: inherit
+  line-height: inherit;
+  color: var(--md-color);
+}
+
+.md-editor .cm-scroller .cm-line span {
+  -webkit-text-fill-color: currentColor;
+}
+
+.md-editor .cm-editor .cm-selectionMatch,
+.md-editor .cm-editor .cm-selectionMatch-main {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
 }
 
 .md-editor .cm-base64-image-fold {

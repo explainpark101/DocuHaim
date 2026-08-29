@@ -10,7 +10,7 @@ import {
   applyAppMarkdownItPluginsFromList,
 } from '@/utils/appMarkdownItPlugins';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
-import { HLJS_ATOM_ONE_DARK_CSS } from '@/utils/mdEditorCodeTheme';
+import { HLJS_ATOM_ONE_DARK_CSS, HLJS_ATOM_ONE_LIGHT_CSS } from '@/utils/mdEditorCodeTheme';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import '@/styles/md-editor-rt/plan-frontmatter.css';
@@ -28,6 +28,10 @@ config({
         'one-dark': {
           light: HLJS_ATOM_ONE_DARK_CSS,
           dark: HLJS_ATOM_ONE_DARK_CSS,
+        },
+        'one-light': {
+          light: HLJS_ATOM_ONE_LIGHT_CSS,
+          dark: HLJS_ATOM_ONE_LIGHT_CSS,
         },
       },
     },

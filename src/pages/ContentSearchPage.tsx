@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Loader2, Search, X } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
+import { VList, type VListHandle } from 'virtua';
 import ContentSearchResultCard from '@/components/contentSearch/ContentSearchResultCard';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import type { ContentSearchFileHit } from '@/utils/advancedSearch/contentSearchSnippets';
@@ -55,17 +56,13 @@ export default function ContentSearchPage({
   const [terms, setTerms] = useState<string[]>([]);
   const [status, setStatus] = useState(() => advancedSearchEngine.getStatus());
   const searchGenRef = useRef(0);
+  const listRef = useRef<VListHandle | null>(null);
+  const [, startResultsTransition] = useTransition();
 
   useEffect(() => {
     return advancedSearchEngine.subscribe(() => {
       setStatus(advancedSearchEngine.getStatus());
     });
-  }, []);
-
-  useEffect(() => {
-    if (advancedSearchEngine.isEnabled()) {
-      void advancedSearchEngine.ensureLoaded();
-    }
   }, []);
 
   useEffect(() => {
@@ -123,16 +120,23 @@ export default function ContentSearchPage({
               .map((t) => t.trim())
               .filter((t) => t.length >= 2);
       if (gen !== searchGenRef.current) return;
-      setTerms(nextTerms);
 
       const results = await advancedSearchEngine.searchContentPage(q, getTrees(), 60);
       if (gen !== searchGenRef.current) return;
-      setHits(results);
-      setSearching(false);
+      startResultsTransition(() => {
+        setHits(results);
+        setTerms(nextTerms);
+        setSearching(false);
+      });
     })();
 
     return undefined;
   }, [debouncedQuery, getTrees, isActive]);
+
+  useEffect(() => {
+    if (!debouncedQuery || hits.length === 0) return;
+    listRef.current?.scrollToIndex(0);
+  }, [debouncedQuery, hits]);
 
   const emptyMessage = useMemo(() => {
     if (!debouncedQuery) return '검색어를 입력하면 볼트 본문에서 일치 구간을 찾습니다.';
@@ -188,25 +192,31 @@ export default function ContentSearchPage({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 overflow-hidden px-4 py-4">
         {hits.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-odp-muted">{emptyMessage}</p>
         ) : (
-          <div className="flex flex-col gap-4">
-            {hits.map((hit) => (
-              <ContentSearchResultCard
-                key={hit.docId}
-                title={hit.title}
-                path={hit.path}
-                kind={hit.kind}
-                matchCount={hit.matchCount}
-                regions={hit.regions}
-                query={debouncedQuery}
-                terms={terms}
-                onOpen={() => openHit(hit)}
-              />
-            ))}
-          </div>
+          <VList
+            ref={listRef}
+            className="h-full overscroll-contain"
+            data={hits}
+            style={{ overflowX: 'clip' }}
+          >
+            {(hit) => (
+              <div key={hit.docId} className="pb-4">
+                <ContentSearchResultCard
+                  title={hit.title}
+                  path={hit.path}
+                  kind={hit.kind}
+                  matchCount={hit.matchCount}
+                  regions={hit.regions}
+                  query={debouncedQuery}
+                  terms={terms}
+                  onOpen={() => openHit(hit)}
+                />
+              </div>
+            )}
+          </VList>
         )}
       </div>
     </div>

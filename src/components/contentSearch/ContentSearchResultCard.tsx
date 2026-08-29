@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { ContentSearchLine, ContentSearchRegion } from '@/utils/advancedSearch/contentSearchSnippets';
 import { highlightPlainText } from '@/utils/advancedSearch/contentSearchSnippets';
 import { FileText, MessageSquare } from 'lucide-react';
@@ -48,7 +49,7 @@ function RegionLines({
   );
 }
 
-export default function ContentSearchResultCard({
+function ContentSearchResultCard({
   title,
   path,
   kind,
@@ -94,3 +95,5 @@ export default function ContentSearchResultCard({
     </article>
   );
 }
+
+export default memo(ContentSearchResultCard);

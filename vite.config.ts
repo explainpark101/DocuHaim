@@ -355,6 +355,9 @@ function manualChunks(id: string): string | undefined {
   ) {
     return 'vendor-mermaid';
   }
+  if (normalizedId.includes('/node_modules/pagedjs/')) {
+    return 'vendor-pagedjs';
+  }
   if (
     normalizedId.includes('/node_modules/@aws-sdk/') ||
     normalizedId.includes('/node_modules/@smithy/')

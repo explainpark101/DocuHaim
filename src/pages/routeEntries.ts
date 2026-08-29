@@ -2,7 +2,7 @@
  * Formal route entry modules (thin wrappers).
  *
  * - SettingsPage — /settings (also workspace settings tab)
- * - ExportPDFPage — /export-pdf/*
+ * - ExportPDFPage — /export-pdf/* (`pages/exportPdf/ExportPDFPage.tsx`)
  * - LlmAssistPopoutPage — /llm-assist-popout
  *
  * Quasi-pages that are not under `pages/` (feature-owned):

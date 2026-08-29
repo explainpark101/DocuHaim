@@ -25,6 +25,7 @@ import {
   gunzipBytes,
   gunzipBytesAsync,
   loadDocsAndManifestFromVault,
+  loadManifestFromVault,
   saveIndexToVault,
   type AdvancedSearchBackend,
 } from '@/utils/advancedSearch/store';
@@ -44,6 +45,8 @@ import {
 } from '@/utils/advancedSearch/settings';
 import {
   emptyIndex,
+  emptyManifest,
+  INDEX_SCHEMA_VERSION,
   isIndexInitialized,
   recountManifest,
   type InMemoryIndex,
@@ -71,6 +74,7 @@ import { indexRebuildConcurrency } from '@/utils/advancedSearch/mapPool';
 import {
   emptyDocIdMap,
   hydrateDocIdMapFromDocs,
+  hydrateDocIdMapFromDocsAsync,
   type DocIdMapState,
 } from '@/utils/advancedSearch/docIdMap';
 import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
@@ -229,7 +233,8 @@ class AdvancedSearchEngine {
       this.enabled &&
       !this.building &&
       Boolean(this.backend?.isReady?.()) &&
-      isSearchIsolationReady(),
+      isSearchIsolationReady() &&
+      this.lucivyReady,
     onFlush: async ({ files, chats }) => {
       for (const [path, content] of files) {
         if (this.building) {
@@ -262,6 +267,16 @@ class AdvancedSearchEngine {
   private logListeners = new Set<() => void>();
   private lucivyApi: LucivyApi | null = null;
   private searchGeneration = 0;
+  private loadPromise: Promise<void> | null = null;
+  private lucivyLoadPromise: Promise<void> | null = null;
+  private warmupPromise: Promise<void> | null = null;
+  /** While > 0, status listeners are notified once when the outer batch ends. */
+  private emitSuppressed = 0;
+  private manifestSummaryLoaded = false;
+  /** Deferred Lucivy open target captured during metadata load. */
+  private pendingLucivyDirPath: string | null = null;
+  private pendingLucivyInPlace = false;
+  private pendingLucivyGz: Uint8Array | null = null;
 
   constructor() {
     this.unsub = subscribeAdvancedSearchChanges((event) => {
@@ -280,13 +295,30 @@ class AdvancedSearchEngine {
     return () => this.logListeners.delete(listener);
   }
 
-  private emit(): void {
+  private notifyStatusListeners(): void {
     for (const l of this.listeners) {
       try {
         l();
       } catch {
         // ignore
       }
+    }
+  }
+
+  private emit(): void {
+    if (this.emitSuppressed > 0) return;
+    this.notifyStatusListeners();
+  }
+
+  private beginEmitBatch(): void {
+    this.emitSuppressed += 1;
+  }
+
+  private endEmitBatch(): void {
+    if (this.emitSuppressed <= 0) return;
+    this.emitSuppressed -= 1;
+    if (this.emitSuppressed === 0) {
+      this.notifyStatusListeners();
     }
   }
 
@@ -449,7 +481,32 @@ class AdvancedSearchEngine {
     }
     this.emit();
     if (this.enabled && this.backend?.isReady?.()) {
-      void this.ensureLoaded();
+      void this.ensureManifestSummary();
+    }
+  }
+
+  /** Lightweight manifest.json read for Settings counts (no docs map / Lucivy). */
+  async ensureManifestSummary(): Promise<void> {
+    if (this.loaded || this.manifestSummaryLoaded) return;
+    if (!this.backend?.isReady?.()) return;
+    try {
+      await yieldToMain();
+      const manifest = await loadManifestFromVault(this.backend);
+      if (manifest) {
+        this.index = {
+          docs: new Map(),
+          manifest: {
+            ...emptyManifest(),
+            ...manifest,
+            schemaVersion: INDEX_SCHEMA_VERSION,
+          },
+        };
+      }
+      this.manifestSummaryLoaded = true;
+      this.emit();
+    } catch (err) {
+      console.warn('[advancedSearch] manifest summary load failed', err);
+      this.manifestSummaryLoaded = true;
     }
   }
 
@@ -515,54 +572,145 @@ class AdvancedSearchEngine {
   }
 
   async ensureLoaded(): Promise<void> {
-    if (this.loaded && this.lucivyReady) return;
+    if (this.loaded) return;
+    if (!this.backend?.isReady?.()) return;
+    if (this.loadPromise) return this.loadPromise;
+    this.loadPromise = this.loadIndexMetadataFromVault().finally(() => {
+      this.loadPromise = null;
+    });
+    return this.loadPromise;
+  }
+
+  /** Open Lucivy inverted index (heavy); metadata-only load happens in ensureLoaded(). */
+  async ensureLucivyReady(): Promise<void> {
+    await this.ensureLoaded();
+    if (this.lucivyReady) return;
+    if (!isSearchIsolationReady()) return;
+    if (!this.backend?.isReady?.()) return;
+    if (this.lucivyLoadPromise) return this.lucivyLoadPromise;
+    this.lucivyLoadPromise = this.openLucivyIndexFromVault().finally(() => {
+      this.lucivyLoadPromise = null;
+    });
+    return this.lucivyLoadPromise;
+  }
+
+  /**
+   * Background warm after unlock: docs map then Lucivy with yields between phases.
+   * Suppresses intermediate status emits until the full warm finishes.
+   */
+  async warmIndexAfterUnlock(): Promise<void> {
+    if (!this.enabled) return;
+    if (!this.backend?.isReady?.()) return;
+    if (this.loaded && this.lucivyReady) {
+      await this.refreshCheckpointStatus();
+      return;
+    }
+    if (this.warmupPromise) return this.warmupPromise;
+
+    this.warmupPromise = (async () => {
+      this.beginEmitBatch();
+      try {
+        await yieldToMain();
+        await this.ensureLoaded();
+        await yieldToMain();
+        await this.refreshCheckpointStatus();
+        if (isSearchIsolationReady()) {
+          await yieldToMain();
+          await this.ensureLucivyReady();
+        }
+      } catch (err) {
+        console.warn('[advancedSearch] warmIndexAfterUnlock failed', err);
+      } finally {
+        this.endEmitBatch();
+        this.warmupPromise = null;
+      }
+    })();
+    return this.warmupPromise;
+  }
+
+  private async loadIndexMetadataFromVault(): Promise<void> {
     if (!this.backend?.isReady?.()) return;
     try {
       await yieldToMain();
-      if (!isSearchIsolationReady()) {
-        const { index } = await loadDocsAndManifestFromVault(this.backend);
-        this.index = index;
-        this.docIdMap = hydrateDocIdMapFromDocs(
-          index.docs,
-          index.manifest.nextNumericId,
-        );
-        this.loaded = true;
-        this.lucivyReady = false;
-        this.lastError = searchIsolationBlockedReason();
-        this.emit();
-        return;
-      }
+      const skipLuceBytes = isTauriApp();
+      this.pendingLucivyDirPath = null;
+      this.pendingLucivyInPlace = false;
+      this.pendingLucivyGz = null;
 
-      const { index, luceGz } = await loadDocsAndManifestFromVault(this.backend);
+      const { index, luceGz, luceDirAbsPath } = await loadDocsAndManifestFromVault(
+        this.backend,
+        { skipLuceBytes },
+      );
       await yieldToMain();
       this.index = index;
-      this.docIdMap = hydrateDocIdMapFromDocs(
+      await yieldToMain();
+      this.docIdMap = await hydrateDocIdMapFromDocsAsync(
         index.docs,
         index.manifest.nextNumericId,
+        50,
       );
-
-      const api = await this.loadLucivyApi();
-      let snapshot: Uint8Array | null = null;
-      if (luceGz?.byteLength) {
-        try {
-          snapshot = await gunzipBytesAsync(luceGz);
-        } catch {
-          snapshot = null;
-        }
+      if (luceDirAbsPath && isTauriApp()) {
+        this.pendingLucivyDirPath = luceDirAbsPath;
+        this.pendingLucivyInPlace = true;
+      } else if (luceGz?.byteLength) {
+        this.pendingLucivyGz = luceGz;
       }
-      await yieldToMain();
-      await api.openOrCreateLucivyIndex(snapshot);
-      this.lucivyReady = true;
+
       this.loaded = true;
-      this.lastError = null;
+      this.lucivyReady = false;
+      this.manifestSummaryLoaded = true;
+      this.lastError = isSearchIsolationReady()
+        ? null
+        : searchIsolationBlockedReason();
       this.emit();
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : String(err);
       this.index = emptyIndex();
       this.docIdMap = emptyDocIdMap();
+      this.pendingLucivyDirPath = null;
+      this.pendingLucivyInPlace = false;
+      this.pendingLucivyGz = null;
       this.loaded = true;
       this.lucivyReady = false;
       this.emit();
+    }
+  }
+
+  private async openLucivyIndexFromVault(): Promise<void> {
+    if (!this.backend?.isReady?.()) return;
+    if (!isSearchIsolationReady()) return;
+    try {
+      await yieldToMain();
+      const api = await this.loadLucivyApi();
+
+      if (this.pendingLucivyDirPath) {
+        await api.openOrCreateLucivyIndex(null, {
+          indexDirectoryPath: this.pendingLucivyDirPath,
+          inPlace: this.pendingLucivyInPlace,
+        });
+      } else {
+        let snapshot: Uint8Array | null = null;
+        if (this.pendingLucivyGz?.byteLength) {
+          try {
+            snapshot = await gunzipBytesAsync(this.pendingLucivyGz);
+          } catch {
+            snapshot = null;
+          }
+        }
+        await yieldToMain();
+        await api.openOrCreateLucivyIndex(snapshot);
+        this.pendingLucivyGz = null;
+      }
+
+      this.lucivyReady = true;
+      this.lastError = null;
+      this.emit();
+      this.incrementalQueue.resume();
+    } catch (err) {
+      this.lastError = err instanceof Error ? err.message : String(err);
+      this.lucivyReady = false;
+      this.emit();
+      throw err;
     }
   }
 
@@ -614,10 +762,11 @@ class AdvancedSearchEngine {
       this.assertIsolation();
       const api = await this.loadLucivyApi();
       await api.lucivyCommit();
-      const snapshot = await api.lucivyExportSnapshot();
+      const inPlace = api.isLucivyNativeInPlace();
+      const snapshot = inPlace ? null : await api.lucivyExportSnapshot();
       recountManifest(this.index);
       this.index.manifest.nextNumericId = this.docIdMap.nextNumericId;
-      await saveIndexToVault(this.backend, this.index, snapshot);
+      await saveIndexToVault(this.backend, this.index, snapshot, { skipLuce: inPlace });
       this.dirty = false;
       this.lastError = null;
       this.emit();
@@ -641,8 +790,12 @@ class AdvancedSearchEngine {
     this.cancelRequested = true;
     this.index = emptyIndex();
     this.docIdMap = emptyDocIdMap();
+    this.pendingLucivyDirPath = null;
+    this.pendingLucivyInPlace = false;
+    this.pendingLucivyGz = null;
     this.loaded = true;
     this.lucivyReady = false;
+    this.manifestSummaryLoaded = false;
     this.dirty = false;
     this.buildProgress = null;
     this.lastBuildCancelled = false;
@@ -993,7 +1146,7 @@ class AdvancedSearchEngine {
 
       if (folderScoped) {
         // Merge into existing index — do not wipe or use full-rebuild checkpoints.
-        await this.ensureLoaded();
+        await this.ensureLucivyReady();
         if (!this.lucivyReady) {
           throw new Error(
             searchIsolationBlockedReason() ||
@@ -1438,7 +1591,7 @@ class AdvancedSearchEngine {
     );
     this.emit();
     await this.persistNow();
-    this.appendLog('ok', '색인 저장 완료 (.advanced-search/index.luce.gz)');
+    this.appendLog('ok', '색인 저장 완료 (.advanced-search/luce/)');
   }
 
   async indexFile(
@@ -1453,8 +1606,8 @@ class AdvancedSearchEngine {
       return;
     }
     if (!isSearchIsolationReady()) return;
-    await this.ensureLoaded();
     if (!this.lucivyReady) return;
+    if (!this.loaded) await this.ensureLoaded();
 
     const quiet = Boolean(options?.quiet);
     await withIndexPathLock(fileIndexClaimKey(path), async () => {
@@ -1495,8 +1648,8 @@ class AdvancedSearchEngine {
   ): Promise<void> {
     if (!this.enabled) return;
     if (!isSearchIsolationReady()) return;
-    await this.ensureLoaded();
     if (!this.lucivyReady) return;
+    if (!this.loaded) await this.ensureLoaded();
 
     const quiet = Boolean(options?.quiet);
     await withIndexPathLock(chatIndexClaimKey(dateStrOrPath), async () => {
@@ -1547,7 +1700,7 @@ class AdvancedSearchEngine {
     if (event.type === 'retargetPaths') {
       if (!this.enabled) return;
       if (!isSearchIsolationReady()) return;
-      await this.ensureLoaded();
+      await this.ensureLucivyReady();
       if (!this.index || !this.lucivyReady) return;
       const changed = await retargetFileDocumentsByPrefix(
         this.index,
@@ -1568,7 +1721,7 @@ class AdvancedSearchEngine {
     if (event.type === 'removePaths') {
       if (!this.enabled) return;
       if (!isSearchIsolationReady()) return;
-      await this.ensureLoaded();
+      await this.ensureLucivyReady();
       if (!this.index || !this.lucivyReady) return;
       const removed = await removeFileDocumentsByPrefix(
         this.index,
@@ -1600,7 +1753,12 @@ class AdvancedSearchEngine {
     trees: Array<TreeNode[] | null | undefined>,
     limit = 40,
   ): Promise<ContentSearchFileHit[]> {
-    if (this.enabled) await this.ensureLoaded();
+    if (this.enabled) {
+      await this.ensureLoaded();
+      if (isSearchIsolationReady() && isIndexInitialized(this.index)) {
+        await this.ensureLucivyReady();
+      }
+    }
     const gen = ++this.searchGeneration;
     const q = String(query || '').trim();
     if (!q || !this.backend) return [];
@@ -1705,7 +1863,12 @@ class AdvancedSearchEngine {
     limit = 50,
     commandContext?: import('@/utils/advancedSearch/commands').AppCommandContext,
   ): Promise<AdvancedSearchHit[]> {
-    if (this.enabled) await this.ensureLoaded();
+    if (this.enabled) {
+      await this.ensureLoaded();
+      if (isSearchIsolationReady() && isIndexInitialized(this.index)) {
+        await this.ensureLucivyReady();
+      }
+    }
     const useIndex = this.enabled && this.hasIndex();
     const gen = ++this.searchGeneration;
 

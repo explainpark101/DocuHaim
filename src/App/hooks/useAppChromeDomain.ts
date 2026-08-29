@@ -17,7 +17,7 @@ import {
 import { flushEditorIntoActiveFileTab } from '@/utils/workspaceTabs/appBridge';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
-import { whenIdle } from '@/utils/advancedSearch/yieldToMain';
+import { whenIdle, waitForWorkspaceTabsRestore, yieldToMain } from '@/utils/advancedSearch/yieldToMain';
 import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 
@@ -31,7 +31,7 @@ export function useAppChromeDomain() {
   const { closeCurrentFileRef, currentFileRef, editedFileNameRef, editorContentRef, flushSessionEditorToWorkspaceRef, maybeAutoSaveOnFocusChangeRef, navGuardRef, saveFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
   const { saveFile } = useFileSession();
   const { pendingCloseTabId, setPendingCloseTabId, setShowCloseFileConfirmModal } = useModalsOwned();
-  const { closeWorkspaceTabById, setState: setWorkspaceTabs, workspaceTabsRef } = useWorkspaceTabsCtx();
+  const { closeWorkspaceTabById, setState: setWorkspaceTabs, workspaceTabsRef, hasRestoredPersistedWorkspaceTabsRef, workspaceTabsEnabledRef } = useWorkspaceTabsCtx();
   const navigate = useNavigate();
 
   const toggleFileTreeSidebar = useCallback(() => {
@@ -173,10 +173,14 @@ export function useAppChromeDomain() {
     let cancelled = false;
     const idleId = whenIdle(() => {
       void (async () => {
-        // Defer index load until after first paint so Tauri startup stays responsive.
-        await advancedSearchEngine.ensureLoaded();
+        await waitForWorkspaceTabsRestore(
+          () => workspaceTabsEnabledRef.current,
+          () => hasRestoredPersistedWorkspaceTabsRef.current,
+        );
         if (cancelled) return;
-        await advancedSearchEngine.refreshCheckpointStatus();
+        await yieldToMain();
+        if (cancelled) return;
+        await advancedSearchEngine.warmIndexAfterUnlock();
       })();
     }, 5000);
     return () => {

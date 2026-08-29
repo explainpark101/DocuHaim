@@ -1,6 +1,6 @@
 [package]
 name = "docuhaim"
-version = "1.8.3"
+version = "1.8.4"
 description = "DocuHaim desktop shell"
 authors = ["Jaehyung Park"]
 edition = "2021"
@@ -31,6 +31,7 @@ rayon = "1.10"
 # Match lucivy-wasm ^2.0.1 LUCE snapshot format used by the web Advanced Search index.
 lucivy-core = "2.0.0"
 ld-lucivy = "2.0.0"
+flate2 = "1"
 
 [profile.dev.package.scrypt]
 opt-level = 3

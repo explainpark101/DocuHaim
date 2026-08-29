@@ -16,10 +16,7 @@ export type PrintToolbarFocusTarget =
   | 'export'
   | 'paper'
   | 'image-max'
-  | 'view-nav'
-  | 'view-pages'
-  | 'zoom'
-  | 'first-page-single';
+  | 'zoom';
 
 export type PrintActionId =
   | 'print-save'
@@ -27,11 +24,6 @@ export type PrintActionId =
   | 'print-export'
   | 'print-change-paper'
   | 'print-toggle-toc'
-  | 'print-view-scroll'
-  | 'print-view-flip'
-  | 'print-view-pages-1'
-  | 'print-view-pages-2'
-  | 'print-toggle-first-page-single'
   | 'print-zoom-in'
   | 'print-zoom-out'
   | 'print-zoom-reset'
@@ -50,8 +42,6 @@ export type PrintActionId =
   | 'print-focus-export'
   | 'print-focus-paper'
   | 'print-focus-image-max'
-  | 'print-focus-view-nav'
-  | 'print-focus-view-pages'
   | 'print-focus-zoom'
   | 'print-scroll-heading'
   | `print-paper-${PrintPageSizeId}`;
@@ -208,36 +198,6 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     keywords: ['toc', '목차', 'outline', 'sidebar'],
   },
   {
-    id: 'print-view-scroll',
-    title: '미리보기: 스크롤',
-    description: '미리보기 보기 방식을 스크롤로 설정',
-    keywords: ['scroll', 'view', '스크롤', '보기', 'preview'],
-  },
-  {
-    id: 'print-view-flip',
-    title: '미리보기: 넘기기',
-    description: '미리보기 보기 방식을 페이지 넘기기로 설정',
-    keywords: ['flip', 'page', '넘기기', '보기', 'preview', 'spread'],
-  },
-  {
-    id: 'print-view-pages-1',
-    title: '미리보기: 1페이지',
-    description: '미리보기를 한 페이지씩 표시',
-    keywords: ['1 page', 'single', '1페이지', '보기'],
-  },
-  {
-    id: 'print-view-pages-2',
-    title: '미리보기: 2페이지',
-    description: '미리보기를 두 페이지 펼침으로 표시',
-    keywords: ['2 page', 'spread', '2페이지', '펼침', '보기'],
-  },
-  {
-    id: 'print-toggle-first-page-single',
-    title: '첫장 단면 토글',
-    description: '2페이지 보기에서 첫 장을 단면으로 표시',
-    keywords: ['first page', 'single', 'cover', '첫장', '단면'],
-  },
-  {
     id: 'print-zoom-in',
     title: '미리보기 확대',
     description: '미리보기 확대 비율 +5%',
@@ -344,18 +304,6 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     title: '이미지 최대 크기로 포커스',
     description: '툴바 · 이미지 최대 너비/높이',
     keywords: ['focus', 'image', '포커스', '이미지'],
-  },
-  {
-    id: 'print-focus-view-nav',
-    title: '보기(스크롤/넘기기)로 포커스',
-    description: '툴바 · 미리보기 보기 방식',
-    keywords: ['focus', 'view', 'scroll', 'flip', '포커스', '보기'],
-  },
-  {
-    id: 'print-focus-view-pages',
-    title: '페이지(1/2)로 포커스',
-    description: '툴바 · 미리보기 페이지 수',
-    keywords: ['focus', 'pages', '포커스', '페이지'],
   },
   {
     id: 'print-focus-zoom',

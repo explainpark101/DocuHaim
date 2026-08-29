@@ -7,6 +7,8 @@
  *
  * Fences that embed exported Mermaid charts as `Mermaid![](data:…;base64,…)`
  * default to a collapsed source panel with a rendered image or diagram below.
+ *
+ * Optional size on the info line: ```mermaid width=420px height=280px
  */
 import type { MarkdownIt as MarkdownItInstance, Token } from 'markdown-it';
 import { resolveMermaidThemeForHost } from '@/utils/mermaidTheme';
@@ -16,6 +18,13 @@ import {
   isMermaidLangToken,
   summarizeMermaidEmbedSource,
 } from '@/utils/mermaidBase64Fence';
+import {
+  buildMermaidSizeStyle,
+} from '@/utils/mermaidFenceSize';
+import {
+  mergeMermaidFenceSize,
+  readMermaidSizeCommentFromSrcLines,
+} from '@/utils/mermaidSizeComment';
 
 const PREFIX = 'md-editor';
 
@@ -37,15 +46,39 @@ function escapeAttr(value: string): string {
     .replace(/</g, '&lt;');
 }
 
+function sizeAttrsFromInfo(info: string, fenceEnv?: FenceEnv, fenceLine?: number): string[] {
+  const comment =
+    fenceLine != null && fenceEnv?.srcLines?.length
+      ? readMermaidSizeCommentFromSrcLines(fenceEnv.srcLines, fenceLine)
+      : null;
+  const size = mergeMermaidFenceSize(info, comment);
+  const attrs: string[] = [];
+  if (size.width) attrs.push(`data-mermaid-width="${escapeAttr(size.width)}"`);
+  if (size.height) attrs.push(`data-mermaid-height="${escapeAttr(size.height)}"`);
+  if (size.width || size.height) {
+    attrs.push('data-mermaid-sized="1"');
+    const style = buildMermaidSizeStyle(size);
+    if (style) attrs.push(`style="${escapeAttr(style)}max-width:100%;overflow:hidden;"`);
+  }
+  return attrs;
+}
+
 function buildMermaidAttrs(
   token: Token,
   fenceEnv: FenceEnv | undefined,
   theme: string,
+  info: string,
 ): string {
+  const fenceLine = token.map?.[0];
   const attrs: string[] = [
     `class="${PREFIX}-mermaid"`,
     `data-mermaid-theme="${theme}"`,
     `data-haim-mermaid-lazy="1"`,
+    ...sizeAttrsFromInfo(
+      info,
+      fenceEnv,
+      typeof fenceLine === 'number' ? fenceLine : undefined,
+    ),
   ];
   if (token.map && token.level === 0) {
     attrs.push(`data-closed="${String(isFenceClosed(token, fenceEnv))}"`);
@@ -106,17 +139,25 @@ export function mermaidFenceMarkdownItPlugin(md: MarkdownItInstance): void {
     const imageSrc = extractMermaidBase64ImageSrc(trimmed);
     const langLabel = isMermaidLang ? 'mermaid' : 'Mermaid';
     const summary = summarizeMermaidEmbedSource(trimmed);
+    const fenceLine = token.map?.[0];
+    const sizeExtra = sizeAttrsFromInfo(
+      info,
+      fenceEnv,
+      typeof fenceLine === 'number' ? fenceLine : undefined,
+    );
 
     if (imageSrc) {
       const renderHtml =
-        `<p class="${PREFIX}-mermaid haim-mermaid-image-embed" data-processed="" data-haim-mermaid-image="1">` +
+        `<p class="${PREFIX}-mermaid haim-mermaid-image-embed" data-processed="" data-haim-mermaid-image="1"${
+          sizeExtra.length ? ` ${sizeExtra.join(' ')}` : ''
+        }>` +
         `<img src="${escapeAttr(imageSrc)}" alt="Mermaid" class="haim-mermaid-embed-img" />` +
         `</p>`;
       return renderCollapsibleEmbed(md, langLabel, summary, trimmed, renderHtml);
     }
 
     if (isBase64Embed) {
-      const mermaidAttrs = buildMermaidAttrs(token, fenceEnv, theme);
+      const mermaidAttrs = buildMermaidAttrs(token, fenceEnv, theme, info);
       const renderHtml = `<div ${mermaidAttrs}></div>`;
       return renderCollapsibleEmbed(md, langLabel, summary, trimmed, renderHtml);
     }
@@ -124,6 +165,19 @@ export function mermaidFenceMarkdownItPlugin(md: MarkdownItInstance): void {
     token.attrSet('class', `${PREFIX}-mermaid`);
     token.attrSet('data-mermaid-theme', theme);
     token.attrSet('data-haim-mermaid-lazy', '1');
+    const size = mergeMermaidFenceSize(
+      info,
+      typeof fenceLine === 'number' && fenceEnv?.srcLines?.length
+        ? readMermaidSizeCommentFromSrcLines(fenceEnv.srcLines, fenceLine)
+        : null,
+    );
+    if (size.width) token.attrSet('data-mermaid-width', size.width);
+    if (size.height) token.attrSet('data-mermaid-height', size.height);
+    if (size.width || size.height) {
+      token.attrSet('data-mermaid-sized', '1');
+      const style = buildMermaidSizeStyle(size);
+      if (style) token.attrSet('style', `${style}max-width:100%;overflow:hidden;`);
+    }
     if (token.map && token.level === 0) {
       token.attrSet('data-closed', String(isFenceClosed(token, fenceEnv)));
       token.attrSet('data-line', String(token.map[0]));

@@ -2,6 +2,25 @@ import { findHaimTableBlocks } from '@/utils/haimTable/parse';
 import type { HaimTableBlock } from '@/utils/haimTable/types';
 
 /**
+ * Preview root for resolving a DOM `table` to its markdown `HaimTableBlock`.
+ * Export PDF uses paged output; the editor uses `.md-editor-preview`.
+ */
+export function findHaimTablePreviewRoot(container: HTMLElement | null): Element | null {
+  if (!container) return null;
+  if (container.classList.contains('md-editor-preview')) return container;
+
+  const pagesRoot = container.querySelector('[data-export-pdf-pages]');
+  if (pagesRoot instanceof Element) return pagesRoot;
+
+  return (
+    container.querySelector('.md-editor-preview')
+    ?? container.querySelector('#export-pdf-preview .md-editor-preview')
+    ?? container.querySelector('[data-export-pdf-preview] .md-editor-preview')
+    ?? null
+  );
+}
+
+/**
  * Map a preview DOM `table` to its markdown `HaimTableBlock`
  * (same indexing as box-resize / table edit).
  */

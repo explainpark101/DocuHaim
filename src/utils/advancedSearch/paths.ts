@@ -43,7 +43,11 @@ export function vaultTrashDestPath(path: string): string {
 
 export const MANIFEST_FILE = 'manifest.json';
 export const DOCS_FILE = 'docs.json.gz';
+/** Legacy monolithic LUCE gzip (migrated to {@link LUCE_DIR} on load). */
 export const LUCE_FILE = 'index.luce.gz';
+/** On-disk Lucivy shard layout under `.advanced-search/luce/`. */
+export const LUCE_DIR = 'luce';
+export const LUCE_SHARD_CONFIG = '_shard_config.json';
 /** @deprecated schema v1 — cleared on migrate */
 export const POSTINGS_FILE = 'postings.json.gz';
 
@@ -61,6 +65,18 @@ export function docsKey(): string {
 
 export function luceKey(): string {
   return `${ADVANCED_SEARCH_FOLDER}/${LUCE_FILE}`;
+}
+
+export function luceDirPrefix(): string {
+  return `${ADVANCED_SEARCH_FOLDER}/${LUCE_DIR}/`;
+}
+
+export function luceDirKey(): string {
+  return `${ADVANCED_SEARCH_FOLDER}/${LUCE_DIR}`;
+}
+
+export function luceShardConfigKey(): string {
+  return `${luceDirPrefix()}${LUCE_SHARD_CONFIG}`;
 }
 
 /** @deprecated schema v1 */

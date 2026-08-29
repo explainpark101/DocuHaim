@@ -23,7 +23,7 @@ import {
   type PrintSpreadPair,
 } from '@/utils/printPreviewView';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
-import { PRINT_BODY_PAGE_ATTR } from '@/utils/printPagePack';
+import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
 import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
 
 type Props = {
@@ -35,7 +35,7 @@ type Props = {
   pageSizeId: PrintPageSizeId;
   /** Number of packed body pages (not including cover). */
   bodyPageCount: number;
-  /** Host of `.export-pdf-page` nodes produced by packPrintPages. */
+  /** Host of body page nodes (`data-print-body-page` / `.pagedjs_page`). */
   pagesHostRef: RefObject<HTMLElement | null>;
   /** Bumps when packed pages are rebuilt. */
   packLayoutKey: string;
