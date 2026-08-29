@@ -20,11 +20,20 @@ import { ensureDirectoryReadWritePermission } from '@/utils/localFolderStore';
 import { resolveStorageImagePath } from '@/utils/storageImagePath';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
+  getEncMdPassword,
+  isEncMdPath,
+  prepareEncMdVaultBody,
+} from '@/utils/encMd';
+import {
   SESSION_STORAGE_TYPE,
   decodeSessionText,
+  getSessionFileLocalAbsPath,
   mimeForSessionFileName,
+  resolveSessionFileRef,
   updateSessionFileText,
 } from '@/utils/sessionWorkspace';
+import { prepareSessionMarkdownForLocalAbs, prepareSessionMarkdownForVault, bundleSessionMarkdownImages } from '@/utils/sessionNoteImport';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
   buildMarkdownImageZipEntries,
   collectMarkdownExportImageBytes,
@@ -36,10 +45,6 @@ import {
   writeMarkdownImageBundleToDirectory,
   zipFileNameForMarkdown,
 } from '@/utils/markdownImageExport';
-import {
-  bundleSessionMarkdownImages,
-  prepareSessionMarkdownForVault,
-} from '@/utils/sessionNoteImport';
 import { remapMarkdownHeadingLevels } from '@/utils/markdownHeadings';
 import { copyText } from '@/utils/copyText';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
@@ -59,8 +64,8 @@ import {
 export function useDownloadSessionDomain() {
   const { showAlert } = useAlertModal();
   const { s3Creds } = useAuth();
-  const { getBackendForType, getS3Client, loadS3Files, localRootHandle, refreshLocalTree, refreshWebdavTree, setSessionWorkspace, storageMode, webdavConfig, webdavReady } = useVault();
-  const { connectedHaimStorageTypeRef, currentFile, currentFileRef, downloadSessionWorkspaceRef, editorContentRef, flushSessionEditorToWorkspaceRef, handleRequestSessionSaveChooserRef, requestEncMdPasswordRef, saveFileRef, sessionVaultBindingsRef, sessionWorkspaceRef, setCurrentFile, setEditorContent, setEncMdPrompt, writeSessionFileToHaimRef } = useFileSessionOwned();
+  const { getBackendForType, getS3Client, loadS3Files, localRootHandle, refreshLocalTree, refreshWebdavTree, upsertSessionWorkspace, storageMode, webdavConfig, webdavReady } = useVault();
+  const { connectedHaimStorageTypeRef, currentFile, currentFileRef, downloadSessionWorkspaceRef, editorContentRef, flushSessionEditorToWorkspaceRef, handleRequestSessionSaveChooserRef, requestEncMdPasswordRef, saveFileRef, sessionVaultBindingsRef, sessionWorkspacesRef, setCurrentFile, setEditorContent, setEncMdPrompt, writeSessionFileToHaimRef } = useFileSessionOwned();
   const { saveFile } = useFileSession();
   const { downloadMarkdownImageZipRef, readBackendBytesRef } = useTreeOpsOwned();
   const { downloadModalMode, openUnsupportedFolderDownloadModal, setDownloadComplete, setDownloadModalMode, setDownloadProgress, setIsSavingSessionToNote, setShowDownloadMethodModal, setShowSaveSessionToNoteModal, triggerBlobDownload } = useModalsOwned();
@@ -87,7 +92,8 @@ export function useDownloadSessionDomain() {
         alert('파일을 텍스트로 불러오지 못했습니다.');
       }
     } else if (currentFile.type === SESSION_STORAGE_TYPE) {
-      const record = sessionWorkspaceRef.current?.files?.[currentFile.id];
+      const ref = resolveSessionFileRef(sessionWorkspacesRef.current, currentFile.id);
+      const record = ref?.workspace.files[ref.path];
       if (!record) {
         alert('파일을 텍스트로 불러오지 못했습니다.');
         return;
@@ -154,15 +160,19 @@ export function useDownloadSessionDomain() {
   };
 
   const readSessionBytes = async (path: any) => {
-    const ws = sessionWorkspaceRef.current;
     const cur = currentFileRef.current;
+    const map = sessionWorkspacesRef.current ?? {};
+    const ref =
+      cur?.type === SESSION_STORAGE_TYPE ? resolveSessionFileRef(map, cur.id) : null;
+    const ws = ref?.workspace;
+    const sessionNotePath = ref?.path ?? cur?.id;
     const candidates = [
       path,
       String(path || '').replace(/^\/+/, ''),
-      cur?.id ? resolveStorageImagePath(path, cur.id) : null,
+      sessionNotePath ? resolveStorageImagePath(path, sessionNotePath) : null,
     ].filter(Boolean);
     for (const key of candidates) {
-      const record = ws?.files?.[key];
+      const record = ws?.files?.[key as string];
       if (record) return record.bytes;
     }
     throw new Error(`이미지를 찾지 못했습니다: ${path}`);
@@ -193,24 +203,25 @@ export function useDownloadSessionDomain() {
       throw new Error('다운로드 세션 파일이 없습니다.');
     }
     const textToSave = content != null ? String(content) : editorContentRef.current ?? '';
+    const fileRef = resolveSessionFileRef(sessionWorkspacesRef.current, file.id);
     const isActive =
       currentFileRef.current?.type === SESSION_STORAGE_TYPE &&
       currentFileRef.current?.id === file.id;
     if (isActive) {
-      flushSessionEditorToWorkspaceRef.current?.();
-    } else if (sessionWorkspaceRef.current) {
-      const next = updateSessionFileText(sessionWorkspaceRef.current, file.id, textToSave);
-      sessionWorkspaceRef.current = next;
-      setSessionWorkspace(next);
+      await flushSessionEditorToWorkspaceRef.current?.();
+    } else if (fileRef) {
+      const next = updateSessionFileText(fileRef.workspace, fileRef.path, textToSave);
+      const nextMap = {
+        ...(sessionWorkspacesRef.current ?? {}),
+        [fileRef.sessionId]: next,
+      };
+      sessionWorkspacesRef.current = nextMap;
+      upsertSessionWorkspace(next);
     }
 
-    const backend = getBackendForType(storageType);
-    if (confirmOverwrite) {
-      const existing = await backend.head?.(destPath);
-      if (existing && !window.confirm(`이미 있는 파일입니다. 덮어쓸까요?\n${destPath}`)) {
-        return { cancelled: true };
-      }
-    }
+    const localAbsPath =
+      sessionVaultBindingsRef.current[file.id]?.localAbsPath ??
+      (fileRef ? getSessionFileLocalAbsPath(fileRef.workspace, fileRef.path) : null);
 
     const viewer = file.viewer || 'markdown';
     const destName =
@@ -221,31 +232,145 @@ export function useDownloadSessionDomain() {
       file.name ||
       'untitled.md';
     const isMd =
-      isMarkdownFileName(destName) || isMarkdownFileName(file.name) || viewer === 'markdown';
+      isMarkdownFileName(destName) ||
+      isMarkdownFileName(file.name) ||
+      isEncMdPath(destName) ||
+      isEncMdPath(file.name) ||
+      viewer === 'markdown';
+
+    if (localAbsPath && isDesktopApp()) {
+      let bodyText = textToSave;
+      if (isMd) {
+        const sessionNotePath = fileRef?.path ?? file.name ?? destName;
+        const prepared = await prepareSessionMarkdownForLocalAbs({
+          markdown: textToSave,
+          sessionNotePath,
+          destAbsPath: localAbsPath,
+          readBytes: readSessionBytes,
+        });
+        bodyText = prepared.markdown;
+        for (const image of prepared.files) {
+          await writeBytesToTauriPath(image.absPath, image.data);
+        }
+        if (prepared.missing.length) alert(formatMissingExportImagesMessage(prepared.missing));
+      }
+      if (isEncMdPath(localAbsPath) || isEncMdPath(file.name)) {
+        let pw = getEncMdPassword(file.id) || getEncMdPassword(localAbsPath);
+        if (!pw) {
+          const req = requestEncMdPasswordRef.current;
+          if (!req) throw new Error('cancelled');
+          pw = await req({
+            title: '암호화된 노트 저장',
+            message: '저장하려면 비밀번호를 입력하세요.',
+            confirmLabel: '암호화 저장',
+          });
+        }
+        bodyText = await prepareEncMdVaultBody(localAbsPath, bodyText, pw);
+      }
+      await writeTextToTauriPath(localAbsPath, bodyText);
+
+      if (file.id) {
+        sessionVaultBindingsRef.current[file.id] = { localAbsPath };
+      }
+
+      const savedByteLength = new TextEncoder().encode(textToSave).length;
+      if (isActive) {
+        setCurrentFile((prev: any) => {
+          if (!prev || prev.type !== SESSION_STORAGE_TYPE || prev.id !== file.id) return prev;
+          const next = { ...prev, content: textToSave, size: savedByteLength };
+          currentFileRef.current = next;
+          return next;
+        });
+        markAutoSaveTimestamp();
+      }
+
+      const existingTab = findFileTab(workspaceTabsRef.current, SESSION_STORAGE_TYPE, file.id);
+      if (existingTab) {
+        const tabId = `${SESSION_STORAGE_TYPE}:${file.id}`;
+        const patch: any = {
+          currentFile: {
+            ...existingTab.currentFile,
+            content: textToSave,
+            size: savedByteLength,
+          },
+          baselineContent: textToSave,
+        };
+        if (existingTab.editorContent === textToSave) {
+          patch.editorContent = textToSave;
+        }
+        const patched = patchFileTab(workspaceTabsRef.current, tabId, patch);
+        workspaceTabsRef.current = patched;
+        setWorkspaceTabs(patched);
+      }
+
+      setOperationStatus(`저장: ${localAbsPath}`);
+      return { cancelled: false, destPath: localAbsPath, localAbsPath };
+    }
+
+    const backend = getBackendForType(storageType);
+    if (confirmOverwrite) {
+      const existing = await backend.head?.(destPath);
+      if (existing && !window.confirm(`이미 있는 파일입니다. 덮어쓸까요?\n${destPath}`)) {
+        return { cancelled: true };
+      }
+    }
+
+    const viewerForVault = file.viewer || 'markdown';
+    const destNameForVault =
+      String(destPath || '')
+        .split('/')
+        .filter(Boolean)
+        .pop() ||
+      file.name ||
+      'untitled.md';
+    const isMdForVault =
+      isMarkdownFileName(destNameForVault) ||
+      isMarkdownFileName(file.name) ||
+      isEncMdPath(destNameForVault) ||
+      isEncMdPath(file.name) ||
+      viewerForVault === 'markdown';
 
     let vaultText = textToSave;
-    if (isMd) {
+    if (isMdForVault) {
+      const sessionNotePath = fileRef?.path ?? file.id ?? destNameForVault;
       const prepared = await prepareSessionMarkdownForVault({
         markdown: textToSave,
-        sessionNotePath: file.id || destName,
+        sessionNotePath,
         destNotePath: destPath,
         readBytes: readSessionBytes,
       });
       vaultText = prepared.markdown;
-      await backend.writeText(destPath, prepared.markdown, 'text/markdown; charset=utf-8');
+      if (isEncMdPath(destPath) || isEncMdPath(destNameForVault)) {
+        let pw = getEncMdPassword(file.id) || getEncMdPassword(destPath);
+        if (!pw) {
+          const req = requestEncMdPasswordRef.current;
+          if (!req) throw new Error('cancelled');
+          pw = await req({
+            title: '암호화된 노트 저장',
+            message: '저장하려면 비밀번호를 입력하세요.',
+            confirmLabel: '암호화 저장',
+          });
+        }
+        vaultText = await prepareEncMdVaultBody(destPath, prepared.markdown, pw);
+      }
+      await backend.writeText(
+        destPath,
+        vaultText,
+        isEncMdPath(destPath) ? 'application/json; charset=utf-8' : 'text/markdown; charset=utf-8',
+      );
       for (const image of prepared.images) {
         await backend.writeBytes(image.path, image.data, mimeForSessionFileName(image.path));
       }
       if (prepared.missing.length) alert(formatMissingExportImagesMessage(prepared.missing));
     } else {
       const contentTypeForViewer =
-        viewer === 'json'
+        viewerForVault === 'json'
           ? 'application/json'
-          : viewer === 'raw'
+          : viewerForVault === 'raw'
             ? 'text/plain'
-            : viewer === 'html'
+            : viewerForVault === 'html'
               ? 'text/html'
-              : viewer === 'svg'
+              : viewerForVault === 'svg'
                 ? 'image/svg+xml'
                 : 'text/plain';
       await backend.writeText(destPath, textToSave, contentTypeForViewer);
@@ -309,7 +434,7 @@ export function useDownloadSessionDomain() {
     const cur = currentFileRef.current;
     if (!cur || cur.type !== SESSION_STORAGE_TYPE) return null;
     const fileName = cur.name || 'untitled.md';
-    if (!isMarkdownFileName(fileName)) {
+    if (!isMarkdownFileName(fileName) && !isEncMdPath(fileName)) {
       return { cur, fileName, bundled: null };
     }
     let markdown = remapMarkdownHeadingLevels(editorContentRef.current ?? '', headingMax);
@@ -320,9 +445,10 @@ export function useDownloadSessionDomain() {
       );
     }
     const effectiveSyntax = (imageMode === 'base64' ? 'markdown' : imageSyntax) as 'markdown' | 'wiki';
+    const fileRef = resolveSessionFileRef(sessionWorkspacesRef.current, cur.id);
     const bundled = await bundleSessionMarkdownImages({
       markdown,
-      notePath: cur.id,
+      notePath: fileRef?.path ?? cur.id,
       readBytes: readSessionBytes,
       imageSyntax: effectiveSyntax,
     });
@@ -397,6 +523,31 @@ export function useDownloadSessionDomain() {
   };
 
   const handleRequestSaveSessionToNote = () => {
+    const cur = currentFileRef.current;
+    if (
+      cur?.type === SESSION_STORAGE_TYPE &&
+      isDesktopApp()
+    ) {
+      const binding = sessionVaultBindingsRef.current[cur.id];
+      const sessionRef = resolveSessionFileRef(sessionWorkspacesRef.current, cur.id);
+      const localAbsPath =
+        binding?.localAbsPath ??
+        (sessionRef ? getSessionFileLocalAbsPath(sessionRef.workspace, sessionRef.path) : null);
+      if (localAbsPath) {
+        void (async () => {
+          try {
+            await writeSessionFileToHaimRef.current?.({
+              destPath: localAbsPath,
+              sessionFile: cur,
+            });
+          } catch (error: any) {
+            console.error('Save session to local file failed:', error);
+            alert('저장에 실패했습니다: ' + (error?.message || error));
+          }
+        })();
+        return;
+      }
+    }
     if (!isConnectedHaimReady()) {
       alert(
         storageMode === 'local'
@@ -414,6 +565,24 @@ export function useDownloadSessionDomain() {
     const cur = currentFileRef.current;
     if (!cur || cur.type !== SESSION_STORAGE_TYPE) return;
     const binding = sessionVaultBindingsRef.current[cur.id];
+    const sessionRef = resolveSessionFileRef(sessionWorkspacesRef.current, cur.id);
+    const localAbsPath =
+      binding?.localAbsPath ??
+      (sessionRef ? getSessionFileLocalAbsPath(sessionRef.workspace, sessionRef.path) : null);
+    if (localAbsPath && isDesktopApp()) {
+      void (async () => {
+        try {
+          await writeSessionFileToHaimRef.current?.({
+            destPath: localAbsPath,
+            sessionFile: cur,
+          });
+        } catch (error: any) {
+          console.error('Save session to local file failed:', error);
+          alert('저장에 실패했습니다: ' + (error?.message || error));
+        }
+      })();
+      return;
+    }
     if (
       binding?.destPath &&
       binding.storageType === connectedHaimStorageType() &&
@@ -452,7 +621,7 @@ export function useDownloadSessionDomain() {
       if (result?.cancelled) return;
       setShowSaveSessionToNoteModal(false);
       showAlert({
-        title: '내 노트에 저장',
+        title: '내 Haim에 저장',
         message: '노트를 저장했습니다.',
         detail: destPath,
       });
@@ -786,10 +955,17 @@ export function useDownloadSessionDomain() {
           return;
         }
 
-        const flushed = flushSessionEditorToWorkspaceRef.current?.() ?? sessionWorkspaceRef.current;
-        if (!flushed) throw new Error('다운로드 세션이 없습니다.');
+        const flushed =
+          (await flushSessionEditorToWorkspaceRef.current?.()) ??
+          sessionWorkspacesRef.current;
+        const sessionRef =
+          currentFile?.type === SESSION_STORAGE_TYPE
+            ? resolveSessionFileRef(flushed ?? {}, currentFile.id)
+            : null;
+        const workspace = sessionRef?.workspace;
+        if (!workspace) throw new Error('다운로드 세션이 없습니다.');
         if (tauriDirPath) {
-          const records = Object.values(flushed?.files || {}) as any[];
+          const records = Object.values(workspace?.files || {}) as any[];
           const total = Math.max(records.length, 1);
           let done = 0;
           for (const record of records) {
@@ -814,7 +990,7 @@ export function useDownloadSessionDomain() {
           }
           notifyTauriExportComplete(fileName);
         } else {
-          await writeSessionWorkspaceToDirectory(dirHandle, flushed, (percent: any) =>
+          await writeSessionWorkspaceToDirectory(dirHandle, workspace, (percent: any) =>
             setDownloadProgress(percent),
           );
         }

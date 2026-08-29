@@ -8,6 +8,7 @@ import {
   getActiveFileTab,
   getActiveTab,
   isChatTab,
+  isContentSearchTab,
   isFileTab,
   isFileTabDirty,
   isSettingsTab,
@@ -19,16 +20,18 @@ import {
   flushEditorIntoActiveFileTab,
   moveTab,
   openOrActivateChat,
+  openOrActivateContentSearch,
   openOrActivateSettings,
 } from '@/utils/workspaceTabs/appBridge';
 import {
   collapseWorkspaceToLegacy,
   stripChatTab,
+  stripContentSearchTab,
   stripSettingsTab,
 } from '@/utils/workspaceTabs/legacyMode';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 import { clearEncMdPassword, isEncMdPath } from '@/utils/encMd';
-import { isSettingsAppPathname } from '@/utils/appHref';
+import { contentSearchPathname, isSettingsAppPathname } from '@/utils/appHref';
 import { useAuth } from '@/contexts/AuthContext';
 import { findFileTab } from '@/utils/workspaceTabs/appBridge';
 import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
@@ -199,6 +202,10 @@ export function useWorkspaceTabsDomain({
         setCurrentFile(null);
         currentFileRef.current = null;
         if (navigateUrl) navigate('/settings');
+      } else if (isContentSearchTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        if (navigateUrl) navigate('/search');
       } else if (navigateUrl) {
         navigate('/');
       }
@@ -217,8 +224,8 @@ export function useWorkspaceTabsDomain({
   );
 
   const openChatWorkspaceTab = useCallback(
-    (options: { navigateUrl?: boolean } = {}) => {
-      const { navigateUrl = true } = options;
+    (options: { navigateUrl?: boolean; activate?: boolean } = {}) => {
+      const { navigateUrl = true, activate = true } = options;
       if (!workspaceTabsEnabledRef.current) {
         const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
           editorContent: editorContentRef.current ?? '',
@@ -246,12 +253,14 @@ export function useWorkspaceTabsDomain({
       if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
         onLeavingDirty(leaving.currentFile, leaving.editorContent);
       }
-      const next = openOrActivateChat(flushed);
+      const next = openOrActivateChat(flushed, Date.now(), { activate });
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
-      setCurrentFile(null);
-      currentFileRef.current = null;
-      if (navigateUrl) navigate('/chat');
+      if (activate) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+      }
+      if (navigateUrl && activate) navigate('/chat');
     },
     [
       navigate,
@@ -266,8 +275,8 @@ export function useWorkspaceTabsDomain({
   );
 
   const openSettingsWorkspaceTab = useCallback(
-    (options: { navigateUrl?: boolean; hash?: string } = {}) => {
-      const { navigateUrl = true, hash } = options;
+    (options: { navigateUrl?: boolean; hash?: string; activate?: boolean } = {}) => {
+      const { navigateUrl = true, hash, activate = true } = options;
       const target =
         typeof hash === 'string' && hash
           ? `/settings${hash.startsWith('#') ? hash : `#${hash}`}`
@@ -299,12 +308,66 @@ export function useWorkspaceTabsDomain({
       if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
         onLeavingDirty(leaving.currentFile, leaving.editorContent);
       }
-      const next = openOrActivateSettings(flushed);
+      const next = openOrActivateSettings(flushed, Date.now(), { activate });
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
-      setCurrentFile(null);
-      currentFileRef.current = null;
-      if (navigateUrl) navigate(target);
+      if (activate) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+      }
+      if (navigateUrl && activate) navigate(target);
+    },
+    [
+      navigate,
+      onLeavingDirty,
+      workspaceTabsEnabledRef,
+      workspaceTabsRef,
+      setWorkspaceTabs,
+      editorContentRef,
+      currentFileRef,
+      setCurrentFile,
+    ],
+  );
+
+  const openContentSearchWorkspaceTab = useCallback(
+    (options: { navigateUrl?: boolean; query?: string; activate?: boolean } = {}) => {
+      const { navigateUrl = true, query, activate = true } = options;
+      const target = contentSearchPathname(query);
+      if (!workspaceTabsEnabledRef.current) {
+        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+          editorContent: editorContentRef.current ?? '',
+          currentFile: currentFileRef.current,
+          editedFileName: editedFileNameRef.current ?? '',
+        });
+        const leaving = getActiveFileTab(flushed);
+        if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+          onLeavingDirty(leaving.currentFile, leaving.editorContent);
+        }
+        const next = stripContentSearchTab(flushed);
+        workspaceTabsRef.current = next;
+        setWorkspaceTabs(next);
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        if (navigateUrl) navigate(target);
+        return;
+      }
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const leaving = getActiveFileTab(flushed);
+      if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+        onLeavingDirty(leaving.currentFile, leaving.editorContent);
+      }
+      const next = openOrActivateContentSearch(flushed, Date.now(), { activate });
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      if (activate) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+      }
+      if (navigateUrl && activate) navigate(target);
     },
     [
       navigate,
@@ -404,6 +467,10 @@ export function useWorkspaceTabsDomain({
         setCurrentFile(null);
         currentFileRef.current = null;
         navigate('/settings');
+      } else if (isContentSearchTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        navigate('/search');
       } else {
         setCurrentFile(null);
         currentFileRef.current = null;
@@ -472,6 +539,7 @@ export function useWorkspaceTabsDomain({
     closeWorkspaceTabById,
     openChatWorkspaceTab,
     openSettingsWorkspaceTab,
+    openContentSearchWorkspaceTab,
     reorderWorkspaceTabs,
     collapseToLegacyWorkspace,
     cycleWorkspaceTab,

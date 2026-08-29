@@ -4,6 +4,9 @@ export const CHAT_TAB_ID = 'chat' as const;
 /** Fixed id for the singleton settings tab. */
 export const SETTINGS_TAB_ID = 'settings' as const;
 
+/** Fixed id for the singleton vault content search tab. */
+export const CONTENT_SEARCH_TAB_ID = 'content-search' as const;
+
 /** Soft max open file tabs (chat / settings excluded). */
 export const WORKSPACE_TAB_SOFT_CAP = 12;
 
@@ -22,6 +25,11 @@ export type ChatWorkspaceTab = {
 export type SettingsWorkspaceTab = {
   id: typeof SETTINGS_TAB_ID;
   kind: 'settings';
+};
+
+export type ContentSearchWorkspaceTab = {
+  id: typeof CONTENT_SEARCH_TAB_ID;
+  kind: 'content-search';
 };
 
 export type FileWorkspaceTab = {
@@ -45,7 +53,11 @@ export type FileWorkspaceTab = {
   lastActivatedAt: number;
 };
 
-export type WorkspaceTab = ChatWorkspaceTab | SettingsWorkspaceTab | FileWorkspaceTab;
+export type WorkspaceTab =
+  | ChatWorkspaceTab
+  | SettingsWorkspaceTab
+  | ContentSearchWorkspaceTab
+  | FileWorkspaceTab;
 
 export type WorkspaceTabsState = {
   tabs: WorkspaceTab[];
@@ -55,6 +67,7 @@ export type WorkspaceTabsState = {
 export type PersistedWorkspaceTab =
   | { kind: 'chat' }
   | { kind: 'settings' }
+  | { kind: 'content-search' }
   | { kind: 'file'; type: FileStorageType; path: string };
 
 export type PersistedWorkspaceTabs = {

@@ -1,5 +1,6 @@
 import {
   CHAT_TAB_ID,
+  CONTENT_SEARCH_TAB_ID,
   SETTINGS_TAB_ID,
   type FileWorkspaceTab,
   type WorkspaceTab,
@@ -58,6 +59,17 @@ export function stripChatTab(state: WorkspaceTabsState): WorkspaceTabsState {
   const tabs = state.tabs.filter((t) => t.kind !== 'chat');
   const activeId =
     state.activeId === CHAT_TAB_ID
+      ? (tabs[0]?.id ?? null)
+      : state.activeId && tabs.some((t) => t.id === state.activeId)
+        ? state.activeId
+        : (tabs[0]?.id ?? null);
+  return { tabs, activeId };
+}
+
+export function stripContentSearchTab(state: WorkspaceTabsState): WorkspaceTabsState {
+  const tabs = state.tabs.filter((t) => t.kind !== 'content-search');
+  const activeId =
+    state.activeId === CONTENT_SEARCH_TAB_ID
       ? (tabs[0]?.id ?? null)
       : state.activeId && tabs.some((t) => t.id === state.activeId)
         ? state.activeId

@@ -88,9 +88,25 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
     case 'REMOVE':
       return state.filter((i) => i.id !== action.payload.id);
     case 'UPDATE':
-      return state.map((i) =>
-        i.id === action.payload.id ? { ...i, ...action.payload.updates } : i,
-      );
+      return state.map((i) => {
+        if (i.id !== action.payload.id) return i;
+        const next = { ...i, ...action.payload.updates };
+        // Allow clearing progress during prepare (spinner-only, no %).
+        if (
+          Object.prototype.hasOwnProperty.call(action.payload.updates, 'progress') &&
+          action.payload.updates.progress === undefined
+        ) {
+          delete next.progress;
+        }
+        if (
+          Object.prototype.hasOwnProperty.call(action.payload.updates, 'detail') &&
+          (action.payload.updates.detail === undefined ||
+            action.payload.updates.detail === '')
+        ) {
+          delete next.detail;
+        }
+        return next;
+      });
     default:
       return state;
   }

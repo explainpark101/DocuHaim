@@ -41,6 +41,10 @@ import {
 } from 'lucide-react';
 
 export const IconFolder = ({ size = 16, ...props }) => <Folder size={size} {...props} />;
+/** Filled folder — used for inverted-index target folders in the sidebar tree. */
+export const IconFolderFilled = ({ size = 16, ...props }) => (
+  <Folder size={size} fill="currentColor" strokeWidth={1.5} {...props} />
+);
 export const IconCloud = ({ size = 16, ...props }) => <Cloud size={size} {...props} />;
 export const IconFile = ({ size = 16, ...props }) => <FileText size={size} {...props} />;
 export const IconSettings = ({ size = 20, ...props }) => <Settings size={size} {...props} />;

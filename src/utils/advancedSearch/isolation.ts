@@ -1,10 +1,14 @@
 /**
  * lucivy-wasm needs SharedArrayBuffer (pthread) → crossOriginIsolated.
- * Vite/Tauri set COOP+COEP headers; GitHub Pages uses coi-serviceworker
+ * Vite sets COOP+COEP headers; GitHub Pages uses coi-serviceworker
  * (https://github.com/gzuidhof/coi-serviceworker) then the app PWA SW.
+ * Tauri uses a native lucivy-core index — isolation is not required.
  */
 
+import { isTauriApp } from '@/utils/tauriPlatform';
+
 export function isSearchIsolationReady(): boolean {
+  if (isTauriApp()) return true;
   return typeof crossOriginIsolated !== 'undefined' && crossOriginIsolated === true;
 }
 

@@ -378,8 +378,24 @@ export default function StorageUsageAnalysis({
   const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
 
   useEffect(() => {
-    return advancedSearchEngine.subscribe(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let pending = false;
+    const flush = () => {
       setIndexStatus(advancedSearchEngine.getStatus());
+    };
+    return advancedSearchEngine.subscribe(() => {
+      if (timer) {
+        pending = true;
+        return;
+      }
+      flush();
+      timer = setTimeout(() => {
+        timer = null;
+        if (pending) {
+          pending = false;
+          flush();
+        }
+      }, 400);
     });
   }, []);
 
@@ -535,8 +551,8 @@ export default function StorageUsageAnalysis({
               !indexStatus.enabled
                 ? '설정에서 역색인을 켠 뒤 사용할 수 있습니다'
                 : !indexStatus.isolationReady
-                  ? '검색 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하세요'
-                  : 'Advanced Search 역색인을 백그라운드로 생성합니다'
+                  ? '웹에서는 검색 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하세요'
+                  : '역색인을 백그라운드로 생성합니다'
             }
           >
             {indexBusy || indexStatus.building ? (
@@ -583,11 +599,7 @@ export default function StorageUsageAnalysis({
         </p>
       )}
 
-      <AdvancedSearchBuildLog
-        logs={indexStatus.buildLogs || []}
-        building={indexStatus.building}
-        progress={indexStatus.buildProgress}
-      />
+      <AdvancedSearchBuildLog />
 
       <RebuildCheckpointChoiceModal
         isOpen={checkpointChoiceOpen}

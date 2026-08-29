@@ -209,7 +209,7 @@ export async function rewriteDuplicateImageReferencesInVault(params: {
         // skip unreadable
       }
     },
-    { signal: params.signal },
+    params.signal != null ? { signal: params.signal } : undefined,
   );
   return updatedPaths;
 }

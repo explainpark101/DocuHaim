@@ -1,5 +1,10 @@
 import { CHAT_FOLDER } from '@/utils/chatWithMyself/paths.js';
-import { ADVANCED_SEARCH_FOLDER } from '@/utils/advancedSearch/paths';
+import {
+  ADVANCED_SEARCH_FOLDER,
+  isSystemIndexExcludedFolder,
+  SYSTEM_INDEX_EXCLUDED_FOLDERS,
+} from '@/utils/advancedSearch/paths';
+import { isPathUnderExcludedFolders } from '@/utils/advancedSearch/settings';
 
 /** Always indexed when Advanced Search index is built. */
 export const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown']);
@@ -25,17 +30,34 @@ export const INDEXABLE_EXTENSIONS = new Set([
 
 const EXCLUDED_PREFIXES = [
   `${ADVANCED_SEARCH_FOLDER}/`,
+  /** Underscore alias (never create; hide / skip if present). */
+  '.advanced_search/',
   '.trash/',
   '.images/',
   '.pictures/',
 ];
 
+export { SYSTEM_INDEX_EXCLUDED_FOLDERS, isSystemIndexExcludedFolder };
+
 export type IndexablePathOptions = {
   /** When true, also index OTHER_TEXT_EXTENSIONS. Default false. */
   includeOtherFiles?: boolean;
+  /**
+   * User-selected vault folders (and all descendants) skipped by the inverted
+   * index. Paths are vault-relative without leading/trailing slashes.
+   */
+  excludedFolders?: readonly string[];
+  /**
+   * When true, ignore `excludedFolders` (user “역색인 제외 폴더”).
+   * System prefixes (`.trash`, `.advanced-search`, …) still apply.
+   */
+  ignoreExcludedFolders?: boolean;
 };
 
-export function isExcludedPath(path: string): boolean {
+export function isExcludedPath(
+  path: string,
+  options: IndexablePathOptions = {},
+): boolean {
   const p = String(path || '').replace(/^\/+/, '');
   if (!p) return true;
   for (const prefix of EXCLUDED_PREFIXES) {
@@ -46,7 +68,24 @@ export function isExcludedPath(path: string): boolean {
     if (/^\.chat-with-myself\/\d{4}-\d{2}-\d{2}\.md$/i.test(p)) return false;
     return true;
   }
+  if (
+    !options.ignoreExcludedFolders &&
+    isPathUnderExcludedFolders(p, options.excludedFolders || [])
+  ) {
+    return true;
+  }
   return false;
+}
+
+/** True when `path` is `folder` or a descendant (`folder/` prefix). */
+export function isPathUnderFolder(path: string, folderPath: string): boolean {
+  const p = String(path || '').replace(/^\/+/, '');
+  const f = String(folderPath || '')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
+  if (!p) return false;
+  if (!f) return true;
+  return p === f || p.startsWith(`${f}/`);
 }
 
 function fileExtension(path: string): string {
@@ -54,9 +93,12 @@ function fileExtension(path: string): string {
   return (base.split('.').pop() || '').toLowerCase();
 }
 
-export function isMarkdownFilePath(path: string): boolean {
+export function isMarkdownFilePath(
+  path: string,
+  options: IndexablePathOptions = {},
+): boolean {
   const p = String(path || '').replace(/^\/+/, '');
-  if (!p || isExcludedPath(p)) return false;
+  if (!p || isExcludedPath(p, options)) return false;
   const base = p.split('/').pop() || '';
   if (base.startsWith('.')) return false;
   return MARKDOWN_EXTENSIONS.has(fileExtension(p));
@@ -67,7 +109,7 @@ export function isIndexableFilePath(
   options: IndexablePathOptions = {},
 ): boolean {
   const p = String(path || '').replace(/^\/+/, '');
-  if (!p || isExcludedPath(p)) return false;
+  if (!p || isExcludedPath(p, options)) return false;
   const base = p.split('/').pop() || '';
   if (base.startsWith('.')) return false;
   const ext = fileExtension(p);
@@ -109,7 +151,9 @@ export function collectIndexablePathsFromTree(
     for (const node of list) {
       if (node.type === 'file' && node.path) {
         if (isChatDayPath(node.path)) chatDayPaths.push(node.path);
-        else if (isIndexableFilePath(node.path, options)) filePaths.push(node.path);
+        else if (isIndexableFilePath(node.path, options)) {
+          filePaths.push(node.path);
+        }
       }
       if (node.children) walk(node.children);
     }
@@ -121,6 +165,7 @@ export function collectIndexablePathsFromTree(
 /** Flat file entries for filename/path matching (excludes chat system files). */
 export function collectSearchableFileEntries(
   nodes: TreeNode[] | null | undefined,
+  options: IndexablePathOptions = {},
 ): Array<{ path: string; name: string }> {
   const out: Array<{ path: string; name: string }> = [];
   const walk = (list: TreeNode[] | undefined) => {
@@ -128,7 +173,7 @@ export function collectSearchableFileEntries(
     for (const node of list) {
       if (node.type === 'file' && node.path) {
         const p = node.path;
-        if (isExcludedPath(p) || isChatDayPath(p)) {
+        if (isExcludedPath(p, options) || isChatDayPath(p)) {
           // skip
         } else {
           const name = node.name || p.split('/').pop() || p;

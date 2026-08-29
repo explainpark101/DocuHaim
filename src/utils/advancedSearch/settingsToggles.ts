@@ -48,6 +48,8 @@ import {
 import {
   loadAdvancedSearchUiAnimationEnabled,
   saveAdvancedSearchUiAnimationEnabled,
+  loadAdvancedSearchBuildLogAutoScroll,
+  saveAdvancedSearchBuildLogAutoScroll,
 } from '@/utils/advancedSearch/settings';
 import {
   FOOTNOTE_DISPLAY_MODE_OPTIONS,
@@ -75,6 +77,7 @@ export type SettingsToggleId =
   | 'settings-tree-modified-date'
   | 'settings-composer-helper'
   | 'settings-as-animation'
+  | 'settings-as-build-log-auto-scroll'
   | 'settings-as-index'
   | 'settings-as-include-other'
   | 'settings-cover-center-snap'
@@ -224,22 +227,31 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     save: saveAdvancedSearchUiAnimationEnabled,
   },
   {
+    id: 'settings-as-build-log-auto-scroll',
+    enableTitle: '색인 로그 자동 스크롤 켜기',
+    disableTitle: '색인 로그 자동 스크롤 끄기',
+    description: '역색인 로그가 최신 줄로 따라가기',
+    keywords: [
+      'auto scroll',
+      'autoscroll',
+      '자동 스크롤',
+      '로그',
+      'log',
+      '색인',
+      'build log',
+      'advanced search',
+    ],
+    load: loadAdvancedSearchBuildLogAutoScroll,
+    save: saveAdvancedSearchBuildLogAutoScroll,
+  },
+  {
     id: 'settings-as-index',
     enableTitle: 'Advanced Search 역색인 켜기',
     disableTitle: 'Advanced Search 역색인 끄기',
     description: '문서·채팅 내용 역색인 사용',
-    keywords: ['index', '역색인', 'inverted', 'advanced search', '색인'],
+    keywords: ['index', '역색인', 'inverted', '색인', 'live scan'],
     load: () => advancedSearchEngine.isEnabled(),
     save: (v) => {
-      // Android Tauri: lucivy inverted index is unsupported — keep forced off.
-      if (
-        typeof window !== 'undefined' &&
-        ('__TAURI_INTERNALS__' in window || '__TAURI__' in window) &&
-        /Android/i.test(navigator.userAgent || '')
-      ) {
-        advancedSearchEngine.setEnabled(false);
-        return;
-      }
       advancedSearchEngine.setEnabled(v);
     },
   },
@@ -247,8 +259,8 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     id: 'settings-as-include-other',
     enableTitle: '기타 파일 색인 포함 켜기',
     disableTitle: '기타 파일 색인 포함 끄기',
-    description: 'txt/json/html 등도 Advanced Search 색인에 포함',
-    keywords: ['include', 'other', '기타', '파일', 'txt', 'json', '색인'],
+    description: 'txt/json/html 등도 역색인에 포함',
+    keywords: ['include', 'other', '기타', '파일', 'txt', 'json', '색인', '역색인'],
     load: () => advancedSearchEngine.getStatus().includeOtherFiles,
     save: (v) => {
       advancedSearchEngine.setIncludeOtherFiles(v);

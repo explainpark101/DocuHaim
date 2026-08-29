@@ -8,9 +8,13 @@ import { advancedSearchEngine } from '@/utils/advancedSearch';
 const INDICATOR_ID = 'advanced-search-index';
 const DONE_HIDE_MS = 2500;
 const ERROR_HIDE_MS = 5000;
+/** Only push activity-bar updates when progress jumps by this many percent. */
+const PROGRESS_STEP_PCT = 5;
+const LABEL = '역색인';
 
 /**
  * Mirror Advanced Search index build status onto the bottom activity bar.
+ * Chip text is only "역색인" + percent; spinner while processing/preparing.
  */
 export function useAdvancedSearchActivityStatus() {
   const { addIndicator, removeIndicator, updateIndicator } =
@@ -18,6 +22,7 @@ export function useAdvancedSearchActivityStatus() {
   const wasBuildingRef = useRef(false);
   const shownErrorRef = useRef(/** @type {string | null} */ (null));
   const hideTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null));
+  const lastPctRef = useRef(/** @type {number | null} */ (null));
 
   useEffect(() => {
     const clearHideTimer = () => {
@@ -48,47 +53,71 @@ export function useAdvancedSearchActivityStatus() {
           typeof status.buildProgress === 'number'
             ? Math.round(Math.min(100, Math.max(0, status.buildProgress * 100)))
             : null;
+        const stepped =
+          pct == null
+            ? null
+            : Math.floor(pct / PROGRESS_STEP_PCT) * PROGRESS_STEP_PCT;
+        if (
+          wasBuilding &&
+          stepped != null &&
+          lastPctRef.current != null &&
+          stepped === lastPctRef.current
+        ) {
+          return;
+        }
+        if (stepped != null) lastPctRef.current = stepped;
+
+        // status=processing → spinner. No detail text (only label + %).
+        // Omit progress until known so "준비 중" does not show a fake 0%.
+        /** @type {{ label: string; detail: string; status: 'processing'; progress?: number }} */
+        const payload = {
+          label: LABEL,
+          detail: '',
+          status: 'processing',
+        };
+        if (pct != null) payload.progress = pct;
+
         addIndicator({
           id: INDICATOR_ID,
           type: ActivityTypes.ADVANCED_SEARCH_INDEX,
-          label: '검색 색인',
-          detail: pct != null ? `${pct}%` : '준비 중',
-          progress: pct ?? 0,
-          status: 'processing',
+          ...payload,
         });
         updateIndicator(INDICATOR_ID, {
-          label: '검색 색인',
-          detail: pct != null ? `${pct}%` : '준비 중',
-          progress: pct ?? 0,
-          status: 'processing',
+          ...payload,
+          // Clear stale progress when still preparing (pct unknown).
+          progress: pct != null ? pct : undefined,
         });
         wasBuildingRef.current = true;
         return;
       }
+
+      lastPctRef.current = null;
 
       if (wasBuilding) {
         wasBuildingRef.current = false;
         if (status.lastBuildCancelled) {
           shownErrorRef.current = null;
           updateIndicator(INDICATOR_ID, {
-            label: '검색 색인 중지',
-            detail: '이어서 재개 가능',
+            label: LABEL,
+            detail: '중지됨',
+            progress: undefined,
             status: 'done',
           });
           scheduleHide(DONE_HIDE_MS);
         } else if (status.lastError) {
           shownErrorRef.current = status.lastError;
           updateIndicator(INDICATOR_ID, {
-            label: '검색 색인 실패',
+            label: LABEL,
             detail: status.lastError,
+            progress: undefined,
             status: 'error',
           });
           scheduleHide(ERROR_HIDE_MS);
         } else {
           shownErrorRef.current = null;
           updateIndicator(INDICATOR_ID, {
-            label: '검색 색인',
-            detail: '완료',
+            label: LABEL,
+            detail: '',
             progress: 100,
             status: 'done',
           });
@@ -102,12 +131,12 @@ export function useAdvancedSearchActivityStatus() {
         addIndicator({
           id: INDICATOR_ID,
           type: ActivityTypes.ADVANCED_SEARCH_INDEX,
-          label: '검색 색인 오류',
+          label: LABEL,
           detail: status.lastError,
           status: 'error',
         });
         updateIndicator(INDICATOR_ID, {
-          label: '검색 색인 오류',
+          label: LABEL,
           detail: status.lastError,
           status: 'error',
         });

@@ -1,4 +1,4 @@
-import { gzip, gunzipSync, strToU8, strFromU8 } from 'fflate';
+import { gzip, gunzip, gunzipSync, strToU8, strFromU8 } from 'fflate';
 import {
   docsKey,
   luceKey,
@@ -48,11 +48,6 @@ export function gzipJsonBytes(value: unknown): Promise<Uint8Array> {
   return gzipJsonAsync(value);
 }
 
-function gunzipJson<T>(body: Uint8Array): T {
-  const raw = gunzipSync(body);
-  return JSON.parse(strFromU8(raw)) as T;
-}
-
 function gzipBytesAsync(input: Uint8Array): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
     gzip(input, { level: 6 }, (err, data) => {
@@ -64,6 +59,16 @@ function gzipBytesAsync(input: Uint8Array): Promise<Uint8Array> {
 
 export function gunzipBytes(body: Uint8Array): Uint8Array {
   return gunzipSync(body);
+}
+
+/** Async gunzip so startup index load does not block the UI thread. */
+export function gunzipBytesAsync(body: Uint8Array): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    gunzip(body, (err, data) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  });
 }
 
 export function docsToObject(
@@ -109,7 +114,8 @@ async function readGzipJson<T>(
   if (!backend.readBytes) return null;
   try {
     const { body } = await backend.readBytes(path);
-    return gunzipJson<T>(body);
+    const raw = await gunzipBytesAsync(body);
+    return JSON.parse(strFromU8(raw)) as T;
   } catch {
     return null;
   }

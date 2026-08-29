@@ -35,8 +35,12 @@ export type AdvancedSearchModalProps = {
   onSelectHit: (hit: AdvancedSearchHit) => boolean | void;
   indexEnabled?: boolean;
   hasIndex?: boolean;
-  /** SharedArrayBuffer / COOP+COEP ready for Lucivy. */
+  /** Vault index hydrate finished (may still be building). */
+  indexLoaded?: boolean;
+  /** SharedArrayBuffer / COOP+COEP ready for Lucivy (web). */
   isolationReady?: boolean;
+  /** Body search path: Lucivy index, live vault scan, or off. */
+  contentSearchMode?: 'index' | 'live' | 'off';
   building?: boolean;
   /** Show editor toolbar shortcuts in empty-state hints. */
   editorActionsAvailable?: boolean;
@@ -73,11 +77,12 @@ export type AdvancedSearchModalProps = {
 const OVERLAY_TRANSITION = { duration: 0.18 };
 const PANEL_TRANSITION = { type: 'spring' as const, stiffness: 420, damping: 32 };
 
+/** Above sidebar sticky headers (z-9999) and sticky tree folders (~1000); below Modal (z-100000). */
 const OVERLAY_CLASS =
-  'fixed inset-0 z-220 bg-black/45 backdrop-blur-[2px]';
+  'fixed inset-0 z-[99990] bg-black/45 backdrop-blur-[2px]';
 /** Centering translate is driven by motion when animation is on (avoids CSS transform conflicts). */
 const PANEL_CLASS =
-  'fixed left-1/2 top-[min(18vh,8rem)] z-221 flex w-[min(94vw,560px)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl outline-none dark:border-odp-borderStrong dark:bg-odp-bgSoft';
+  'fixed left-1/2 top-[min(18vh,8rem)] z-[99991] flex w-[min(94vw,560px)] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl outline-none dark:border-odp-borderStrong dark:bg-odp-bgSoft';
 
 function reasonLabel(hit: AdvancedSearchHit): string {
   if (hit.kind === 'folder') return '폴더';
@@ -249,7 +254,9 @@ export default function AdvancedSearchModal({
   onSelectHit,
   indexEnabled = true,
   hasIndex = false,
+  indexLoaded = false,
   isolationReady = true,
+  contentSearchMode = 'off',
   building = false,
   editorActionsAvailable = false,
   printActionsAvailable = false,
@@ -413,11 +420,15 @@ export default function AdvancedSearchModal({
 
   const listFooterHint = useMemo(() => {
     if (!indexEnabled) return '역색인 꺼짐 · 파일명·경로·바로가기';
-    if (!isolationReady) return '검색 격리 미지원 · 파일명·경로·바로가기';
+    if (contentSearchMode === 'live') {
+      return '본문 직접 검색(폴백) · 파일·채팅 스캔';
+    }
+    if (!isolationReady) return '웹 검색 격리 미지원 · 파일명·경로·바로가기';
     if (building) return '색인 생성 중…';
+    if (!indexLoaded) return '색인 로드 중…';
     if (!hasIndex) return '색인 없음 · 파일명·경로·바로가기';
     return null;
-  }, [indexEnabled, isolationReady, hasIndex, building]);
+  }, [indexEnabled, contentSearchMode, isolationReady, indexLoaded, hasIndex, building]);
 
   const navHint = vimEnabled
     ? browseDirectoryMode
@@ -514,7 +525,13 @@ export default function AdvancedSearchModal({
           </span>
         ) : listFooterHint && !building ? (
           <span className="hidden shrink-0 text-[11px] text-gray-400 dark:text-odp-muted sm:inline">
-            {indexEnabled && !hasIndex ? '색인 없음' : null}
+            {contentSearchMode === 'live'
+              ? '직접 검색'
+              : indexEnabled && !indexLoaded
+                ? '로드 중'
+                : indexEnabled && !hasIndex
+                  ? '색인 없음'
+                  : null}
           </span>
         ) : null}
         <Dialog.Close asChild>

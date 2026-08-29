@@ -65,7 +65,10 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
   {
     id: 'search',
     title: '검색',
-    sections: [{ id: 'settings-advanced-search', label: 'Advanced Search' }],
+    sections: [
+      { id: 'settings-advanced-search', label: 'Advanced Search' },
+      { id: 'settings-inverted-index', label: '역색인' },
+    ],
   },
   {
     id: 'ui-navigation',

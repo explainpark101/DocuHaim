@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
-import { ChevronsRight } from 'lucide-react';
+import { ChevronsRight, Cloud, MessagesSquare } from 'lucide-react';
 import SidebarConnected from '@/App/components/SidebarConnected';
 import ResizableSidebarPanel from '@/components/ResizableSidebarPanel';
 import WorkspaceMainPanels from '@/components/workspace/WorkspaceMainPanels';
@@ -85,6 +85,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     lockChatViewport,
     isChatRoute,
     isSettingsRoute,
+    isContentSearchRoute,
     appName,
     handleBrandClick,
     chatAttachDropHost,
@@ -177,6 +178,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     webdavReady,
     canScanStorageUsage,
     scanActiveStorageUsageTree,
+    sessionWorkspaces,
   } = vault;
 
   const {
@@ -230,6 +232,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const activateWorkspaceTab = tabsCtx.activateWorkspaceTab;
   const closeWorkspaceTabById = tabsCtx.closeWorkspaceTabById;
   const openChatWorkspaceTab = tabsCtx.openChatWorkspaceTab;
+  const openContentSearchWorkspaceTab = tabsCtx.openContentSearchWorkspaceTab;
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
   const setWorkspaceTabs = tabsCtx.setState;
 
@@ -457,6 +460,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           editorContent={editorContent}
           snippetConfig={snippetConfig}
           theme={theme}
+          chatTabActive={chatSurfaceActive}
+          onOpenContentSearch={(query) => {
+            if (workspaceTabsEnabled) {
+              openContentSearchWorkspaceTab({ query });
+              return;
+            }
+            navigate(query ? `/search?q=${encodeURIComponent(query)}` : '/search');
+          }}
         />
       ) : null}
 
@@ -578,6 +589,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                   tabBarPlacement={isTauriDesktopPlatform() ? 'titlebar' : 'inline'}
                   isChatRoute={isChatRoute}
                   isSettingsRoute={isSettingsRoute}
+                  isContentSearchRoute={isContentSearchRoute}
                   vaultDropProps={{
                     storageType: storageMode,
                     localRootHandle,
@@ -862,6 +874,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     onAttachDropHostChange: setChatAttachDropHost,
                     onRegisterTreeAttachDrop: handleRegisterChatAttachDrop,
                   }}
+                  contentSearchPaneProps={{
+                    storageMode,
+                    s3Tree,
+                    localTree,
+                    webdavTree,
+                    sessionWorkspaces,
+                    onOpenFile: openAdvancedSearchFile,
+                  }}
                 />
               }
             />
@@ -928,16 +948,19 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                             : '없음'}
                   </span>
                   <span className="hidden md:inline">
-                    저장소:{' '}
-                    {currentFile?.type === 's3'
-                      ? `S3 (${s3Creds.bucket || '-'})`
-                      : currentFile?.type === 'local'
-                        ? '로컬'
-                        : currentFile?.type === 'webdav'
-                          ? 'WebDAV'
-                          : currentFile?.type === SESSION_STORAGE_TYPE
-                            ? '다운로드 세션'
-                            : '없음'}
+                    <span className='flex items-center gap-1'>
+                      <Cloud className="size-3" />
+                      {' '}
+                      {currentFile?.type === 's3'
+                        ? `S3`
+                        : currentFile?.type === 'local'
+                          ? '로컬'
+                          : currentFile?.type === 'webdav'
+                            ? 'WebDAV'
+                            : currentFile?.type === SESSION_STORAGE_TYPE
+                              ? '다운로드 세션'
+                              : '없음'}
+                    </span>
                   </span>
                 </span>
                 {currentFile && (
@@ -958,7 +981,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               </>
             ) : (
               <span className="truncate text-gray-500 dark:text-odp-muted shrink-0">
-                나와의 채팅
+                <MessagesSquare className="size-3" />
                 {storageMode === 's3'
                   ? ` · S3${s3Creds.bucket ? ` (${s3Creds.bucket})` : ''}`
                   : storageMode === 'local'

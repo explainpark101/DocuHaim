@@ -32,6 +32,7 @@ const CHROME_KEYS = [
   'lockChatViewport',
   'isChatRoute',
   'isSettingsRoute',
+  'isContentSearchRoute',
   'appName',
   'handleBrandClick',
   'chatAttachDropHost',

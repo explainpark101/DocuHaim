@@ -4,7 +4,11 @@ export type AdvancedSearchChangeEvent =
   | { type: 'file'; path: string; content: string }
   | { type: 'chatDay'; dateStr: string; content: string }
   | { type: 'rebuild' }
-  | { type: 'clear' };
+  | { type: 'clear' }
+  /** Soft-trash / restore / rename / move: remap indexed paths (keeps Lucivy body). */
+  | { type: 'retargetPaths'; from: string; to: string }
+  /** Permanent delete (trash purge / hard delete): drop docs under path. */
+  | { type: 'removePaths'; path: string };
 
 type Listener = (event: AdvancedSearchChangeEvent) => void;
 

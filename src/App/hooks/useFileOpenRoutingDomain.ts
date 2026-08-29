@@ -15,6 +15,7 @@ import {
   CHAT_TAB_ID,
   SETTINGS_TAB_ID,
   pickWorkspaceTabsRestoreSource,
+  persistedTabId,
   seedTabsRestoreQueueFromSnapshot,
 } from '@/utils/workspaceTabs';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
@@ -23,7 +24,8 @@ import { hasStoredLocalRootHandle, loadLastLocalFolderName } from '@/utils/local
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { loadLocalVaultFsPath } from '@/utils/localVaultPathStore';
-import { readTauriLocalDirectoryTree } from '@/utils/storage/tauriLocalBackend';
+import { loadTauriLocalTreeInitial } from '@/utils/storage/tauriLocalBackend';
+import { loadExpandedFolderPaths } from '@/utils/expandedFoldersStore';
 import { ensureAndroidDefaultLocalVaultRoot } from '@/utils/storage/androidLocalVault';
 import {
   resolveDesktopOpenPaths,
@@ -32,7 +34,7 @@ import {
 } from '@/utils/desktopOpenFiles';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isContentSearchAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath } from '@/utils/appHref';
 
 /**
  * useFileOpenRoutingDomain: context-owned domain handlers.
@@ -60,7 +62,7 @@ export function useFileOpenRoutingDomain() {
   const { selectFileRaw } = useFileSession();
   const { createModalContext } = useTreeOpsOwned();
   const { handleTreeNodeSelect } = useTreeOps();
-  const { hasRestoredPersistedWorkspaceTabsRef, openChatWorkspaceTab, openSettingsWorkspaceTab, workspaceTabsEnabled, workspaceTabsEnabledRef } = useWorkspaceTabsCtx();
+  const { hasRestoredPersistedWorkspaceTabsRef, openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, workspaceTabsEnabled, workspaceTabsEnabledRef } = useWorkspaceTabsCtx();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -276,15 +278,7 @@ export function useFileOpenRoutingDomain() {
     hasSeededTabsRestoreQueueRef.current = true;
     const source = pickWorkspaceTabsRestoreSource();
     if (!source?.tabs?.length) return;
-    const openIds = new Set();
-    if (typeof source.activeId === 'string' && source.activeId) {
-      openIds.add(source.activeId);
-    } else {
-      const first = source.tabs[0];
-      if (first?.kind === 'chat') openIds.add(CHAT_TAB_ID);
-      else if (first?.kind === 'settings') openIds.add(SETTINGS_TAB_ID);
-      else if (first?.kind === 'file') openIds.add(`${first.type}:${first.path}`);
-    }
+    const openIds = new Set(source.tabs.map((tab) => persistedTabId(tab)));
     seedTabsRestoreQueueFromSnapshot(source, openIds as Set<string>);
   }, [isUnlocked, workspaceTabsEnabled]);
 
@@ -342,6 +336,7 @@ export function useFileOpenRoutingDomain() {
     const onChat =
       location.pathname === '/chat' || location.pathname.endsWith('/chat');
     const onSettings = isSettingsAppPathname(location.pathname);
+    const onContentSearch = isContentSearchAppPathname(location.pathname);
     const openParam =
       typeof window !== 'undefined'
         ? new URLSearchParams(window.location.search).get('open')
@@ -388,6 +383,13 @@ export function useFileOpenRoutingDomain() {
         openSettingsWorkspaceTab({ navigateUrl: false });
       }
       return;
+    } else if (onContentSearch) {
+      hasRestoredLastFileRef.current = true;
+      hasProcessedOpenFromUrlRef.current = true;
+      if (workspaceTabsEnabledRef.current) {
+        openContentSearchWorkspaceTab({ navigateUrl: false });
+      }
+      return;
     } else if (isExportPdfAppPathname(location.pathname)) {
       // Bare /export-pdf without a note path — do not restore last file into the editor.
       hasRestoredLastFileRef.current = true;
@@ -403,10 +405,10 @@ export function useFileOpenRoutingDomain() {
         if (workspaceTabsEnabledRef.current) {
           hasProcessedOpenFromUrlRef.current = true;
           if (persisted.tabs.some((t) => t.kind === 'chat')) {
-            openChatWorkspaceTab({ navigateUrl: false });
+            openChatWorkspaceTab({ navigateUrl: false, activate: false });
           }
           if (persisted.tabs.some((t) => t.kind === 'settings')) {
-            openSettingsWorkspaceTab({ navigateUrl: false });
+            openSettingsWorkspaceTab({ navigateUrl: false, activate: false });
           }
           if (persisted.activeId === CHAT_TAB_ID) {
             navigate('/chat');
@@ -612,15 +614,27 @@ export function useFileOpenRoutingDomain() {
     openSettingsWorkspaceTab({ navigateUrl: false });
   }, [location.pathname, openSettingsWorkspaceTab]);
 
+  useEffect(() => {
+    if (!isContentSearchAppPathname(location.pathname)) return;
+    if (!workspaceTabsEnabledRef.current) return;
+    openContentSearchWorkspaceTab({ navigateUrl: false });
+  }, [location.pathname, openContentSearchWorkspaceTab]);
+
   // Keep the open note in sync with browser history (back/forward, history.back, …).
   useEffect(() => {
     if (!isUnlocked || !hasProcessedOpenFromUrlRef.current) return;
-    if (isChatAppPathname(location.pathname) || isSettingsAppPathname(location.pathname)) {
+    if (
+      isChatAppPathname(location.pathname) ||
+      isSettingsAppPathname(location.pathname) ||
+      isContentSearchAppPathname(location.pathname)
+    ) {
       if (workspaceTabsEnabledRef.current) {
         if (isChatAppPathname(location.pathname)) {
           openChatWorkspaceTab({ navigateUrl: false });
-        } else {
+        } else if (isSettingsAppPathname(location.pathname)) {
           openSettingsWorkspaceTab({ navigateUrl: false });
+        } else {
+          openContentSearchWorkspaceTab({ navigateUrl: false });
         }
       }
       return;
@@ -745,7 +759,10 @@ export function useFileOpenRoutingDomain() {
       if (localVaultFsPath !== abs) setLocalVaultFsPath(abs);
       setIsLocalTreeLoading(true);
       try {
-        const tree = await readTauriLocalDirectoryTree(abs);
+        const tree = await loadTauriLocalTreeInitial(
+          abs,
+          loadExpandedFolderPaths().local,
+        );
         if (!cancelled) setLocalTree(tree);
       } catch (e) {
         console.warn('Failed to restore Tauri local vault tree:', e);

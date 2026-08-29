@@ -1,6 +1,10 @@
 import { tokenizeForIndexAsync } from '@/utils/advancedSearch/tokenize';
+import { fileDocId } from '@/utils/advancedSearch/paths';
 import type { DocMeta, InMemoryIndex } from '@/utils/advancedSearch/types';
-import { collectSearchableFileEntries } from '@/utils/advancedSearch/collectSources';
+import {
+  collectSearchableFileEntries,
+  isExcludedPath,
+} from '@/utils/advancedSearch/collectSources';
 import {
   matchAppCommandsRanked,
   type AppCommandContext,
@@ -38,6 +42,27 @@ export type LucivyContentSearchFn = (
   terms: string[],
   limit: number,
 ) => Promise<Array<{ docId: string; score: number }>>;
+
+function canonicalFileHitDocId(path: string): string {
+  return fileDocId(path);
+}
+
+function canonicalFileHitFromMeta(
+  meta: DocMeta,
+): { docId: string; path: string; title: string; preview?: string } {
+  const path = meta.path;
+  const baseTitle = meta.title || pathBasenameSafe(path);
+  const title =
+    meta.chunkCount && meta.chunkCount > 1 && typeof meta.chunkIndex === 'number'
+      ? `${pathBasenameSafe(path)} (${meta.chunkIndex + 1}/${meta.chunkCount})`
+      : baseTitle;
+  return {
+    docId: canonicalFileHitDocId(path),
+    path,
+    title,
+    ...(meta.preview ? { preview: meta.preview } : {}),
+  };
+}
 
 function scoreHit(reasons: MatchReason[]): number {
   let s = 0;
@@ -164,9 +189,14 @@ export async function runAdvancedSearch(options: {
   }
 
   if (options.indexEnabled && options.index) {
-    for (const [docId, meta] of options.index.docs) {
+    const seenIndexedFiles = new Set<string>();
+    for (const [, meta] of options.index.docs) {
       if (meta.kind !== 'file') continue;
-      const title = meta.title || pathBasenameSafe(meta.path);
+      if (isExcludedPath(meta.path)) continue;
+      if (seenIndexedFiles.has(meta.path)) continue;
+      seenIndexedFiles.add(meta.path);
+      const canonical = canonicalFileHitFromMeta(meta);
+      const title = pathBasenameSafe(meta.path);
       const nameLower = title.toLowerCase();
       const pathLower = String(meta.path || '').toLowerCase();
       const nameScore = scoreFuzzyRelevance(nameLower, qLower);
@@ -174,26 +204,22 @@ export async function runAdvancedSearch(options: {
       if (nameScore <= 0 && pathScore <= 0) continue;
       if (nameScore > 0) {
         upsert({
-          docId,
-          kind: 'file',
-          path: meta.path,
+          ...canonical,
           title,
-          ...(meta.preview ? { preview: meta.preview } : {}),
+          kind: 'file',
           reason: 'name',
         });
-        const hit = hits.get(docId);
+        const hit = hits.get(canonical.docId);
         if (hit) hit.score += nameScore;
       }
       if (pathScore > 0) {
         upsert({
-          docId,
-          kind: 'file',
-          path: meta.path,
+          ...canonical,
           title,
-          ...(meta.preview ? { preview: meta.preview } : {}),
+          kind: 'file',
           reason: 'path',
         });
-        const hit = hits.get(docId);
+        const hit = hits.get(canonical.docId);
         if (hit && nameScore <= 0) hit.score += Math.round(pathScore * 0.45);
       }
     }
@@ -216,13 +242,12 @@ export async function runAdvancedSearch(options: {
         for (const { docId, score } of lucivyHits) {
           const meta: DocMeta | undefined = options.index.docs.get(docId);
           if (!meta) continue;
+          if (meta.kind === 'file' && isExcludedPath(meta.path)) continue;
           if (meta.kind === 'file') {
+            const canonical = canonicalFileHitFromMeta(meta);
             upsert({
-              docId,
+              ...canonical,
               kind: 'file',
-              path: meta.path,
-              title: meta.title || pathBasenameSafe(meta.path),
-              ...(meta.preview ? { preview: meta.preview } : {}),
               reason: 'content',
               scoreBoost: Math.round(score * 10),
             });
@@ -252,8 +277,11 @@ export async function runAdvancedSearch(options: {
         .split(/[/\\]+/)
         .map((t) => t.trim())
         .filter((t) => t.length >= 2);
-      for (const [docId, meta] of options.index.docs) {
+      const seenPathFiles = new Set<string>();
+      for (const [, meta] of options.index.docs) {
         if (meta.kind !== 'file') continue;
+        if (isExcludedPath(meta.path)) continue;
+        if (seenPathFiles.has(meta.path)) continue;
         const pathLower = String(meta.path || '').toLowerCase();
         if (
           !fuzzyMatchText(pathLower, qLower) &&
@@ -261,20 +289,26 @@ export async function runAdvancedSearch(options: {
         ) {
           continue;
         }
+        seenPathFiles.add(meta.path);
+        const canonical = canonicalFileHitFromMeta(meta);
         upsert({
-          docId,
+          ...canonical,
+          title: pathBasenameSafe(meta.path),
           kind: 'file',
-          path: meta.path,
-          title: meta.title || pathBasenameSafe(meta.path),
-          ...(meta.preview ? { preview: meta.preview } : {}),
           reason: 'path',
         });
       }
     }
 
     for (const [docId, meta] of options.index.docs) {
-      if (hits.has(docId)) continue;
-      const title = meta.title || pathBasenameSafe(meta.path);
+      const canonicalId =
+        meta.kind === 'file' ? canonicalFileHitDocId(meta.path) : docId;
+      if (hits.has(canonicalId)) continue;
+      if (meta.kind === 'file' && isExcludedPath(meta.path)) continue;
+      const title =
+        meta.kind === 'file'
+          ? pathBasenameSafe(meta.path)
+          : meta.title || pathBasenameSafe(meta.path);
       const haystacks = [
         title,
         meta.path,
@@ -285,15 +319,14 @@ export async function runAdvancedSearch(options: {
       const matched = haystacks.some((h) => fuzzyMatchText(String(h || ''), qLower));
       if (!matched) continue;
       if (meta.kind === 'file') {
+        const canonical = canonicalFileHitFromMeta(meta);
         upsert({
-          docId,
-          kind: 'file',
-          path: meta.path,
+          ...canonical,
           title,
-          ...(meta.preview ? { preview: meta.preview } : {}),
+          kind: 'file',
           reason: 'name',
         });
-        const hit = hits.get(docId);
+        const hit = hits.get(canonical.docId);
         if (hit) hit.score += scoreFuzzyRelevance(title, qLower);
       } else {
         upsert({

@@ -23,6 +23,7 @@ import {
   IconMusic,
   IconVideo,
   IconFolder,
+  IconFolderFilled,
   IconTrash,
   IconSettings,
 } from '@/components/icons';
@@ -40,6 +41,7 @@ import {
 import TreeNodeModifiedLabel from '@/components/TreeNodeModifiedLabel';
 import { collectOsDropPayload } from '@/utils/osDropPayload';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { isExcludedPath } from '@/utils/advancedSearch/collectSources';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
@@ -161,6 +163,12 @@ type TreeNodeProps = {
   mobileTree?: boolean | undefined;
   /** In-flight move/copy markers from App. */
   transferBusyItems?: TreeTransferBusyEntry[] | null | undefined;
+  /**
+   * Inverted-index folder styling: outline when excluded / index off,
+   * filled when the folder (or subtree) is an index target.
+   */
+  indexEnabled?: boolean | undefined;
+  indexExcludedFolders?: readonly string[] | undefined;
 };
 
 function EmptyItemHint({ label }: EmptyItemHintProps) {
@@ -231,6 +239,8 @@ export default function TreeNode({
   disableDrag = false,
   mobileTree = false,
   transferBusyItems = null,
+  indexEnabled = true,
+  indexExcludedFolders = [],
 }: TreeNodeProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempName, setTempName] = useState(node.name);
@@ -469,7 +479,13 @@ export default function TreeNode({
         node.name === '.images' ||
         node.path.endsWith('/.images') ||
         node.path.includes('/.images/');
-      return isImagesFolder ? IconImageFolder : IconFolder;
+      if (isImagesFolder) return IconImageFolder;
+
+      // Outline = not an inverted-index target; filled = indexable folder.
+      const indexExcluded =
+        !indexEnabled ||
+        isExcludedPath(node.path, { excludedFolders: indexExcludedFolders });
+      return indexExcluded ? IconFolder : IconFolderFilled;
     }
     if (node.type !== 'file') return IconFile;
     if (isEncMdPath(node.name) || isEncMdPath(node.path)) return IconLock;
@@ -1028,6 +1044,8 @@ export default function TreeNode({
               disableDrag={disableDrag}
               mobileTree={mobileTree}
               transferBusyItems={transferBusyItems}
+              indexEnabled={indexEnabled}
+              indexExcludedFolders={indexExcludedFolders}
             />
           ))}
     </div>

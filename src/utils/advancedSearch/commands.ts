@@ -77,6 +77,7 @@ export type AppCommandId =
   | 'settings-chat'
   | 'settings-og'
   | 'settings-advanced-search'
+  | 'settings-inverted-index'
   | 'settings-wiki-image'
   | 'settings-snippets'
   | 'settings-webfonts'
@@ -84,6 +85,7 @@ export type AppCommandId =
   | 'settings-table-styles'
   | 'settings-app-update'
   | 'chat'
+  | 'content-search'
   | 'chat-settings'
   | 'chat-groups'
   | 'chat-select-group'
@@ -141,6 +143,8 @@ export type AppCommandContext = {
   printActionsAvailable?: boolean;
   /** True when chat composer has registered actions (on /chat). */
   chatActionsAvailable?: boolean;
+  /** True when the Chat with Myself tab/surface is active. */
+  chatTabActive?: boolean;
   /** True when MLX-VLM settings registered actions (Tauri macOS). */
   mlxVlmActionsAvailable?: boolean;
   /** True when llama.cpp settings registered actions (Tauri desktop). */
@@ -178,6 +182,25 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: '파일 트리·에디터 홈으로 이동',
     path: '/',
     keywords: ['home', '홈', '메인', 'main', 'start', '시작'],
+  },
+  {
+    id: 'content-search',
+    title: '본문 검색',
+    description: '역색인·본문 단위 검색 페이지 열기',
+    path: '/search',
+    keywords: [
+      'search',
+      '검색',
+      '본문',
+      'content',
+      'find',
+      '찾기',
+      'grep',
+      '역색인',
+      'inverted index',
+      'full text',
+      '풀텍스트',
+    ],
   },
   {
     id: 'settings',
@@ -373,15 +396,37 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'settings-advanced-search',
     title: '설정 · Advanced Search',
-    description: '역색인 on/off·다시 색인',
+    description: 'Spotlight 애니메이션 등 UI',
     path: '/settings#settings-advanced-search',
     keywords: [
       'advanced search',
-      '역색인',
-      'index',
-      '색인',
       'spotlight',
       '검색 설정',
+      '애니메이션',
+      'animation',
+    ],
+  },
+  {
+    id: 'settings-inverted-index',
+    title: '설정 · 역색인',
+    description: '역색인 on/off·제외 폴더·체크포인트·Live Scan·다시 색인·커버리지',
+    path: '/settings#settings-inverted-index',
+    keywords: [
+      '역색인',
+      'inverted index',
+      '색인',
+      'index',
+      'live scan',
+      '라이브 스캔',
+      '폴더',
+      '제외',
+      'exclude',
+      '체크포인트',
+      'checkpoint',
+      '커버리지',
+      'coverage',
+      'advanced search',
+      'spotlight',
     ],
   },
   {
@@ -657,91 +702,94 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
   }
 
   const list: AppCommand[] = [...APP_COMMANDS];
+  const openMdFile = isOpenMarkdownFile(context?.currentFile)
+    ? context?.currentFile
+    : null;
 
-  // Exactly one of enable/disable, matching current localStorage preference.
-  const autocompleteOn = context?.editorAutocompleteEnabled !== false;
-  list.push(
-    autocompleteOn
-      ? {
-          id: 'editor-autocomplete-toggle',
-          title: '자동완성 추천 끄기',
-          description: '에디터 자동완성 추천을 이 기기에서 끕니다',
-          path: '',
-          keywords: [
-            'autocomplete',
-            'completion',
-            'suggestion',
-            '자동완성',
-            '추천',
-            '끄기',
-            'off',
-            'disable',
-          ],
-        }
-      : {
-          id: 'editor-autocomplete-toggle',
-          title: '자동완성 추천 켜기',
-          description: '에디터 자동완성 추천을 이 기기에서 켭니다',
-          path: '',
-          keywords: [
-            'autocomplete',
-            'completion',
-            'suggestion',
-            '자동완성',
-            '추천',
-            '켜기',
-            'on',
-            'enable',
-          ],
-        },
-  );
-
-  const mirrorEditOn = context?.editorMirrorEditEnabled === true;
-  // Safari: Mirror Edit UI and sync are disabled — omit the AS toggle too.
-  if (!isSafariBrowser()) {
+  if (openMdFile) {
+    // Exactly one of enable/disable, matching current localStorage preference.
+    const autocompleteOn = context?.editorAutocompleteEnabled !== false;
     list.push(
-      mirrorEditOn
+      autocompleteOn
         ? {
-            id: 'editor-mirror-edit-toggle',
-            title: 'Mirror Edit 끄기',
-            description: '양쪽 커서·즉시 프리뷰 동기화를 끕니다',
+            id: 'editor-autocomplete-toggle',
+            title: '자동완성 추천 끄기',
+            description: '에디터 자동완성 추천을 이 기기에서 끕니다',
             path: '',
             keywords: [
-              'mirror edit',
-              'mirror',
-              'preview edit',
-              'contenteditable',
-              '더블클릭',
-              '프리뷰 편집',
+              'autocomplete',
+              'completion',
+              'suggestion',
+              '자동완성',
+              '추천',
               '끄기',
               'off',
               'disable',
             ],
           }
         : {
-            id: 'editor-mirror-edit-toggle',
-            title: 'Mirror Edit 켜기',
-            description: '프리뷰·마크다운에 커서를 함께 두고 즉시 동기화합니다',
+            id: 'editor-autocomplete-toggle',
+            title: '자동완성 추천 켜기',
+            description: '에디터 자동완성 추천을 이 기기에서 켭니다',
             path: '',
             keywords: [
-              'mirror edit',
-              'mirror',
-              'preview edit',
-              'contenteditable',
-              '더블클릭',
-              '프리뷰 편집',
+              'autocomplete',
+              'completion',
+              'suggestion',
+              '자동완성',
+              '추천',
               '켜기',
               'on',
               'enable',
             ],
           },
     );
-  }
 
-  if (isOpenMarkdownFile(context?.currentFile)) {
+    const mirrorEditOn = context?.editorMirrorEditEnabled === true;
+    // Safari: Mirror Edit UI and sync are disabled — omit the AS toggle too.
+    if (!isSafariBrowser()) {
+      list.push(
+        mirrorEditOn
+          ? {
+              id: 'editor-mirror-edit-toggle',
+              title: 'Mirror Edit 끄기',
+              description: '양쪽 커서·즉시 프리뷰 동기화를 끕니다',
+              path: '',
+              keywords: [
+                'mirror edit',
+                'mirror',
+                'preview edit',
+                'contenteditable',
+                '더블클릭',
+                '프리뷰 편집',
+                '끄기',
+                'off',
+                'disable',
+              ],
+            }
+          : {
+              id: 'editor-mirror-edit-toggle',
+              title: 'Mirror Edit 켜기',
+              description: '프리뷰·마크다운에 커서를 함께 두고 즉시 동기화합니다',
+              path: '',
+              keywords: [
+                'mirror edit',
+                'mirror',
+                'preview edit',
+                'contenteditable',
+                '더블클릭',
+                '프리뷰 편집',
+                '켜기',
+                'on',
+                'enable',
+              ],
+            },
+      );
+    }
+
     const name =
-      String(context.currentFile.name || '').trim() ||
-      String(context.currentFile.id || '')
+      String(openMdFile.name || '').trim() ||
+      String(openMdFile.id || '')
         .split('/')
         .filter(Boolean)
         .pop() ||
@@ -1083,6 +1131,32 @@ export type RankedAppCommand = {
   score: number;
 };
 
+function isSettingsSectionCommand(id: AppCommandId): boolean {
+  return id.startsWith('settings-');
+}
+
+function isChatSectionCommand(id: AppCommandId): boolean {
+  return id.startsWith('chat-');
+}
+
+/** Core palette visibility: settings sections need a query; chat sections need an active chat tab. */
+function isCoreCommandVisible(
+  command: AppCommand,
+  query: string,
+  context?: AppCommandContext,
+): boolean {
+  if (command.id === 'export-pdf') {
+    return isOpenMarkdownFile(context?.currentFile);
+  }
+  if (isSettingsSectionCommand(command.id)) {
+    return normalize(query).length > 0;
+  }
+  if (isChatSectionCommand(command.id)) {
+    return context?.chatTabActive === true;
+  }
+  return true;
+}
+
 /**
  * Match built-in commands by relevance.
  * - Empty query: core app shortcuts only (no editor/print toolbar dump).
@@ -1123,10 +1197,12 @@ export function matchAppCommandsRanked(
 
   if (!q) {
     // Palette: core destinations only — page toolbar actions require a query.
-    return core.map((command, index) => ({
-      command,
-      score: 1000 - index,
-    }));
+    return core
+      .filter((command) => isCoreCommandVisible(command, query, context))
+      .map((command, index) => ({
+        command,
+        score: 1000 - index,
+      }));
   }
 
   const page = getPageActionCommands(context);
@@ -1138,6 +1214,7 @@ export function matchAppCommandsRanked(
 
   for (const command of [...core, ...page, ...settingsToggles, ...tabsAutoSave, ...footnoteDisplay]) {
     if (seen.has(command.id)) continue;
+    if (!isCoreCommandVisible(command, query, context)) continue;
     seen.add(command.id);
     const score = scoreCommandRelevance(command, q);
     if (score <= 0) continue;

@@ -3,6 +3,8 @@
  * Plugin APIs are loaded lazily so plain web Vite never eagerly imports @tauri-apps/*.
  */
 
+import { patchLocalTreeChildren } from '@/utils/localTree';
+import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
 import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
 
 function joinVault(root: string, rel: string): string {
@@ -136,7 +138,7 @@ export function createTauriLocalBackend(vaultRoot: string) {
       await writeFile(joinVault(root, path), body);
     },
 
-    async writeText(path: string, text: string) {
+    async writeText(path: string, text: string, _contentType?: string) {
       await this.writeBytes(path, new TextEncoder().encode(text));
     },
 
@@ -238,12 +240,89 @@ export async function pickTauriLocalVaultDirectory(): Promise<string | null> {
   return String(selected);
 }
 
+/** Read one directory level only (lazy tree; matches web FSA `readLocalDirectoryLevel`). */
+export async function readTauriLocalDirectoryLevel(
+  vaultRoot: string,
+  basePath = '',
+): Promise<unknown[]> {
+  const backend = createTauriLocalBackend(vaultRoot);
+  return backend.listChildren(basePath);
+}
+
+/**
+ * Load children for expanded folders after a lazy root read (breadth-first by depth).
+ */
+export async function hydrateExpandedTauriLocalFolders(
+  vaultRoot: string,
+  nodes: unknown[],
+  expandedPaths?: Iterable<string> | Set<string> | null,
+): Promise<unknown[]> {
+  const expanded =
+    expandedPaths instanceof Set ? expandedPaths : new Set(expandedPaths ?? []);
+  if (!Array.isArray(nodes) || nodes.length === 0 || expanded.size === 0) {
+    return nodes;
+  }
+
+  const backend = createTauriLocalBackend(vaultRoot);
+  let tree = nodes;
+  for (;;) {
+    const toLoad: Array<{ path: string }> = [];
+    const visit = (list: unknown[]) => {
+      if (!list?.length) return;
+      for (const node of list) {
+        const folder = node as {
+          type?: string;
+          path?: string;
+          childrenLoaded?: boolean;
+          children?: unknown[];
+        };
+        if (folder?.type !== 'folder') continue;
+        if (
+          folder.path &&
+          expanded.has(folder.path) &&
+          folder.childrenLoaded !== true
+        ) {
+          toLoad.push({ path: folder.path });
+        }
+        if (folder.children?.length) visit(folder.children);
+      }
+    };
+    visit(tree);
+    if (toLoad.length === 0) return tree;
+
+    const loaded = await Promise.all(
+      toLoad.map(async (folder) => ({
+        path: folder.path,
+        children: await backend.listChildren(folder.path),
+      })),
+    );
+
+    for (const { path, children } of loaded) {
+      tree = patchLocalTreeChildren(tree, path, children);
+    }
+    await yieldToMain();
+  }
+}
+
+/** Fast startup path: root level + previously expanded folders only. */
+export async function loadTauriLocalTreeInitial(
+  vaultRoot: string,
+  expandedPaths?: Iterable<string> | Set<string> | null,
+): Promise<unknown[]> {
+  const level = await readTauriLocalDirectoryLevel(vaultRoot);
+  return hydrateExpandedTauriLocalFolders(vaultRoot, level, expandedPaths);
+}
+
+/** Full recursive scan — use for explicit refresh / storage usage analysis only. */
 export async function readTauriLocalDirectoryTree(vaultRoot: string) {
   const backend = createTauriLocalBackend(vaultRoot);
+  let scanned = 0;
   const walk = async (rel: string): Promise<unknown[]> => {
     const children = await backend.listChildren(rel);
     const out = [];
     for (const child of children) {
+      scanned += 1;
+      if (scanned % 16 === 0) await yieldToMain();
       if (child.type === 'folder') {
         const nested = await walk(child.path);
         out.push({ ...child, children: nested, childrenLoaded: true });

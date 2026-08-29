@@ -1,9 +1,11 @@
 /**
- * Lucivy-wasm backend for Advanced Search (OPFS + LUCE snapshots).
- * Loaded only when indexing is enabled and cross-origin isolation is ready.
+ * Lucivy backend for Advanced Search.
+ * - Web/PWA: lucivy-wasm (OPFS + SharedArrayBuffer / COOP+COEP)
+ * - Tauri: native lucivy-core via invoke (no isolation required)
  */
 
 import { isSearchIsolationReady, searchIsolationBlockedReason } from '@/utils/advancedSearch/isolation';
+import { isTauriIndexBackendAvailable } from '@/utils/advancedSearch/tauriIndexBackend';
 
 export const LUCIVY_OPFS_PATH = '/s3haim-advanced-search';
 
@@ -62,6 +64,12 @@ type LucivyModule = {
 let lucivyMod: LucivyModule | null = null;
 let runtime: LucivyRuntimeApi | null = null;
 let indexHandle: LucivyIndexApi | null = null;
+/** True when the open index is the Tauri native session (not wasm). */
+let nativeOpen = false;
+
+function useNative(): boolean {
+  return isTauriIndexBackendAvailable();
+}
 
 function workerScriptUrl(): string {
   const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/');
@@ -74,11 +82,19 @@ async function loadLucivyModule(): Promise<LucivyModule> {
   return lucivyMod;
 }
 
+async function tauriApi() {
+  return import('./tauriIndexBackend');
+}
+
 export function isLucivyOpen(): boolean {
+  if (useNative()) {
+    return nativeOpen;
+  }
   return indexHandle != null;
 }
 
-export async function ensureLucivyRuntime(): Promise<LucivyRuntimeApi> {
+export async function ensureLucivyRuntime(): Promise<LucivyRuntimeApi | null> {
+  if (useNative()) return null;
   if (!isSearchIsolationReady()) {
     throw new Error(searchIsolationBlockedReason() || 'Search isolation unavailable');
   }
@@ -91,8 +107,17 @@ export async function ensureLucivyRuntime(): Promise<LucivyRuntimeApi> {
 
 export async function openOrCreateLucivyIndex(
   snapshot: Uint8Array | null,
-): Promise<LucivyIndexApi> {
+): Promise<LucivyIndexApi | null> {
+  if (useNative()) {
+    const api = await tauriApi();
+    await api.openTauriIndexSession(snapshot);
+    nativeOpen = true;
+    indexHandle = null;
+    return null;
+  }
+
   const lucivy = await ensureLucivyRuntime();
+  if (!lucivy) throw new Error('Lucivy runtime unavailable');
   if (indexHandle) {
     try {
       await indexHandle.close();
@@ -120,7 +145,11 @@ export function getLucivyIndex(): LucivyIndexApi | null {
   return indexHandle;
 }
 
-export async function requireLucivyIndex(): Promise<LucivyIndexApi> {
+export async function requireLucivyIndex(): Promise<LucivyIndexApi | null> {
+  if (useNative()) {
+    if (!nativeOpen) await openOrCreateLucivyIndex(null);
+    return null;
+  }
   if (indexHandle) return indexHandle;
   return openOrCreateLucivyIndex(null);
 }
@@ -140,7 +169,13 @@ export async function lucivyAdd(
   numericId: number,
   fields: LucivyDocFields,
 ): Promise<void> {
+  if (useNative()) {
+    const api = await tauriApi();
+    await api.tauriUpsertDoc(numericId, fields);
+    return;
+  }
   const index = await requireLucivyIndex();
+  if (!index) throw new Error('Lucivy index not open');
   await index.add(numericId, fieldsRecord(fields));
 }
 
@@ -148,32 +183,126 @@ export async function lucivyUpdate(
   numericId: number,
   fields: LucivyDocFields,
 ): Promise<void> {
+  if (useNative()) {
+    const api = await tauriApi();
+    await api.tauriUpsertDoc(numericId, fields);
+    return;
+  }
   const index = await requireLucivyIndex();
+  if (!index) throw new Error('Lucivy index not open');
   await index.update(numericId, fieldsRecord(fields));
 }
 
-export async function lucivyRemove(numericId: number): Promise<void> {
+/**
+ * Upsert many docs in one IPC (Tauri) or sequential WASM calls with yields.
+ */
+export async function lucivyUpsertBatch(
+  docs: Array<{
+    numericId: number;
+    fields: LucivyDocFields;
+    /** When true, call update; otherwise add. */
+    update: boolean;
+  }>,
+): Promise<void> {
+  if (docs.length === 0) return;
+  if (useNative()) {
+    const api = await tauriApi();
+    await api.tauriUpsertBatch(
+      docs.map((d) => ({ numericId: d.numericId, fields: d.fields })),
+    );
+    return;
+  }
   const index = await requireLucivyIndex();
+  if (!index) throw new Error('Lucivy index not open');
+  const { yieldToMain } = await import('@/utils/advancedSearch/yieldToMain');
+  let i = 0;
+  for (const d of docs) {
+    const record = fieldsRecord(d.fields);
+    if (d.update) await index.update(d.numericId, record);
+    else await index.add(d.numericId, record);
+    i += 1;
+    if (i % 16 === 0) await yieldToMain();
+  }
+}
+
+export async function lucivyRemove(numericId: number): Promise<void> {
+  if (useNative()) {
+    const api = await tauriApi();
+    await api.tauriRemove(numericId);
+    return;
+  }
+  const index = await requireLucivyIndex();
+  if (!index) throw new Error('Lucivy index not open');
   await index.remove(numericId);
 }
 
 export async function lucivyCommit(): Promise<void> {
+  if (useNative()) {
+    const api = await tauriApi();
+    await api.tauriCommit();
+    return;
+  }
   const index = await requireLucivyIndex();
+  if (!index) throw new Error('Lucivy index not open');
   await index.commit();
 }
 
 export async function lucivyExportSnapshot(): Promise<Uint8Array> {
+  if (useNative()) {
+    const api = await tauriApi();
+    return api.tauriExportSnapshot();
+  }
   const index = await requireLucivyIndex();
+  if (!index) throw new Error('Lucivy index not open');
   const snap = await index.exportSnapshot();
   if (snap instanceof Uint8Array) return snap;
   return new Uint8Array(snap);
+}
+
+function extractContainsAndTerms(
+  query: Record<string, unknown>,
+): { field: string; terms: string[] } | null {
+  const type = String(query.type || '');
+  if (type === 'contains') {
+    const field = String(query.field || '');
+    const value = String(query.value || '').trim();
+    if (!field || !value) return null;
+    return { field, terms: [value] };
+  }
+  if (type === 'boolean' && Array.isArray(query.must)) {
+    const terms: string[] = [];
+    let field = '';
+    for (const raw of query.must) {
+      if (!raw || typeof raw !== 'object') continue;
+      const sub = raw as Record<string, unknown>;
+      if (String(sub.type || '') !== 'contains') continue;
+      const f = String(sub.field || '');
+      const value = String(sub.value || '').trim();
+      if (!value) continue;
+      if (!field) field = f;
+      terms.push(value);
+    }
+    if (field && terms.length > 0) return { field, terms };
+  }
+  return null;
 }
 
 export async function lucivySearch(
   query: Record<string, unknown>,
   options: { limit?: number; fields?: boolean } = {},
 ): Promise<LucivySearchHit[]> {
+  if (useNative()) {
+    const extracted = extractContainsAndTerms(query);
+    if (!extracted) return [];
+    const api = await tauriApi();
+    return api.tauriSearchContainsAnd(
+      extracted.field,
+      extracted.terms,
+      options.limit ?? 50,
+    );
+  }
   const index = await requireLucivyIndex();
+  if (!index) return [];
   const raw = await index.search(query, {
     limit: options.limit ?? 50,
     fields: options.fields ?? false,
@@ -203,6 +332,12 @@ export function buildContainsAndQuery(
 }
 
 export async function destroyLucivyIndex(): Promise<void> {
+  if (useNative()) {
+    const api = await tauriApi();
+    await api.closeTauriIndexSession();
+    nativeOpen = false;
+    return;
+  }
   if (indexHandle) {
     try {
       await indexHandle.destroy();
@@ -214,6 +349,13 @@ export async function destroyLucivyIndex(): Promise<void> {
 }
 
 export function terminateLucivyRuntime(): void {
+  if (useNative()) {
+    void tauriApi().then((api) => {
+      api.terminateTauriIndexRuntime();
+    });
+    nativeOpen = false;
+    return;
+  }
   indexHandle = null;
   if (runtime) {
     try {
@@ -223,4 +365,11 @@ export function terminateLucivyRuntime(): void {
     }
     runtime = null;
   }
+}
+
+/** Request cancel on the native index session (no-op on wasm). */
+export async function lucivyCancelNative(): Promise<void> {
+  if (!useNative()) return;
+  const api = await tauriApi();
+  await api.tauriCancelIndex();
 }

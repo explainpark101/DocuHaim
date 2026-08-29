@@ -1,3 +1,4 @@
+mod as_index;
 mod desktop_menu;
 mod stronghold_kdf;
 mod system_fonts;
@@ -255,6 +256,9 @@ pub fn run() {
     #[cfg(not(mobile))]
     {
         builder = builder.plugin(tauri_plugin_biometry::init());
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
     }
 
     #[cfg(mobile)]
@@ -264,13 +268,22 @@ pub fn run() {
 
     builder
         .manage(pending)
+        .manage(as_index::AsIndexState::new())
         .invoke_handler(tauri::generate_handler![
             take_pending_open_paths,
             read_open_uri,
             gemini_api_fetch,
             exit_app,
             system_fonts::list_system_font_families,
-            desktop_menu::sync_desktop_menu_ui
+            desktop_menu::sync_desktop_menu_ui,
+            as_index::commands::as_index_open,
+            as_index::commands::as_index_close,
+            as_index::commands::as_index_upsert_batch,
+            as_index::commands::as_index_remove,
+            as_index::commands::as_index_commit,
+            as_index::commands::as_index_export_snapshot,
+            as_index::commands::as_index_search,
+            as_index::commands::as_index_cancel,
         ])
         .on_menu_event(desktop_menu::on_desktop_menu_event)
         .setup(|app| {

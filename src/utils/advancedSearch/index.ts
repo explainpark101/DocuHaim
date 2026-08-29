@@ -1,5 +1,7 @@
 export {
   ADVANCED_SEARCH_FOLDER,
+  SYSTEM_INDEX_EXCLUDED_FOLDERS,
+  vaultTrashDestPath,
   advancedSearchFolderPrefix,
   manifestKey,
   docsKey,
@@ -15,6 +17,27 @@ export {
   saveAdvancedSearchIncludeOtherFiles,
   loadAdvancedSearchUiAnimationEnabled,
   saveAdvancedSearchUiAnimationEnabled,
+  loadAdvancedSearchBuildLogAutoScroll,
+  saveAdvancedSearchBuildLogAutoScroll,
+  loadAdvancedSearchLiveScanLimits,
+  saveAdvancedSearchLiveScanLimits,
+  normalizeLiveScanLimits,
+  DEFAULT_LIVE_SCAN_LIMITS,
+  LIVE_SCAN_LIMIT_BOUNDS,
+  LIVE_SCAN_UNLIMITED,
+  isLiveScanUnlimited,
+  loadAdvancedSearchExcludeFolders,
+  saveAdvancedSearchExcludeFolders,
+  normalizeExcludeFolders,
+  addExcludeFolder,
+  removeExcludeFolder,
+  isPathUnderExcludedFolders,
+  loadAdvancedSearchCheckpointEvery,
+  saveAdvancedSearchCheckpointEvery,
+  normalizeCheckpointEvery,
+  DEFAULT_CHECKPOINT_EVERY,
+  CHECKPOINT_EVERY_BOUNDS,
+  type AdvancedSearchLiveScanLimits,
 } from '@/utils/advancedSearch/settings';
 export {
   advancedSearchEngine,
@@ -27,7 +50,7 @@ export {
   type RebuildCheckpointInfo,
 } from '@/utils/advancedSearch/engine';
 export { subscribeAdvancedSearchChanges } from '@/utils/advancedSearch/notify';
-export { collectSearchableFileEntries, isIndexableFilePath } from '@/utils/advancedSearch/collectSources';
+export { collectSearchableFileEntries, isIndexableFilePath, isExcludedPath, isSystemIndexExcludedFolder } from '@/utils/advancedSearch/collectSources';
 export {
   APP_COMMANDS,
   matchAppCommands,

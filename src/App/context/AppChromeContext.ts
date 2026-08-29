@@ -11,6 +11,7 @@ export type AppChromeValue = {
   lockChatViewport: boolean;
   isChatRoute: boolean;
   isSettingsRoute: boolean;
+  isContentSearchRoute: boolean;
   appName: string;
   handleBrandClick: (...args: any[]) => any;
   chatAttachDropHost: any;

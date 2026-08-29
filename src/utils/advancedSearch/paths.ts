@@ -2,6 +2,45 @@
 
 export const ADVANCED_SEARCH_FOLDER = '.advanced-search';
 
+/**
+ * Vault folders always skipped by the inverted index (not user-selectable).
+ * Paths without trailing slash. Includes underscore alias of the index folder.
+ */
+export const SYSTEM_INDEX_EXCLUDED_FOLDERS = [
+  ADVANCED_SEARCH_FOLDER,
+  '.advanced_search',
+  '.trash',
+] as const;
+
+/** True for `.trash`, `.advanced-search`, `.advanced_search` (root or descendant). */
+export function isSystemIndexExcludedFolder(path: string): boolean {
+  const p = String(path || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '')
+    .trim();
+  if (!p) return false;
+  for (const folder of SYSTEM_INDEX_EXCLUDED_FOLDERS) {
+    if (p === folder || p.startsWith(`${folder}/`)) return true;
+  }
+  return false;
+}
+
+/**
+ * Soft-trash destination path (mirrors vault `.trash/${src}` layout).
+ * Preserves trailing slash for folder prefixes.
+ */
+export function vaultTrashDestPath(path: string): string {
+  const raw = String(path || '').replace(/^\/+/, '');
+  const trailing = raw.endsWith('/');
+  const p = raw.replace(/\/+$/, '');
+  if (!p) return trailing ? '.trash/' : '.trash';
+  if (p === '.trash' || p.startsWith('.trash/')) {
+    return trailing ? `${p}/` : p;
+  }
+  return trailing ? `.trash/${p}/` : `.trash/${p}`;
+}
+
 export const MANIFEST_FILE = 'manifest.json';
 export const DOCS_FILE = 'docs.json.gz';
 export const LUCE_FILE = 'index.luce.gz';
@@ -29,6 +68,8 @@ export function postingsKey(): string {
   return `${ADVANCED_SEARCH_FOLDER}/${POSTINGS_FILE}`;
 }
 
+import { vaultPathFromFileDocId } from '@/utils/advancedSearch/fileIndexChunking';
+
 export function fileDocId(path: string): string {
   return `file:${String(path || '').replace(/^\/+/, '')}`;
 }
@@ -38,8 +79,7 @@ export function chatDocId(dateStr: string, messageId: string): string {
 }
 
 export function parseFileDocId(docId: string): string | null {
-  if (!docId.startsWith('file:')) return null;
-  return docId.slice('file:'.length);
+  return vaultPathFromFileDocId(docId);
 }
 
 export function parseChatDocId(

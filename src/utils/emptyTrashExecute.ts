@@ -123,7 +123,7 @@ export async function executeEmptyTrash(args: {
     password: string;
     basePath: string;
   } | null;
-}): Promise<{ deletedCount: number }> {
+}): Promise<{ deletedCount: number; deletedPaths: string[]; emptiedAll: boolean }> {
   const { storageType, options } = args;
 
   if (storageType === 's3') {
@@ -144,7 +144,7 @@ export async function executeEmptyTrash(args: {
         );
       }
       await putObject(client, { Bucket: bucket, Key: '.trash/', Body: '' });
-      return { deletedCount: keys.length };
+      return { deletedCount: keys.length, deletedPaths: keys, emptiedAll: true };
     }
 
     const fileKeys = matched.filter((e) => !e.isFolder).map((e) => e.path);
@@ -155,7 +155,7 @@ export async function executeEmptyTrash(args: {
         fileKeys.map((Key) => ({ Key })),
       );
     }
-    return { deletedCount: fileKeys.length };
+    return { deletedCount: fileKeys.length, deletedPaths: fileKeys, emptiedAll: false };
   }
 
   if (storageType === 'local') {
@@ -167,7 +167,7 @@ export async function executeEmptyTrash(args: {
       try {
         trashHandle = await root.getDirectoryHandle('.trash', { create: false });
       } catch {
-        return { deletedCount: 0 };
+        return { deletedCount: 0, deletedPaths: [], emptiedAll: true };
       }
       const names: string[] = [];
       const trashAny = trashHandle as FileSystemDirectoryHandle & {
@@ -179,23 +179,31 @@ export async function executeEmptyTrash(args: {
       for (const name of names) {
         await trashHandle.removeEntry(name, { recursive: true });
       }
-      return { deletedCount: names.length };
+      return {
+        deletedCount: names.length,
+        deletedPaths: names.map((n) => `.trash/${n}`),
+        emptiedAll: true,
+      };
     }
 
     const entries = await collectLocalTrashEntries(root);
     const matched = entries.filter(
       (e) => !e.isFolder && matchesEmptyTrashFilter(e, options),
     );
-    let deletedCount = 0;
+    const deletedPaths: string[] = [];
     for (const entry of matched) {
       try {
         await entry.parentHandle.removeEntry(entry.entryName, { recursive: false });
-        deletedCount += 1;
+        deletedPaths.push(entry.path);
       } catch {
         /* skip missing */
       }
     }
-    return { deletedCount };
+    return {
+      deletedCount: deletedPaths.length,
+      deletedPaths,
+      emptiedAll: false,
+    };
   }
 
   if (storageType === 'webdav') {
@@ -207,12 +215,12 @@ export async function executeEmptyTrash(args: {
       const entries = await collectWebdavTrashEntries(cfg);
       // Delete deepest paths first so parents can be removed cleanly.
       const sorted = [...entries].sort((a, b) => b.path.length - a.path.length);
-      let deletedCount = 0;
+      const deletedPaths: string[] = [];
       for (const entry of sorted) {
         try {
           if (entry.isFolder) await backend.deletePrefix(entry.path);
           else await backend.delete(entry.path);
-          deletedCount += 1;
+          deletedPaths.push(entry.path);
         } catch {
           /* missing ok */
         }
@@ -222,21 +230,29 @@ export async function executeEmptyTrash(args: {
       } catch {
         /* ignore */
       }
-      return { deletedCount };
+      return {
+        deletedCount: deletedPaths.length,
+        deletedPaths,
+        emptiedAll: true,
+      };
     }
 
     const entries = await collectWebdavTrashEntries(cfg);
     const matched = filterTrashEntries(entries, options).filter((e) => !e.isFolder);
-    let deletedCount = 0;
+    const deletedPaths: string[] = [];
     for (const entry of matched) {
       try {
         await backend.delete(entry.path);
-        deletedCount += 1;
+        deletedPaths.push(entry.path);
       } catch {
         /* missing ok */
       }
     }
-    return { deletedCount };
+    return {
+      deletedCount: deletedPaths.length,
+      deletedPaths,
+      emptiedAll: false,
+    };
   }
 
   throw new Error(`지원하지 않는 저장소: ${storageType}`);

@@ -32,8 +32,28 @@ GitHub → Actions → **Release Tauri** → Run workflow (optional: mark prerel
 | `APPLE_TEAM_ID` | macOS | 10-character Team ID |
 | `WINDOWS_CERTIFICATE` | Windows | Base64-encoded Authenticode PFX / P12 |
 | `WINDOWS_CERTIFICATE_PASSWORD` | Windows | PFX password |
+| `TAURI_SIGNING_PRIVATE_KEY` | macOS / Windows | Updater signing private key (contents of `.key` file, or base64) |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | macOS / Windows | Optional password when the updater private key is encrypted |
 
 Empty secrets are ignored; **do not** set `APPLE_CERTIFICATE` (or other signing secrets) with placeholder or broken values — Tauri will attempt import/codesign and the workflow fails with `security import` / `SecKeychainItemImport` errors. Remove invalid secrets or fix the `.p12` encoding and password.
+
+## Auto-update (Tauri updater)
+
+Desktop auto-update uses GitHub Releases as the update endpoint (`latest.json` on each release). The public key is committed in `src-tauri/tauri.conf.json` (see also `src-tauri/updater.key.pub`).
+
+### Generate or rotate updater keys
+
+```bash
+bunx tauri signer generate -w ~/.tauri/docuhaim.key
+```
+
+- Copy the **public** key output into `plugins.updater.pubkey` in `src-tauri/tauri.conf.json` and `src-tauri/updater.key.pub`.
+- Store the **private** key in GitHub Secrets as `TAURI_SIGNING_PRIVATE_KEY` (paste the key file contents, or base64-encode the file).
+- If the key has a password, set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+
+The release workflow passes these secrets to `tauri-action`, which uploads signed updater artifacts and `latest.json` alongside DMG / NSIS installers.
+
+Without `TAURI_SIGNING_PRIVATE_KEY`, releases still build but auto-update signatures will not match the embedded public key — configure the secret before shipping updater-enabled builds to users.
 
 ## macOS setup
 

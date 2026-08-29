@@ -24,6 +24,8 @@ import {
   patchFileTab,
   softCapPrompt,
 } from '@/utils/workspaceTabs/appBridge';
+import { closedTabEntryFromWorkspaceTab, pushClosedTab } from '@/utils/workspaceTabs/closedTabHistory';
+import { openOrReplaceFileTab, evictForSoftCap } from '@/utils/workspaceTabs/workspaceTabsStore';
 import { retainOnlyFileTab } from '@/utils/workspaceTabs/legacyMode';
 import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
 import {
@@ -63,7 +65,11 @@ import {
 import {
   SESSION_STORAGE_TYPE,
   renameSessionFile,
+  resolveSessionFileRef,
+  sessionFileKey,
+  getSessionFileLocalAbsPath,
 } from '@/utils/sessionWorkspace';
+import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
@@ -116,7 +122,7 @@ export function useFileSessionDomain() {
     loadS3Files,
     refreshLocalTree,
     refreshWebdavTree,
-    setSessionWorkspace,
+    upsertSessionWorkspace,
   } = useVault();
 
   const {
@@ -136,7 +142,7 @@ export function useFileSessionDomain() {
     setIsPullingFromRemote,
     sessionVaultBindingsRef,
     writeSessionFileToHaimRef,
-    sessionWorkspaceRef,
+    sessionWorkspacesRef,
     saveFileRef,
     selectFileRef,
     applyWorkspaceFilePathRetargetRef,
@@ -276,6 +282,7 @@ export function useFileSessionDomain() {
     const isCurrentAttempt = () =>
       openFileRequestSeqByKeyRef.current.get(requestKey) === attemptId;
     const skipNavigate = options.skipNavigate === true;
+    const background = options.background === true;
     const goToViewPath = () => {
       if (!skipNavigate) navigate(`/view/${node.path}`);
     };
@@ -284,7 +291,7 @@ export function useFileSessionDomain() {
     const existingBefore = findFileTab(workspaceTabsRef.current, type, node.path);
     let didNavigateEarly = false;
 
-    if (existingBefore) {
+    if (existingBefore && !background) {
       const activeBefore = getActiveFileTab(workspaceTabsRef.current);
       const shouldActivate = activeBefore ? activeBefore.id !== existingBefore.id : true;
       if (shouldActivate) {
@@ -318,7 +325,7 @@ export function useFileSessionDomain() {
         }
         return false;
       }
-      if (!wasActive) {
+      if (!wasActive && !background) {
         const label = String(node.name || file?.name || node.path || '파일');
         showToast({ message: `「${label}」 로딩 완료`, durationMs: 2200 });
       }
@@ -356,6 +363,44 @@ export function useFileSessionDomain() {
         name: node.name,
         viewer: 'loading',
       };
+
+      if (background) {
+        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+          editorContent: editorContentRef.current ?? '',
+          currentFile: currentFileRef.current,
+          editedFileName: editedFileNameRef.current ?? '',
+        });
+        const evictOpts = { promptCloseDirty: softCapPrompt };
+        const evicted = evictForSoftCap(flushed.tabs, evictOpts);
+        if (!evicted) return false;
+        for (const tab of evicted.closed) {
+          pushClosedTab(closedTabEntryFromWorkspaceTab(tab));
+        }
+        const tabId = `${type}:${node.path}`;
+        const next = openOrReplaceFileTab(
+          { ...flushed, tabs: evicted.tabs },
+          {
+            storageType: type,
+            path: node.path,
+            currentFile: placeholder,
+            editorContent: '',
+            editedFileName: String(node.name || ''),
+          },
+          Date.now(),
+          { activate: false },
+        );
+        workspaceTabsRef.current = next;
+        setWorkspaceTabs(next);
+        if (next.activeId === tabId) {
+          setCurrentFile(placeholder);
+          currentFileRef.current = placeholder;
+          setEditorContent('');
+          editorContentRef.current = '';
+          setEditedFileName(String(node.name || ''));
+          editedFileNameRef.current = String(node.name || '');
+        }
+        return true;
+      }
 
       const ok = commitOpenFile(placeholder, '', { activate: true });
       if (ok && !skipNavigate && !didNavigateEarly) {
@@ -771,10 +816,15 @@ export function useFileSessionDomain() {
         ...(isEncMdPath(node.path) ? { encMd: true } : {}),
       }, contentToUse, { baselineContent });
     } else if (type === SESSION_STORAGE_TYPE) {
-      flushSessionEditorToWorkspaceRef.current?.();
-      const workspace = sessionWorkspaceRef.current;
-      if (!workspace) return;
-      applySessionFileToEditorRef.current?.(node.path, workspace, { skipNavigate });
+      await flushSessionEditorToWorkspaceRef.current?.();
+      const map = sessionWorkspacesRef.current ?? {};
+      const ref = resolveSessionFileRef(map, node.path);
+      if (!ref) return;
+      await applySessionFileToEditorRef.current?.(
+        node.path,
+        ref.workspace,
+        { skipNavigate },
+      );
     }
     } finally {
       try {
@@ -943,8 +993,17 @@ export function useFileSessionDomain() {
 
     if (fileToSave.type === SESSION_STORAGE_TYPE) {
       const binding = sessionVaultBindingsRef.current?.[fileToSave.id];
+      const sessionRef = resolveSessionFileRef(sessionWorkspacesRef.current, fileToSave.id);
+      const localAbsPath =
+        binding?.localAbsPath ??
+        (sessionRef ? getSessionFileLocalAbsPath(sessionRef.workspace, sessionRef.path) : null);
+      if (localAbsPath && isDesktopApp() && !binding?.localAbsPath) {
+        sessionVaultBindingsRef.current[fileToSave.id] = { localAbsPath };
+      }
       const bindingOk =
-        Boolean(binding?.destPath) && binding.storageType === connectedHaimStorageTypeRef.current?.();
+        Boolean(localAbsPath && isDesktopApp()) ||
+        (Boolean(binding?.destPath) &&
+          binding.storageType === connectedHaimStorageTypeRef.current?.());
       if (!bindingOk) {
         if (fileOverride || background) return;
         handleRequestSessionSaveChooserRef.current?.();
@@ -1109,11 +1168,12 @@ export function useFileSessionDomain() {
         }
       } else if (fileToSave.type === SESSION_STORAGE_TYPE) {
         const binding = sessionVaultBindingsRef.current?.[fileToSave.id];
-        if (!binding?.destPath) {
+        const destPath = binding?.destPath ?? binding?.localAbsPath;
+        if (!destPath) {
           throw new Error('저장 위치를 찾지 못했습니다.');
         }
         await writeSessionFileToHaimRef.current?.({
-          destPath: binding.destPath,
+          destPath,
           sessionFile: fileToSave,
           content: vaultBody,
         });
@@ -1599,14 +1659,20 @@ export function useFileSessionDomain() {
       } else if (currentFile.type === 'local') {
         updated = await renameLocalFile(currentFile, trimmed);
       } else if (currentFile.type === SESSION_STORAGE_TYPE) {
-        const ws = flushSessionEditorToWorkspaceRef.current?.() ?? sessionWorkspaceRef.current;
-        if (!ws) return null;
-        const nextWs = renameSessionFile(ws, currentFile.id, trimmed);
-        sessionWorkspaceRef.current = nextWs;
-        setSessionWorkspace(nextWs);
-        const lastSlash = String(currentFile.id || '').lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? currentFile.id.slice(0, lastSlash + 1) : '';
-        const newKey = dirPrefix + trimmed;
+        const map =
+          (await flushSessionEditorToWorkspaceRef.current?.()) ??
+          sessionWorkspacesRef.current ??
+          {};
+        const ref = resolveSessionFileRef(map, currentFile.id);
+        if (!ref) return null;
+        const nextWs = renameSessionFile(ref.workspace, ref.path, trimmed);
+        const nextMap = { ...map, [ref.sessionId]: nextWs };
+        sessionWorkspacesRef.current = nextMap;
+        upsertSessionWorkspace(nextWs);
+        const lastSlash = String(ref.path || '').lastIndexOf('/');
+        const dirPrefix = lastSlash >= 0 ? ref.path.slice(0, lastSlash + 1) : '';
+        const newRelPath = dirPrefix + trimmed;
+        const newKey = sessionFileKey(ref.sessionId, newRelPath);
         const bindingsRef = sessionVaultBindingsRef;
         const prevBinding = bindingsRef?.current?.[currentFile.id];
         if (bindingsRef && prevBinding && newKey !== currentFile.id) {
@@ -1652,7 +1718,7 @@ export function useFileSessionDomain() {
     editorContent,
     renameS3File,
     renameLocalFile,
-    setSessionWorkspace,
+    upsertSessionWorkspace,
     webdavConfig,
     refreshWebdavTree,
     applyOpenFileIdentityChange,
