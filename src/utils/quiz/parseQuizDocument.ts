@@ -162,10 +162,37 @@ function parseQuizQuestionMeta(raw: string): {
 function inferSimilarOfFromLabel(
   displayLabel: string,
 ): { id: string; displayLabel: string } | undefined {
-  const m = String(displayLabel || '').match(/^(.+)-유사\d+$/);
+  const m = String(displayLabel || '').match(/^(.+)-(?:유사|파생)\d+$/);
   const parent = m?.[1]?.trim();
   if (!parent) return undefined;
   return { id: parent, displayLabel: parent };
+}
+
+function appendQuestionStem(stem: string, line: string): string {
+  if (!line && !stem) return stem;
+  return stem ? `${stem}\n${line}` : line;
+}
+
+function isFirstChoiceLine(line: string): boolean {
+  return /^1\.\s+/.test(line.trim());
+}
+
+function isSubjectiveStructuralLine(line: string): boolean {
+  const l = line.trim();
+  return l.startsWith('>') || /^\*\*정답:\*\*/.test(l);
+}
+
+function stripBlockquotePrefix(line: string): string {
+  return line.trim().replace(/^>\s?/, '');
+}
+
+function isSourceDocumentHeaderLine(line: string): boolean {
+  const content = stripBlockquotePrefix(line);
+  return SECTION_SOURCES_RE.test(content) || content.includes('📚 근거 문서');
+}
+
+function isBlockquoteLine(line: string): boolean {
+  return line.trim().startsWith('>');
 }
 
 function parseSingleBlock(block: string, index: number): QuizQuestion | null {
@@ -184,6 +211,9 @@ function parseSingleBlock(block: string, index: number): QuizQuestion | null {
   let headerKind: QuizQuestionKind = 'choice';
   let headerAnswerStyle: QuizAnswerStyle | undefined;
   let similarOf: { id: string; displayLabel: string } | undefined;
+  let sawHeader = false;
+  let stemOpen = false;
+  let inSourceQuote = false;
 
   for (const line of lines) {
     const l = line.trim();
@@ -195,7 +225,7 @@ function parseSingleBlock(block: string, index: number): QuizQuestion | null {
       continue;
     }
 
-    const headerMatch = l.match(/^#+\s*(?:🔖\s*)?(\d+(?:-유사\d+)?)\.?(.*)/);
+    const headerMatch = l.match(/^#+\s*(?:🔖\s*)?(\d+(?:-(?:유사|파생)\d+)?)\.?(.*)/);
     if (headerMatch) {
       displayLabel = (headerMatch[1] || '').trim();
       id = displayLabel;
@@ -203,7 +233,44 @@ function parseSingleBlock(block: string, index: number): QuizQuestion | null {
       headerKind = detected.kind;
       headerAnswerStyle = detected.answerStyle;
       questionText = detected.question;
+      sawHeader = true;
+      stemOpen = true;
+      inSourceQuote = false;
       continue;
+    }
+
+    if (!sawHeader) continue;
+
+    if (inSourceQuote) {
+      if (isBlockquoteLine(l)) {
+        quoteLines.push(stripBlockquotePrefix(l));
+        continue;
+      }
+      inSourceQuote = false;
+    }
+
+    if (stemOpen) {
+      if (isSourceDocumentHeaderLine(l)) {
+        stemOpen = false;
+        inSourceQuote = true;
+        quoteLines.push(stripBlockquotePrefix(l));
+        continue;
+      }
+      if (isFirstChoiceLine(l)) {
+        stemOpen = false;
+      } else if (headerKind === 'subjective' && isSubjectiveStructuralLine(l)) {
+        stemOpen = false;
+      } else if (l.startsWith('![')) {
+        questionText = appendQuestionStem(questionText, l);
+        const imgMatch = l.match(/!\[.*?\]\((.*?)\)/);
+        if (imgMatch?.[1] && !image) image = imgMatch[1];
+        continue;
+      } else if (!l && !questionText) {
+        continue;
+      } else if (stemOpen) {
+        questionText = appendQuestionStem(questionText, l);
+        continue;
+      }
     }
 
     if (l.startsWith('![')) {
@@ -231,7 +298,7 @@ function parseSingleBlock(block: string, index: number): QuizQuestion | null {
     }
 
     if (l.startsWith('>')) {
-      quoteLines.push(l.replace(/^>\s?/, ''));
+      quoteLines.push(stripBlockquotePrefix(l));
     }
   }
 
@@ -256,6 +323,8 @@ function parseSingleBlock(block: string, index: number): QuizQuestion | null {
   if (!similarOf) {
     similarOf = inferSimilarOfFromLabel(displayLabel);
   }
+
+  questionText = questionText.trimEnd();
 
   const q: QuizQuestion = {
     id,

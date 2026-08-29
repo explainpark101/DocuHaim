@@ -181,6 +181,77 @@ describe('parseQuizDocument', () => {
     expect(again.questions[0]?.answer).toBe(1);
     expect(again.questions[1]?.modelAnswer).toBe('변환');
   });
+
+  it('includes body lines before the first 1. choice in question stem', () => {
+    const doc = parseQuizDocument(`### 1. 맵리듀스에 대한 설명으로 가장 적절한 것은?
+
+다음 자료를 참고하세요.
+
+![[images/diagram.png]]
+
+**핵심:** 처리 순서를 떠올리세요.
+
+1. Map 후 Reduce *(정답)*
+2. Reduce 후 Map
+
+> **💡 접근 Point!**
+> hint
+>
+> **📖 해설:**
+> explain
+`);
+    const q = doc.questions[0];
+    expect(q?.question).toContain('맵리듀스에 대한 설명');
+    expect(q?.question).toContain('다음 자료를 참고하세요.');
+    expect(q?.question).toContain('![[images/diagram.png]]');
+    expect(q?.question).toContain('**핵심:**');
+    expect(q?.options?.[0]).toBe('Map 후 Reduce');
+  });
+
+  it('excludes source document blockquote from question stem', () => {
+    const doc = parseQuizDocument(`### 4. Question stem only
+
+> **📚 근거 문서:**
+> - notes/a.md
+> - notes/b.md
+
+1. A *(정답)*
+2. B
+
+> **💡 접근 Point!**
+> p
+>
+> **📖 해설:**
+> e
+`);
+    const q = doc.questions[0];
+    expect(q?.question).toBe('Question stem only');
+    expect(q?.question).not.toContain('근거 문서');
+    expect(q?.question).not.toContain('notes/a.md');
+    expect(q?.sourcePaths).toEqual(['notes/a.md', 'notes/b.md']);
+  });
+
+  it('round-trips question body before choices', () => {
+    const md = `### 3. Stem title
+
+Body line one
+
+Body line two
+
+1. A *(정답)*
+2. B
+
+> **💡 접근 Point!**
+> p
+>
+> **📖 해설:**
+> e
+`;
+    const doc = parseQuizDocument(md);
+    const again = parseQuizDocument(serializeQuizDocument(doc.config, doc.questions));
+    expect(again.questions[0]?.question).toBe(doc.questions[0]?.question);
+    expect(again.questions[0]?.question).toContain('Body line two');
+  });
 });
 
 describe('buildQuestionMarkdown', () => {

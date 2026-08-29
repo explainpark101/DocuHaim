@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  GitBranch,
   GripHorizontal,
   Loader2,
   Minus,
@@ -151,10 +152,17 @@ function JobCard({
   onToggleDetail: () => void;
   onRemove: () => void;
 }) {
-  const kindLabel = job.kind === 'similar' ? '유사문제' : '근거 출제';
+  const kindLabel =
+    job.kind === 'similar'
+      ? '유사문제'
+      : job.kind === 'derived'
+        ? '파생문제'
+        : '근거 출제';
   const kindIcon =
     job.kind === 'similar' ? (
       <Wand2 size={14} className="shrink-0 text-violet-600 dark:text-violet-300" />
+    ) : job.kind === 'derived' ? (
+      <GitBranch size={14} className="shrink-0 text-violet-600 dark:text-violet-300" />
     ) : (
       <Sparkles size={14} className="shrink-0 text-violet-600 dark:text-violet-300" />
     );
@@ -392,7 +400,7 @@ export default function QuizGenerationQueuePanel({
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             {jobs.length === 0 ? (
               <p className="py-6 text-center text-xs text-slate-500 dark:text-odp-muted">
-                유사문제 또는 근거 출제를 실행하면
+                유사문제 또는 근거 출제·파생문제 생성을 실행하면
                 <br />
                 단계별 진행 상황이 여기에 표시됩니다.
               </p>

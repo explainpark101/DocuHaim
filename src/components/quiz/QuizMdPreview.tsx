@@ -2,6 +2,8 @@ import { useMemo, useRef } from 'react';
 import { MdPreview, config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
+import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import { useQuizImageHydration } from '@/components/quiz/QuizImageHydrationContext';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/preview.css';
@@ -18,16 +20,25 @@ type QuizMdPreviewProps = {
   text: string;
   previewId: string;
   className?: string;
+  getPresignedUrl?: ((path: string) => Promise<string | null>) | undefined;
+  currentNotePath?: string | null | undefined;
 };
 
 export default function QuizMdPreview({
   text,
   previewId,
   className = '',
+  getPresignedUrl: getPresignedUrlProp,
+  currentNotePath: currentNotePathProp,
 }: QuizMdPreviewProps) {
   const theme = useDocumentTheme();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const value = useMemo(() => String(text || ''), [text]);
+  const hydration = useQuizImageHydration();
+  const getPresignedUrl = getPresignedUrlProp ?? hydration.getPresignedUrl;
+  const currentNotePath = currentNotePathProp ?? hydration.currentNotePath ?? null;
+
+  useWikiImageHydration(rootRef, value, getPresignedUrl, currentNotePath);
 
   return (
     <div ref={rootRef} className={`quiz-md-preview markdown-content ${className}`}>

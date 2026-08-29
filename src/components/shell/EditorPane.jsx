@@ -1213,6 +1213,7 @@ export default function EditorPane({
                 onChange={onChangeEditor}
                 onSave={onSave}
                 currentFile={currentFile}
+                onResolveWikiImageUrl={onResolveWikiImageUrl}
                 llmProviderProfiles={llmProviderProfiles}
                 isActiveFile={isActiveFile}
                 registerToolbar={setQuizToolbarNode}

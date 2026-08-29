@@ -30,6 +30,7 @@ export function buildQuizSessionForPersist(params: {
   isSubmitted: boolean;
   timeLog?: QuizTimeLog;
   wrongChoiceExplanations?: QuizWrongChoiceExplanations;
+  questionMemos?: Record<string, string>;
 }): QuizPersistedSession {
   const gradedForFile: Record<string, boolean> = {};
 
@@ -57,6 +58,7 @@ export function buildQuizSessionForPersist(params: {
     ...(params.wrongChoiceExplanations
       ? { wrongChoiceExplanations: params.wrongChoiceExplanations }
       : {}),
+    ...(params.questionMemos ? { questionMemos: params.questionMemos } : {}),
   });
 }
 

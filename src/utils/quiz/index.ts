@@ -76,6 +76,12 @@ export {
   validateAddQuestionForm,
   parseQuestionBlock,
 } from '@/utils/quiz/buildQuestionMarkdown';
+export {
+  filterQuestionMemos,
+  isQuestionMemosEmpty,
+  normalizeQuestionMemos,
+} from '@/utils/quiz/quizQuestionMemos';
+export type { QuizQuestionMemos } from '@/utils/quiz/quizQuestionMemos';
 export { mergeQuizDocuments } from '@/utils/quiz/mergeQuizDocuments';
 export type { MergeMode, MergeQuizDocumentsOptions } from '@/utils/quiz/mergeQuizDocuments';
 export {

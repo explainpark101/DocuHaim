@@ -147,7 +147,7 @@ export default function QuizSettingsSection({
                 AI 생성 완료 시 자동 저장
               </p>
               <p className="mt-0.5 text-[11px] text-gray-500 dark:text-odp-muted">
-                유사문제·근거 출제·보기 분석 등 AI 생성이 끝나면 퀴즈 파일을 즉시 저장합니다.
+                유사문제·근거 출제·보기 분석·파생문제 생성 등 AI 생성이 끝나면 퀴즈 파일을 즉시 저장합니다.
               </p>
             </div>
             <Switch.Root

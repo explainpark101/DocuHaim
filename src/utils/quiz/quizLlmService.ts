@@ -34,6 +34,11 @@ import {
 } from '@/utils/quiz/quizRagService';
 import type { QuizVaultTextReader } from '@/utils/quiz/quizVaultSourceLoader';
 import {
+  buildDerivedGenerationInstruction,
+  buildDerivedQuestionGenerationSystemPrompt,
+  type QuizDerivedQuestionTarget,
+} from '@/utils/quiz/derivedQuestionAnalysis';
+import {
   buildSimilarAnalysisInstruction,
   buildSimilarGenerationInstruction,
   buildSimilarQuestionGenerationSystemPrompt,
@@ -54,7 +59,8 @@ import type {
   SubjectiveVerdict,
 } from '@/utils/quiz/quizTypes';
 import type { QuizGenStepUpdate } from '@/utils/quiz/quizGenerationQueueTypes';
-import { resolveQuestionChoiceCount } from '@/utils/quiz/quizQuestionStyle';
+import { resolveQuestionChoiceCount, resizeChoiceOptions } from '@/utils/quiz/quizQuestionStyle';
+import { clampChoiceCount } from '@/utils/quiz/quizFileConfig';
 import { truncateForGenerationLog } from '@/utils/quiz/quizGenerationLog';
 
 const SOURCE_SUMMARY_SYSTEM_PROMPT = `당신은 시험 출제용 근거 문서 요약가입니다.
@@ -765,6 +771,255 @@ export async function generateSimilarChoiceQuestion(params: {
       question: generated.question,
       options: generated.options || [],
       answer: generated.answer || targetAnswer,
+      analysisBlock,
+      missingPoint,
+      missingExplanation,
+    });
+    emit({
+      step: 'generate',
+      status: 'running',
+      detail: '해설·접근 Point 보완 중…',
+      llmInstruction: repairInstruction,
+      systemPrompt: genSystemPrompt,
+    });
+    const repairText = await runQuizLlmPrompt(
+      runOpts(
+        params.profiles,
+        repairInstruction,
+        genSystemPrompt,
+        Math.min(settings.temperature, 0.8),
+        signalExtra(params.signal),
+      ),
+    );
+    const repairParsed = extractJsonObject(repairText);
+    const repairObj =
+      repairParsed && typeof repairParsed === 'object'
+        ? (repairParsed as Record<string, unknown>)
+        : {};
+    if (missingPoint && typeof repairObj.point === 'string' && repairObj.point.trim()) {
+      generated = { ...generated, point: String(repairObj.point).trim() };
+    }
+    if (
+      missingExplanation &&
+      typeof repairObj.explanation === 'string' &&
+      repairObj.explanation.trim()
+    ) {
+      generated = { ...generated, explanation: String(repairObj.explanation).trim() };
+    }
+    emit({
+      step: 'generate',
+      status: 'done',
+      detail: hasCompleteSimilarQuestionSections(generated)
+        ? '해설·접근 Point 보완 완료'
+        : '해설·접근 Point 일부 보완',
+      llmInstruction: repairInstruction,
+      llmResponse: truncateForGenerationLog(repairText),
+      systemPrompt: genSystemPrompt,
+    });
+  }
+
+  return {
+    ...generated,
+    isGenerated: true,
+  };
+}
+
+export async function generateDerivedQuestion(params: {
+  profiles: LlmProviderProfile[];
+  question: QuizQuestion;
+  config: QuizFileConfig;
+  target: QuizDerivedQuestionTarget;
+  sourcePaths?: string[];
+  readText?: QuizVaultTextReader;
+  signal?: AbortSignal;
+  onStep?: (update: QuizGenStepUpdate) => void;
+}): Promise<Omit<QuizQuestion, 'id' | 'displayLabel'>> {
+  const settings = loadQuizSettings();
+  const q = params.question;
+  const sourceChoiceCount = resolveQuestionChoiceCount(q, params.config.choiceCount || 4);
+  const targetChoiceCount =
+    params.target.kind === 'choice'
+      ? clampChoiceCount(params.target.choiceCount)
+      : sourceChoiceCount;
+  const targetAnswer =
+    params.target.kind === 'choice'
+      ? Math.floor(Math.random() * targetChoiceCount) + 1
+      : 1;
+  const options = (q.options || []).map((o) => String(o || ''));
+  const stemAnswer = q.answer && q.answer >= 1 ? q.answer : 1;
+  const emit = (update: QuizGenStepUpdate) => params.onStep?.(update);
+
+  let ragBlock = '';
+  const sources = params.sourcePaths || [];
+  if (sources.length > 0 && params.readText) {
+    emit({ step: 'rag', status: 'running', detail: '근거 문서 검색 중…' });
+    const query = [q.question, q.point || '', params.target.userPrompt || '']
+      .filter(Boolean)
+      .join('\n');
+    const { chunks } = await retrieveQuizContext({
+      sourcePaths: sources,
+      query,
+      readText: params.readText,
+    });
+    ragBlock = formatRagChunksForPrompt(chunks);
+    emit({
+      step: 'rag',
+      status: 'done',
+      detail: chunks.length > 0 ? `${chunks.length}개 발췌` : '발췌 없음',
+      llmInstruction: `query: ${query}`,
+      llmResponse: truncateForGenerationLog(ragBlock || '(no excerpts)'),
+    });
+  }
+
+  const complexity =
+    settings.calcComplexity === 'hand'
+      ? '[계산 난이도: 손으로 계산 가능]'
+      : '[계산 난이도: 계산기 필수]';
+
+  const analysisInstruction = buildSimilarAnalysisInstruction({
+    question: q.question,
+    options,
+    answer: q.kind === 'choice' ? stemAnswer : 1,
+    point: q.point || '',
+    explanation: q.explanation || '',
+    ...(ragBlock ? { ragBlock } : {}),
+  });
+
+  const analysisTemp = Math.min(settings.temperature, 0.6);
+  emit({
+    step: 'analysis',
+    status: 'running',
+    detail: 'LLM 문항 분석 중…',
+    llmInstruction: analysisInstruction,
+    systemPrompt: SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
+  });
+  const analysisText = await runQuizLlmPrompt(
+    runOpts(
+      params.profiles,
+      analysisInstruction,
+      SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
+      analysisTemp,
+      signalExtra(params.signal),
+    ),
+  );
+  const analysis = parseSimilarQuestionAnalysis(extractJsonObject(analysisText));
+  emit({
+    step: 'analysis',
+    status: 'done',
+    detail: `${analysis.coreCategory}${analysis.isCalculation ? ' · 계산문제' : ''}`,
+    llmInstruction: analysisInstruction,
+    llmResponse: truncateForGenerationLog(analysisText),
+    systemPrompt: SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
+  });
+
+  const analysisBlock = formatAnalysisForPrompt(analysis);
+  let sampledBlock = '';
+  if (analysis.isCalculation && analysis.variables.length > 0) {
+    emit({ step: 'randomize', status: 'running', detail: '수치 변수 샘플링…' });
+    const samples = randomizeSimilarVariables(analysis.variables);
+    sampledBlock = formatSampledVariablesForPrompt(samples);
+    const sampleDetail = samples
+      .map((s) => `${s.id}=${s.value}${s.unit ? s.unit : ''}`)
+      .join(', ');
+    emit({
+      step: 'randomize',
+      status: 'done',
+      detail: sampleDetail,
+      llmInstruction: formatAnalysisForPrompt(analysis),
+      llmResponse: truncateForGenerationLog(
+        JSON.stringify({ samples, variables: analysis.variables }, null, 2),
+      ),
+    });
+  } else {
+    emit({
+      step: 'randomize',
+      status: 'skipped',
+      detail: '비계산 문항',
+      llmResponse: truncateForGenerationLog(formatAnalysisForPrompt(analysis)),
+    });
+  }
+
+  const generationInstruction = buildDerivedGenerationInstruction({
+    question: q.question,
+    options,
+    answer: q.kind === 'choice' ? stemAnswer : 1,
+    point: q.point || '',
+    explanation: q.explanation || '',
+    sourceKind: q.kind,
+    ...(q.answerStyle ? { sourceAnswerStyle: q.answerStyle } : {}),
+    target: params.target,
+    complexity,
+    analysisBlock,
+    sampledBlock,
+    ...(params.target.kind === 'choice' ? { targetAnswer } : {}),
+    ...(ragBlock ? { ragBlock } : {}),
+  });
+
+  const genSystemPrompt = buildDerivedQuestionGenerationSystemPrompt(
+    settings.systemPrompt || DEFAULT_QUIZ_SYSTEM_PROMPT,
+  );
+  emit({
+    step: 'generate',
+    status: 'running',
+    detail: '파생 문항 작성 중…',
+    llmInstruction: generationInstruction,
+    systemPrompt: genSystemPrompt,
+  });
+  const text = await runQuizLlmPrompt(
+    runOpts(
+      params.profiles,
+      generationInstruction,
+      genSystemPrompt,
+      settings.temperature,
+      signalExtra(params.signal),
+    ),
+  );
+  const parsed = extractJsonObject(text);
+  emit({
+    step: 'generate',
+    status: 'done',
+    detail:
+      params.target.kind === 'choice'
+        ? `정답 ${targetAnswer}번 · ${targetChoiceCount}지선다`
+        : params.target.answerStyle === 'essay'
+          ? '서술형'
+          : '단답형',
+    llmInstruction: generationInstruction,
+    llmResponse: truncateForGenerationLog(text),
+    systemPrompt: genSystemPrompt,
+  });
+
+  let generated = parseGeneratedQuestion(parsed, targetChoiceCount, targetAnswer);
+  if (params.target.kind === 'subjective') {
+    generated = {
+      kind: 'subjective',
+      answerStyle: params.target.answerStyle === 'essay' ? 'essay' : 'short',
+      question: generated.question,
+      modelAnswer: generated.modelAnswer || '',
+      point: generated.point,
+      explanation: generated.explanation,
+      isGenerated: true,
+    };
+  } else {
+    generated = {
+      kind: 'choice',
+      question: generated.question,
+      options: resizeChoiceOptions(generated.options || [], targetChoiceCount),
+      answer: Math.min(targetChoiceCount, Math.max(1, generated.answer || targetAnswer)),
+      point: generated.point,
+      explanation: generated.explanation,
+      isGenerated: true,
+    };
+  }
+
+  if (!hasCompleteSimilarQuestionSections(generated)) {
+    const missingPoint = isWeakSimilarQuestionPoint(generated.point);
+    const missingExplanation = isWeakSimilarQuestionExplanation(generated.explanation);
+    const repairInstruction = buildSimilarSectionsRepairInstruction({
+      question: generated.question,
+      options: generated.kind === 'choice' ? generated.options || [] : [],
+      answer:
+        generated.kind === 'choice' && generated.answer ? generated.answer : targetAnswer,
       analysisBlock,
       missingPoint,
       missingExplanation,

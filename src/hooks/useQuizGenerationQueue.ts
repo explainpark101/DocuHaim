@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  buildDerivedJobSteps,
   buildSimilarJobSteps,
   buildSourceJobSteps,
   truncateQuizPreview,
@@ -146,6 +147,25 @@ export function useQuizGenerationQueue() {
     [openPanelForJob],
   );
 
+  const createDerivedJob = useCallback(
+    (params: { displayLabel: string; preview: string; hasRag: boolean }) => {
+      const id = newJobId();
+      const job: QuizGenJob = {
+        id,
+        kind: 'derived',
+        questionLabel: params.displayLabel,
+        questionPreview: truncateQuizPreview(params.preview),
+        status: 'running',
+        steps: buildDerivedJobSteps(params.hasRag),
+        createdAt: Date.now(),
+      };
+      setJobs((prev) => [job, ...prev]);
+      openPanelForJob();
+      return id;
+    },
+    [openPanelForJob],
+  );
+
   const createSourceJob = useCallback((params: { preview: string; topic?: string }) => {
     const id = newJobId();
     const preview =
@@ -245,6 +265,7 @@ export function useQuizGenerationQueue() {
     markPanelFocusEngaged,
     getJob,
     createSimilarJob,
+    createDerivedJob,
     createSourceJob,
     updateJobStep,
     setJobLogPath,

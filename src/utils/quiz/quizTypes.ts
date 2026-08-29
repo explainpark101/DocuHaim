@@ -55,6 +55,8 @@ export type QuizPersistedSession = {
   timeLog?: QuizTimeLog;
   /** Saved wrong-choice analyses keyed by question id → option number string. */
   wrongChoiceExplanations?: QuizWrongChoiceExplanations;
+  /** User-authored markdown memos keyed by question id. */
+  questionMemos?: Record<string, string>;
 };
 
 export type QuizDocument = {

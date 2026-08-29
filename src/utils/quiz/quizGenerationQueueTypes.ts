@@ -1,6 +1,6 @@
 /** Quiz AI question-generation queue (similar / source-based). */
 
-export type QuizGenJobKind = 'similar' | 'source';
+export type QuizGenJobKind = 'similar' | 'derived' | 'source';
 
 export type QuizGenStepId =
   | 'rag'
@@ -51,6 +51,12 @@ export type QuizGenStepUpdate = {
   llmResponse?: string;
   systemPrompt?: string;
 };
+
+export function buildDerivedJobSteps(hasRag: boolean): QuizGenStep[] {
+  return buildSimilarJobSteps(hasRag).map((step) =>
+    step.id === 'generate' ? { ...step, label: '파생 문항 생성' } : step,
+  );
+}
 
 export function buildSimilarJobSteps(hasRag: boolean): QuizGenStep[] {
   const steps: QuizGenStep[] = [];

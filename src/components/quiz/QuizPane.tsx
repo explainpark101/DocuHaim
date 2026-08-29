@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ClipboardList,
   FilePlus2,
+  GitBranch,
   Library,
   List,
   PenLine,
@@ -19,6 +20,8 @@ import { DropdownMenu, Switch, Tooltip } from 'radix-ui';
 import Button from '@/components/Button';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import QuizMdPreview from '@/components/quiz/QuizMdPreview';
+import { QuizImageHydrationProvider } from '@/components/quiz/QuizImageHydrationContext';
+import QuizDerivedQuestionModal from '@/components/quiz/QuizDerivedQuestionModal';
 import QuizAddQuestionModal from '@/components/quiz/QuizAddQuestionModal';
 import QuizBulkImportModal from '@/components/quiz/QuizBulkImportModal';
 import QuizSourcePickerModal from '@/components/quiz/QuizSourcePickerModal';
@@ -27,6 +30,7 @@ import QuizGenerationQueuePanel from '@/components/quiz/QuizGenerationQueuePanel
 import QuizStopwatchToolbar from '@/components/quiz/QuizStopwatchToolbar';
 import QuizTimeLogPanel from '@/components/quiz/QuizTimeLogPanel';
 import QuizWrongChoiceAnalysisPanel from '@/components/quiz/QuizWrongChoiceAnalysisPanel';
+import QuizQuestionMemoPanel from '@/components/quiz/QuizQuestionMemoPanel';
 import QuizChoiceAnalysisDock, {
   type QuizChoiceAnalysisDockMode,
 } from '@/components/quiz/QuizChoiceAnalysisDock';
@@ -60,6 +64,7 @@ import {
   generateQuestionsFromSources,
   generateFixedQuizQuestion,
   generateSimilarChoiceQuestion,
+  generateDerivedQuestion,
   generateWrongChoiceExplanation,
   gradeSubjectiveAnswer,
   isQuizLlmSetupIssue,
@@ -118,6 +123,9 @@ import {
   wrongChoiceExplanationKey,
 } from '@/utils/quiz/quizWrongChoiceExplanations';
 import { loadQuizSettings } from '@/utils/quiz/quizSettingsStore';
+import type { QuizDerivedQuestionTarget } from '@/utils/quiz/derivedQuestionAnalysis';
+import { nextDerivedDisplayLabel } from '@/utils/quiz/derivedQuestionAnalysis';
+import { isQuestionMemosEmpty } from '@/utils/quiz/quizQuestionMemos';
 import {
   areQuizPersistedSessionsEqual,
   buildQuizSessionForPersist,
@@ -219,8 +227,16 @@ export type QuizFileManagementActions = {
 export type QuizPaneProps = {
   content: string;
   onChange: (markdown: string) => void;
-  onSave?: (() => void | Promise<void>) | undefined;
+  onSave?: ((
+    fileOverride?: unknown,
+    options?: {
+      skipCoverChangeCheck?: boolean;
+      skipSuffixCheck?: boolean;
+      contentOverride?: string;
+    },
+  ) => void | Promise<void>) | undefined;
   currentFile?: { id?: string; name?: string; type?: string; content?: string } | null;
+  onResolveWikiImageUrl?: ((path: string) => Promise<string | null>) | undefined;
   llmProviderProfiles?: LlmProviderProfile[];
   isActiveFile?: boolean;
   registerToolbar?: (node: ReactNode | null) => void;
@@ -234,6 +250,7 @@ export default function QuizPane({
   onChange,
   onSave,
   currentFile,
+  onResolveWikiImageUrl,
   llmProviderProfiles = [],
   isActiveFile = true,
   registerToolbar,
@@ -429,6 +446,7 @@ export default function QuizPane({
   const [userAnswers, setUserAnswers] = useState<Record<string, number | string>>({});
   const [graded, setGraded] = useState<Record<string, boolean>>({});
   const [expVisible, setExpVisible] = useState<Record<string, boolean>>({});
+  const [questionMemos, setQuestionMemos] = useState<Record<string, string>>({});
   const [wrongExps, setWrongExps] = useState<Record<string, string>>({});
   const wrongExpsRef = useRef(wrongExps);
   wrongExpsRef.current = wrongExps;
@@ -492,6 +510,7 @@ export default function QuizPane({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editQ, setEditQ] = useState<QuizQuestion | null>(null);
+  const [derivedSourceQ, setDerivedSourceQ] = useState<QuizQuestion | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [sourcePicker, setSourcePicker] = useState<{
     paths: string[];
@@ -542,8 +561,9 @@ export default function QuizPane({
       isSubmitted,
       ...(isQuizTimeLogEmpty(timeLog) ? {} : { timeLog }),
       wrongChoiceExplanations: nestWrongChoiceExplanations(wrongExps),
+      ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
     });
-  }, [userAnswers, graded, subjGrades, isSubmitted, timeLog, wrongExps]);
+  }, [userAnswers, graded, subjGrades, isSubmitted, timeLog, wrongExps, questionMemos]);
 
   const hasUnsavedQuizProgress = useCallback((): boolean => {
     if (!sessionHydratedRef.current || !isActiveFile) return false;
@@ -572,6 +592,7 @@ export default function QuizPane({
       setWrongExpFocus({});
       setChoiceAnalysisDock(null);
       setChoiceAnalysisPrompt('');
+      setQuestionMemos({});
       setSubjGrades({});
       setIsSubmitted(false);
       return;
@@ -581,6 +602,7 @@ export default function QuizPane({
     setSubjGrades({ ...session.subjectiveGrades });
     setIsSubmitted(session.isSubmitted);
     setWrongExps(flatWrongChoiceExplanations(session.wrongChoiceExplanations));
+    setQuestionMemos({ ...(session.questionMemos ?? {}) });
     setWrongExpFocus({});
     setChoiceAnalysisDock(null);
     setChoiceAnalysisPrompt('');
@@ -623,12 +645,17 @@ export default function QuizPane({
           isSubmitted,
           ...(isQuizTimeLogEmpty(timeLog) ? {} : { timeLog }),
           wrongChoiceExplanations: nestWrongChoiceExplanations(wrongExpsSnapshot),
+          ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
         });
         persistDocument(docRef.current, session);
       } else {
         flushSessionToEditor();
       }
-      await onSave();
+      await onSave(null, {
+        skipCoverChangeCheck: true,
+        skipSuffixCheck: true,
+        contentOverride: contentRef.current,
+      });
     },
     [
       flushSessionToEditor,
@@ -639,6 +666,7 @@ export default function QuizPane({
       subjGrades,
       timeLog,
       userAnswers,
+      questionMemos,
     ],
   );
 
@@ -679,7 +707,7 @@ export default function QuizPane({
         sessionAutosaveTimerRef.current = null;
       }
     };
-  }, [userAnswers, graded, subjGrades, isSubmitted, timeLog, wrongExps, buildSessionFromState, persistDocument]);
+  }, [userAnswers, graded, subjGrades, isSubmitted, timeLog, wrongExps, questionMemos, buildSessionFromState, persistDocument]);
 
   const handleExtractWrongQuestions = useCallback(async () => {
     const built = buildWrongQuestionsExtractQuiz(docRef.current, {
@@ -755,6 +783,7 @@ export default function QuizPane({
         ...next,
         config: syncQuizFileChoiceCount(next.config, next.questions),
       };
+      docRef.current = synced;
       setDoc(synced);
       const session = buildSessionFromState();
       persistDocument(synced, session);
@@ -803,6 +832,7 @@ export default function QuizPane({
       isSubmitted,
       ...(isQuizTimeLogEmpty(timeLog) ? {} : { timeLog }),
       wrongChoiceExplanations: result.wrongChoiceExplanations,
+      ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
     });
     persistDocument(synced, session);
 
@@ -818,6 +848,7 @@ export default function QuizPane({
     subjGrades,
     isSubmitted,
     timeLog,
+    questionMemos,
     persistDocument,
     showToast,
   ]);
@@ -1067,8 +1098,14 @@ export default function QuizPane({
     setIsSubmitted(false);
     setTimeLog(createEmptyQuizTimeLog());
     setStopwatchHydrateKey((k) => k + 1);
-    persistDocument(docRef.current, normalizeQuizPersistedSession({ version: 1 }));
-  }, [persistDocument]);
+    persistDocument(
+      docRef.current,
+      normalizeQuizPersistedSession({
+        version: 1,
+        ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
+      }),
+    );
+  }, [persistDocument, questionMemos]);
 
   const resetSessionAndStartExam = useCallback(() => {
     setUserAnswers({});
@@ -1085,9 +1122,13 @@ export default function QuizPane({
     setStopwatchHydrateKey((k) => k + 1);
     persistDocument(
       docRef.current,
-      normalizeQuizPersistedSession({ version: 1, timeLog: startedLog }),
+      normalizeQuizPersistedSession({
+        version: 1,
+        timeLog: startedLog,
+        ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
+      }),
     );
-  }, [persistDocument]);
+  }, [persistDocument, questionMemos]);
 
   const hasAnsweredQuestions = useMemo(
     () => doc.questions.some((q) => hasQuizSessionAnswer(userAnswers[q.id])),
@@ -1193,46 +1234,59 @@ export default function QuizPane({
     if (stopwatch.examInProgress) {
       stopwatch.stop();
     }
-    setIsSubmitted(true);
-    const nextGraded = { ...graded };
-    const nextExp = { ...expVisible };
-    for (const q of doc.questions) {
-      if (q.kind === 'choice') {
-        nextGraded[q.id] = true;
-        nextExp[q.id] = true;
-      }
-    }
-    setGraded(nextGraded);
-    setExpVisible(nextExp);
-    const subjective = doc.questions.filter((q) => q.kind === 'subjective');
-    const needsAi = subjective.some((q) => {
-      const ans = String(userAnswers[q.id] || '').trim();
-      return Boolean(ans) && !subjGrades[q.id];
+
+    const pending = doc.questions.filter((q) => {
+      if (!hasQuizSessionAnswer(userAnswers[q.id])) return false;
+      if (graded[q.id]) return false;
+      if (q.kind === 'subjective' && subjGrades[q.id]) return false;
+      return true;
     });
-    if (needsAi && !(await ensureQuizLlmReady())) {
+
+    if (pending.length === 0) {
+      showToast({ message: '채점할 항목이 없습니다.', durationMs: 2200 });
       return;
     }
-    for (const q of subjective) {
-      const ans = String(userAnswers[q.id] || '').trim();
-      if (!ans) continue;
-      if (subjGrades[q.id]) {
-        setExpVisible((prev) => ({ ...prev, [q.id]: true }));
-        continue;
-      }
-      try {
-        const result = await gradeSubjectiveAnswer({
-          profiles,
-          question: q,
-          userAnswer: ans,
-        });
-        setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
-        setGraded((prev) => ({ ...prev, [q.id]: true }));
-        setExpVisible((prev) => ({ ...prev, [q.id]: true }));
-      } catch {
-        // continue others
+
+    const choicePending = pending.filter((q) => q.kind === 'choice');
+    const subjectivePending = pending.filter((q) => q.kind === 'subjective');
+
+    if (choicePending.length > 0) {
+      setGraded((prev) => {
+        const next = { ...prev };
+        for (const q of choicePending) next[q.id] = true;
+        return next;
+      });
+      setExpVisible((prev) => {
+        const next = { ...prev };
+        for (const q of choicePending) next[q.id] = true;
+        return next;
+      });
+    }
+
+    if (subjectivePending.length > 0) {
+      if (!(await ensureQuizLlmReady())) return;
+      for (const q of subjectivePending) {
+        const ans = String(userAnswers[q.id] || '').trim();
+        if (!ans) continue;
+        try {
+          const result = await gradeSubjectiveAnswer({
+            profiles,
+            question: q,
+            userAnswer: ans,
+          });
+          setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
+          setGraded((prev) => ({ ...prev, [q.id]: true }));
+          setExpVisible((prev) => ({ ...prev, [q.id]: true }));
+        } catch {
+          // continue others
+        }
       }
     }
-    showToast({ message: '전체 채점 완료', durationMs: 2200 });
+
+    showToast({
+      message: `${pending.length}개 항목 채점 완료`,
+      durationMs: 2200,
+    });
   };
 
   const handleSimilar = async (q: QuizQuestion) => {
@@ -1309,6 +1363,84 @@ export default function QuizPane({
       genQueue.failJob(jobId, message);
       void persistGenerationLog(jobId, logKey);
       reportQuizError('유사문제 생성 실패', err, '유사문제 생성 실패');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDerivedGenerate = async (
+    q: QuizQuestion,
+    target: QuizDerivedQuestionTarget,
+  ) => {
+    if (!(await ensureQuizLlmReady())) return;
+    setBusyId(`derived-${q.id}`);
+    const sources = resolveEffectiveSourcePaths(doc.config, q);
+    const jobId = genQueue.createDerivedJob({
+      displayLabel: String(q.displayLabel || q.id),
+      preview: q.question,
+      hasRag: sources.length > 0,
+    });
+    const logKey = jobId;
+    try {
+      const generated = await generateDerivedQuestion({
+        profiles,
+        question: q,
+        config: doc.config,
+        target,
+        sourcePaths: sources,
+        readText,
+        onStep: (update) => handleGenerationStep(jobId, logKey, update),
+      });
+      const displayLabel = nextDerivedDisplayLabel(
+        doc.questions,
+        String(q.displayLabel || q.id),
+      );
+      const newQ: QuizQuestion = {
+        ...generated,
+        id: `gen-${Date.now()}`,
+        displayLabel,
+        isGenerated: true,
+        similarOf: {
+          id: q.id,
+          displayLabel: String(q.displayLabel || q.id),
+        },
+        ...(sources.length ? { sourcePaths: sources } : {}),
+      };
+      genQueue.updateJobStep(jobId, {
+        step: 'finalize',
+        status: 'running',
+        detail: '문서에 추가 중…',
+      });
+      void persistGenerationLog(jobId, newQ.id);
+      const idx = doc.questions.findIndex((x) => x.id === q.id);
+      const questions = [...doc.questions];
+      questions.splice(idx + 1, 0, newQ);
+      setFilter('all');
+      setFreshQuestionIds((prev) => ({ ...prev, [newQ.id]: true }));
+      commitDoc({ ...doc, questions });
+      genQueue.setJobResultQuestionId(jobId, newQ.id);
+      genQueue.updateJobStep(jobId, {
+        step: 'finalize',
+        status: 'done',
+        detail: displayLabel,
+        llmResponse: JSON.stringify(newQ, null, 2),
+      });
+      genQueue.completeJob(jobId, displayLabel);
+      void persistGenerationLog(jobId, newQ.id);
+      setDerivedSourceQ(null);
+      showToast({ message: `${displayLabel} 파생문제 추가`, durationMs: 2500 });
+      await saveAfterAiGenerate();
+      window.setTimeout(() => {
+        document
+          .getElementById(`q-card-${newQ.id}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 80);
+    } catch (err) {
+      const message =
+        (err instanceof Error ? err.message : '') || '파생문제 생성 실패';
+      genQueue.failJob(jobId, message);
+      void persistGenerationLog(jobId, logKey);
+      reportQuizError('파생문제 생성 실패', err, '파생문제 생성 실패');
     } finally {
       setBusyId(null);
     }
@@ -1612,7 +1744,16 @@ export default function QuizPane({
     </div>
   );
 
+  const imageHydrationValue = useMemo(
+    () => ({
+      getPresignedUrl: onResolveWikiImageUrl,
+      currentNotePath: currentFile?.id ?? null,
+    }),
+    [currentFile?.id, onResolveWikiImageUrl],
+  );
+
   return (
+    <QuizImageHydrationProvider value={imageHydrationValue}>
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
     <div className="quiz-pane relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg">
       <div className="shrink-0 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-odp-borderSoft dark:bg-odp-surface">
@@ -2119,6 +2260,16 @@ export default function QuizPane({
                       유사문제
                     </Button>
                   ) : null}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={busyId === `derived-${q.id}`}
+                    onClick={() => setDerivedSourceQ(q)}
+                  >
+                    <GitBranch size={14} />
+                    파생문제 생성
+                  </Button>
                 </div>
 
                 {isGraded && q.kind === 'choice' ? (
@@ -2159,6 +2310,21 @@ export default function QuizPane({
                     ) : null}
                   </div>
                 ) : null}
+
+                <QuizQuestionMemoPanel
+                  questionId={q.id}
+                  value={questionMemos[q.id] || ''}
+                  onSave={(next) =>
+                    setQuestionMemos((prev) => {
+                      const trimmed = next.trim();
+                      if (!trimmed) {
+                        const { [q.id]: _removed, ...rest } = prev;
+                        return rest;
+                      }
+                      return { ...prev, [q.id]: next };
+                    })
+                  }
+                />
               </Motion.div>
             );
           })}
@@ -2446,6 +2612,9 @@ export default function QuizPane({
                 <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3 text-xs">
                   {doc.questions.map((q, i) => {
                     const isSimilarChild = Boolean(q.similarOf);
+                    const childKindLabel = /-파생\d+$/u.test(String(q.displayLabel || ''))
+                      ? '파생문제'
+                      : '유사문제';
                     const gradeStatus = getQuizQuestionGradeStatus({
                       question: q,
                       userAnswers,
@@ -2475,7 +2644,7 @@ export default function QuizPane({
                           }`}
                           title={
                             isSimilarChild
-                              ? `${q.similarOf?.displayLabel || q.similarOf?.id}의 유사문제`
+                              ? `${q.similarOf?.displayLabel || q.similarOf?.id}의 ${childKindLabel}`
                               : undefined
                           }
                           onClick={() => {
@@ -2513,6 +2682,21 @@ export default function QuizPane({
           ) : null}
         </AnimatePresence>
       </div>
+
+      <QuizDerivedQuestionModal
+        isOpen={derivedSourceQ != null}
+        question={derivedSourceQ}
+        defaultChoiceCount={doc.config.choiceCount || 4}
+        busy={derivedSourceQ != null && busyId === `derived-${derivedSourceQ.id}`}
+        onClose={() => {
+          if (derivedSourceQ && busyId === `derived-${derivedSourceQ.id}`) return;
+          setDerivedSourceQ(null);
+        }}
+        onSubmit={(target) => {
+          if (!derivedSourceQ) return;
+          void handleDerivedGenerate(derivedSourceQ, target);
+        }}
+      />
 
       {addOpen ? (
         <QuizAddQuestionModal
@@ -2651,5 +2835,6 @@ export default function QuizPane({
       ) : null}
     </div>
     </Tooltip.Provider>
+    </QuizImageHydrationProvider>
   );
 }

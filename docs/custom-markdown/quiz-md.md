@@ -34,6 +34,7 @@ User answers and grading results are persisted so reopening the quiz restores pr
 | `isSubmitted` | boolean | Whole-quiz submit was used |
 | `timeLog` | object | Stopwatch event log (see below) |
 | `wrongChoiceExplanations` | object | Question id → option number string → markdown analysis text |
+| `questionMemos` | object | Question id → user-authored markdown memo text |
 
 #### `timeLog` (stopwatch)
 
@@ -86,6 +87,8 @@ If the comment is missing, labels matching `N-유사K` still infer `similarOf` f
 ```markdown
 ### 1. Question text here?
 
+Optional stem body (markdown) until the first `1. ` choice line.
+
 1. Option A *(정답)*
 2. Option B
 3. Option C
@@ -98,7 +101,7 @@ If the comment is missing, labels matching `N-유사K` still infer `similarOf` f
 > Full explanation
 ```
 
-Answer markers on the correct option: `*(정답)*`, `(정답)`, `[정답]`, `*정답*`.
+The **question stem** in the app is the heading text plus any non-blockquote body lines **above** the first `1. ` choice line (images and markdown included). Answer markers on the correct option: `*(정답)*`, `(정답)`, `[정답]`, `*정답*`.
 
 ### Short answer (단답형)
 
@@ -157,9 +160,10 @@ QUIZ_SESSION_COMMENT := '<!--' WS 'quiz-session' WS JSON '-->'
 JSON := { choiceCount?: number, sourcePaths?: string[], disabledSourcePaths?: string[] }
 SESSION_JSON := { version: 1, userAnswers?: object, gradedQuestions?: object, subjectiveGrades?: object, isSubmitted?: boolean }
 
-QUESTION_BLOCK := HEADING NL [IMAGE] [SOURCE_QUOTE] (CHOICE_BODY | SHORT_BODY | ESSAY_BODY) [POINT_EXP_QUOTE]
+QUESTION_BLOCK := HEADING NL [STEM_BODY] [IMAGE] [SOURCE_QUOTE] (CHOICE_BODY | SHORT_BODY | ESSAY_BODY) [POINT_EXP_QUOTE]
 
-HEADING := '#'+ WS [🔖 WS] LABEL '.' WS [TYPE_TAG WS] QUESTION_TEXT
+HEADING := '#'+ WS [🔖 WS] LABEL '.' WS [TYPE_TAG WS] QUESTION_HEADING_LINE
+STEM_BODY := (LINE NL)*   /* lines until first `1. ` choice or subjective structural line */
 LABEL := DIGIT+ ('-유사' DIGIT+)?
 TYPE_TAG := '[단답형]' | '[주관식]' | '[서술형]'
 
@@ -215,6 +219,7 @@ ESSAY_BODY := '>' WS '**📖 모범 답안:**' NL ('>' LINE)*
 
 - Lucivy index is optional for RAG ranking; selected files are always readable via storage `readText`.
 - Wrong-choice AI explanations are persisted in `quiz-session` as `wrongChoiceExplanations` (not inline in question blocks).
+- Per-question study memos are persisted in `quiz-session` as `questionMemos` (Markdown; edited via **메모작성** in 퀴즈 모드).
 
 ### AI generation logs (`.quiz/` sidecar)
 

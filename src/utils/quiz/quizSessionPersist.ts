@@ -5,6 +5,11 @@ import {
   filterWrongChoiceExplanations,
 } from '@/utils/quiz/quizWrongChoiceExplanations';
 import {
+  isQuestionMemosEmpty,
+  filterQuestionMemos,
+  normalizeQuestionMemos,
+} from '@/utils/quiz/quizQuestionMemos';
+import {
   isQuizTimeLogEmpty,
   normalizeQuizTimeLog,
 } from '@/utils/quiz/quizTimeLog';
@@ -99,6 +104,7 @@ export function normalizeQuizPersistedSession(
   const wrongChoiceExplanations = normalizeWrongChoiceExplanations(
     raw?.wrongChoiceExplanations,
   );
+  const questionMemos = normalizeQuestionMemos(raw?.questionMemos);
   return {
     version: 1,
     userAnswers: normalizeUserAnswers(raw?.userAnswers),
@@ -109,6 +115,7 @@ export function normalizeQuizPersistedSession(
     ...(isWrongChoiceExplanationsEmpty(wrongChoiceExplanations)
       ? {}
       : { wrongChoiceExplanations }),
+    ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
   };
 }
 
@@ -119,7 +126,8 @@ export function isQuizSessionEmpty(session: QuizPersistedSession): boolean {
     Object.keys(session.subjectiveGrades).length === 0 &&
     !session.isSubmitted &&
     isQuizTimeLogEmpty(session.timeLog) &&
-    isWrongChoiceExplanationsEmpty(session.wrongChoiceExplanations)
+    isWrongChoiceExplanationsEmpty(session.wrongChoiceExplanations) &&
+    isQuestionMemosEmpty(session.questionMemos)
   );
 }
 
@@ -151,6 +159,7 @@ export function filterQuizSessionForQuestions(
     ids,
     optionCountByQuestion.size > 0 ? optionCountByQuestion : undefined,
   );
+  const questionMemos = filterQuestionMemos(session.questionMemos, ids);
   return normalizeQuizPersistedSession({
     version: 1,
     userAnswers: pick(session.userAnswers),
@@ -161,6 +170,7 @@ export function filterQuizSessionForQuestions(
     ...(isWrongChoiceExplanationsEmpty(wrongChoiceExplanations)
       ? {}
       : { wrongChoiceExplanations }),
+    ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
   });
 }
 
@@ -219,6 +229,7 @@ export function serializeQuizSessionComment(session: QuizPersistedSession): stri
     ...(normalized.wrongChoiceExplanations
       ? { wrongChoiceExplanations: normalized.wrongChoiceExplanations }
       : {}),
+    ...(normalized.questionMemos ? { questionMemos: normalized.questionMemos } : {}),
   };
   const json = JSON.stringify(payload);
   return `<!-- quiz-session ${escapeJsonForComment(json)} -->`;

@@ -15,15 +15,30 @@ function blockquoteLines(text: string): string {
   return lines.map((l) => `> ${l}`).join('\n');
 }
 
+function splitQuestionForSerialize(question: string): {
+  headingLine: string;
+  bodyLines: string;
+} {
+  const normalized = String(question || '').replace(/\r\n/g, '\n').trim();
+  if (!normalized) return { headingLine: '', bodyLines: '' };
+  const nl = normalized.indexOf('\n');
+  if (nl === -1) return { headingLine: normalized, bodyLines: '' };
+  return {
+    headingLine: normalized.slice(0, nl).trim(),
+    bodyLines: normalized.slice(nl + 1).trim(),
+  };
+}
+
 function serializeOneQuestion(q: QuizQuestion): string {
   const parts: string[] = [];
+  const { headingLine, bodyLines } = splitQuestionForSerialize(q.question);
 
   if (q.kind === 'subjective' && q.answerStyle === 'short') {
-    parts.push(`### ${q.displayLabel}. [단답형] ${q.question}`);
+    parts.push(`### ${q.displayLabel}. [단답형] ${headingLine}`);
   } else if (q.kind === 'subjective') {
-    parts.push(`### ${q.displayLabel}. [주관식] ${q.question}`);
+    parts.push(`### ${q.displayLabel}. [주관식] ${headingLine}`);
   } else {
-    parts.push(`### ${q.displayLabel}. ${q.question}`);
+    parts.push(`### ${q.displayLabel}. ${headingLine}`);
   }
 
   if (q.similarOf?.id || q.similarOf?.displayLabel) {
@@ -37,12 +52,15 @@ function serializeOneQuestion(q: QuizQuestion): string {
     };
     parts.push(`<!-- quiz-q-meta ${JSON.stringify(meta)} -->`);
   }
-  parts.push('');
 
-  if (q.image) {
-    parts.push(`![이미지](${q.image})`);
+  if (bodyLines) {
     parts.push('');
+    parts.push(bodyLines);
+  } else if (q.image && !q.question.includes(q.image)) {
+    parts.push('');
+    parts.push(`![이미지](${q.image})`);
   }
+  parts.push('');
 
   if (q.sourcePaths && q.sourcePaths.length > 0) {
     parts.push('> **📚 근거 문서:**');
