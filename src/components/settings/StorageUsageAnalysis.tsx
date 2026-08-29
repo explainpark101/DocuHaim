@@ -25,6 +25,12 @@ import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBu
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import type { RebuildCheckpointInfo } from '@/utils/advancedSearch/engine';
+import { useAdvancedSearchEngineStatus } from '@/hooks/useAdvancedSearchEngineStatus';
+import {
+  canStartIndexRebuild,
+  canStopIndexBuild,
+  indexRebuildButtonLabel,
+} from '@/utils/advancedSearch/indexBuildUi';
 
 type Props = {
   storageMode?: string;
@@ -370,7 +376,7 @@ export default function StorageUsageAnalysis({
     folder: false,
   });
   const [indexBusy, setIndexBusy] = useState(false);
-  const [indexStatus, setIndexStatus] = useState(() => advancedSearchEngine.getStatus());
+  const indexStatus = useAdvancedSearchEngineStatus();
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState<RebuildCheckpointInfo | null>(
     null,
@@ -378,26 +384,10 @@ export default function StorageUsageAnalysis({
   const [rebuildConfirmOpen, setRebuildConfirmOpen] = useState(false);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let pending = false;
-    const flush = () => {
-      setIndexStatus(advancedSearchEngine.getStatus());
-    };
-    return advancedSearchEngine.subscribe(() => {
-      if (timer) {
-        pending = true;
-        return;
-      }
-      flush();
-      timer = setTimeout(() => {
-        timer = null;
-        if (pending) {
-          pending = false;
-          flush();
-        }
-      }, 400);
-    });
-  }, []);
+    if (!indexStatus.building) {
+      setIndexBusy(false);
+    }
+  }, [indexStatus.building]);
 
   useEffect(() => {
     void advancedSearchEngine.refreshCheckpointStatus();
@@ -449,12 +439,7 @@ export default function StorageUsageAnalysis({
   };
 
   const startRebuild = (resume: boolean) => {
-    if (
-      indexBusy ||
-      indexStatus.building ||
-      !indexStatus.enabled ||
-      !indexStatus.isolationReady
-    ) {
+    if (!canStartIndexRebuild(indexStatus, indexBusy)) {
       return;
     }
     setIndexBusy(true);
@@ -464,12 +449,7 @@ export default function StorageUsageAnalysis({
   };
 
   const handleBuildIndex = () => {
-    if (
-      indexBusy ||
-      indexStatus.building ||
-      !indexStatus.enabled ||
-      !indexStatus.isolationReady
-    ) {
+    if (!canStartIndexRebuild(indexStatus, indexBusy)) {
       return;
     }
     void (async () => {
@@ -539,13 +519,7 @@ export default function StorageUsageAnalysis({
           <button
             type="button"
             onClick={handleBuildIndex}
-            disabled={
-              !canScan ||
-              indexBusy ||
-              indexStatus.building ||
-              !indexStatus.enabled ||
-              !indexStatus.isolationReady
-            }
+            disabled={!canScan || !canStartIndexRebuild(indexStatus, indexBusy)}
             className="inline-flex items-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60"
             title={
               !indexStatus.enabled
@@ -560,22 +534,24 @@ export default function StorageUsageAnalysis({
             ) : (
               <Search size={14} />
             )}
-            {indexBusy || indexStatus.building
-              ? typeof indexStatus.buildProgress === 'number'
-                ? `색인 중 ${Math.round(indexStatus.buildProgress * 100)}%`
-                : '색인 중…'
-              : indexStatus.hasCheckpoint
-                ? '색인 재개/다시 시작'
-                : indexStatus.hasIndex
-                  ? '역색인 다시 생성'
-                  : '역색인 생성'}
+            {indexRebuildButtonLabel(indexStatus)}
           </button>
-          {indexStatus.building ? (
+          {canStopIndexBuild(indexStatus) ? (
             <button
               type="button"
               onClick={handleCancelIndex}
               className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
               title="색인을 중지합니다. 체크포인트는 유지되어 이어서 재개할 수 있습니다."
+            >
+              <Square size={14} />
+              중지
+            </button>
+          ) : indexStatus.building ? (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 opacity-50 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+              title="색인이 완료되어 저장 중입니다."
             >
               <Square size={14} />
               중지

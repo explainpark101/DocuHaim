@@ -104,6 +104,8 @@ export type EngineStatus = {
   enabled: boolean;
   loaded: boolean;
   building: boolean;
+  /** False once progress reaches 100% (final vault save); stop is disabled. */
+  indexBuildCancellable: boolean;
   dirty: boolean;
   /** False until user runs a full background build (or legacy index with docs). */
   hasIndex: boolean;
@@ -207,6 +209,7 @@ class AdvancedSearchEngine {
   private loaded = false;
   private lucivyReady = false;
   private building = false;
+  private indexBuildCancellable = false;
   private cancelRequested = false;
   private lastBuildCancelled = false;
   /** Dedupe keys for stepwise cancel logs (cleared on rebuild / cancel). */
@@ -439,6 +442,7 @@ class AdvancedSearchEngine {
       enabled: this.enabled,
       loaded: this.loaded,
       building: this.building,
+      indexBuildCancellable: this.indexBuildCancellable,
       dirty: this.dirty,
       hasIndex: this.hasIndex(),
       includeOtherFiles: this.includeOtherFiles,
@@ -880,7 +884,7 @@ class AdvancedSearchEngine {
   }
 
   cancelRebuild(): void {
-    if (!this.building) return;
+    if (!this.building || !this.indexBuildCancellable) return;
     this.cancelRequested = true;
     this.cancelLogKeys.clear();
     this.logCancelStep(
@@ -1071,6 +1075,7 @@ class AdvancedSearchEngine {
 
     this.incrementalQueue.pause();
     this.building = true;
+    this.indexBuildCancellable = true;
     this.cancelRequested = false;
     this.cancelLogKeys.clear();
     this.lastBuildCancelled = false;
@@ -1192,6 +1197,7 @@ class AdvancedSearchEngine {
     } finally {
       this.cancelRequested = false;
       this.building = false;
+      this.indexBuildCancellable = false;
       this.buildProgress = null;
       this.incrementalQueue.resume();
       if (!this.lastError && !this.lastBuildCancelled) {
@@ -1585,11 +1591,12 @@ class AdvancedSearchEngine {
     this.index.manifest.nextNumericId = this.docIdMap.nextNumericId;
     this.dirty = true;
     this.buildProgress = 1;
+    this.indexBuildCancellable = false;
     this.appendLog(
       'info',
       `저장 중… (파일 문서 ${this.index.manifest.fileCount} · 채팅 문서 ${this.index.manifest.chatCount})`,
     );
-    this.emit();
+    this.emitBuildProgress(true);
     await this.persistNow();
     this.appendLog('ok', '색인 저장 완료 (.advanced-search/luce/)');
   }

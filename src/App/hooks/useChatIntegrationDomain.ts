@@ -25,6 +25,11 @@ import {
   setOgWorkerSettingsStore,
 } from '@/utils/ogWorkerSettings';
 import {
+  loadAdvancedSearchExcludeFoldersFromStorage,
+  setAdvancedSearchExcludeFoldersStore,
+} from '@/utils/advancedSearch/excludeFoldersSettingsStore';
+import { advancedSearchEngine } from '@/utils/advancedSearch/engine';
+import {
   setLlmPromptTemplatesStore,
   syncLlmPromptTemplatesToRemote,
 } from '@/utils/llmPromptTemplatesDb';
@@ -129,6 +134,7 @@ export function useChatIntegrationDomain() {
     setCoverSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
     setOgWorkerSettingsStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
     setLlmPromptTemplatesStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
+    setAdvancedSearchExcludeFoldersStore({ getS3Client, s3Creds, localRootHandle, storageMode: storageMode as any, webdavConfig });
     void loadWebfontsFromStorage().then((settings) => {
       notifyWebfontsChanged(settings);
     });
@@ -138,6 +144,9 @@ export function useChatIntegrationDomain() {
     });
     void loadOgWorkerSettingsFromStorage().then((settings) => {
       notifyOgWorkerSettingsChanged(settings);
+    });
+    void loadAdvancedSearchExcludeFoldersFromStorage().then((folders) => {
+      advancedSearchEngine.setExcludedFolders(folders);
     });
   }, [getS3Client, s3Creds, localRootHandle, storageMode, webdavConfig]);
 

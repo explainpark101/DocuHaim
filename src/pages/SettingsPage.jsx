@@ -96,6 +96,14 @@ import {
   resolveSettingsScrollTarget,
 } from '@/utils/settingsPageCatalog';
 import { scrollSettingsPageSection } from '@/utils/settingsPageScroll';
+import { useAdvancedSearchEngineStatus } from '@/hooks/useAdvancedSearchEngineStatus';
+import {
+  canStartIndexRebuild,
+  canStopIndexBuild,
+  indexRebuildButtonLabel,
+  isIndexBuildIndexing,
+  isIndexBuildSaving,
+} from '@/utils/advancedSearch/indexBuildUi';
 
 export default function SettingsPage({
   s3Creds,
@@ -173,9 +181,7 @@ export default function SettingsPage({
   const [composerHelperTextVisible, setComposerHelperTextVisible] = useState(() =>
     getComposerHelperTextVisible(),
   );
-  const [advancedSearchStatus, setAdvancedSearchStatus] = useState(() =>
-    advancedSearchEngine.getStatus(),
-  );
+  const advancedSearchStatus = useAdvancedSearchEngineStatus();
   const [advancedSearchUiAnimation, setAdvancedSearchUiAnimation] = useState(() =>
     loadAdvancedSearchUiAnimationEnabled(),
   );
@@ -216,9 +222,6 @@ export default function SettingsPage({
       else if (id === 'settings-workspace-tabs') setWorkspaceTabsEnabled(enabled);
       else if (id === 'settings-composer-helper') setComposerHelperTextVisible(enabled);
       else if (id === 'settings-as-animation') setAdvancedSearchUiAnimation(enabled);
-      else if (id === 'settings-as-index' || id === 'settings-as-include-other') {
-        setAdvancedSearchStatus(advancedSearchEngine.getStatus());
-      }
     });
   }, []);
 
@@ -270,26 +273,10 @@ export default function SettingsPage({
   }, [location.hash, location.pathname]);
 
   useEffect(() => {
-    let timer = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
-    let pending = false;
-    const apply = () => {
-      setAdvancedSearchStatus(advancedSearchEngine.getStatus());
-    };
-    return advancedSearchEngine.subscribe(() => {
-      if (timer) {
-        pending = true;
-        return;
-      }
-      apply();
-      timer = setTimeout(() => {
-        timer = null;
-        if (pending) {
-          pending = false;
-          apply();
-        }
-      }, 400);
-    });
-  }, []);
+    if (!advancedSearchStatus.building) {
+      setAdvancedSearchBusy(false);
+    }
+  }, [advancedSearchStatus.building]);
 
   useEffect(() => {
     if (advancedSearchEngine.isEnabled()) {
@@ -1242,9 +1229,12 @@ export default function SettingsPage({
                   : 'border-gray-200 bg-white text-gray-600 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-muted'
             }`}
           >
-            {advancedSearchStatus.building ? (
+            {isIndexBuildIndexing(advancedSearchStatus) ||
+            isIndexBuildSaving(advancedSearchStatus) ? (
               <>
-                백그라운드 색인 중
+                {isIndexBuildSaving(advancedSearchStatus)
+                  ? '역색인 저장 중'
+                  : '백그라운드 색인 중'}
                 {typeof advancedSearchStatus.buildProgress === 'number'
                   ? ` · ${Math.round(advancedSearchStatus.buildProgress * 100)}%`
                   : '…'}
@@ -1283,10 +1273,7 @@ export default function SettingsPage({
             <button
               type="button"
               disabled={
-                advancedSearchBusy ||
-                !advancedSearchStatus.enabled ||
-                advancedSearchStatus.building ||
-                !advancedSearchStatus.isolationReady
+                !canStartIndexRebuild(advancedSearchStatus, advancedSearchBusy)
               }
               onClick={() => {
                 void (async () => {
@@ -1309,18 +1296,24 @@ export default function SettingsPage({
               className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-950/60"
             >
               <IconRefresh size={14} />
-              {advancedSearchStatus.hasCheckpoint
-                ? '색인 재개/다시 시작'
-                : advancedSearchStatus.hasIndex
-                  ? '다시 색인'
-                  : '색인'}
+              {indexRebuildButtonLabel(advancedSearchStatus)}
             </button>
-            {advancedSearchStatus.building ? (
+            {canStopIndexBuild(advancedSearchStatus) ? (
               <button
                 type="button"
                 onClick={() => advancedSearchEngine.cancelRebuild()}
                 className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
                 title="색인을 중지합니다. 체크포인트는 유지되어 이어서 재개할 수 있습니다."
+              >
+                <IconSquare size={14} />
+                중지
+              </button>
+            ) : advancedSearchStatus.building ? (
+              <button
+                type="button"
+                disabled
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 opacity-50 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+                title="색인이 완료되어 저장 중입니다."
               >
                 <IconSquare size={14} />
                 중지
