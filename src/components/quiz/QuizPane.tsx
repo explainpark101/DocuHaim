@@ -29,7 +29,7 @@ import Button from "@/components/Button";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import QuizMdPreview from "@/components/quiz/QuizMdPreview";
 import { QuizImageHydrationProvider } from "@/components/quiz/QuizImageHydrationContext";
-import QuizDerivedQuestionModal from "@/components/quiz/QuizDerivedQuestionModal";
+import QuizDerivedQuestionDock from "@/components/quiz/QuizDerivedQuestionDock";
 import QuizAddQuestionModal from "@/components/quiz/QuizAddQuestionModal";
 import QuizBulkImportModal from "@/components/quiz/QuizBulkImportModal";
 import QuizSourcePickerModal from "@/components/quiz/QuizSourcePickerModal";
@@ -38,6 +38,9 @@ import QuizGenerationQueuePanel from "@/components/quiz/QuizGenerationQueuePanel
 import QuizStopwatchToolbar from "@/components/quiz/QuizStopwatchToolbar";
 import QuizTimeLogPanel from "@/components/quiz/QuizTimeLogPanel";
 import QuizWrongChoiceAnalysisPanel from "@/components/quiz/QuizWrongChoiceAnalysisPanel";
+import QuizQuestionSectionsPanel, {
+  type QuizQuestionSectionsTarget,
+} from "@/components/quiz/QuizQuestionSectionsPanel";
 import QuizQuestionMemoPanel from "@/components/quiz/QuizQuestionMemoPanel";
 import QuizChoiceAnalysisDock, {
   type QuizChoiceAnalysisDockMode,
@@ -75,6 +78,7 @@ import {
   generateDerivedQuestion,
   generateWrongChoiceExplanation,
   generateChoiceAnalysisFollowUp,
+  generateQuestionSections,
   gradeSubjectiveAnswer,
   isQuizLlmSetupIssue,
 } from "@/utils/quiz/quizLlmService";
@@ -140,6 +144,10 @@ import {
   wrongChoiceExplanationKey,
 } from "@/utils/quiz/quizWrongChoiceExplanations";
 import { loadQuizSettings } from "@/utils/quiz/quizSettingsStore";
+import {
+  isWeakSimilarQuestionExplanation,
+  isWeakSimilarQuestionPoint,
+} from "@/utils/quiz/similarQuestionAnalysis";
 import type { QuizDerivedQuestionTarget } from "@/utils/quiz/derivedQuestionAnalysis";
 import { nextDerivedDisplayLabel } from "@/utils/quiz/derivedQuestionAnalysis";
 import { isQuestionMemosEmpty } from "@/utils/quiz/quizQuestionMemos";
@@ -1476,6 +1484,77 @@ export default function QuizPane({
     }
   };
 
+  const handleGenerateQuestionSections = async (
+    q: QuizQuestion,
+    target: QuizQuestionSectionsTarget,
+  ) => {
+    const llmOpts = quizLlm.llmOpts;
+    if (!(await ensureQuizLlmReady(llmOpts))) return;
+
+    const missingPoint =
+      (target === "point" || target === "both") &&
+      isWeakSimilarQuestionPoint(q.point || "");
+    const missingExplanation =
+      (target === "explanation" || target === "both") &&
+      isWeakSimilarQuestionExplanation(q.explanation || "");
+    if (!missingPoint && !missingExplanation) {
+      showToast({
+        message: "이미 접근 Point와 해설이 있습니다.",
+        durationMs: 2200,
+      });
+      return;
+    }
+
+    const busyKey = `sections-${q.id}`;
+    setBusyId(busyKey);
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    try {
+      const sources = resolveEffectiveSourcePaths(doc.config, q);
+      const result = await generateQuestionSections({
+        profiles,
+        question: q,
+        missingPoint,
+        missingExplanation,
+        sourcePaths: sources,
+        readText,
+        ...llmOpts,
+        signal: ac.signal,
+      });
+      if (!result.point && !result.explanation) {
+        showToast({
+          message: "생성된 내용이 없습니다. 다시 시도하세요.",
+          durationMs: 2500,
+        });
+        return;
+      }
+      const questions = doc.questions.map((item) => {
+        if (item.id !== q.id) return item;
+        return {
+          ...item,
+          ...(result.point ? { point: result.point } : {}),
+          ...(result.explanation ? { explanation: result.explanation } : {}),
+        };
+      });
+      commitDoc({ ...doc, questions });
+      setExpVisible((prev) => ({ ...prev, [q.id]: true }));
+      const parts: string[] = [];
+      if (result.point) parts.push("접근 Point");
+      if (result.explanation) parts.push("해설");
+      showToast({
+        message: `${parts.join("·")} 생성 완료`,
+        durationMs: 2200,
+      });
+      await saveAfterAiGenerate();
+    } catch (err) {
+      if (ac.signal.aborted) return;
+      reportQuizError("접근 Point·해설 생성 실패", err, "생성 실패");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleDerivedGenerate = async (
     q: QuizQuestion,
     target: QuizDerivedQuestionTarget,
@@ -2519,6 +2598,17 @@ export default function QuizPane({
                           </Button>
                         </div>
 
+                        {isGraded ? (
+                          <QuizQuestionSectionsPanel
+                            question={q}
+                            busyKey={busyId}
+                            showContent={Boolean(showExp)}
+                            onGenerate={(target) =>
+                              void handleGenerateQuestionSections(q, target)
+                            }
+                          />
+                        ) : null}
+
                         {isGraded && q.kind === "choice" ? (
                           <QuizWrongChoiceAnalysisPanel
                             question={q}
@@ -2542,38 +2632,6 @@ export default function QuizPane({
                           />
                         ) : null}
 
-                        {showExp ? (
-                          <div className="mt-2 space-y-2 rounded-xl bg-slate-50 p-3 text-xs dark:bg-odp-bgSoft">
-                            <div>
-                              <div className="mb-1 font-bold text-amber-800">
-                                접근 Point!
-                              </div>
-                              <QuizMdPreview
-                                text={q.point}
-                                previewId={`qp-${q.id}`}
-                              />
-                            </div>
-                            <div>
-                              <div className="mb-1 font-bold text-slate-800 dark:text-odp-fgStrong">
-                                해설
-                              </div>
-                              <QuizMdPreview
-                                text={q.explanation}
-                                previewId={`qe-${q.id}`}
-                              />
-                            </div>
-                            {q.kind === "subjective" && q.modelAnswer ? (
-                              <div>
-                                <div className="mb-1 font-bold">모범 답안</div>
-                                <QuizMdPreview
-                                  text={q.modelAnswer}
-                                  previewId={`qm-${q.id}`}
-                                />
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null}
-
                         <QuizQuestionMemoPanel
                           questionId={q.id}
                           value={questionMemos[q.id] || ""}
@@ -2594,6 +2652,25 @@ export default function QuizPane({
                 </div>
               </div>
             </div>
+
+            <QuizDerivedQuestionDock
+              open={derivedSourceQ != null}
+              question={derivedSourceQ}
+              defaultChoiceCount={doc.config.choiceCount || 4}
+              busy={
+                derivedSourceQ != null &&
+                busyId === `derived-${derivedSourceQ.id}`
+              }
+              onClose={() => {
+                if (derivedSourceQ && busyId === `derived-${derivedSourceQ.id}`)
+                  return;
+                setDerivedSourceQ(null);
+              }}
+              onSubmit={(target) => {
+                if (!derivedSourceQ) return;
+                void handleDerivedGenerate(derivedSourceQ, target);
+              }}
+            />
 
             <QuizChoiceAnalysisDock
               open={Boolean(choiceAnalysisDock && choiceAnalysisQuestion)}
@@ -2981,25 +3058,6 @@ export default function QuizPane({
               ) : null}
             </AnimatePresence>
           </div>
-
-          <QuizDerivedQuestionModal
-            isOpen={derivedSourceQ != null}
-            question={derivedSourceQ}
-            defaultChoiceCount={doc.config.choiceCount || 4}
-            busy={
-              derivedSourceQ != null &&
-              busyId === `derived-${derivedSourceQ.id}`
-            }
-            onClose={() => {
-              if (derivedSourceQ && busyId === `derived-${derivedSourceQ.id}`)
-                return;
-              setDerivedSourceQ(null);
-            }}
-            onSubmit={(target) => {
-              if (!derivedSourceQ) return;
-              void handleDerivedGenerate(derivedSourceQ, target);
-            }}
-          />
 
           {addOpen ? (
             <QuizAddQuestionModal

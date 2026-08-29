@@ -1,5 +1,7 @@
 /** Step 1 / 1.5 helpers for similar-choice question generation. */
 
+import type { QuizQuestion } from '@/utils/quiz/quizTypes';
+
 export type SimilarQuestionVariable = {
   id: string;
   description: string;
@@ -323,6 +325,50 @@ ${params.analysisBlock}
 위 문항에 대해 누락된 ${missing.join(' 및 ')}을(를) 작성하세요.
 - point: 출제 의도를 매우 간결하게(1~3개 불릿 또는 1~2문장). 유사 유형에서 무엇을 먼저 생각해야 하는지 핵심 사고 포인트만.
 - explanation: 정답 근거·함정·풀이 흐름이 드러나는 완결된 해설.
+
+JSON만 반환:
+{"point":"...","explanation":"..."}`;
+}
+
+export function buildQuestionSectionsInstruction(params: {
+  question: QuizQuestion;
+  missingPoint: boolean;
+  missingExplanation: boolean;
+  ragBlock?: string;
+}): string {
+  const q = params.question;
+  const missing: string[] = [];
+  if (params.missingPoint) missing.push('point(접근 Point)');
+  if (params.missingExplanation) missing.push('explanation(해설)');
+
+  let stem = '';
+  if (q.kind === 'choice') {
+    const opts = q.options || [];
+    stem = `질문: ${q.question}
+보기: ${opts.map((o, i) => `${i + 1}. ${o}`).join(' | ')}
+정답: ${q.answer ?? 1}번`;
+  } else {
+    stem = `질문: ${q.question}
+${q.modelAnswer ? `모범 답안: ${q.modelAnswer}\n` : ''}`;
+  }
+
+  const keep: string[] = [];
+  if (!params.missingPoint && String(q.point || '').trim()) {
+    keep.push(`접근 Point: ${q.point}`);
+  }
+  if (!params.missingExplanation && String(q.explanation || '').trim()) {
+    keep.push(`해설: ${q.explanation}`);
+  }
+
+  const rag = params.ragBlock?.trim();
+  const keepBlock = keep.length > 0 ? `\n[기존 내용 — 그대로 유지]\n${keep.join('\n')}\n` : '';
+
+  return `${rag ? `[근거 발췌]\n${rag}\n\n발췌 밖의 사실은 사용하지 마세요.\n\n` : ''}[문항]
+${stem}
+${keepBlock}
+위 문항에 대해 누락된 ${missing.join(' 및 ')}을(를) 작성하세요.
+- point: 출제 의도를 매우 간결하게(1~3개 불릿 또는 1~2문장). 유사 유형에서 무엇을 먼저 생각해야 하는지 핵심 사고 포인트만. 전체 풀이나 정답을 그대로 노출하지 마세요.
+- explanation: 정답 근거·함정·풀이 흐름이 드러나는 완결된 해설. 마크다운 사용 가능.
 
 JSON만 반환:
 {"point":"...","explanation":"..."}`;

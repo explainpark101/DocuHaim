@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  buildQuestionSectionsInstruction,
   buildSimilarGenerationInstruction,
   formatSampledVariablesForPrompt,
   hasCompleteSimilarQuestionSections,
@@ -123,6 +124,28 @@ describe('similar question point / explanation requirements', () => {
     });
     expect(text).toContain('point와 explanation을 반드시 함께');
     expect(text).toContain('출제 의도를 매우 간결하게');
+    expect(text).toContain('"point":"..."');
+    expect(text).toContain('"explanation":"..."');
+  });
+
+  test('buildQuestionSectionsInstruction requests missing sections for existing item', () => {
+    const text = buildQuestionSectionsInstruction({
+      question: {
+        id: 'q1',
+        displayLabel: '1',
+        kind: 'choice',
+        question: 'Q?',
+        options: ['A', 'B', 'C', 'D'],
+        answer: 2,
+        point: '문항 핵심 접근법을 확인하세요.',
+        explanation: '해설이 제공되지 않았습니다.',
+      },
+      missingPoint: true,
+      missingExplanation: true,
+    });
+    expect(text).toContain('point(접근 Point)');
+    expect(text).toContain('explanation(해설)');
+    expect(text).toContain('정답: 2번');
     expect(text).toContain('"point":"..."');
     expect(text).toContain('"explanation":"..."');
   });

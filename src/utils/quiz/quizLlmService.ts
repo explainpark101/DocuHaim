@@ -43,6 +43,7 @@ import {
   buildSimilarGenerationInstruction,
   buildSimilarQuestionGenerationSystemPrompt,
   buildSimilarSectionsRepairInstruction,
+  buildQuestionSectionsInstruction,
   formatAnalysisForPrompt,
   formatSampledVariablesForPrompt,
   hasCompleteSimilarQuestionSections,
@@ -1155,6 +1156,97 @@ export async function generateDerivedQuestion(params: {
     ...generated,
     isGenerated: true,
   };
+}
+
+const QUESTION_SECTIONS_SYSTEM_PROMPT = `당신은 시험 해설·접근 Point 작성자입니다.
+주어진 문항만 근거로 접근 Point와 해설을 작성합니다.
+- 접근 Point: 출제 의도를 매우 간결하게. 핵심 사고 포인트만.
+- 해설: 정답 근거·함정·풀이 흐름이 드러나는 완결된 해설. 마크다운 사용 가능.
+- placeholder 문구나 빈 문자열로 채우지 마세요.
+응답은 요청된 JSON만 반환하세요.`;
+
+export type QuestionSectionsResult = {
+  point?: string;
+  explanation?: string;
+};
+
+/**
+ * Generate missing 접근 Point and/or 해설 for an existing quiz item.
+ */
+export async function generateQuestionSections(params: {
+  profiles: LlmProviderProfile[];
+  question: QuizQuestion;
+  missingPoint: boolean;
+  missingExplanation: boolean;
+  sourcePaths?: string[];
+  readText?: QuizVaultTextReader;
+  profileId?: string;
+  model?: string;
+  signal?: AbortSignal;
+}): Promise<QuestionSectionsResult> {
+  const settings = loadQuizSettings();
+  const q = params.question;
+  if (!params.missingPoint && !params.missingExplanation) {
+    return {};
+  }
+
+  let ragBlock = '';
+  const sources = params.sourcePaths || [];
+  if (sources.length > 0 && params.readText) {
+    const query = [q.question, q.point || '', q.explanation || ''].filter(Boolean).join('\n');
+    const { chunks } = await retrieveQuizContext({
+      sourcePaths: sources,
+      query,
+      readText: params.readText,
+    });
+    ragBlock = formatRagChunksForPrompt(chunks);
+  }
+
+  const instruction = buildQuestionSectionsInstruction({
+    question: q,
+    missingPoint: params.missingPoint,
+    missingExplanation: params.missingExplanation,
+    ...(ragBlock ? { ragBlock } : {}),
+  });
+
+  const text = await runQuizLlmPrompt(
+    runOpts(
+      params.profiles,
+      instruction,
+      settings.systemPrompt?.trim() || QUESTION_SECTIONS_SYSTEM_PROMPT,
+      Math.min(settings.temperature, 0.8),
+      streamExtra({
+        signal: params.signal,
+        profileId: params.profileId,
+        model: params.model,
+      }),
+    ),
+  );
+
+  const parsed = extractJsonObject(text);
+  const obj =
+    parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+
+  const result: QuestionSectionsResult = {};
+  if (
+    params.missingPoint &&
+    typeof obj.point === 'string' &&
+    obj.point.trim() &&
+    !isWeakSimilarQuestionPoint(obj.point)
+  ) {
+    result.point = String(obj.point).trim();
+  }
+  if (
+    params.missingExplanation &&
+    typeof obj.explanation === 'string' &&
+    obj.explanation.trim() &&
+    !isWeakSimilarQuestionExplanation(obj.explanation)
+  ) {
+    result.explanation = String(obj.explanation).trim();
+  }
+  return result;
 }
 
 export async function generateQuestionsFromSources(params: {

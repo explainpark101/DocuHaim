@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type TextareaHTMLAttributes,
 } from 'react';
 import {
@@ -78,7 +79,7 @@ export type PretextAutoHeightTextareaProps = Omit<
   maxHeight?: number;
   /** Re-run pretext height when this changes (e.g. parent panel open). */
   layoutKey?: string | number | boolean;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 };
 
 const DEFAULT_CLASS =
