@@ -33,6 +33,7 @@ import type { ExportPdfCoverState } from '@/pages/exportPdf/hooks/useExportPdfCo
 import type { ExportPdfDocumentState } from '@/pages/exportPdf/hooks/useExportPdfDocument';
 import { usePagedJsPreview } from '@/pages/exportPdf/hooks/usePagedJsPreview';
 import type { ExportPdfPreviewRefs } from '@/pages/exportPdf/hooks/useExportPdfPreviewRefs';
+import { mountExportPdfBrowserPrintPrep, prepareExportPdfBrowserPrint } from '@/utils/exportPdf/prepareExportPdfBrowserPrint';
 import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
 
 type UseExportPdfPrintLayoutArgs = Pick<
@@ -94,6 +95,8 @@ export function useExportPdfPrintLayout({
     layoutKey: `${printLayoutKey}|${previewValue}`,
   });
   usePrintMermaidFit(paperContentRef, imageMaxProbeRef, `${printLayoutKey}|${previewValue}`);
+
+  useEffect(() => mountExportPdfBrowserPrintPrep(), []);
 
   const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
   const effectivePageInnerHeightPx =
@@ -228,6 +231,16 @@ export function useExportPdfPrintLayout({
       || pages.querySelector('.pagedjs_page') != null
       || pages.children.length > 0;
     if (!hasPages) return;
+
+    const restore = prepareExportPdfBrowserPrint();
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      restore();
+    };
+    window.addEventListener('afterprint', finish, { once: true });
+    window.setTimeout(finish, 5000);
     window.print();
   }, []);
 

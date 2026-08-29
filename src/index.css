@@ -66,7 +66,7 @@
     width: calc(100% - var(--traffic-light-box));
   }
 
-  /* Export PDF: standalone route without DesktopTitlebar — clear overlay traffic lights. */
+  /* Export PDF: standalone route without DesktopTitlebar — top inset for overlay traffic lights. */
   .export-pdf-toolbar {
     box-sizing: border-box;
     width: 100%;
@@ -75,14 +75,10 @@
 
   html.desktop-app .export-pdf-layout--mac .export-pdf-toolbar {
     padding-top: calc(0.75rem + var(--desktop-titlebar-h, 2rem));
-    padding-right: 1rem;
-    padding-bottom: 0.75rem;
-    padding-left: calc(1rem + var(--traffic-light-box));
   }
 
   html.desktop-app.macos-titlebar-fullscreen .export-pdf-layout--mac .export-pdf-toolbar {
     padding-top: 0.75rem;
-    padding-left: 1rem;
   }
 
   body {
@@ -156,10 +152,28 @@ html.desktop-app.llm-assist-popout-window #root {
   }
   html, body {
     background-color: white !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  html.desktop-app,
+  html.desktop-app body,
+  html.desktop-app #root {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  #root {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   .export-pdf-layout,
   .export-pdf-page {
     background-color: white !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 }
 

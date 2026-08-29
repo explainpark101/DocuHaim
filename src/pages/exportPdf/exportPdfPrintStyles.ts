@@ -500,6 +500,15 @@ export const printFontStyles = `
     min-height: 0 !important;
   }
   @media print {
+    html,
+    body,
+    #root,
+    .export-pdf-layout {
+      height: auto !important;
+      max-height: none !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
     .export-pdf-preview-scroll {
       overflow: visible !important;
       max-height: none !important;
@@ -532,6 +541,9 @@ export const printFontStyles = `
     .export-pdf-pages .pagedjs_page {
       box-shadow: none !important;
       margin: 0 !important;
+      display: block !important;
+      position: relative !important;
+      float: none !important;
       break-after: page !important;
       page-break-after: always !important;
       -webkit-print-color-adjust: exact;
