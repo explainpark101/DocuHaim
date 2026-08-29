@@ -1098,7 +1098,7 @@ export default function MarkdownEditor({
     onResolveWikiImageUrl,
     currentFile?.id ?? null,
   );
-  useLazyMermaidRender(containerRef, { layoutKey: `${theme}|${value}` });
+  useLazyMermaidRender(containerRef, { layoutKey: theme });
 
   // Auto-mount note-cover CoverSlide in preview; re-run when preview DOM settles/recreates.
   useEffect(() => {

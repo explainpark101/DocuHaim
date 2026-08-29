@@ -82,7 +82,8 @@ import type { ContentSearchFileHit } from '@/utils/advancedSearch/contentSearchS
 import { buildIndexedCoverage } from '@/utils/advancedSearch/indexedCoverage';
 import { liveScanContentHits } from '@/utils/advancedSearch/liveContentSearch';
 import { RebuildCancelledError } from '@/utils/advancedSearch/rebuildCancel';
-import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
+import { createIncrementalIndexQueue } from '@/utils/advancedSearch/incrementalIndexQueue';
+import { whenIdle, yieldToMain } from '@/utils/advancedSearch/yieldToMain';
 import { gzip, gunzipSync, strFromU8 } from 'fflate';
 
 export type BuildLogLevel = 'info' | 'ok' | 'warn' | 'error';
@@ -173,6 +174,13 @@ type TreeNode = {
 
 const EMIT_MIN_MS = 400;
 const LOG_EMIT_MS = 500;
+/** Coalesce autosave notify bursts before indexing (autosave debounce is ~5s). */
+const INCREMENTAL_INDEX_DEBOUNCE_MS = 12_000;
+const INCREMENTAL_IDLE_TIMEOUT_MS = 20_000;
+/** Vault persist is expensive (Lucivy snapshot + docs gzip); defer during editing. */
+const INCREMENTAL_PERSIST_DEBOUNCE_MS = 20_000;
+const INCREMENTAL_PERSIST_IDLE_TIMEOUT_MS = 120_000;
+const DIRTY_EMIT_MS = 2_000;
 /** Soft default; rebuild raises this so every file start/end can be kept. */
 const DEFAULT_MAX_BUILD_LOGS = 2000;
 const ABSOLUTE_MAX_BUILD_LOGS = 100_000;
@@ -211,6 +219,35 @@ class AdvancedSearchEngine {
   private getTree: (() => TreeNode[]) | null = null;
   private storageKey = '';
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  private persistIdleId: number | null = null;
+  private dirtyEmitTimer: ReturnType<typeof setTimeout> | null = null;
+  private incrementalQueue = createIncrementalIndexQueue({
+    debounceMs: INCREMENTAL_INDEX_DEBOUNCE_MS,
+    idleTimeoutMs: INCREMENTAL_IDLE_TIMEOUT_MS,
+    shouldRun: () =>
+      this.enabled &&
+      !this.building &&
+      Boolean(this.backend?.isReady?.()) &&
+      isSearchIsolationReady(),
+    onFlush: async ({ files, chats }) => {
+      for (const [path, content] of files) {
+        if (this.building) {
+          this.incrementalQueue.enqueueFile(path, content);
+          continue;
+        }
+        await yieldToMain();
+        await this.indexFile(path, content, { quiet: true });
+      }
+      for (const [dateStr, content] of chats) {
+        if (this.building) {
+          this.incrementalQueue.enqueueChat(dateStr, content);
+          continue;
+        }
+        await yieldToMain();
+        await this.indexChatDay(dateStr, content, { quiet: true });
+      }
+    },
+  });
   private lastError: string | null = null;
   private buildProgress: number | null = null;
   private buildLogs: BuildLogEntry[] = [];
@@ -404,6 +441,11 @@ class AdvancedSearchEngine {
   setEnabled(value: boolean): void {
     this.enabled = Boolean(value);
     saveAdvancedSearchIndexEnabled(this.enabled);
+    if (!this.enabled) {
+      this.incrementalQueue.clear();
+    } else {
+      this.incrementalQueue.resume();
+    }
     this.emit();
     if (this.enabled && this.backend?.isReady?.()) {
       void this.ensureLoaded();
@@ -520,13 +562,46 @@ class AdvancedSearchEngine {
     }
   }
 
-  private schedulePersist(): void {
+  private scheduleDirtyEmit(): void {
+    if (this.building) {
+      this.emit();
+      return;
+    }
+    if (this.dirtyEmitTimer) return;
+    this.dirtyEmitTimer = setTimeout(() => {
+      this.dirtyEmitTimer = null;
+      this.emit();
+    }, DIRTY_EMIT_MS);
+  }
+
+  private clearPersistIdle(): void {
+    if (this.persistIdleId != null && typeof cancelIdleCallback === 'function') {
+      cancelIdleCallback(this.persistIdleId);
+      this.persistIdleId = null;
+    }
+  }
+
+  private schedulePersist(options?: { urgent?: boolean }): void {
     this.dirty = true;
-    this.emit();
+    this.scheduleDirtyEmit();
     if (this.persistTimer) clearTimeout(this.persistTimer);
+    this.clearPersistIdle();
+    const urgent = Boolean(options?.urgent);
+    const delay = urgent ? 0 : INCREMENTAL_PERSIST_DEBOUNCE_MS;
     this.persistTimer = setTimeout(() => {
-      void this.persistNow();
-    }, 1200);
+      this.persistTimer = null;
+      if (urgent) {
+        void this.persistNow();
+        return;
+      }
+      this.persistIdleId = whenIdle(
+        () => {
+          this.persistIdleId = null;
+          void this.persistNow();
+        },
+        INCREMENTAL_PERSIST_IDLE_TIMEOUT_MS,
+      );
+    }, delay);
   }
 
   async persistNow(): Promise<void> {
@@ -553,6 +628,12 @@ class AdvancedSearchEngine {
       clearTimeout(this.persistTimer);
       this.persistTimer = null;
     }
+    this.clearPersistIdle();
+    if (this.dirtyEmitTimer) {
+      clearTimeout(this.dirtyEmitTimer);
+      this.dirtyEmitTimer = null;
+    }
+    this.incrementalQueue.clear();
     this.cancelRequested = true;
     this.index = emptyIndex();
     this.docIdMap = emptyDocIdMap();
@@ -831,6 +912,7 @@ class AdvancedSearchEngine {
       folderScoped && options.ignoreExcludedFolders,
     );
 
+    this.incrementalQueue.pause();
     this.building = true;
     this.cancelRequested = false;
     this.cancelLogKeys.clear();
@@ -954,6 +1036,7 @@ class AdvancedSearchEngine {
       this.cancelRequested = false;
       this.building = false;
       this.buildProgress = null;
+      this.incrementalQueue.resume();
       if (!this.lastError && !this.lastBuildCancelled) {
         this.appendLog(
           'ok',
@@ -1354,7 +1437,11 @@ class AdvancedSearchEngine {
     this.appendLog('ok', '색인 저장 완료 (.advanced-search/index.luce.gz)');
   }
 
-  async indexFile(path: string, content: string): Promise<void> {
+  async indexFile(
+    path: string,
+    content: string,
+    options?: { quiet?: boolean },
+  ): Promise<void> {
     if (!this.enabled) return;
     if (
       !isIndexableFilePath(path, this.indexPathOptions())
@@ -1365,8 +1452,9 @@ class AdvancedSearchEngine {
     await this.ensureLoaded();
     if (!this.lucivyReady) return;
 
+    const quiet = Boolean(options?.quiet);
     await withIndexPathLock(fileIndexClaimKey(path), async () => {
-      if (!this.building) {
+      if (!this.building && !quiet) {
         this.appendLog('info', `색인 start · 파일 · ${path}`);
       }
       try {
@@ -1376,7 +1464,7 @@ class AdvancedSearchEngine {
           path,
           content,
         );
-        if (!this.building) {
+        if (!this.building && !quiet) {
           this.appendLog(
             'ok',
             `색인 end · 파일 · ${path}${changed ? '' : ' (unchanged)'}`,
@@ -1387,7 +1475,7 @@ class AdvancedSearchEngine {
           this.schedulePersist();
         }
       } catch (err) {
-        if (!this.building) {
+        if (!this.building && !quiet) {
           const msg = err instanceof Error ? err.message : String(err);
           this.appendLog('warn', `색인 end · 파일 실패 · ${path} — ${msg}`);
         }
@@ -1396,14 +1484,19 @@ class AdvancedSearchEngine {
     });
   }
 
-  async indexChatDay(dateStrOrPath: string, content: string): Promise<void> {
+  async indexChatDay(
+    dateStrOrPath: string,
+    content: string,
+    options?: { quiet?: boolean },
+  ): Promise<void> {
     if (!this.enabled) return;
     if (!isSearchIsolationReady()) return;
     await this.ensureLoaded();
     if (!this.lucivyReady) return;
 
+    const quiet = Boolean(options?.quiet);
     await withIndexPathLock(chatIndexClaimKey(dateStrOrPath), async () => {
-      if (!this.building) {
+      if (!this.building && !quiet) {
         this.appendLog('info', `색인 start · 채팅 · ${dateStrOrPath}`);
       }
       try {
@@ -1413,7 +1506,7 @@ class AdvancedSearchEngine {
           dateStrOrPath,
           content,
         );
-        if (!this.building) {
+        if (!this.building && !quiet) {
           this.appendLog(
             'ok',
             `색인 end · 채팅 · ${dateStrOrPath} (+${changed})`,
@@ -1424,7 +1517,7 @@ class AdvancedSearchEngine {
           this.schedulePersist();
         }
       } catch (err) {
-        if (!this.building) {
+        if (!this.building && !quiet) {
           const msg = err instanceof Error ? err.message : String(err);
           this.appendLog(
             'warn',
@@ -1490,11 +1583,11 @@ class AdvancedSearchEngine {
     }
     if (!this.enabled) return;
     if (event.type === 'file') {
-      await this.indexFile(event.path, event.content);
+      this.incrementalQueue.enqueueFile(event.path, event.content);
       return;
     }
     if (event.type === 'chatDay') {
-      await this.indexChatDay(event.dateStr, event.content);
+      this.incrementalQueue.enqueueChat(event.dateStr, event.content);
     }
   }
 

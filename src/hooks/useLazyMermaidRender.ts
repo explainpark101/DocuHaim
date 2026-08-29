@@ -3,6 +3,7 @@ import {
   isLazyMermaidPlaceholder,
   renderAllLazyMermaidsInRoot,
   renderLazyMermaidElement,
+  restoreCachedMermaidsInRoot,
 } from '@/utils/lazyMermaid';
 
 const ROOT_MARGIN = '160px 0px';
@@ -34,6 +35,7 @@ export function useLazyMermaidRender(
 
     const observePending = () => {
       if (cancelled || eager) return;
+      restoreCachedMermaidsInRoot(root);
       const nodes = [...root.querySelectorAll('.md-editor-mermaid')].filter(
         (el): el is HTMLElement => isLazyMermaidPlaceholder(el),
       );
@@ -59,6 +61,7 @@ export function useLazyMermaidRender(
     };
 
     const runEager = async () => {
+      restoreCachedMermaidsInRoot(root);
       await renderAllLazyMermaidsInRoot(root);
     };
 
@@ -73,6 +76,7 @@ export function useLazyMermaidRender(
       if (eager) {
         void runEager();
       } else {
+        restoreCachedMermaidsInRoot(root);
         observePending();
       }
     });

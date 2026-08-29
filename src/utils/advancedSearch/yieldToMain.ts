@@ -1,6 +1,18 @@
 /** Cooperative yield so indexing does not starve the UI thread. */
 
 /**
+ * Schedule work when the browser is idle (or after `timeoutMs` at most).
+ * Returns an idle callback id when supported; otherwise `null`.
+ */
+export function whenIdle(fn: () => void, timeoutMs = 30000): number | null {
+  if (typeof requestIdleCallback === 'function') {
+    return requestIdleCallback(fn, { timeout: timeoutMs });
+  }
+  setTimeout(fn, 0);
+  return null;
+}
+
+/**
  * Yield to the browser: paint frame first, then a macrotask.
  * Prefer this over bare setTimeout(0) during long rebuild loops.
  */

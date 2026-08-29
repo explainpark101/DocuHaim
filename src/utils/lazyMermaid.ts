@@ -4,6 +4,10 @@
  * render every diagram at once.
  */
 import { patchMermaidRender } from '@/utils/mermaidFixLabelNewlines';
+import {
+  getCachedMermaidSvg,
+  setCachedMermaidSvg,
+} from '@/utils/mermaidRenderCache';
 import { resolveMermaidThemeForHost, type MermaidThemeName } from '@/utils/mermaidTheme';
 
 type MermaidModule = {
@@ -84,6 +88,60 @@ export function getMermaidSourceFromElement(el: HTMLElement): string {
   return (el.textContent || el.innerText || '').trim();
 }
 
+function buildProcessedMermaidHost(
+  svg: string,
+  source: string,
+  theme: MermaidThemeName,
+  el: HTMLElement,
+  bindFunctions?: (element: Element) => void,
+): HTMLElement {
+  const host = document.createElement('p');
+  host.className = 'md-editor-mermaid';
+  host.setAttribute('data-processed', '');
+  host.setAttribute('data-content', source);
+  host.setAttribute('data-haim-mermaid-lazy', '1');
+  host.setAttribute('data-mermaid-theme', theme);
+  const line = el.getAttribute('data-line');
+  if (line != null) host.setAttribute('data-line', line);
+  const replaceKey = el.getAttribute('data-haim-imgbb-replace-key');
+  if (replaceKey) host.setAttribute('data-haim-imgbb-replace-key', replaceKey);
+  host.innerHTML = svg;
+  host.children[0]?.removeAttribute('height');
+  bindFunctions?.(host);
+  return host;
+}
+
+/**
+ * Replace a lazy placeholder with a cached SVG when source + theme match.
+ * Synchronous — safe to run on every preview DOM mutation.
+ */
+export function restoreCachedMermaidElement(el: HTMLElement): HTMLElement | null {
+  if (!isLazyMermaidPlaceholder(el)) return null;
+  const source = getMermaidSourceFromElement(el);
+  if (!source) return null;
+  const theme = resolveTheme(el);
+  const cached = getCachedMermaidSvg(theme, source);
+  if (!cached) return null;
+  const host = buildProcessedMermaidHost(cached, source, theme, el);
+  el.replaceWith(host);
+  return host;
+}
+
+/** Restore every cacheable placeholder under root (preview re-parse). */
+export function restoreCachedMermaidsInRoot(
+  root: ParentNode | null | undefined,
+): number {
+  if (!root) return 0;
+  let restored = 0;
+  const nodes = [...root.querySelectorAll('.md-editor-mermaid')].filter(
+    (node): node is HTMLElement => isLazyMermaidPlaceholder(node),
+  );
+  for (const el of nodes) {
+    if (restoreCachedMermaidElement(el)) restored += 1;
+  }
+  return restored;
+}
+
 /**
  * Render a single lazy placeholder into a processed SVG host (same shape as md-editor-rt).
  * Returns the replacement element, or null if skipped / failed.
@@ -96,6 +154,13 @@ export async function renderLazyMermaidElement(
   if (!source) return null;
 
   const theme = resolveTheme(el);
+  const cached = getCachedMermaidSvg(theme, source);
+  if (cached) {
+    const host = buildProcessedMermaidHost(cached, source, theme, el);
+    el.replaceWith(host);
+    return host;
+  }
+
   const mermaid = await ensureInitialized(theme);
 
   const offscreen = document.createElement('div');
@@ -106,20 +171,9 @@ export async function renderLazyMermaidElement(
 
   try {
     const { svg, bindFunctions } = await mermaid.render(nextRenderId(), source, offscreen);
-    const host = document.createElement('p');
-    host.className = 'md-editor-mermaid';
-    host.setAttribute('data-processed', '');
-    host.setAttribute('data-content', source);
-    host.setAttribute('data-haim-mermaid-lazy', '1');
-    host.setAttribute('data-mermaid-theme', theme);
-    const line = el.getAttribute('data-line');
-    if (line != null) host.setAttribute('data-line', line);
-    const replaceKey = el.getAttribute('data-haim-imgbb-replace-key');
-    if (replaceKey) host.setAttribute('data-haim-imgbb-replace-key', replaceKey);
-    host.innerHTML = svg;
-    host.children[0]?.removeAttribute('height');
+    setCachedMermaidSvg(theme, source, svg);
+    const host = buildProcessedMermaidHost(svg, source, theme, el, bindFunctions);
     el.replaceWith(host);
-    bindFunctions?.(host);
     return host;
   } catch (err) {
     console.warn('[lazyMermaid] render failed', err);
@@ -135,6 +189,7 @@ export async function renderAllLazyMermaidsInRoot(
   root: ParentNode | null | undefined,
 ): Promise<void> {
   if (!root) return;
+  restoreCachedMermaidsInRoot(root);
   const nodes = [...root.querySelectorAll('.md-editor-mermaid')].filter(
     (el): el is HTMLElement => isLazyMermaidPlaceholder(el),
   );
