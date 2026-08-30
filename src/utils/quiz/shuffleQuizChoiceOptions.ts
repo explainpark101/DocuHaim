@@ -129,12 +129,14 @@ export function shuffleQuizChoiceOptions(params: {
   userAnswers: QuizSessionAnswers;
   wrongExps: Record<string, string>;
   wrongExpFocus: Record<string, number>;
+  /** Optional fixed 0-based index permutations per question id (tests / deterministic shuffle). */
+  permutationByQuestionId?: ReadonlyMap<string, readonly number[]>;
 }): ShuffleQuizChoiceOptionsResult {
   const optionMapsByQuestionId = new Map<string, Map<number, number>>();
   let shuffledQuestionCount = 0;
 
   const questions = params.questions.map((q) => {
-    const shuffled = shuffleSingleChoiceQuestion(q);
+    const shuffled = shuffleSingleChoiceQuestion(q, params.permutationByQuestionId?.get(q.id));
     if (!shuffled) return q;
     optionMapsByQuestionId.set(q.id, shuffled.oldToNew);
     shuffledQuestionCount += 1;
