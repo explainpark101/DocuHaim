@@ -9,25 +9,21 @@ import {
 } from "react";
 import { AnimatePresence, motion as Motion } from "motion/react";
 import {
-  BookOpen,
   CheckCheck,
   ChevronDown,
   ClipboardList,
   FilePlus2,
-  GitBranch,
   Library,
   List,
   PenLine,
   Plus,
   RotateCcw,
   Sparkles,
-  Wand2,
   X,
 } from "lucide-react";
 import { DropdownMenu, Switch, Tooltip } from "radix-ui";
 import Button from "@/components/Button";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
-import QuizMdPreview from "@/components/quiz/QuizMdPreview";
 import { QuizImageHydrationProvider } from "@/components/quiz/QuizImageHydrationContext";
 import QuizDerivedQuestionDock from "@/components/quiz/QuizDerivedQuestionDock";
 import QuizAddQuestionModal from "@/components/quiz/QuizAddQuestionModal";
@@ -37,15 +33,11 @@ import QuizSourcePathsChips from "@/components/quiz/QuizSourcePathsChips";
 import QuizGenerationQueuePanel from "@/components/quiz/QuizGenerationQueuePanel";
 import QuizStopwatchToolbar from "@/components/quiz/QuizStopwatchToolbar";
 import QuizTimeLogPanel from "@/components/quiz/QuizTimeLogPanel";
-import QuizWrongChoiceAnalysisPanel from "@/components/quiz/QuizWrongChoiceAnalysisPanel";
-import QuizQuestionSectionsPanel, {
-  type QuizQuestionSectionsTarget,
-} from "@/components/quiz/QuizQuestionSectionsPanel";
-import QuizQuestionMemoPanel from "@/components/quiz/QuizQuestionMemoPanel";
+import type { QuizQuestionSectionsTarget } from "@/components/quiz/QuizQuestionSectionsPanel";
+import QuizQuestionCard from "@/components/quiz/QuizQuestionCard";
 import QuizChoiceAnalysisDock, {
   type QuizChoiceAnalysisDockMode,
 } from "@/components/quiz/QuizChoiceAnalysisDock";
-import QuizExamGradeButton from "@/components/quiz/QuizExamGradeButton";
 import {
   isQuizSessionEmpty,
   nextDisplayLabel,
@@ -113,7 +105,6 @@ import { useResizablePanelWidth } from "@/hooks/useResizablePanelWidth";
 import { useQuizGenerationQueue } from "@/hooks/useQuizGenerationQueue";
 import { useQuizStopwatch } from "@/hooks/useQuizStopwatch";
 import {
-  QUIZ_QUESTION_TRACK_ATTR,
   useQuizQuestionTimeLog,
 } from "@/hooks/useQuizQuestionTimeLog";
 import { findFileNodeByPath, findNodeByPath } from "@/utils/s3Tree";
@@ -494,6 +485,8 @@ export default function QuizPane({
     Record<string, number | string>
   >({});
   const [graded, setGraded] = useState<Record<string, boolean>>({});
+  const gradedRef = useRef(graded);
+  gradedRef.current = graded;
   const [expVisible, setExpVisible] = useState<Record<string, boolean>>({});
   const [questionMemos, setQuestionMemos] = useState<Record<string, string>>(
     {},
@@ -1142,6 +1135,17 @@ export default function QuizPane({
     [doc.config.sourcePaths, doc.config.disabledSourcePaths],
   );
 
+  const wrongExpsByQuestion = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {};
+    for (const [key, value] of Object.entries(wrongExps)) {
+      const underscore = key.indexOf("_");
+      const questionId = underscore >= 0 ? key.slice(0, underscore) : key;
+      const bucket = map[questionId] ?? (map[questionId] = {});
+      bucket[key] = value;
+    }
+    return map;
+  }, [wrongExps]);
+
   const choiceAnalysisQuestion = useMemo(() => {
     if (!choiceAnalysisDock) return null;
     return (
@@ -1278,7 +1282,7 @@ export default function QuizPane({
     handleRequestExamStart,
   ]);
 
-  const retryQuestion = (q: QuizQuestion) => {
+  const retryQuestion = useCallback((q: QuizQuestion) => {
     setGraded((prev) => {
       const next = { ...prev };
       delete next[q.id];
@@ -1303,48 +1307,117 @@ export default function QuizPane({
       }
       return next;
     });
-  };
+  }, []);
 
-  const selectOption = (qid: string, opt: number) => {
-    if (graded[qid]) return;
+  const selectOption = useCallback((qid: string, opt: number) => {
+    if (gradedRef.current[qid]) return;
     setUserAnswers((prev) => ({ ...prev, [qid]: opt }));
-  };
+  }, []);
 
-  const gradeChoice = (q: QuizQuestion) => {
-    if (stopwatch.examInProgress) return;
-    setGraded((prev) => ({ ...prev, [q.id]: true }));
-    setExpVisible((prev) => ({ ...prev, [q.id]: true }));
-  };
-
-  const gradeSubjective = async (q: QuizQuestion) => {
-    if (stopwatch.examInProgress) return;
-    const ans = String(userAnswers[q.id] || "").trim();
-    if (!ans) {
-      showToast({ message: "답안을 입력하세요.", durationMs: 2200 });
-      return;
-    }
-    if (!(await ensureQuizLlmReady())) return;
-    setBusyId(q.id);
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    try {
-      const result = await gradeSubjectiveAnswer({
-        profiles,
-        question: q,
-        userAnswer: ans,
-        signal: ac.signal,
-      });
-      setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
+  const gradeChoice = useCallback(
+    (q: QuizQuestion) => {
+      if (stopwatch.examInProgress) return;
       setGraded((prev) => ({ ...prev, [q.id]: true }));
       setExpVisible((prev) => ({ ...prev, [q.id]: true }));
-      showToast({ message: "주관식 채점 완료", durationMs: 2200 });
-    } catch (err) {
-      reportQuizError("채점 실패", err, "채점 실패");
-    } finally {
-      setBusyId(null);
-    }
-  };
+    },
+    [stopwatch.examInProgress],
+  );
+
+  const gradeSubjective = useCallback(
+    async (q: QuizQuestion, answerOverride?: string) => {
+      if (stopwatch.examInProgress) return;
+      const ans = String(
+        answerOverride ?? userAnswers[q.id] ?? "",
+      ).trim();
+      if (!ans) {
+        showToast({ message: "답안을 입력하세요.", durationMs: 2200 });
+        return;
+      }
+      if (!(await ensureQuizLlmReady())) return;
+      setBusyId(q.id);
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      try {
+        const result = await gradeSubjectiveAnswer({
+          profiles,
+          question: q,
+          userAnswer: ans,
+          signal: ac.signal,
+        });
+        setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
+        setGraded((prev) => ({ ...prev, [q.id]: true }));
+        setExpVisible((prev) => ({ ...prev, [q.id]: true }));
+        if (answerOverride !== undefined) {
+          setUserAnswers((prev) => ({ ...prev, [q.id]: answerOverride }));
+        }
+        showToast({ message: "주관식 채점 완료", durationMs: 2200 });
+      } catch (err) {
+        reportQuizError("채점 실패", err, "채점 실패");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [
+      ensureQuizLlmReady,
+      profiles,
+      reportQuizError,
+      showToast,
+      stopwatch.examInProgress,
+      userAnswers,
+    ],
+  );
+
+  const handleAnswerCommit = useCallback((questionId: string, value: string) => {
+    setUserAnswers((prev) => {
+      if (prev[questionId] === value) return prev;
+      return { ...prev, [questionId]: value };
+    });
+  }, []);
+
+  const handleEditQuestion = useCallback((question: QuizQuestion) => {
+    setEditQ(question);
+    setAddOpen(true);
+  }, []);
+
+  const handleToggleExplanation = useCallback((questionId: string) => {
+    setExpVisible((prev) => ({
+      ...prev,
+      [questionId]: !prev[questionId],
+    }));
+  }, []);
+
+  const handleDerivedQuestion = useCallback((question: QuizQuestion) => {
+    setDerivedSourceQ(question);
+  }, []);
+
+  const handleWrongExpFocusChange = useCallback(
+    (questionId: string, option: number) => {
+      setWrongExpFocus((prev) => ({ ...prev, [questionId]: option }));
+    },
+    [],
+  );
+
+  const handleMemoSave = useCallback((questionId: string, next: string) => {
+    setQuestionMemos((prev) => {
+      const trimmed = next.trim();
+      if (!trimmed) {
+        const { [questionId]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [questionId]: next };
+    });
+  }, []);
+
+  const handleClearFreshQuestion = useCallback((questionId: string) => {
+    setFreshQuestionIds((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
+  }, []);
+
 
   const submitAll = async () => {
     if (stopwatch.examInProgress) {
@@ -2306,347 +2379,60 @@ export default function QuizPane({
                     const answered =
                       userAnswers[q.id] !== undefined &&
                       String(userAnswers[q.id]).trim() !== "";
-                    const isGraded = isSubmitted || graded[q.id];
+                    const isQuestionGraded = Boolean(
+                      isSubmitted || graded[q.id],
+                    );
                     let isWrong = false;
-                    let isCorrect = false;
-                    if (q.kind === "choice" && isGraded && answered) {
-                      isCorrect = userAnswers[q.id] === q.answer;
-                      isWrong = !isCorrect;
+                    if (q.kind === "choice" && isQuestionGraded && answered) {
+                      isWrong = userAnswers[q.id] !== q.answer;
                     }
-                    if (q.kind === "subjective" && isGraded) {
-                      const g = subjGrades[q.id];
-                      isCorrect = g?.verdict === "correct";
-                      isWrong = g?.verdict === "wrong";
+                    if (q.kind === "subjective" && isQuestionGraded) {
+                      isWrong = subjGrades[q.id]?.verdict === "wrong";
                     }
-                    if (filter === "wrong" && !(isGraded && isWrong))
+                    if (filter === "wrong" && !(isQuestionGraded && isWrong)) {
                       return null;
+                    }
                     if (filter === "unanswered" && answered) return null;
 
-                    const showExp = expVisible[q.id];
                     const selected = userAnswers[q.id];
-                    const isFreshQuestion = Boolean(freshQuestionIds[q.id]);
-                    let gradeLabel: string | null = null;
-                    if (isGraded) {
-                      if (q.kind === "choice") {
-                        if (!answered) gradeLabel = "미채점";
-                        else if (isCorrect) gradeLabel = "정답";
-                        else gradeLabel = "오답";
-                      } else {
-                        const verdict = subjGrades[q.id]?.verdict;
-                        if (verdict === "correct") gradeLabel = "정답";
-                        else if (verdict === "partial") gradeLabel = "부분정답";
-                        else if (verdict === "wrong") gradeLabel = "오답";
-                      }
-                    }
 
                     return (
-                      <Motion.div
+                      <QuizQuestionCard
                         key={q.id}
-                        id={`q-card-${q.id}`}
-                        {...{ [QUIZ_QUESTION_TRACK_ATTR]: q.id }}
-                        initial={
-                          isFreshQuestion
-                            ? { opacity: 0, y: 36, scale: 0.96 }
-                            : false
-                        }
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={
-                          isFreshQuestion
-                            ? { type: "spring", stiffness: 340, damping: 26 }
-                            : { duration: 0 }
-                        }
-                        onAnimationComplete={() => {
-                          if (!isFreshQuestion) return;
-                          setFreshQuestionIds((prev) => {
-                            if (!prev[q.id]) return prev;
-                            const next = { ...prev };
-                            delete next[q.id];
-                            return next;
-                          });
-                        }}
-                        className={`relative rounded-2xl border bg-white p-5 pr-16 shadow-xs dark:bg-odp-surface ${
-                          isGraded
-                            ? isCorrect
-                              ? "border-emerald-300"
-                              : isWrong
-                                ? "border-rose-300"
-                                : "border-slate-200 dark:border-odp-borderSoft"
-                            : "border-slate-200 dark:border-odp-borderSoft"
-                        } ${
-                          q.isGenerated
-                            ? "border-purple-300 dark:border-purple-700"
-                            : ""
-                        } ${
-                          isFreshQuestion
-                            ? "ring-2 ring-purple-300/70 dark:ring-purple-500/50"
-                            : ""
-                        }`}
-                      >
-                        <Button
-                          type="button"
-                          variant="tertiary"
-                          size="sm"
-                          className="absolute top-3 right-3 z-10"
-                          onClick={() => {
-                            setEditQ(q);
-                            setAddOpen(true);
-                          }}
-                        >
-                          <PenLine size={14} />
-                          수정
-                        </Button>
-                        <div className="mb-3">
-                          <h3 className="text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-                            <span className="mr-1.5 inline-flex items-center gap-1.5 align-middle">
-                              <span>{q.displayLabel}.</span>
-                              {gradeLabel ? (
-                                <span
-                                  className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                                    gradeLabel === "정답"
-                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
-                                      : gradeLabel === "오답"
-                                        ? "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
-                                        : gradeLabel === "부분정답"
-                                          ? "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
-                                          : "bg-slate-100 text-slate-700 dark:bg-odp-bgSoft dark:text-odp-muted"
-                                  }`}
-                                >
-                                  {gradeLabel}
-                                </span>
-                              ) : null}
-                            </span>
-                            {q.kind === "subjective"
-                              ? q.answerStyle === "essay"
-                                ? "[주관식] "
-                                : "[단답형] "
-                              : ""}
-                            <span className="font-medium">
-                              <QuizMdPreview
-                                text={q.question}
-                                previewId={`qq-${q.id}`}
-                                className="inline"
-                              />
-                            </span>
-                          </h3>
-                        </div>
-
-                        {q.kind === "choice" ? (
-                          <div className="space-y-2">
-                            {(q.options || []).map((opt, idx) => {
-                              const n = idx + 1;
-                              const isSel = selected === n;
-                              const reveal = isGraded;
-                              const isRight = q.answer === n;
-                              let cls =
-                                "border-slate-200 bg-white hover:bg-slate-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft";
-                              if (isSel && !reveal) {
-                                cls =
-                                  "border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:bg-blue-950/30";
-                              }
-                              if (reveal && isRight) {
-                                cls =
-                                  "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500 dark:bg-emerald-950/30";
-                              } else if (reveal && isSel && !isRight) {
-                                cls =
-                                  "border-rose-400 bg-rose-50 dark:bg-rose-950/30";
-                              }
-                              return (
-                                <button
-                                  key={n}
-                                  type="button"
-                                  className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left text-sm ${cls}`}
-                                  onClick={() => selectOption(q.id, n)}
-                                >
-                                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold">
-                                    {n}
-                                  </span>
-                                  <div className="min-w-0 flex-1">
-                                    <QuizMdPreview
-                                      text={opt}
-                                      previewId={`qo-${q.id}-${n}`}
-                                    />
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {q.answerStyle === "essay" ? (
-                              <textarea
-                                className="quiz-body-field min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                                value={String(userAnswers[q.id] || "")}
-                                disabled={isGraded}
-                                onChange={(e) =>
-                                  setUserAnswers((prev) => ({
-                                    ...prev,
-                                    [q.id]: e.target.value,
-                                  }))
-                                }
-                                placeholder="답안을 입력하세요"
-                              />
-                            ) : (
-                              <input
-                                className="quiz-body-field w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                                value={String(userAnswers[q.id] || "")}
-                                disabled={isGraded}
-                                onChange={(e) =>
-                                  setUserAnswers((prev) => ({
-                                    ...prev,
-                                    [q.id]: e.target.value,
-                                  }))
-                                }
-                                placeholder="단답 입력"
-                              />
-                            )}
-                            {subjGrades[q.id] ? (
-                              <div
-                                className={`rounded-xl border p-3 text-xs ${
-                                  subjGrades[q.id]?.verdict === "correct"
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/70 dark:bg-emerald-950/45 dark:text-emerald-100"
-                                    : subjGrades[q.id]?.verdict === "partial"
-                                      ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/70 dark:bg-amber-950/45 dark:text-amber-100"
-                                      : "border-rose-200 bg-rose-50 text-rose-950 dark:border-rose-800/70 dark:bg-rose-950/45 dark:text-rose-100"
-                                }`}
-                              >
-                                <div className="mb-1 font-bold">
-                                  {subjGrades[q.id]?.verdict} ·{" "}
-                                  {subjGrades[q.id]?.score}점
-                                </div>
-                                <div className="[&_.md-editor-preview]:text-inherit [&_.md-editor-preview]:!bg-transparent [&_.md-editor]:!bg-transparent">
-                                  <QuizMdPreview
-                                    text={subjGrades[q.id]?.feedback || ""}
-                                    previewId={`qg-${q.id}`}
-                                  />
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
+                        question={q}
+                        userAnswer={userAnswers[q.id]}
+                        isSubmitted={isSubmitted}
+                        isQuestionGraded={isQuestionGraded}
+                        subjectiveGrade={subjGrades[q.id]}
+                        showExplanation={Boolean(expVisible[q.id])}
+                        wrongExpsForQuestion={wrongExpsByQuestion[q.id] ?? {}}
+                        wrongExpFocusOption={resolveWrongExpFocusOption(
+                          q,
+                          typeof selected === "number" ? selected : undefined,
                         )}
-
-                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                          {!isGraded ? (
-                            q.kind === "choice" ? (
-                              <QuizExamGradeButton
-                                examInProgress={examInProgress}
-                                size="sm"
-                                disabled={!answered}
-                                onClick={() => gradeChoice(q)}
-                                className="!bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-700"
-                              >
-                                <CheckCheck size={14} />
-                                채점
-                              </QuizExamGradeButton>
-                            ) : (
-                              <QuizExamGradeButton
-                                examInProgress={examInProgress}
-                                size="sm"
-                                disabled={busyId === q.id || !answered}
-                                onClick={() => void gradeSubjective(q)}
-                                className="!bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-700"
-                              >
-                                <Sparkles size={14} />
-                                AI 채점
-                              </QuizExamGradeButton>
-                            )
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => retryQuestion(q)}
-                            >
-                              <RotateCcw size={14} />
-                              다시풀기
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() =>
-                              setExpVisible((prev) => ({
-                                ...prev,
-                                [q.id]: !prev[q.id],
-                              }))
-                            }
-                          >
-                            <BookOpen size={14} />
-                            {showExp ? "해설 접기" : "해설 보기"}
-                          </Button>
-                          {q.kind === "choice" ? (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              disabled={busyId === `sim-${q.id}`}
-                              onClick={() => void handleSimilar(q)}
-                            >
-                              <Wand2 size={14} />
-                              유사문제
-                            </Button>
-                          ) : null}
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            disabled={busyId === `derived-${q.id}`}
-                            onClick={() => setDerivedSourceQ(q)}
-                          >
-                            <GitBranch size={14} />
-                            파생문제 생성
-                          </Button>
-                        </div>
-
-                        {isGraded ? (
-                          <QuizQuestionSectionsPanel
-                            question={q}
-                            busyKey={busyId}
-                            showContent={Boolean(showExp)}
-                            onGenerate={(target) =>
-                              void handleGenerateQuestionSections(q, target)
-                            }
-                          />
-                        ) : null}
-
-                        {isGraded && q.kind === "choice" ? (
-                          <QuizWrongChoiceAnalysisPanel
-                            question={q}
-                            focusOption={resolveWrongExpFocusOption(
-                              q,
-                              typeof selected === "number"
-                                ? selected
-                                : undefined,
-                            )}
-                            onFocusOptionChange={(option) =>
-                              setWrongExpFocus((prev) => ({
-                                ...prev,
-                                [q.id]: option,
-                              }))
-                            }
-                            wrongExps={wrongExps}
-                            busyKey={busyId}
-                            onOpenAnalysisDock={(option, mode) =>
-                              openChoiceAnalysisDock(q.id, option, mode)
-                            }
-                          />
-                        ) : null}
-
-                        <QuizQuestionMemoPanel
-                          questionId={q.id}
-                          value={questionMemos[q.id] || ""}
-                          onSave={(next) =>
-                            setQuestionMemos((prev) => {
-                              const trimmed = next.trim();
-                              if (!trimmed) {
-                                const { [q.id]: _removed, ...rest } = prev;
-                                return rest;
-                              }
-                              return { ...prev, [q.id]: next };
-                            })
-                          }
-                        />
-                      </Motion.div>
+                        questionMemo={questionMemos[q.id] || ""}
+                        busyId={busyId}
+                        examInProgress={examInProgress}
+                        isFresh={Boolean(freshQuestionIds[q.id])}
+                        onClearFresh={() => handleClearFreshQuestion(q.id)}
+                        onAnswerCommit={handleAnswerCommit}
+                        onSelectOption={selectOption}
+                        onEditQuestion={handleEditQuestion}
+                        onGradeChoice={gradeChoice}
+                        onGradeSubjective={(question, answer) =>
+                          void gradeSubjective(question, answer)
+                        }
+                        onRetry={retryQuestion}
+                        onToggleExplanation={handleToggleExplanation}
+                        onSimilar={(question) => void handleSimilar(question)}
+                        onDerived={handleDerivedQuestion}
+                        onGenerateSections={(question, target) =>
+                          void handleGenerateQuestionSections(question, target)
+                        }
+                        onWrongExpFocusChange={handleWrongExpFocusChange}
+                        onOpenAnalysisDock={openChoiceAnalysisDock}
+                        onMemoSave={handleMemoSave}
+                      />
                     );
                   })}
                 </div>

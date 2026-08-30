@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { MdPreview, config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
@@ -24,7 +24,7 @@ type QuizMdPreviewProps = {
   currentNotePath?: string | null | undefined;
 };
 
-export default function QuizMdPreview({
+function QuizMdPreview({
   text,
   previewId,
   className = '',
@@ -60,3 +60,5 @@ export default function QuizMdPreview({
 }
 
 void MD_EDITOR_CUSTOM_ICONS;
+
+export default memo(QuizMdPreview);
