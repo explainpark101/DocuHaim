@@ -9,14 +9,29 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const probePath = path.join(root, 'src/components/llm/__jsImportProbe.jsx');
 const configPath = path.join(root, 'tsconfig.js-imports.json');
 
-function createImportsProgram(): ts.Program {
-  const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(
-    configFile.config,
-    ts.sys,
-    path.dirname(configPath),
+const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+if (configFile.error) {
+  throw new Error(
+    ts.flattenDiagnosticMessageText(configFile.error.messageText, '\n'),
   );
-  return ts.createProgram(parsed.fileNames, parsed.options);
+}
+
+const parsedConfig = ts.parseJsonConfigFileContent(
+  configFile.config,
+  ts.sys,
+  path.dirname(configPath),
+);
+
+if (parsedConfig.errors.length > 0) {
+  throw new Error(
+    parsedConfig.errors
+      .map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n'))
+      .join('\n'),
+  );
+}
+
+function createImportsProgram(): ts.Program {
+  return ts.createProgram([probePath], parsedConfig.options);
 }
 
 describe('check-js-imports', () => {
