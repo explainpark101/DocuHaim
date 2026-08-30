@@ -1,4 +1,5 @@
 import Button from '@/components/Button';
+import QuizMarkdownCopyButton from '@/components/quiz/QuizMarkdownCopyButton';
 import QuizMdPreview from '@/components/quiz/QuizMdPreview';
 import type { QuizChoiceAnalysisDockMode } from '@/components/quiz/QuizChoiceAnalysisDock';
 import { wrongChoiceExplanationKey } from '@/utils/quiz/quizWrongChoiceExplanations';
@@ -61,7 +62,16 @@ export default function QuizWrongChoiceAnalysisPanel({
   return (
     <div className={panelClass}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className={titleClass}>{panelTitle}</div>
+        <div className="flex min-w-0 items-center gap-2">
+          <div className={titleClass}>{panelTitle}</div>
+          {hasFocusExp && String(focusText || '').trim() ? (
+            <QuizMarkdownCopyButton
+              text={focusText}
+              label={isCorrectOption ? '정답 분석' : '오답 분석'}
+              disabled={isBusy}
+            />
+          ) : null}
+        </div>
         <RadioGroup.Root
           className="flex flex-wrap items-center gap-1"
           value={String(focusOption)}

@@ -505,9 +505,7 @@ export function useFileOpenRoutingDomain() {
         const nextSearch = params.toString();
         const nextPathname = routeExportPath
           ? exportPdfPathnameForStoragePath(path)
-          : openNotePathnameForStoragePath(path, {
-              currentPathname: location.pathname,
-            });
+          : openNotePathnameForStoragePath(path);
         navigate(
           {
             pathname: nextPathname,

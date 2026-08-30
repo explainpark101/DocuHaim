@@ -22,6 +22,7 @@ import {
 } from '@/utils/llamaCppShell';
 import { getMlxVlmServerStatus } from '@/utils/mlxVlmShell';
 import { generateMlxVlmTransform } from '@/utils/llm/mlxVlmGenerateClient';
+import { isLikelyLlamaCppMultimodalModel } from '@/utils/llm/llamaCppVisionModel';
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
 import {
   DEFAULT_QUIZ_SYSTEM_PROMPT,
@@ -54,6 +55,7 @@ import {
   SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
 } from '@/utils/quiz/similarQuestionAnalysis';
 import type {
+  QuizAddQuestionForm,
   QuizFileConfig,
   QuizQuestion,
   SubjectiveGradeResult,
@@ -236,6 +238,45 @@ export async function checkQuizLlmReady(
   return { ready: true, profile, model };
 }
 
+/** Profiles that can accept image inputs for quiz vision tasks. */
+export function isQuizVisionCapableProfile(profile: LlmProviderProfile): boolean {
+  return (
+    profile.kind === LLM_PROVIDER_GEMINI ||
+    profile.kind === LLM_PROVIDER_MLX_VLM ||
+    profile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ||
+    profile.kind === LLM_PROVIDER_LLAMA_CPP
+  );
+}
+
+/**
+ * Readiness check for image-based quiz generation (vision model required).
+ */
+export async function checkQuizVisionLlmReady(
+  profiles: LlmProviderProfile[],
+  overrides?: { profileId?: string | null; model?: string | null },
+): Promise<QuizLlmReadyResult> {
+  const result = await checkQuizLlmReady(profiles, overrides);
+  if (!result.ready) return result;
+  if (!isQuizVisionCapableProfile(result.profile)) {
+    return {
+      ready: false,
+      message:
+        '이미지 분석에는 비전 모델이 필요합니다. AI 도우미에서 Gemini, MLX-VLM, OpenAI 호환, 또는 llama.cpp 멀티모달 모델을 선택하세요.',
+    };
+  }
+  if (
+    result.profile.kind === LLM_PROVIDER_LLAMA_CPP &&
+    !isLikelyLlamaCppMultimodalModel(result.model)
+  ) {
+    return {
+      ready: false,
+      message:
+        '이미지 분석에는 llama.cpp 멀티모달(VL) 모델이 필요합니다. AI 도우미 또는 설정 > llama.cpp에서 LLaVA 등 비전 GGUF를 선택한 뒤 다시 시도하세요.',
+    };
+  }
+  return result;
+}
+
 /** True when an error message indicates missing LLM setup / model load. */
 export function isQuizLlmSetupIssue(message: string): boolean {
   const m = String(message || '');
@@ -291,6 +332,11 @@ export function parseSubjectiveGradeResult(raw: unknown): SubjectiveGradeResult 
   return { verdict, score, feedback };
 }
 
+export type QuizLlmImageInput = {
+  mimeType: string;
+  dataBase64: string;
+};
+
 export type QuizLlmRunOptions = {
   profiles: LlmProviderProfile[];
   instruction: string;
@@ -303,6 +349,8 @@ export type QuizLlmRunOptions = {
   profileId?: string;
   /** Override last-used model for this request. */
   model?: string;
+  /** Vision inputs (Gemini, MLX-VLM, OpenAI-compatible / llama.cpp multimodal). */
+  images?: QuizLlmImageInput[];
 };
 
 function withStreamOpts<T extends Record<string, unknown>>(
@@ -349,6 +397,10 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
   } = {};
   if (options.signal) streamOpts.signal = options.signal;
   if (options.onChunk) streamOpts.onChunk = options.onChunk;
+  const imageList = Array.isArray(options.images)
+    ? options.images.filter((img) => img?.mimeType && img?.dataBase64)
+    : [];
+  const visionPayload = imageList.length > 0 ? { images: imageList } : {};
 
   if (selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE) {
     const baseUrl = (selectedProfile.baseUrl || '').trim();
@@ -369,6 +421,7 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
               systemPrompt,
               selectedText: '',
               requestOptions,
+              ...visionPayload,
             },
             streamOpts,
           ),
@@ -406,6 +459,7 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
               systemPrompt,
               selectedText: '',
               requestOptions,
+              ...visionPayload,
             },
             streamOpts,
           ),
@@ -433,6 +487,7 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
           systemPrompt,
           selectedText: '',
           requestOptions,
+          ...visionPayload,
         },
         streamOpts,
       ),
@@ -457,6 +512,7 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
             systemPrompt,
             selectedText: '',
             requestOptions,
+            ...visionPayload,
           },
           streamOpts,
         ),
@@ -562,6 +618,7 @@ export async function gradeSubjectiveAnswer(params: {
   question: QuizQuestion;
   userAnswer: string;
   signal?: AbortSignal;
+  onChunk?: (accumulated: string) => void;
 }): Promise<SubjectiveGradeResult> {
   const settings = loadQuizSettings();
   const q = params.question;
@@ -597,7 +654,10 @@ JSON만 반환:
       instruction,
       '당신은 공정한 시험 채점위원입니다. JSON만 반환하세요.',
       settings.gradeTemperature,
-      signalExtra(params.signal),
+      streamExtra({
+        signal: params.signal,
+        onChunk: params.onChunk,
+      }),
     ),
   );
   return parseSubjectiveGradeResult(extractJsonObject(text));
@@ -621,8 +681,8 @@ export async function generateWrongChoiceExplanation(params: {
     ? `\n[수험자 추가 질문]\n${params.userInstructions.trim()}\n위 질문에도 답변하세요.`
     : '';
   const taskLine = isCorrectPick
-    ? `수험자가 ${selected}번(정답)을 골랐습니다. 왜 정답인지, 다른 보기가 왜 틀렸는지 설명하세요.`
-    : `수험자가 ${selected}번을 골랐습니다. 왜 오답인지 설명하세요.`;
+    ? `수험자가 ${selected}번(정답)을 골랐습니다. 왜 정답인지, 다른 보기가 왜 틀렸는지 설명하세요. 중요한 단어는 반드시 **로 볼드 처리하세요.`
+    : `수험자가 ${selected}번을 골랐습니다. 왜 오답인지 설명하세요. 중요한 단어는 반드시 **로 볼드 처리하세요.`;
   const instruction = `${taskLine}
 
 [문제] ${q.question}
@@ -1187,6 +1247,7 @@ export async function generateQuestionSections(params: {
   profileId?: string;
   model?: string;
   signal?: AbortSignal;
+  onChunk?: (accumulated: string) => void;
 }): Promise<QuestionSectionsResult> {
   const settings = loadQuizSettings();
   const q = params.question;
@@ -1221,6 +1282,7 @@ export async function generateQuestionSections(params: {
       Math.min(settings.temperature, 0.8),
       streamExtra({
         signal: params.signal,
+        onChunk: params.onChunk,
         profileId: params.profileId,
         model: params.model,
       }),
@@ -1266,6 +1328,7 @@ export async function generateQuestionsFromSources(params: {
   signal?: AbortSignal;
   onProgress?: (message: string) => void;
   onStep?: (update: QuizGenStepUpdate) => void;
+  onChunk?: (update: QuizGenStepUpdate) => void;
 }): Promise<Array<Omit<QuizQuestion, 'id' | 'displayLabel'>>> {
   const settings = loadQuizSettings();
   const examples = Array.isArray(params.exampleQuestions)
@@ -1279,6 +1342,10 @@ export async function generateQuestionsFromSources(params: {
   const kind = params.kind || 'choice';
   const topic = (params.topic || '').trim();
   const emit = (update: QuizGenStepUpdate) => params.onStep?.(update);
+  const emitStream = (update: QuizGenStepUpdate) => {
+    params.onStep?.(update);
+    params.onChunk?.(update);
+  };
 
   emit({ step: 'load_sources', status: 'running', detail: '문서 읽기 중…' });
   params.onProgress?.('근거 문서 로드 중…');
@@ -1349,7 +1416,19 @@ ${body.text}
         summaryInstruction,
         SOURCE_SUMMARY_SYSTEM_PROMPT,
         Math.min(settings.temperature, 0.7),
-        signalExtra(params.signal),
+        streamExtra({
+          signal: params.signal,
+          onChunk: (accumulated) => {
+            emitStream({
+              step: 'summarize',
+              status: 'running',
+              detail: progressLabel,
+              llmInstruction: summaryInstruction,
+              systemPrompt: SOURCE_SUMMARY_SYSTEM_PROMPT,
+              llmResponse: accumulated,
+            });
+          },
+        }),
       ),
     );
     const cleaned = String(summary || '').trim();
@@ -1422,7 +1501,19 @@ JSON 배열만 반환하세요.`;
       genInstruction,
       genSystemPrompt,
       settings.temperature,
-      signalExtra(params.signal),
+      streamExtra({
+        signal: params.signal,
+        onChunk: (accumulated) => {
+          emitStream({
+            step: 'generate',
+            status: 'running',
+            detail: 'LLM 문항 작성 중…',
+            llmInstruction: genInstruction,
+            systemPrompt: genSystemPrompt,
+            llmResponse: accumulated,
+          });
+        },
+      }),
     ),
   );
   const parsed = extractJsonObject(text);
@@ -1524,6 +1615,7 @@ export async function generateFixedQuizQuestion(params: {
   readText?: QuizVaultTextReader;
   signal?: AbortSignal;
   onStep?: (update: QuizGenStepUpdate) => void;
+  onChunk?: (accumulated: string) => void;
 }): Promise<Omit<QuizQuestion, 'id' | 'displayLabel'>> {
   const settings = loadQuizSettings();
   const q = params.question;
@@ -1576,7 +1668,10 @@ export async function generateFixedQuizQuestion(params: {
       instruction,
       FIX_QUESTION_SYSTEM_PROMPT,
       settings.temperature,
-      signalExtra(params.signal),
+      streamExtra({
+        signal: params.signal,
+        onChunk: params.onChunk,
+      }),
     ),
   );
   const parsed = extractJsonObject(text);
@@ -1588,4 +1683,126 @@ export async function generateFixedQuizQuestion(params: {
         : parsed;
   emit({ step: 'generate', status: 'done', detail: '교정 완료' });
   return parseGeneratedQuestion(obj, choiceCount, fallbackAnswer);
+}
+
+function buildImageQuestionSystemPrompt(
+  kind: 'choice' | 'subjective',
+  choiceCount: number,
+  answerStyle: 'short' | 'essay',
+): string {
+  if (kind === 'subjective') {
+    return `당신은 시험 출제위원입니다. 첨부 이미지(시험지, 교재, 도표, 그림 등)를 분석해 학습·평가용 문항 1개를 만듭니다.
+- 이미지에 보이는 내용만 사용하고, 보이지 않는 사실을 만들지 마세요.
+- OCR 텍스트·도표·그림의 의미를 정확히 반영하세요.
+- 질문·해설·Point는 마크다운을 사용할 수 있습니다.
+- 응답은 JSON 객체 하나만 반환하세요. 다른 텍스트·마크다운·코드펜스는 금지합니다.
+스키마:
+{"kind":"subjective","answerStyle":"${answerStyle}","question":"...","modelAnswer":"...","point":"...","explanation":"..."}`;
+  }
+  return `당신은 시험 출제위원입니다. 첨부 이미지(시험지, 교재, 도표, 그림 등)를 분석해 객관식 문항 1개를 만듭니다.
+- 이미지에 보이는 내용만 사용하고, 보이지 않는 사실을 만들지 마세요.
+- OCR 텍스트·도표·그림의 의미를 정확히 반영하세요.
+- 질문·해설·Point는 마크다운을 사용할 수 있습니다.
+- 선택지(options) 안에서는 인라인 수식($...$)만 사용하세요.
+- options 각 항목에는 보기 번호 접두사(1., 2., a., 가. 등)를 넣지 마세요.
+- 응답은 JSON 객체 하나만 반환하세요. 다른 텍스트·마크다운·코드펜스는 금지합니다.
+스키마:
+{"question":"...","options":[${Array.from({ length: choiceCount }, () => '"..."').join(',')}],"answer":1,"point":"...","explanation":"..."}
+- options 길이는 정확히 ${choiceCount}
+- answer는 1~${choiceCount} 정수`;
+}
+
+function buildImageQuestionInstruction(params: {
+  kind: 'choice' | 'subjective';
+  answerStyle: 'short' | 'essay';
+  choiceCount: number;
+  userInstructions?: string;
+}): string {
+  const kindLabel =
+    params.kind === 'choice'
+      ? `객관식 ${params.choiceCount}지선다`
+      : params.answerStyle === 'essay'
+        ? '서술형'
+        : '단답형';
+  const userBlock = String(params.userInstructions || '').trim();
+  return `[요청]
+첨부 이미지를 분석해 ${kindLabel} 문항 1개를 작성하세요.
+${userBlock ? `\n[추가 지시]\n${userBlock}\n` : ''}
+이미지에 문제·지문·도표가 있으면 그 내용을 바탕으로, 없으면 이미지가 다루는 핵심 개념을 평가하는 문항을 만드세요.`;
+}
+
+function generatedQuestionToAddForm(
+  generated: Omit<QuizQuestion, 'id' | 'displayLabel'>,
+  choiceCount: number,
+): Omit<QuizAddQuestionForm, 'displayLabel'> {
+  const base = {
+    question: generated.question,
+    point: generated.point,
+    explanation: generated.explanation,
+  };
+  if (generated.kind === 'subjective') {
+    return {
+      ...base,
+      kind: 'subjective',
+      answerStyle: generated.answerStyle === 'essay' ? 'essay' : 'short',
+      modelAnswer: generated.modelAnswer || '',
+    };
+  }
+  return {
+    ...base,
+    kind: 'choice',
+    options: resizeChoiceOptions(generated.options || [], choiceCount),
+    answer: generated.answer || 1,
+  };
+}
+
+/**
+ * Analyze an attached image with a vision LLM and draft one quiz question.
+ */
+export async function generateQuestionFromImage(params: {
+  profiles: LlmProviderProfile[];
+  image: QuizLlmImageInput;
+  kind: 'choice' | 'subjective';
+  answerStyle?: 'short' | 'essay';
+  choiceCount: number;
+  userInstructions?: string;
+  signal?: AbortSignal;
+  onChunk?: (accumulated: string) => void;
+}): Promise<Omit<QuizAddQuestionForm, 'displayLabel'>> {
+  const settings = loadQuizSettings();
+  const choiceCount = clampChoiceCount(params.choiceCount);
+  const kind = params.kind;
+  const answerStyle = params.answerStyle === 'essay' ? 'essay' : 'short';
+  const systemPrompt = buildImageQuestionSystemPrompt(kind, choiceCount, answerStyle);
+  const instruction = buildImageQuestionInstruction({
+    kind,
+    answerStyle,
+    choiceCount,
+    ...(String(params.userInstructions || '').trim()
+      ? { userInstructions: String(params.userInstructions).trim() }
+      : {}),
+  });
+
+  const runOptions = runOpts(
+    params.profiles,
+    instruction,
+    systemPrompt,
+    settings.temperature,
+    streamExtra({
+      signal: params.signal,
+      onChunk: params.onChunk,
+    }),
+  );
+  runOptions.images = [params.image];
+
+  const text = await runQuizLlmPrompt(runOptions);
+  const parsed = extractJsonObject(text);
+  const obj =
+    parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed) && parsed[0]
+        ? parsed[0]
+        : parsed;
+  const generated = parseGeneratedQuestion(obj, choiceCount, 1);
+  return generatedQuestionToAddForm(generated, choiceCount);
 }

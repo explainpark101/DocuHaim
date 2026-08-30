@@ -18,7 +18,7 @@ export type QuizSettings = {
   autoSaveOnAiGenerate: boolean;
   /**
    * When true, quiz side docks animate layout width with a spring (heavier on Safari/WebView).
-   * Default false: fixed width + translateX slide (same as Tauri default).
+   * Default true; set false for translateX slide.
    */
   dockWidthSpringAnim: boolean;
 };
@@ -46,7 +46,7 @@ export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
   ragTopK: 24,
   ragMaxChars: 120_000,
   autoSaveOnAiGenerate: true,
-  dockWidthSpringAnim: false,
+  dockWidthSpringAnim: true,
 };
 
 export const QUIZ_SETTINGS_CHANGED_EVENT = 's3haim:quiz-settings-changed';
@@ -104,7 +104,7 @@ export function normalizeQuizSettings(
       ),
     ),
     autoSaveOnAiGenerate: raw?.autoSaveOnAiGenerate !== false,
-    dockWidthSpringAnim: raw?.dockWidthSpringAnim === true,
+    dockWidthSpringAnim: raw?.dockWidthSpringAnim !== false,
   };
 }
 

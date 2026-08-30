@@ -5,11 +5,13 @@ import {
   isExportPdfAppPathname,
   isQuizAppPathname,
   isSettingsAppPathname,
+  openNotePathnameForStoragePath,
   parseExportPdfPathFromAppPathname,
   parseOpenNotePathFromAppPathname,
   parseQuizPathFromAppPathname,
   parseViewPathFromAppPathname,
   quizPathnameForStoragePath,
+  viewPathnameForStoragePath,
 } from '@/utils/appHref';
 
 describe('appHref route parsers', () => {
@@ -42,5 +44,24 @@ describe('appHref route parsers', () => {
   it('builds export-pdf pathnames for storage paths', () => {
     expect(exportPdfPathnameForStoragePath('notes/a.md')).toBe('/export-pdf/notes/a.md');
     expect(exportPdfPathnameForStoragePath(null)).toBe('/export-pdf');
+  });
+
+  it('opens quiz.md in quiz mode by default', () => {
+    expect(openNotePathnameForStoragePath('notes/a.quiz.md')).toBe(
+      '/quiz/notes/a.quiz.md',
+    );
+    expect(openNotePathnameForStoragePath('notes/a.md')).toBe('/view/notes/a.md');
+  });
+
+  it('respects preferView for quiz.md', () => {
+    expect(
+      openNotePathnameForStoragePath('notes/a.quiz.md', { preferView: true }),
+    ).toBe('/view/notes/a.quiz.md');
+    expect(openNotePathnameForStoragePath('notes/a.quiz.md')).toBe(
+      '/quiz/notes/a.quiz.md',
+    );
+    expect(viewPathnameForStoragePath('notes/a.quiz.md')).toBe(
+      '/view/notes/a.quiz.md',
+    );
   });
 });

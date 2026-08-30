@@ -10,6 +10,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import Button from '@/components/Button';
+import QuizLlmStreamPreview from '@/components/quiz/QuizLlmStreamPreview';
 import QuizMdPreview from '@/components/quiz/QuizMdPreview';
 import QuizExamGradeButton from '@/components/quiz/QuizExamGradeButton';
 import QuizQuestionSectionsPanel, {
@@ -33,6 +34,7 @@ export type QuizQuestionCardProps = {
   wrongExpFocusOption: number;
   questionMemo: string;
   busyId: string | null;
+  subjectiveGradeStream?: string | undefined;
   examInProgress: boolean;
   isFresh: boolean;
   onClearFresh: () => void;
@@ -69,6 +71,7 @@ function QuizQuestionCardInner({
   wrongExpFocusOption,
   questionMemo,
   busyId,
+  subjectiveGradeStream,
   examInProgress,
   isFresh,
   onClearFresh,
@@ -273,6 +276,17 @@ function QuizQuestionCardInner({
                   previewId={`qg-${q.id}`}
                 />
               </div>
+            </div>
+          ) : busyId === q.id && subjectiveGradeStream !== undefined ? (
+            <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs text-violet-950 dark:border-violet-800/70 dark:bg-violet-950/45 dark:text-violet-100">
+              <div className="mb-1 font-bold text-violet-800 dark:text-violet-200">
+                AI 채점 중…
+              </div>
+              <QuizLlmStreamPreview
+                text={subjectiveGradeStream}
+                previewId={`qgs-${q.id}`}
+                emptyLabel="채점 결과를 생성하는 중…"
+              />
             </div>
           ) : null}
         </div>

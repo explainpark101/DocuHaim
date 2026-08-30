@@ -7,9 +7,16 @@ const SLIDE_EASE_OUT: [number, number, number, number] = [0.32, 0.72, 0, 1];
 
 export const QUIZ_DOCK_RESIZE_TRANSITION: Transition = { duration: 0 };
 
+/** Shared spring for quiz pane layout + dock width (settings: dockWidthSpringAnim). */
+export const QUIZ_LAYOUT_TRANSITION: Transition = {
+  type: 'spring',
+  stiffness: 380,
+  damping: 36,
+};
+
 function dockOpenTransition(useLayoutWidthAnim: boolean): Transition {
   return useLayoutWidthAnim
-    ? { type: 'spring', stiffness: 380, damping: 36 }
+    ? QUIZ_LAYOUT_TRANSITION
     : { type: 'tween', duration: 0.22, ease: SLIDE_EASE_OUT };
 }
 
@@ -20,6 +27,16 @@ export const QUIZ_FLOATING_PANEL_TRANSITION: Transition = isTauriDesktopPlatform
 
 export type QuizDockSlideEdge = 'left' | 'right';
 
+/** Transform origin for dock width/layout motion (right docks grow from the screen edge). */
+export function getQuizDockTransformOrigin(edge: QuizDockSlideEdge): string {
+  return edge === 'right' ? 'right center' : 'left center';
+}
+
+/** Motion layout originX (0 = left, 1 = right) for size/layout animations. */
+export function getQuizDockLayoutOriginX(edge: QuizDockSlideEdge): number {
+  return edge === 'right' ? 1 : 0;
+}
+
 export type QuizDockAsideMotionProps = {
   style: CSSProperties | undefined;
   initial: TargetAndTransition;
@@ -29,7 +46,7 @@ export type QuizDockAsideMotionProps = {
 };
 
 /**
- * Maps dock open/close motion: optional width spring (settings) vs default translateX slide.
+ * Maps dock open/close motion: layout width spring (default) vs translateX slide.
  */
 export function getQuizDockAsideMotionProps(
   width: number,

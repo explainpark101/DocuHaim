@@ -59,20 +59,27 @@ import {
 import { isQuizMdPath } from '@/utils/quiz/quizPath';
 import {
   isQuizAppPathname,
+  parseOpenNotePathFromAppPathname,
+  parseViewPathFromAppPathname,
   quizPathnameForStoragePath,
   viewPathnameForStoragePath,
 } from '@/utils/appHref';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
+import QuizPane from '@/components/quiz/QuizPane';
+import {
+  markQuizPaneWarm,
+  setQuizTabMode,
+  useQuizPaneSessionStore,
+} from '@/stores/quizPaneSessionStore';
 
 const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
 const NovelMarkdownEditor = lazy(() => import('@/components/NovelMarkdownEditor'));
 const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
 const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
-const QuizPane = lazy(() => import('@/components/quiz/QuizPane'));
 
 function EditorPaneSuspenseFallback({ message = '에디터 로딩 중…' }) {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-white dark:bg-odp-surface">
+    <div className="pointer-events-none flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-white dark:bg-odp-surface">
       <Loader2 size={18} className="animate-spin text-gray-400 dark:text-gray-500" aria-hidden />
       <div className="text-sm text-gray-500 dark:text-odp-muted">{message}</div>
     </div>
@@ -177,7 +184,33 @@ export default function EditorPane({
   const navigate = useNavigate();
 
   const isQuizFile = isQuizMdPath(currentFile?.id || currentFile?.name);
+  const quizTabId =
+    isQuizFile && currentFile?.type && currentFile?.id
+      ? `${currentFile.type}:${currentFile.id}`
+      : null;
+  const quizPaneWarm = useQuizPaneSessionStore((state) =>
+    quizTabId ? state.warmTabIds.includes(quizTabId) : false,
+  );
   const quizMode = isQuizFile && isQuizAppPathname(location.pathname);
+
+  useEffect(() => {
+    if (!quizTabId || !isQuizFile) return;
+    if ((currentFile?.viewer || 'markdown') === 'loading') return;
+    markQuizPaneWarm(quizTabId);
+  }, [quizTabId, isQuizFile, currentFile?.viewer]);
+
+  useEffect(() => {
+    if (!quizTabId || !isQuizFile) return;
+    const storagePath = currentFile?.id;
+    if (!storagePath) return;
+    const onQuizRoute =
+      isQuizAppPathname(location.pathname) &&
+      parseOpenNotePathFromAppPathname(location.pathname) === storagePath;
+    const onViewRoute =
+      parseViewPathFromAppPathname(location.pathname) === storagePath;
+    if (!onQuizRoute && !onViewRoute) return;
+    setQuizTabMode(quizTabId, onQuizRoute ? 'quiz' : 'edit');
+  }, [quizTabId, isQuizFile, quizMode, currentFile?.id, location.pathname]);
 
   const flushBeforeSave = useCallback(() => {
     novelFlushBeforeSaveRef.current?.();
@@ -189,7 +222,8 @@ export default function EditorPane({
     if (!path || !isQuizFile || quizModeSwitching) return;
 
     const target = quizMode ? 'edit' : 'quiz';
-    // Flush while QuizPane / editor is still mounted (switching state unmounts them).
+    if (quizTabId) setQuizTabMode(quizTabId, target);
+    // Flush while QuizPane stays mounted (hidden) during mode switch.
     flushBeforeSave();
 
     quizSwitchNavigatedRef.current = false;
@@ -218,6 +252,7 @@ export default function EditorPane({
     isQuizFile,
     navigate,
     onSave,
+    quizTabId,
     quizMode,
     quizModeSwitching,
   ]);
@@ -230,7 +265,7 @@ export default function EditorPane({
       quizModeSwitchTarget === 'quiz'
         ? isQuizAppPathname(location.pathname)
         : !isQuizAppPathname(location.pathname);
-    if (!arrived || isSaving) return undefined;
+    if (!arrived) return undefined;
 
     const frameId = window.requestAnimationFrame(() => {
       setQuizModeSwitching(false);
@@ -238,7 +273,7 @@ export default function EditorPane({
       quizSwitchNavigatedRef.current = false;
     });
     return () => window.cancelAnimationFrame(frameId);
-  }, [isSaving, location.pathname, quizModeSwitchTarget, quizModeSwitching]);
+  }, [location.pathname, quizModeSwitchTarget, quizModeSwitching]);
 
   useEffect(() => {
     if (!quizMode) {
@@ -1221,24 +1256,32 @@ export default function EditorPane({
             <div className="text-sm text-gray-500 dark:text-odp-muted">파일 불러오는 중…</div>
           </div>
         ) : viewer === 'markdown' ? (
-          quizModeSwitching ? (
-            <QuizModeTransitionLoading target={quizModeSwitchTarget} />
-          ) : quizMode ? (
-            <Suspense fallback={<EditorPaneSuspenseFallback message="퀴즈 모드 로딩 중…" />}>
-              <QuizPane
-                content={editorContent}
-                onChange={onChangeEditor}
-                onSave={onSave}
-                currentFile={currentFile}
-                onResolveWikiImageUrl={onResolveWikiImageUrl}
-                llmProviderProfiles={llmProviderProfiles}
-                isActiveFile={isActiveFile}
-                registerToolbar={setQuizToolbarNode}
-                registerFileManagement={setQuizFileManagement}
-              />
-            </Suspense>
-          ) : (
           <>
+            {isQuizFile && (quizPaneWarm || quizMode) ? (
+              <div
+                className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
+                  !quizMode || quizModeSwitching ? 'hidden' : ''
+                }`}
+                aria-hidden={!quizMode || quizModeSwitching}
+              >
+                <QuizPane
+                  content={editorContent}
+                  onChange={onChangeEditor}
+                  onSave={onSave}
+                  currentFile={currentFile}
+                  onResolveWikiImageUrl={onResolveWikiImageUrl}
+                  llmProviderProfiles={llmProviderProfiles}
+                  isActiveFile={isActiveFile && quizMode && !quizModeSwitching}
+                  registerToolbar={setQuizToolbarNode}
+                  registerFileManagement={setQuizFileManagement}
+                />
+              </div>
+            ) : null}
+            {quizModeSwitching ? (
+              <QuizModeTransitionLoading target={quizModeSwitchTarget} />
+            ) : null}
+            {!quizMode || !isQuizFile ? (
+              <>
             <div className="flex-1 min-h-0">
               {recordingViewMode && recordingAudioUrl ? (
                 <RecordingSyncView
@@ -1303,8 +1346,9 @@ export default function EditorPane({
                 </Suspense>
               )}
             </div>
+              </>
+            ) : null}
           </>
-          )
         ) : viewer === 'image' && currentFile.objectUrl ? (
           <div className="flex-1 flex items-center justify-center overflow-auto p-4">
             <img

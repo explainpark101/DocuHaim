@@ -36,6 +36,7 @@ import {
   isSettingsAppPathname,
   openNotePathnameForStoragePath,
 } from '@/utils/appHref';
+import { evictQuizPaneTab, getQuizTabMode } from '@/stores/quizPaneSessionStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { findFileTab } from '@/utils/workspaceTabs/appBridge';
 import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
@@ -198,7 +199,7 @@ export function useWorkspaceTabsDomain({
             (typeof file?.id === 'string' && file.id) || active.path;
           navigate(
             openNotePathnameForStoragePath(viewPath, {
-              currentPathname: location.pathname,
+              preferView: getQuizTabMode(id) === 'edit',
             }),
           );
         }
@@ -456,6 +457,7 @@ export function useWorkspaceTabsDomain({
         const closedPath = closing.currentFile?.id || closing.path || '';
         if (closedPath) clearEncMdPassword(closedPath);
       }
+      evictQuizPaneTab(id);
       const next = closeTab(workspaceTabsRef.current, id);
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
@@ -470,6 +472,7 @@ export function useWorkspaceTabsDomain({
         navigate(
           openNotePathnameForStoragePath(
             (typeof file?.id === 'string' && file.id) || active.path,
+            { preferView: getQuizTabMode(active.id) === 'edit' },
           ),
         );
       } else if (isChatTab(active)) {

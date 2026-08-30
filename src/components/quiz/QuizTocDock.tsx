@@ -103,10 +103,7 @@ function QuizTocDock({
       aria-label="문제 목차"
       className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
     >
-          <div
-            className="relative flex h-full min-h-0 flex-col"
-            style={{ width: tocDockWidth }}
-          >
+          <div className="relative flex h-full min-h-0 w-full flex-col">
             <TocResizeHandle
               edge="left"
               handleProps={tocDockResizeHandleProps}

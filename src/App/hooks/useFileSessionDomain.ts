@@ -60,6 +60,7 @@ import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
 import {
   parseOpenNotePathFromAppPathname,
   isExportPdfAppPathname,
+  isQuizAppPathname,
   exportPdfPathnameForStoragePath,
   openNotePathnameForStoragePath,
 } from '@/utils/appHref';
@@ -1574,7 +1575,7 @@ export function useFileSessionDomain() {
         onExport
           ? exportPdfPathnameForStoragePath(nextPath)
           : openNotePathnameForStoragePath(nextPath, {
-              currentPathname: location.pathname,
+              preferView: !isQuizAppPathname(location.pathname),
             }),
         { replace: true },
       );

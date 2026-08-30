@@ -115,7 +115,7 @@ function QuizChoiceAnalysisDock({
       className={`flex h-full shrink-0 flex-col overflow-hidden border-l bg-white shadow-lg dark:bg-odp-surface ${accentBorder}`}
     >
       {question != null && option != null ? (
-          <div className="relative h-full min-h-0" style={{ width: dockWidth }}>
+          <div className="relative h-full min-h-0 w-full">
             <TocResizeHandle
               edge="left"
               handleProps={resizeHandleProps}

@@ -30,6 +30,7 @@ export type QuizQuestionListProps = {
   questionMemos: Record<string, string>;
   freshQuestionIds: Record<string, boolean>;
   busyId: string | null;
+  subjectiveGradeStreams: Record<string, string>;
   examInProgress: boolean;
   resolveWrongExpFocusOption: (
     question: QuizQuestion,
@@ -129,6 +130,7 @@ const QuizQuestionList = memo(
       questionMemos,
       freshQuestionIds,
       busyId,
+      subjectiveGradeStreams,
       examInProgress,
       resolveWrongExpFocusOption,
       onAnswerCommit,
@@ -207,6 +209,7 @@ const QuizQuestionList = memo(
               )}
               questionMemo={questionMemos[question.id] || ''}
               busyId={busyId}
+              subjectiveGradeStream={subjectiveGradeStreams[question.id]}
               examInProgress={examInProgress}
               isFresh={Boolean(freshQuestionIds[question.id])}
               onClearFresh={() => onClearFresh(question.id)}

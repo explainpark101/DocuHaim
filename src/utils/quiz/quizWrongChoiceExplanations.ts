@@ -6,6 +6,44 @@ export function wrongChoiceExplanationKey(questionId: string, option: number): s
   return `${questionId}_${option}`;
 }
 
+/** Flat `questionId_option` map → per-option markdown (`"1"`, `"2"`, …). */
+export function choiceAnalysesFromFlat(
+  flat: Record<string, string> | null | undefined,
+  questionId: string,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  const prefix = `${questionId}_`;
+  if (!flat) return out;
+  for (const [key, text] of Object.entries(flat)) {
+    if (!key.startsWith(prefix)) continue;
+    const opt = key.slice(prefix.length);
+    if (!opt) continue;
+    out[opt] = String(text ?? '');
+  }
+  return out;
+}
+
+/** Merge per-option analyses into a flat wrong-choice map for one question. */
+export function applyChoiceAnalysesToFlat(
+  flat: Record<string, string>,
+  questionId: string,
+  analyses: Record<string, string> | null | undefined,
+): Record<string, string> {
+  const next = { ...flat };
+  const prefix = `${questionId}_`;
+  for (const key of Object.keys(next)) {
+    if (key.startsWith(prefix)) delete next[key];
+  }
+  if (!analyses) return next;
+  for (const [opt, text] of Object.entries(analyses)) {
+    const n = Number.parseInt(opt, 10);
+    const trimmed = String(text || '').trim();
+    if (!Number.isFinite(n) || n < 1 || !trimmed) continue;
+    next[wrongChoiceExplanationKey(questionId, n)] = trimmed;
+  }
+  return next;
+}
+
 /** Used when the user generates analysis without a custom question. */
 export const DEFAULT_CORRECT_CHOICE_ANALYSIS_INSTRUCTIONS =
   '이 보기가 정답인 이유와 나머지 보기가 오답인 이유를 명확히 설명해 주세요.';

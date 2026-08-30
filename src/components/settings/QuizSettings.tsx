@@ -199,8 +199,8 @@ export default function QuizSettingsSection({
                 패널 width spring 애니메이션
               </p>
               <p className="mt-0.5 text-[11px] text-gray-500 dark:text-odp-muted">
-                켜면 사이드 패널이 너비 spring으로 열립니다. Safari·WebView에서는 무거울 수
-                있어 기본은 슬라이드(translate) 방식입니다.
+                켜면 사이드 패널이 너비 spring으로 열립니다. Safari·WebView에서 무거우면 끄고
+                슬라이드(translate) 방식으로 사용하세요.
               </p>
             </div>
             <Switch.Root

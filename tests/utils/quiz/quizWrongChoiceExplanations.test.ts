@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   appendFollowUpChoiceAnalysis,
   appendRegeneratedChoiceAnalysis,
+  applyChoiceAnalysesToFlat,
+  choiceAnalysesFromFlat,
   ensureChoiceAnalysisFollowUpHeader,
   flatWrongChoiceExplanations,
   mergeStreamingFollowUpChoiceAnalysis,
@@ -22,6 +24,33 @@ import {
 } from '@/utils/quiz/quizSessionPersist';
 
 describe('quizWrongChoiceExplanations', () => {
+  it('converts flat map to per-option analyses and back', () => {
+    const flat = {
+      [wrongChoiceExplanationKey('q1', 1)]: 'correct analysis',
+      [wrongChoiceExplanationKey('q1', 3)]: 'wrong analysis',
+      [wrongChoiceExplanationKey('q2', 2)]: 'other question',
+    };
+    expect(choiceAnalysesFromFlat(flat, 'q1')).toEqual({
+      '1': 'correct analysis',
+      '3': 'wrong analysis',
+    });
+    const merged = applyChoiceAnalysesToFlat(flat, 'q1', {
+      '1': 'updated correct',
+      '2': 'new wrong',
+      '4': '   ',
+    });
+    expect(merged).toEqual({
+      [wrongChoiceExplanationKey('q1', 1)]: 'updated correct',
+      [wrongChoiceExplanationKey('q1', 2)]: 'new wrong',
+      [wrongChoiceExplanationKey('q2', 2)]: 'other question',
+    });
+    expect(
+      applyChoiceAnalysesToFlat(merged, 'q1', { '1': '', '2': '' }),
+    ).toEqual({
+      [wrongChoiceExplanationKey('q2', 2)]: 'other question',
+    });
+  });
+
   it('round-trips flat and nested maps', () => {
     const flat = {
       [wrongChoiceExplanationKey('q1', 2)]: 'why wrong',

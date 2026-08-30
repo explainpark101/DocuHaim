@@ -84,14 +84,12 @@ export function viewPathnameForStoragePath(storagePath: string | null | undefine
 
 /**
  * Default open pathname for a vault note.
- * `*.quiz.md` → `/quiz/...` unless `preferView` or current route is already `/view/`.
+ * `*.quiz.md` → `/quiz/...` unless `preferView` (markdown edit mode).
  */
 export function openNotePathnameForStoragePath(
   storagePath: string | null | undefined,
   options: {
     preferView?: boolean;
-    /** When renaming / retargeting, keep quiz vs view mode from the current URL. */
-    currentPathname?: string | null;
   } = {},
 ): string {
   const p = String(storagePath || '').replace(/^\/+/, '');
@@ -100,14 +98,6 @@ export function openNotePathnameForStoragePath(
   const isQuizFile = lower.endsWith('.quiz.md');
   if (!isQuizFile) return viewPathnameForStoragePath(p);
   if (options.preferView) return viewPathnameForStoragePath(p);
-  if (options.currentPathname) {
-    if (isQuizAppPathname(options.currentPathname)) {
-      return quizPathnameForStoragePath(p);
-    }
-    if (parseViewPathFromAppPathname(options.currentPathname) != null) {
-      return viewPathnameForStoragePath(p);
-    }
-  }
   return quizPathnameForStoragePath(p);
 }
 

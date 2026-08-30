@@ -118,7 +118,7 @@ function QuizDerivedQuestionDock({
       className="flex h-full shrink-0 flex-col overflow-hidden border-l border-violet-200 bg-white shadow-lg dark:border-violet-900/60 dark:bg-odp-surface"
     >
       {question != null ? (
-          <div className="relative h-full min-h-0" style={{ width: dockWidth }}>
+          <div className="relative h-full min-h-0 w-full">
             <TocResizeHandle
               edge="left"
               handleProps={resizeHandleProps}

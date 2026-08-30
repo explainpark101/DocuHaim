@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AnimatePresence, motion as Motion } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion as Motion } from "motion/react";
 import {
   CheckCheck,
   ChevronDown,
@@ -63,8 +63,10 @@ import {
 } from "@/utils/quiz/quizScoring";
 import {
   checkQuizLlmReady,
+  checkQuizVisionLlmReady,
   generateQuestionsFromSources,
   generateFixedQuizQuestion,
+  generateQuestionFromImage,
   generateSimilarChoiceQuestion,
   generateDerivedQuestion,
   generateWrongChoiceExplanation,
@@ -100,6 +102,7 @@ import { useFileSession } from "@/App/hooks/useFileSession";
 import { useVault } from "@/App/hooks/useVault";
 import { useChromeOwned } from "@/App/providers/AppChromeStateProvider";
 import { useQuizGenerationQueue } from "@/hooks/useQuizGenerationQueue";
+import { useQuizLayoutAnimReady } from "@/hooks/useQuizLayoutAnimReady";
 import { useQuizStopwatch } from "@/hooks/useQuizStopwatch";
 import {
   useQuizQuestionTimeLog,
@@ -123,6 +126,8 @@ import { resolveWrongQuizExtractPath } from "@/utils/quiz/quizWrongExtractPath";
 import {
   appendRegeneratedChoiceAnalysis,
   appendFollowUpChoiceAnalysis,
+  applyChoiceAnalysesToFlat,
+  choiceAnalysesFromFlat,
   ensureChoiceAnalysisFollowUpHeader,
   flatWrongChoiceExplanations,
   mergeStreamingRegeneratedChoiceAnalysis,
@@ -145,6 +150,11 @@ import {
   hasQuizInProgressSession,
   hasQuizSessionAnswer,
 } from "@/utils/quiz/quizSessionBuild";
+import {
+  parseStreamingQuestionSections,
+  parseStreamingSubjectiveGrade,
+} from "@/utils/quiz/quizStreamingJson";
+import { QUIZ_LAYOUT_TRANSITION } from "@/utils/quiz/quizDockMotion";
 import { loadVaultDocumentPreview } from "@/utils/vault/loadVaultDocumentPreview";
 import {
   resolveVaultFileNode,
@@ -264,6 +274,13 @@ export default function QuizPane({
     },
     [llmProviderProfiles, openLlmAssistForSetup, quizLlm.llmOpts],
   );
+
+  const ensureQuizVisionLlmReady = useCallback(async (): Promise<boolean> => {
+    const result = await checkQuizVisionLlmReady(llmProviderProfiles, quizLlm.llmOpts);
+    if (result.ready) return true;
+    openLlmAssistForSetup(result.message);
+    return false;
+  }, [llmProviderProfiles, openLlmAssistForSetup, quizLlm.llmOpts]);
 
   const reportQuizError = useCallback(
     (title: string, err: unknown, fallback: string) => {
@@ -470,6 +487,11 @@ export default function QuizPane({
   const [freshQuestionIds, setFreshQuestionIds] = useState<
     Record<string, true>
   >({});
+  const [subjectiveGradeStreams, setSubjectiveGradeStreams] = useState<
+    Record<string, string>
+  >({});
+  const [fixAiStream, setFixAiStream] = useState("");
+  const [imageGenStream, setImageGenStream] = useState("");
   const questionListRef = useRef<QuizQuestionListHandle | null>(null);
   const pendingScrollQuestionIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -784,6 +806,54 @@ export default function QuizPane({
     [buildSessionFromState, persistDocument],
   );
 
+  const commitEditedQuestion = useCallback(
+    (q: QuizQuestion, choiceAnalyses?: Record<string, string>) => {
+      if (!editQ) return;
+      const nextWrongExps =
+        choiceAnalyses !== undefined && q.kind === 'choice'
+          ? applyChoiceAnalysesToFlat(wrongExpsRef.current, editQ.id, choiceAnalyses)
+          : wrongExpsRef.current;
+      if (nextWrongExps !== wrongExpsRef.current) {
+        wrongExpsRef.current = nextWrongExps;
+        setWrongExps(nextWrongExps);
+      }
+      const nextDoc: QuizDocument = {
+        ...docRef.current,
+        questions: docRef.current.questions.map((x) =>
+          x.id === editQ.id ? q : x,
+        ),
+      };
+      const synced: QuizDocument = {
+        ...nextDoc,
+        config: syncQuizFileChoiceCount(nextDoc.config, nextDoc.questions),
+      };
+      docRef.current = synced;
+      setDoc(synced);
+      const session = buildQuizSessionForPersist({
+        questions: synced.questions,
+        userAnswers,
+        gradedQuestions: graded,
+        subjectiveGrades: subjGrades,
+        isSubmitted,
+        ...(isQuizTimeLogEmpty(timeLog) ? {} : { timeLog }),
+        wrongChoiceExplanations: nestWrongChoiceExplanations(nextWrongExps),
+        ...(isQuestionMemosEmpty(questionMemos) ? {} : { questionMemos }),
+      });
+      persistDocument(synced, session);
+      setEditQ(null);
+    },
+    [
+      editQ,
+      userAnswers,
+      graded,
+      subjGrades,
+      isSubmitted,
+      timeLog,
+      questionMemos,
+      persistDocument,
+    ],
+  );
+
   const handleShuffleChoiceOptions = useCallback(() => {
     const current = docRef.current;
     const result = shuffleQuizChoiceOptions({
@@ -940,6 +1010,11 @@ export default function QuizPane({
   useEffect(() => {
     return () => setQuizSourceDropHost(null);
   }, [setQuizSourceDropHost]);
+
+  useEffect(() => {
+    if (isActiveFile) return;
+    setQuizSourceDropHost(null);
+  }, [isActiveFile, setQuizSourceDropHost]);
 
   const findVaultNode = useCallback(
     (itemStorageType: string, path: string) => {
@@ -1213,12 +1288,20 @@ export default function QuizPane({
       abortRef.current?.abort();
       const ac = new AbortController();
       abortRef.current = ac;
+      setSubjectiveGradeStreams((prev) => ({ ...prev, [q.id]: "" }));
       try {
         const result = await gradeSubjectiveAnswer({
           profiles,
           question: q,
           userAnswer: ans,
           signal: ac.signal,
+          onChunk: (accumulated) => {
+            const preview = parseStreamingSubjectiveGrade(accumulated);
+            setSubjectiveGradeStreams((prev) => ({
+              ...prev,
+              [q.id]: preview.feedback,
+            }));
+          },
         });
         setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
         setGraded((prev) => ({ ...prev, [q.id]: true }));
@@ -1231,6 +1314,10 @@ export default function QuizPane({
         reportQuizError("채점 실패", err, "채점 실패");
       } finally {
         setBusyId(null);
+        setSubjectiveGradeStreams((prev) => {
+          const { [q.id]: _removed, ...rest } = prev;
+          return rest;
+        });
       }
     },
     [
@@ -1344,17 +1431,32 @@ export default function QuizPane({
       for (const q of subjectivePending) {
         const ans = String(userAnswers[q.id] || "").trim();
         if (!ans) continue;
+        setBusyId(q.id);
+        setSubjectiveGradeStreams((prev) => ({ ...prev, [q.id]: "" }));
         try {
           const result = await gradeSubjectiveAnswer({
             profiles,
             question: q,
             userAnswer: ans,
+            onChunk: (accumulated) => {
+              const preview = parseStreamingSubjectiveGrade(accumulated);
+              setSubjectiveGradeStreams((prev) => ({
+                ...prev,
+                [q.id]: preview.feedback,
+              }));
+            },
           });
           setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
           setGraded((prev) => ({ ...prev, [q.id]: true }));
           setExpVisible((prev) => ({ ...prev, [q.id]: true }));
         } catch {
           // continue others
+        } finally {
+          setBusyId(null);
+          setSubjectiveGradeStreams((prev) => {
+            const { [q.id]: _removed, ...rest } = prev;
+            return rest;
+          });
         }
       }
     }
@@ -1468,6 +1570,7 @@ export default function QuizPane({
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
+    setExpVisible((prev) => ({ ...prev, [q.id]: true }));
     try {
       const sources = resolveEffectiveSourcePaths(doc.config, q);
       const result = await generateQuestionSections({
@@ -1479,6 +1582,23 @@ export default function QuizPane({
         readText,
         ...llmOpts,
         signal: ac.signal,
+        onChunk: (accumulated) => {
+          const partial = parseStreamingQuestionSections(accumulated);
+          if (!partial.point && !partial.explanation) return;
+          setDoc((prev) => ({
+            ...prev,
+            questions: prev.questions.map((item) => {
+              if (item.id !== q.id) return item;
+              return {
+                ...item,
+                ...(missingPoint && partial.point ? { point: partial.point } : {}),
+                ...(missingExplanation && partial.explanation
+                  ? { explanation: partial.explanation }
+                  : {}),
+              };
+            }),
+          }));
+        },
       });
       if (!result.point && !result.explanation) {
         showToast({
@@ -1767,6 +1887,7 @@ export default function QuizPane({
         readText,
         signal: ac.signal,
         onStep: (update) => handleGenerationStep(jobId, logKey, update),
+        onChunk: (update) => handleGenerationStep(jobId, logKey, update),
       });
       if (!generated.length) {
         throw new Error("생성된 문항이 없습니다.");
@@ -1856,6 +1977,7 @@ export default function QuizPane({
       abortRef.current?.abort();
       const ac = new AbortController();
       abortRef.current = ac;
+      setFixAiStream("");
       const draft = formToQuizQuestion(form, editQ.displayLabel);
       draft.id = editQ.id;
       draft.displayLabel = editQ.displayLabel;
@@ -1871,6 +1993,9 @@ export default function QuizPane({
           sourcePaths: sources,
           readText,
           signal: ac.signal,
+          onChunk: (accumulated) => {
+            setFixAiStream(accumulated);
+          },
         });
         const choiceCount = resolveQuestionChoiceCount(
           draft,
@@ -1903,6 +2028,8 @@ export default function QuizPane({
         if (ac.signal.aborted) return null;
         reportQuizError("문제 고치기 실패", err, "문제 고치기 실패");
         return null;
+      } finally {
+        setFixAiStream("");
       }
     },
     [
@@ -1911,6 +2038,76 @@ export default function QuizPane({
       ensureQuizLlmReady,
       profiles,
       readText,
+      reportQuizError,
+      showToast,
+    ],
+  );
+
+  const handleGenerateFromImage = useCallback(
+    async ({
+      image,
+      instructions,
+      form,
+      choiceCount,
+    }: {
+      image: { mimeType: string; dataBase64: string };
+      instructions: string;
+      form: QuizAddQuestionForm;
+      choiceCount: number;
+    }): Promise<QuizAddQuestionForm | null> => {
+      if (editQ) return null;
+      if (!(await ensureQuizVisionLlmReady())) return null;
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      setImageGenStream("");
+      try {
+        const generated = await generateQuestionFromImage({
+          profiles,
+          image,
+          kind: form.kind,
+          ...(form.kind === "subjective"
+            ? { answerStyle: form.answerStyle === "essay" ? "essay" : "short" }
+            : {}),
+          choiceCount,
+          userInstructions: instructions,
+          signal: ac.signal,
+          onChunk: (accumulated) => {
+            setImageGenStream(accumulated);
+          },
+        });
+        const next: QuizAddQuestionForm = {
+          kind: generated.kind,
+          question: generated.question,
+          point: generated.point || "",
+          explanation: generated.explanation || "",
+          ...(form.displayLabel ? { displayLabel: form.displayLabel } : {}),
+          ...(form.sourcePaths?.length ? { sourcePaths: form.sourcePaths } : {}),
+        };
+        if (generated.kind === "subjective") {
+          next.answerStyle = generated.answerStyle === "essay" ? "essay" : "short";
+          next.modelAnswer = generated.modelAnswer || "";
+        } else {
+          next.options = generated.options || [];
+          next.answer = generated.answer && generated.answer >= 1 ? generated.answer : 1;
+        }
+        showToast({
+          message: "이미지에서 문항을 생성했습니다. 내용을 확인한 뒤 추가하세요.",
+          durationMs: 3200,
+        });
+        return next;
+      } catch (err) {
+        if (ac.signal.aborted) return null;
+        reportQuizError("이미지 문항 생성 실패", err, "이미지 문항 생성 실패");
+        return null;
+      } finally {
+        setImageGenStream("");
+      }
+    },
+    [
+      editQ,
+      ensureQuizVisionLlmReady,
+      profiles,
       reportQuizError,
       showToast,
     ],
@@ -1978,6 +2175,14 @@ export default function QuizPane({
   }, []);
 
   const closeTocDock = useCallback(() => setTocOpen(false), []);
+  const layoutAnimReady = useQuizLayoutAnimReady();
+  const anyDockOpen =
+    sourcesDockOpen ||
+    tocOpen ||
+    previewSourcePath != null ||
+    derivedSourceQ != null ||
+    choiceAnalysisDock != null;
+  const layoutEnabled = layoutAnimReady && anyDockOpen;
 
   const handleTocNavigate = useCallback(
     (questionId: string) => {
@@ -2000,9 +2205,10 @@ export default function QuizPane({
 
   if (!isActiveFile) {
     return (
-      <div className="quiz-pane flex flex-1 items-center justify-center text-sm text-gray-400">
-        탭을 선택하면 퀴즈가 열립니다
-      </div>
+      <div
+        className="quiz-pane hidden min-h-0 flex-1"
+        aria-hidden
+      />
     );
   }
 
@@ -2211,13 +2417,22 @@ export default function QuizPane({
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <div className="relative min-h-0 min-w-0 flex-1">
-              <div
-                ref={quizScrollRef}
-                className="h-full min-h-0 overflow-y-auto px-4 py-4"
+          <LayoutGroup id="quiz-pane-layout">
+            <Motion.div
+              layout={layoutEnabled}
+              transition={QUIZ_LAYOUT_TRANSITION}
+              className="flex min-h-0 min-w-0 flex-1 overflow-hidden"
+            >
+              <Motion.div
+                layout={layoutEnabled}
+                transition={QUIZ_LAYOUT_TRANSITION}
+                className="relative min-h-0 min-w-0 flex-1"
               >
-                <div className="mx-auto max-w-3xl space-y-4">
+                <div
+                  ref={quizScrollRef}
+                  className="h-full min-h-0 overflow-y-auto px-4 py-4"
+                >
+                  <div className="mx-auto max-w-3xl space-y-4">
                   <QuizLlmSessionBar
                     profiles={profiles}
                     profileId={quizLlm.profileId}
@@ -2307,7 +2522,6 @@ export default function QuizPane({
                     </div>
                     <QuizTimeLogPanel log={timeLog} />
                   </div>
-                  
 
                   {doc.questions.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-odp-borderSoft dark:bg-odp-surface">
@@ -2349,6 +2563,7 @@ export default function QuizPane({
                       questionMemos={questionMemos}
                       freshQuestionIds={freshQuestionIds}
                       busyId={busyId}
+                      subjectiveGradeStreams={subjectiveGradeStreams}
                       examInProgress={examInProgress}
                       resolveWrongExpFocusOption={resolveWrongExpFocusOption}
                       onAnswerCommit={handleAnswerCommit}
@@ -2367,9 +2582,9 @@ export default function QuizPane({
                       onClearFresh={handleClearFreshQuestion}
                     />
                   ) : null}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </Motion.div>
 
             <QuizDerivedQuestionDock
               open={derivedSourceQ != null}
@@ -2449,7 +2664,8 @@ export default function QuizPane({
               onClose={closeTocDock}
               onNavigate={handleTocNavigate}
             />
-          </div>
+            </Motion.div>
+          </LayoutGroup>
 
           {addOpen ? (
             <QuizAddQuestionModal
@@ -2460,24 +2676,33 @@ export default function QuizPane({
               }}
               styleTemplate={addQuestionStyleTemplate}
               initial={editQ}
+              initialChoiceAnalyses={
+                editQ
+                  ? choiceAnalysesFromFlat(
+                      wrongExpsByQuestion[editQ.id] ?? {},
+                      editQ.id,
+                    )
+                  : {}
+              }
               nextLabel={nextDisplayLabel(doc.questions)}
-              onSubmit={(q) => {
+              onSubmit={(q, choiceAnalyses) => {
                 if (editQ) {
-                  commitDoc({
-                    ...doc,
-                    questions: doc.questions.map((x) =>
-                      x.id === editQ.id ? q : x,
-                    ),
-                  });
-                } else {
-                  commitDoc({ ...doc, questions: [...doc.questions, q] });
+                  commitEditedQuestion(q, choiceAnalyses);
+                  return;
                 }
-                setEditQ(null);
+                commitDoc({ ...doc, questions: [...doc.questions, q] });
               }}
               onOpenSourcePicker={(paths, onDone) =>
                 setSourcePicker({ paths, scope: "question", onDone })
               }
               {...(editQ ? { onFixWithAi: handleFixWithAi } : {})}
+              fixStreamText={fixAiStream}
+              {...(!editQ
+                ? {
+                    onGenerateFromImage: handleGenerateFromImage,
+                    imageGenStreamText: imageGenStream,
+                  }
+                : {})}
             />
           ) : null}
 

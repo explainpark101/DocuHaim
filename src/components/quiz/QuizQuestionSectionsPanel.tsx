@@ -1,4 +1,5 @@
 import Button from '@/components/Button';
+import QuizMarkdownCopyButton from '@/components/quiz/QuizMarkdownCopyButton';
 import QuizMdPreview from '@/components/quiz/QuizMdPreview';
 import {
   isWeakSimilarQuestionExplanation,
@@ -95,7 +96,12 @@ export default function QuizQuestionSectionsPanel({
     <div className="mt-2 flex flex-col space-y-2 rounded-xl bg-slate-50 p-3 text-xs dark:bg-odp-bgSoft">
       <div className="font-bold text-slate-800 dark:text-odp-fgStrong">접근 Point · 해설</div>
       <div>
-        <div className="mb-1 font-bold text-amber-800">접근 Point!</div>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <div className="font-bold text-amber-800">접근 Point!</div>
+          {!missingPoint ? (
+            <QuizMarkdownCopyButton text={question.point} label="접근 Point" />
+          ) : null}
+        </div>
         {missingPoint ? (
           <p className="text-[11px] italic text-slate-500 dark:text-odp-muted">
             아직 생성되지 않았습니다.
@@ -105,7 +111,12 @@ export default function QuizQuestionSectionsPanel({
         )}
       </div>
       <div>
-        <div className="mb-1 font-bold text-slate-800 dark:text-odp-fgStrong">해설</div>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <div className="font-bold text-slate-800 dark:text-odp-fgStrong">해설</div>
+          {!missingExplanation ? (
+            <QuizMarkdownCopyButton text={question.explanation} label="해설" />
+          ) : null}
+        </div>
         {missingExplanation ? (
           <p className="text-[11px] italic text-slate-500 dark:text-odp-muted">
             아직 생성되지 않았습니다.
@@ -116,7 +127,10 @@ export default function QuizQuestionSectionsPanel({
       </div>
       {question.kind === 'subjective' && question.modelAnswer ? (
         <div>
-          <div className="mb-1 font-bold">모범 답안</div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <div className="font-bold">모범 답안</div>
+            <QuizMarkdownCopyButton text={question.modelAnswer} label="모범 답안" />
+          </div>
           <QuizMdPreview text={question.modelAnswer} previewId={`qm-${question.id}`} />
         </div>
       ) : null}
