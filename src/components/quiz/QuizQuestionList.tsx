@@ -3,10 +3,8 @@ import {
   useCallback,
   useImperativeHandle,
   useMemo,
-  useRef,
   type RefObject,
 } from 'react';
-import { Virtualizer, type VirtualizerHandle } from 'virtua';
 import QuizQuestionCard from '@/components/quiz/QuizQuestionCard';
 import type { QuizChoiceAnalysisDockMode } from '@/components/quiz/QuizChoiceAnalysisDock';
 import type { QuizQuestionSectionsTarget } from '@/components/quiz/QuizQuestionSectionsPanel';
@@ -14,11 +12,11 @@ import type { QuizQuestion, SubjectiveGradeResult } from '@/utils/quiz/quizTypes
 
 export type QuizQuestionFilterMode = 'all' | 'wrong' | 'unanswered';
 
-export type QuizQuestionVirtualListHandle = {
+export type QuizQuestionListHandle = {
   scrollToQuestionId: (questionId: string) => boolean;
 };
 
-export type QuizQuestionVirtualListProps = {
+export type QuizQuestionListProps = {
   questions: QuizQuestion[];
   filter: QuizQuestionFilterMode;
   scrollRef: RefObject<HTMLElement | null>;
@@ -59,6 +57,8 @@ export type QuizQuestionVirtualListProps = {
   onClearFresh: (questionId: string) => void;
 };
 
+const QUESTION_SCROLL_TOP_INSET_PX = 12;
+
 function isQuestionVisible(
   question: QuizQuestion,
   filter: QuizQuestionFilterMode,
@@ -85,88 +85,113 @@ function isQuestionVisible(
   return isQuestionGraded && isWrong;
 }
 
-const QuizQuestionVirtualList = forwardRef<
-  QuizQuestionVirtualListHandle,
-  QuizQuestionVirtualListProps
->(function QuizQuestionVirtualList(
-  {
-    questions,
-    filter,
-    scrollRef,
-    userAnswers,
-    graded,
-    subjGrades,
-    isSubmitted,
-    expVisible,
-    wrongExpsByQuestion,
-    questionMemos,
-    freshQuestionIds,
-    busyId,
-    examInProgress,
-    resolveWrongExpFocusOption,
-    onAnswerCommit,
-    onSelectOption,
-    onEditQuestion,
-    onGradeChoice,
-    onGradeSubjective,
-    onRetry,
-    onToggleExplanation,
-    onSimilar,
-    onDerived,
-    onGenerateSections,
-    onWrongExpFocusChange,
-    onOpenAnalysisDock,
-    onMemoSave,
-    onClearFresh,
-  },
-  ref,
-) {
-  const listRef = useRef<VirtualizerHandle | null>(null);
+function scrollQuestionCardIntoView(
+  scrollRoot: HTMLElement | null,
+  questionId: string,
+  behavior: ScrollBehavior,
+): boolean {
+  const card = document.getElementById(`q-card-${questionId}`);
+  if (!card) return false;
 
-  const visibleQuestions = useMemo(
-    () =>
-      questions.filter((question) =>
-        isQuestionVisible(
-          question,
-          filter,
-          userAnswers,
-          graded,
-          subjGrades,
-          isSubmitted,
-        ),
-      ),
-    [filter, graded, isSubmitted, questions, subjGrades, userAnswers],
-  );
-
-  const visibleQuestionsRef = useRef(visibleQuestions);
-  visibleQuestionsRef.current = visibleQuestions;
-
-  const scrollToQuestionId = useCallback((questionId: string) => {
-    const idx = visibleQuestionsRef.current.findIndex((q) => q.id === questionId);
-    if (idx < 0) return false;
-    listRef.current?.scrollToIndex(idx, { align: 'center', smooth: true });
+  if (!scrollRoot) {
+    card.scrollIntoView({ behavior, block: 'start' });
     return true;
-  }, []);
+  }
 
-  useImperativeHandle(ref, () => ({ scrollToQuestionId }), [scrollToQuestionId]);
+  const rootRect = scrollRoot.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  const targetTop =
+    scrollRoot.scrollTop +
+    (cardRect.top - rootRect.top) -
+    QUESTION_SCROLL_TOP_INSET_PX;
 
-  if (visibleQuestions.length === 0) return null;
+  scrollRoot.scrollTo({
+    top: Math.max(0, targetTop),
+    behavior,
+  });
+  return true;
+}
 
-  return (
-    <Virtualizer
-      ref={listRef}
-      scrollRef={scrollRef}
-      data={visibleQuestions}
-      bufferSize={480}
-      itemSize={320}
-    >
-      {(question) => {
-        const selected = userAnswers[question.id];
-        const isQuestionGraded = Boolean(isSubmitted || graded[question.id]);
+const QuizQuestionList = forwardRef<QuizQuestionListHandle, QuizQuestionListProps>(
+  function QuizQuestionList(
+    {
+      questions,
+      filter,
+      scrollRef,
+      userAnswers,
+      graded,
+      subjGrades,
+      isSubmitted,
+      expVisible,
+      wrongExpsByQuestion,
+      questionMemos,
+      freshQuestionIds,
+      busyId,
+      examInProgress,
+      resolveWrongExpFocusOption,
+      onAnswerCommit,
+      onSelectOption,
+      onEditQuestion,
+      onGradeChoice,
+      onGradeSubjective,
+      onRetry,
+      onToggleExplanation,
+      onSimilar,
+      onDerived,
+      onGenerateSections,
+      onWrongExpFocusChange,
+      onOpenAnalysisDock,
+      onMemoSave,
+      onClearFresh,
+    },
+    ref,
+  ) {
+    const visibleQuestions = useMemo(
+      () =>
+        questions.filter((question) =>
+          isQuestionVisible(
+            question,
+            filter,
+            userAnswers,
+            graded,
+            subjGrades,
+            isSubmitted,
+          ),
+        ),
+      [filter, graded, isSubmitted, questions, subjGrades, userAnswers],
+    );
 
-        return (
-          <div className="pb-4 pt-4 first:pt-4">
+    const scrollToQuestionId = useCallback(
+      (questionId: string) => {
+        const exists = visibleQuestions.some((q) => q.id === questionId);
+        if (!exists) return false;
+
+        const scrollRoot = scrollRef.current;
+        if (scrollQuestionCardIntoView(scrollRoot, questionId, 'smooth')) {
+          return true;
+        }
+
+        requestAnimationFrame(() => {
+          scrollQuestionCardIntoView(scrollRoot, questionId, 'smooth');
+        });
+        return true;
+      },
+      [scrollRef, visibleQuestions],
+    );
+
+    useImperativeHandle(ref, () => ({ scrollToQuestionId }), [scrollToQuestionId]);
+
+    if (visibleQuestions.length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        {visibleQuestions.map((question) => {
+          const selected = userAnswers[question.id];
+          const isQuestionGraded = Boolean(isSubmitted || graded[question.id]);
+
+          return (
             <QuizQuestionCard
+              key={question.id}
               question={question}
               userAnswer={userAnswers[question.id]}
               isSubmitted={isSubmitted}
@@ -197,11 +222,11 @@ const QuizQuestionVirtualList = forwardRef<
               onOpenAnalysisDock={onOpenAnalysisDock}
               onMemoSave={onMemoSave}
             />
-          </div>
-        );
-      }}
-    </Virtualizer>
-  );
-});
+          );
+        })}
+      </div>
+    );
+  },
+);
 
-export default QuizQuestionVirtualList;
+export default QuizQuestionList;

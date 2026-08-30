@@ -34,9 +34,9 @@ import QuizGenerationQueuePanel from "@/components/quiz/QuizGenerationQueuePanel
 import QuizStopwatchToolbar from "@/components/quiz/QuizStopwatchToolbar";
 import QuizTimeLogPanel from "@/components/quiz/QuizTimeLogPanel";
 import type { QuizQuestionSectionsTarget } from "@/components/quiz/QuizQuestionSectionsPanel";
-import QuizQuestionVirtualList, {
-  type QuizQuestionVirtualListHandle,
-} from "@/components/quiz/QuizQuestionVirtualList";
+import QuizQuestionList, {
+  type QuizQuestionListHandle,
+} from "@/components/quiz/QuizQuestionList";
 import QuizSourcesTopicGeneratePanel from "@/components/quiz/QuizSourcesTopicGeneratePanel";
 import QuizChoiceAnalysisDock, {
   type QuizChoiceAnalysisDockMode,
@@ -580,7 +580,7 @@ export default function QuizPane({
   const [freshQuestionIds, setFreshQuestionIds] = useState<
     Record<string, true>
   >({});
-  const questionListRef = useRef<QuizQuestionVirtualListHandle | null>(null);
+  const questionListRef = useRef<QuizQuestionListHandle | null>(null);
   const pendingScrollQuestionIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const quizScrollRef = useRef<HTMLDivElement>(null);
@@ -2392,7 +2392,7 @@ export default function QuizPane({
                   ) : null}
 
                   {doc.questions.length > 0 ? (
-                    <QuizQuestionVirtualList
+                    <QuizQuestionList
                       ref={questionListRef}
                       questions={doc.questions}
                       filter={filter}
