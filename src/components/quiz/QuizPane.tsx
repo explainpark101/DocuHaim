@@ -24,7 +24,9 @@ import Button from "@/components/Button";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { QuizImageHydrationProvider } from "@/components/quiz/QuizImageHydrationContext";
 import QuizDerivedQuestionDock from "@/components/quiz/QuizDerivedQuestionDock";
-import QuizAddQuestionModal from "@/components/quiz/QuizAddQuestionModal";
+import QuizAddQuestionModal, {
+  type QuizImageGenerateResult,
+} from "@/components/quiz/QuizAddQuestionModal";
 import QuizBulkImportModal from "@/components/quiz/QuizBulkImportModal";
 import QuizSourcePickerModal from "@/components/quiz/QuizSourcePickerModal";
 import QuizGenerationQueuePanel from "@/components/quiz/QuizGenerationQueuePanel";
@@ -66,7 +68,8 @@ import {
   checkQuizVisionLlmReady,
   generateQuestionsFromSources,
   generateFixedQuizQuestion,
-  generateQuestionFromImage,
+  generateQuestionsFromImage,
+  generateQuizMarkdownFromImages,
   generateSimilarChoiceQuestion,
   generateDerivedQuestion,
   generateWrongChoiceExplanation,
@@ -492,6 +495,7 @@ export default function QuizPane({
   >({});
   const [fixAiStream, setFixAiStream] = useState("");
   const [imageGenStream, setImageGenStream] = useState("");
+  const [bulkImportImageStream, setBulkImportImageStream] = useState("");
   const questionListRef = useRef<QuizQuestionListHandle | null>(null);
   const pendingScrollQuestionIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -2046,15 +2050,19 @@ export default function QuizPane({
   const handleGenerateFromImage = useCallback(
     async ({
       image,
+      answerKeyText,
+      answerKeyImage,
       instructions,
       form,
       choiceCount,
     }: {
       image: { mimeType: string; dataBase64: string };
+      answerKeyText?: string;
+      answerKeyImage?: { mimeType: string; dataBase64: string };
       instructions: string;
       form: QuizAddQuestionForm;
       choiceCount: number;
-    }): Promise<QuizAddQuestionForm | null> => {
+    }): Promise<QuizImageGenerateResult | null> => {
       if (editQ) return null;
       if (!(await ensureQuizVisionLlmReady())) return null;
       abortRef.current?.abort();
@@ -2062,7 +2070,7 @@ export default function QuizPane({
       abortRef.current = ac;
       setImageGenStream("");
       try {
-        const generated = await generateQuestionFromImage({
+        const generatedList = await generateQuestionsFromImage({
           profiles,
           image,
           kind: form.kind,
@@ -2071,31 +2079,68 @@ export default function QuizPane({
             : {}),
           choiceCount,
           userInstructions: instructions,
+          ...(answerKeyText?.trim() ? { answerKeyText: answerKeyText.trim() } : {}),
+          ...(answerKeyImage ? { answerKeyImage } : {}),
           signal: ac.signal,
           onChunk: (accumulated) => {
             setImageGenStream(accumulated);
           },
         });
-        const next: QuizAddQuestionForm = {
-          kind: generated.kind,
-          question: generated.question,
-          point: generated.point || "",
-          explanation: generated.explanation || "",
-          ...(form.displayLabel ? { displayLabel: form.displayLabel } : {}),
-          ...(form.sourcePaths?.length ? { sourcePaths: form.sourcePaths } : {}),
+
+        const toForm = (
+          generated: Omit<QuizAddQuestionForm, "displayLabel">,
+        ): QuizAddQuestionForm => {
+          const next: QuizAddQuestionForm = {
+            kind: generated.kind,
+            question: generated.question,
+            point: generated.point || "",
+            explanation: generated.explanation || "",
+            ...(form.sourcePaths?.length ? { sourcePaths: form.sourcePaths } : {}),
+          };
+          if (generated.kind === "subjective") {
+            next.answerStyle =
+              generated.answerStyle === "essay" ? "essay" : "short";
+            next.modelAnswer = generated.modelAnswer || "";
+          } else {
+            next.options = generated.options || [];
+            next.answer =
+              generated.answer && generated.answer >= 1 ? generated.answer : 1;
+          }
+          return next;
         };
-        if (generated.kind === "subjective") {
-          next.answerStyle = generated.answerStyle === "essay" ? "essay" : "short";
-          next.modelAnswer = generated.modelAnswer || "";
-        } else {
-          next.options = generated.options || [];
-          next.answer = generated.answer && generated.answer >= 1 ? generated.answer : 1;
+
+        if (generatedList.length > 1) {
+          let labelNum =
+            Number.parseInt(nextDisplayLabel(doc.questions), 10) || 1;
+          const newQuestions: QuizQuestion[] = generatedList.map((generated) => {
+            const label = String(labelNum);
+            labelNum += 1;
+            return formToQuizQuestion(
+              { ...toForm(generated), displayLabel: label },
+              label,
+            );
+          });
+          commitDoc({
+            ...doc,
+            questions: [...doc.questions, ...newQuestions],
+          });
+          setAddOpen(false);
+          showToast({
+            message: `이미지에서 문항 ${newQuestions.length}개를 추가했습니다.`,
+            durationMs: 3200,
+          });
+          return { mode: "bulk", count: newQuestions.length };
         }
+
+        const generated = generatedList[0];
+        if (!generated) return null;
+        const next = toForm(generated);
+        next.displayLabel = form.displayLabel || nextDisplayLabel(doc.questions);
         showToast({
           message: "이미지에서 문항을 생성했습니다. 내용을 확인한 뒤 추가하세요.",
           durationMs: 3200,
         });
-        return next;
+        return { mode: "form", form: next };
       } catch (err) {
         if (ac.signal.aborted) return null;
         reportQuizError("이미지 문항 생성 실패", err, "이미지 문항 생성 실패");
@@ -2105,12 +2150,65 @@ export default function QuizPane({
       }
     },
     [
+      commitDoc,
+      doc,
       editQ,
       ensureQuizVisionLlmReady,
       profiles,
       reportQuizError,
       showToast,
     ],
+  );
+
+  const handleConvertImagesToMarkdown = useCallback(
+    async ({
+      images,
+      instructions,
+      choiceCount,
+    }: {
+      images: { mimeType: string; dataBase64: string }[];
+      instructions: string;
+      choiceCount: number;
+    }): Promise<string | null> => {
+      if (!images.length) return null;
+      if (!(await ensureQuizVisionLlmReady())) return null;
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      setBulkImportImageStream("");
+      try {
+        const markdown = await generateQuizMarkdownFromImages({
+          profiles,
+          images,
+          choiceCount,
+          userInstructions: instructions,
+          signal: ac.signal,
+          onChunk: (accumulated) => {
+            setBulkImportImageStream(accumulated);
+          },
+        });
+        const parsed = parseQuizDocument(markdown);
+        if (!parsed.questions.length) {
+          throw new Error("변환된 마크다운에서 문항을 인식하지 못했습니다.");
+        }
+        showToast({
+          message: `이미지에서 문항 ${parsed.questions.length}개를 마크다운으로 변환했습니다.`,
+          durationMs: 3200,
+        });
+        return markdown;
+      } catch (err) {
+        if (ac.signal.aborted) return null;
+        reportQuizError(
+          "이미지 마크다운 변환 실패",
+          err,
+          "이미지 마크다운 변환 실패",
+        );
+        return null;
+      } finally {
+        setBulkImportImageStream("");
+      }
+    },
+    [ensureQuizVisionLlmReady, profiles, reportQuizError, showToast],
   );
 
   const imageHydrationValue = useMemo(
@@ -2711,6 +2809,7 @@ export default function QuizPane({
               isOpen={bulkOpen}
               onClose={() => setBulkOpen(false)}
               current={doc}
+              choiceCount={doc.config.choiceCount}
               onApply={(next, mode) => {
                 commitDoc(next);
                 if (mode === "replace") resetSession();
@@ -2719,6 +2818,8 @@ export default function QuizPane({
                   durationMs: 2500,
                 });
               }}
+              onConvertImagesToMarkdown={handleConvertImagesToMarkdown}
+              imageConvertStreamText={bulkImportImageStream}
             />
           ) : null}
 

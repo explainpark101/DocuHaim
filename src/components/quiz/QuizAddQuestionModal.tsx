@@ -37,6 +37,10 @@ export type QuizImageAttachment = {
   previewDataUrl: string;
 };
 
+export type QuizImageGenerateResult =
+  | { mode: 'form'; form: QuizAddQuestionForm }
+  | { mode: 'bulk'; count: number };
+
 type QuizAddQuestionModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -57,11 +61,13 @@ type QuizAddQuestionModalProps = {
   onGenerateFromImage?: (
     params: {
       image: { mimeType: string; dataBase64: string };
+      answerKeyText?: string;
+      answerKeyImage?: { mimeType: string; dataBase64: string };
       instructions: string;
       form: QuizAddQuestionForm;
       choiceCount: number;
     },
-  ) => Promise<QuizAddQuestionForm | null>;
+  ) => Promise<QuizImageGenerateResult | null>;
   imageGenStreamText?: string;
 };
 
@@ -153,9 +159,13 @@ export default function QuizAddQuestionModal({
   const [fixInstructions, setFixInstructions] = useState('');
   const [fixBusy, setFixBusy] = useState(false);
   const [imageAttachment, setImageAttachment] = useState<QuizImageAttachment | null>(null);
+  const [answerKeyImage, setAnswerKeyImage] = useState<QuizImageAttachment | null>(null);
+  const [answerKeyText, setAnswerKeyText] = useState('');
   const [imageInstructions, setImageInstructions] = useState('');
   const [imageBusy, setImageBusy] = useState(false);
   const [addingImage, setAddingImage] = useState(false);
+  const [addingAnswerKeyImage, setAddingAnswerKeyImage] = useState(false);
+  const answerKeyFileInputRef = useRef<HTMLInputElement>(null);
   const [imagePanelOpen, setImagePanelOpen] = useState(false);
   const [choiceAnalyses, setChoiceAnalyses] = useState<Record<string, string>>({});
 
@@ -180,9 +190,12 @@ export default function QuizAddQuestionModal({
       setFixInstructions('');
       setFixBusy(false);
       setImageAttachment(null);
+      setAnswerKeyImage(null);
+      setAnswerKeyText('');
       setImageInstructions('');
       setImageBusy(false);
       setAddingImage(false);
+      setAddingAnswerKeyImage(false);
       setImagePanelOpen(false);
       setError('');
       return;
@@ -218,13 +231,34 @@ export default function QuizAddQuestionModal({
     setFixPanelOpen(false);
     setFixInstructions('');
     setImageAttachment(null);
+    setAnswerKeyImage(null);
+    setAnswerKeyText('');
     setImageInstructions('');
     setImagePanelOpen(false);
     setChoiceAnalyses({});
     setError('');
   }, [isOpen, initial, initialChoiceAnalyses, styleTemplate]);
 
+  const applyAnswerKeyImageAttachment = useCallback(async (files: FileList | File[]) => {
+    const list = [...files].filter((f) => f.type.startsWith('image/'));
+    if (!list.length) {
+      setError('정답표 이미지 파일을 선택하세요.');
+      return;
+    }
+    setAddingAnswerKeyImage(true);
+    setError('');
+    try {
+      const [next] = await readImageFilesAsAttachments([list[0]!]);
+      if (next) setAnswerKeyImage(next);
+    } catch (err) {
+      setError((err instanceof Error ? err.message : '') || '정답표 이미지를 불러올 수 없습니다.');
+    } finally {
+      setAddingAnswerKeyImage(false);
+    }
+  }, []);
+
   const busy = fixBusy || imageBusy;
+  const imageAttachBusy = addingImage || addingAnswerKeyImage;
 
   const applyImageAttachment = useCallback(async (files: FileList | File[]) => {
     const list = [...files].filter((f) => f.type.startsWith('image/'));
@@ -264,13 +298,13 @@ export default function QuizAddQuestionModal({
 
   const handleModalPaste = useCallback(
     (event: ClipboardEvent) => {
-      if (editing || !imagePanelOpen || addingImage || imageBusy) return;
+      if (editing || !imagePanelOpen || imageAttachBusy || imageBusy) return;
       const files = extractImageFilesFromClipboard(event.clipboardData);
       if (!files.length) return;
       event.preventDefault();
       void applyImageAttachment(files);
     },
-    [addingImage, applyImageAttachment, editing, imageBusy, imagePanelOpen],
+    [applyImageAttachment, editing, imageAttachBusy, imageBusy, imagePanelOpen],
   );
 
   const form: QuizAddQuestionForm = useMemo(() => {
@@ -361,17 +395,30 @@ export default function QuizAddQuestionModal({
     setError('');
     setImageBusy(true);
     try {
-      const patched = await onGenerateFromImage({
+      const result = await onGenerateFromImage({
         image: {
           mimeType: imageAttachment.mimeType,
           dataBase64: imageAttachment.dataBase64,
         },
+        ...(answerKeyText.trim() ? { answerKeyText: answerKeyText.trim() } : {}),
+        ...(answerKeyImage
+          ? {
+              answerKeyImage: {
+                mimeType: answerKeyImage.mimeType,
+                dataBase64: answerKeyImage.dataBase64,
+              },
+            }
+          : {}),
         instructions: imageInstructions,
         form,
         choiceCount,
       });
-      if (!patched) return;
-      const next = applyFormPatch(patched, choiceCount);
+      if (!result) return;
+      if (result.mode === 'bulk') {
+        onClose();
+        return;
+      }
+      const next = applyFormPatch(result.form, choiceCount);
       setKind(next.kind);
       setAnswerStyle(next.answerStyle);
       setChoiceCount(next.choiceCount);
@@ -433,19 +480,21 @@ export default function QuizAddQuestionModal({
         {!editing && imagePanelOpen && onGenerateFromImage ? (
           <LlmAssistImageDropZone
             className="rounded-xl"
-            disabled={busy || addingImage}
+            disabled={busy || imageAttachBusy}
             onFilesDrop={(files) => void applyImageAttachment(files)}
           >
             <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50/80 p-3 dark:border-sky-900/60 dark:bg-sky-950/25">
               <p className="text-xs text-sky-900 dark:text-sky-100">
-                시험지·교재·도표 이미지를 첨부하면 AI가 내용을 분석해 아래 문항 폼을 채웁니다.
+                시험지·교재·도표 이미지를 첨부하면 AI가 내용을 분석해 문항을 채웁니다.
+                여러 문항이 있으면 한 번에 인식해 일괄 추가할 수 있습니다.
+                정답표를 텍스트로 붙여넣거나 사진으로 첨부하면 객관식 정답 번호를 자동 입력합니다.
                 Gemini, MLX-VLM, OpenAI 호환 비전, 또는 llama.cpp 멀티모달(VL) 모델이 필요합니다.
               </p>
               <div className="flex flex-wrap items-center gap-1">
                 <button
                   type="button"
                   onClick={() => void handlePasteImage()}
-                  disabled={busy || addingImage}
+                  disabled={busy || imageAttachBusy}
                   className="inline-flex items-center gap-1 rounded border border-sky-300 bg-white px-2 py-0.5 text-[11px] hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-800 dark:bg-odp-bgSoft dark:hover:bg-odp-bg"
                 >
                   {addingImage ? (
@@ -458,7 +507,7 @@ export default function QuizAddQuestionModal({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={busy || addingImage}
+                  disabled={busy || imageAttachBusy}
                   className="inline-flex items-center gap-1 rounded border border-sky-300 bg-white px-2 py-0.5 text-[11px] hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-800 dark:bg-odp-bgSoft dark:hover:bg-odp-bg"
                 >
                   {addingImage ? (
@@ -472,7 +521,7 @@ export default function QuizAddQuestionModal({
                   <button
                     type="button"
                     onClick={() => setImageAttachment(null)}
-                    disabled={busy || addingImage}
+                    disabled={busy || imageAttachBusy}
                     className="inline-flex items-center gap-1 rounded border border-sky-300 bg-white px-2 py-0.5 text-[11px] hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-800 dark:bg-odp-bgSoft dark:hover:bg-odp-bg"
                   >
                     <X size={12} aria-hidden />
@@ -509,9 +558,75 @@ export default function QuizAddQuestionModal({
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-sky-300 bg-white/70 px-3 py-6 text-center text-xs text-sky-800 dark:border-sky-800 dark:bg-odp-bgSoft/60 dark:text-sky-100">
-                  이미지를 끌어다 놓거나, 붙여넣기·파일 선택을 사용하세요.
+                  시험지 이미지를 끌어다 놓거나, 붙여넣기·파일 선택을 사용하세요.
                 </div>
               )}
+              {kind === 'choice' ? (
+                <div className="space-y-2 rounded-lg border border-sky-200/80 bg-white/70 p-2.5 dark:border-sky-800 dark:bg-odp-bgSoft/50">
+                  <p className="text-[11px] font-semibold text-sky-900 dark:text-sky-100">
+                    정답표 (선택)
+                  </p>
+                  <p className="text-[10px] text-sky-800 dark:text-sky-200">
+                    `1 3` · `1→③` · 탭 구분 표 형식을 붙여넣거나, 정답표 사진을 첨부하세요.
+                  </p>
+                  <textarea
+                    className="min-h-16 w-full rounded-lg border border-sky-200 bg-white p-2 font-mono text-[11px] dark:border-sky-800 dark:bg-odp-bgSoft"
+                    placeholder={'1\t3\n2\t1\n3\t4'}
+                    value={answerKeyText}
+                    onChange={(e) => setAnswerKeyText(e.target.value)}
+                    disabled={busy}
+                  />
+                  <div className="flex flex-wrap items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => answerKeyFileInputRef.current?.click()}
+                      disabled={busy || imageAttachBusy}
+                      className="inline-flex items-center gap-1 rounded border border-sky-300 bg-white px-2 py-0.5 text-[11px] hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-800 dark:bg-odp-bgSoft dark:hover:bg-odp-bg"
+                    >
+                      {addingAnswerKeyImage ? (
+                        <Loader2 size={12} className="animate-spin" aria-hidden />
+                      ) : (
+                        <ImagePlus size={12} aria-hidden />
+                      )}
+                      정답표 사진
+                    </button>
+                    {answerKeyImage ? (
+                      <button
+                        type="button"
+                        onClick={() => setAnswerKeyImage(null)}
+                        disabled={busy || imageAttachBusy}
+                        className="inline-flex items-center gap-1 rounded border border-sky-300 bg-white px-2 py-0.5 text-[11px] hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-800 dark:bg-odp-bgSoft dark:hover:bg-odp-bg"
+                      >
+                        <X size={12} aria-hidden />
+                        정답표 이미지 제거
+                      </button>
+                    ) : null}
+                  </div>
+                  <input
+                    ref={answerKeyFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files?.length) void applyAnswerKeyImageAttachment(files);
+                      e.target.value = '';
+                    }}
+                  />
+                  {answerKeyImage ? (
+                    <div className="relative overflow-hidden rounded-lg border border-sky-200 bg-white dark:border-sky-800 dark:bg-odp-bgSoft">
+                      <img
+                        src={answerKeyImage.previewDataUrl}
+                        alt=""
+                        className="max-h-32 w-full object-contain"
+                      />
+                      <div className="truncate px-2 py-1 text-[10px] text-gray-600 dark:text-odp-muted">
+                        {answerKeyImage.name}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <label className="block space-y-1">
                 <span className="text-xs font-semibold text-sky-900 dark:text-sky-100">
                   추가 지시 (선택)

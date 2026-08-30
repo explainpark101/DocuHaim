@@ -66,6 +66,12 @@ import { resolveQuestionChoiceCount, resizeChoiceOptions } from '@/utils/quiz/qu
 import { clampChoiceCount } from '@/utils/quiz/quizFileConfig';
 import { truncateForGenerationLog } from '@/utils/quiz/quizGenerationLog';
 import { normalizeGeneratedChoiceOption } from '@/utils/quiz/normalizeGeneratedChoiceOption';
+import {
+  applyAnswerKeyToForms,
+  parseAnswerKeyEntriesFromLlmJson,
+  parseAnswerKeyTableText,
+  type AnswerKeyEntry,
+} from '@/utils/quiz/quizAnswerKey';
 
 const SOURCE_SUMMARY_SYSTEM_PROMPT = `당신은 시험 출제용 근거 문서 요약가입니다.
 주어진 원문에서 출제에 필요한 개념·정의·공식·절차·사례만 주제별로 정리하세요.
@@ -1939,34 +1945,39 @@ export async function generateFixedQuizQuestion(params: {
   return parseGeneratedQuestion(obj, choiceCount, fallbackAnswer);
 }
 
-function buildImageQuestionSystemPrompt(
+function buildImageQuestionsSystemPrompt(
   kind: 'choice' | 'subjective',
   choiceCount: number,
   answerStyle: 'short' | 'essay',
 ): string {
   if (kind === 'subjective') {
-    return `당신은 시험 출제위원입니다. 첨부 이미지(시험지, 교재, 도표, 그림 등)를 분석해 학습·평가용 문항 1개를 만듭니다.
+    return `당신은 시험 출제위원입니다. 첨부 이미지(시험지, 교재, 도표, 그림 등)를 분석해 학습·평가용 문항을 만듭니다.
+- 이미지에 보이는 모든 문항을 빠짐없이 추출하세요. 문항이 1개면 배열 길이 1입니다.
 - 이미지에 보이는 내용만 사용하고, 보이지 않는 사실을 만들지 마세요.
 - OCR 텍스트·도표·그림의 의미를 정확히 반영하세요.
 - 질문·해설·Point는 마크다운을 사용할 수 있습니다.
-- 응답은 JSON 객체 하나만 반환하세요. 다른 텍스트·마크다운·코드펜스는 금지합니다.
+- 문항 번호가 보이면 각 객체에 questionNumber(정수)를 포함하세요.
+- 응답은 JSON 배열만 반환하세요. 다른 텍스트·마크다운·코드펜스는 금지합니다.
 스키마:
-{"kind":"subjective","answerStyle":"${answerStyle}","question":"...","modelAnswer":"...","point":"...","explanation":"..."}`;
+[{"questionNumber":1,"kind":"subjective","answerStyle":"${answerStyle}","question":"...","modelAnswer":"...","point":"...","explanation":"..."}]`;
   }
-  return `당신은 시험 출제위원입니다. 첨부 이미지(시험지, 교재, 도표, 그림 등)를 분석해 객관식 문항 1개를 만듭니다.
+  return `당신은 시험 출제위원입니다. 첨부 이미지(시험지, 교재, 도표, 그림 등)를 분석해 객관식 문항을 만듭니다.
+- 이미지에 보이는 모든 문항을 빠짐없이 추출하세요. 문항이 1개면 배열 길이 1입니다.
 - 이미지에 보이는 내용만 사용하고, 보이지 않는 사실을 만들지 마세요.
 - OCR 텍스트·도표·그림의 의미를 정확히 반영하세요.
 - 질문·해설·Point는 마크다운을 사용할 수 있습니다.
 - 선택지(options) 안에서는 인라인 수식($...$)만 사용하세요.
 - options 각 항목에는 보기 번호 접두사(1., 2., a., 가. 등)를 넣지 마세요.
-- 응답은 JSON 객체 하나만 반환하세요. 다른 텍스트·마크다운·코드펜스는 금지합니다.
+- 문항 번호가 보이면 각 객체에 questionNumber(정수)를 포함하세요.
+- 정답이 이미지에 없으면 answer는 1로 두세요(별도 정답표로 덮어쓸 수 있음).
+- 응답은 JSON 배열만 반환하세요. 다른 텍스트·마크다운·코드펜스는 금지합니다.
 스키마:
-{"question":"...","options":[${Array.from({ length: choiceCount }, () => '"..."').join(',')}],"answer":1,"point":"...","explanation":"..."}
+[{"questionNumber":1,"question":"...","options":[${Array.from({ length: choiceCount }, () => '"..."').join(',')}],"answer":1,"point":"...","explanation":"..."}]
 - options 길이는 정확히 ${choiceCount}
 - answer는 1~${choiceCount} 정수`;
 }
 
-function buildImageQuestionInstruction(params: {
+function buildImageQuestionsInstruction(params: {
   kind: 'choice' | 'subjective';
   answerStyle: 'short' | 'essay';
   choiceCount: number;
@@ -1980,9 +1991,43 @@ function buildImageQuestionInstruction(params: {
         : '단답형';
   const userBlock = String(params.userInstructions || '').trim();
   return `[요청]
-첨부 이미지를 분석해 ${kindLabel} 문항 1개를 작성하세요.
+첨부 이미지를 분석해 보이는 ${kindLabel} 문항을 모두 작성하세요.
 ${userBlock ? `\n[추가 지시]\n${userBlock}\n` : ''}
-이미지에 문제·지문·도표가 있으면 그 내용을 바탕으로, 없으면 이미지가 다루는 핵심 개념을 평가하는 문항을 만드세요.`;
+이미지에 문제·지문·도표가 있으면 그 내용을 바탕으로, 없으면 이미지가 다루는 핵심 개념을 평가하는 문항을 만드세요.
+시험지에 여러 문항이 있으면 각 문항을 배열 원소로 분리하세요.`;
+}
+
+const ANSWER_KEY_IMAGE_SYSTEM_PROMPT = `당신은 시험 정답표 OCR 전문가입니다. 첨부 이미지의 정답표를 읽어 문항 번호와 정답 보기 번호를 추출합니다.
+- 표·목록·두 줄 그리드 등 어떤 형식이든 문항 번호와 정답만 정확히 읽으세요.
+- 정답은 1~10 정수(①→1, ②→2, a→1, 가→1 등으로 변환).
+- 응답은 JSON 객체 하나만 반환하세요. 다른 텍스트·마크다운·코드펜스는 금지합니다.
+스키마:
+{"entries":[{"questionNumber":1,"answer":3},{"questionNumber":2,"answer":1}]}`;
+
+function buildAnswerKeyImageInstruction(): string {
+  return `[요청]
+첨부 정답표 이미지에서 문항 번호와 정답 보기 번호를 모두 추출하세요.
+문항 번호 순으로 entries 배열에 넣으세요.`;
+}
+
+function normalizeParsedQuestionItems(parsed: unknown): unknown[] {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object') {
+    const obj = parsed as Record<string, unknown>;
+    if (Array.isArray(obj.questions)) return obj.questions;
+    if (Array.isArray(obj.items)) return obj.items;
+    return [parsed];
+  }
+  return [];
+}
+
+function parseGeneratedQuestionsArray(
+  parsed: unknown,
+  choiceCount: number,
+): Omit<QuizQuestion, 'id' | 'displayLabel'>[] {
+  return normalizeParsedQuestionItems(parsed)
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => parseGeneratedQuestion(item, choiceCount, 1));
 }
 
 function generatedQuestionToAddForm(
@@ -2010,25 +2055,74 @@ function generatedQuestionToAddForm(
   };
 }
 
+async function resolveAnswerKeyEntries(params: {
+  profiles: LlmProviderProfile[];
+  answerKeyText?: string;
+  answerKeyImage?: QuizLlmImageInput;
+  signal?: AbortSignal;
+  onChunk?: (accumulated: string) => void;
+}): Promise<AnswerKeyEntry[]> {
+  const textEntries = parseAnswerKeyTableText(String(params.answerKeyText || ''));
+  if (textEntries.length) return textEntries;
+  if (!params.answerKeyImage) return [];
+  return extractAnswerKeyFromImage({
+    profiles: params.profiles,
+    image: params.answerKeyImage,
+    ...(params.signal ? { signal: params.signal } : {}),
+    ...(params.onChunk ? { onChunk: params.onChunk } : {}),
+  });
+}
+
 /**
- * Analyze an attached image with a vision LLM and draft one quiz question.
+ * Read an answer-key image with a vision LLM.
  */
-export async function generateQuestionFromImage(params: {
+export async function extractAnswerKeyFromImage(params: {
+  profiles: LlmProviderProfile[];
+  image: QuizLlmImageInput;
+  signal?: AbortSignal;
+  onChunk?: (accumulated: string) => void;
+}): Promise<AnswerKeyEntry[]> {
+  const settings = loadQuizSettings();
+  const { parsed } = await runQuizLlmPromptForJson(
+    {
+      ...runOpts(
+        params.profiles,
+        buildAnswerKeyImageInstruction(),
+        ANSWER_KEY_IMAGE_SYSTEM_PROMPT,
+        settings.temperature,
+        streamExtra({
+          signal: params.signal,
+          onChunk: params.onChunk,
+        }),
+      ),
+      images: [params.image],
+    },
+    { signal: params.signal },
+  );
+  return parseAnswerKeyEntriesFromLlmJson(parsed);
+}
+
+/**
+ * Analyze an attached image with a vision LLM and draft quiz question(s).
+ */
+export async function generateQuestionsFromImage(params: {
   profiles: LlmProviderProfile[];
   image: QuizLlmImageInput;
   kind: 'choice' | 'subjective';
   answerStyle?: 'short' | 'essay';
   choiceCount: number;
   userInstructions?: string;
+  answerKeyText?: string;
+  answerKeyImage?: QuizLlmImageInput;
   signal?: AbortSignal;
   onChunk?: (accumulated: string) => void;
-}): Promise<Omit<QuizAddQuestionForm, 'displayLabel'>> {
+}): Promise<Omit<QuizAddQuestionForm, 'displayLabel'>[]> {
   const settings = loadQuizSettings();
   const choiceCount = clampChoiceCount(params.choiceCount);
   const kind = params.kind;
   const answerStyle = params.answerStyle === 'essay' ? 'essay' : 'short';
-  const systemPrompt = buildImageQuestionSystemPrompt(kind, choiceCount, answerStyle);
-  const instruction = buildImageQuestionInstruction({
+  const systemPrompt = buildImageQuestionsSystemPrompt(kind, choiceCount, answerStyle);
+  const instruction = buildImageQuestionsInstruction({
     kind,
     answerStyle,
     choiceCount,
@@ -2053,12 +2147,157 @@ export async function generateQuestionFromImage(params: {
     },
     { signal: params.signal },
   );
-  const obj =
-    parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? parsed
-      : Array.isArray(parsed) && parsed[0]
-        ? parsed[0]
-        : parsed;
-  const generated = parseGeneratedQuestion(obj, choiceCount, 1);
-  return generatedQuestionToAddForm(generated, choiceCount);
+
+  let forms = parseGeneratedQuestionsArray(parsed, choiceCount).map((generated) =>
+    generatedQuestionToAddForm(generated, choiceCount),
+  );
+  if (!forms.length) {
+    throw new Error('이미지에서 문항을 인식하지 못했습니다.');
+  }
+
+  const answerKeyEntries = await resolveAnswerKeyEntries({
+    profiles: params.profiles,
+    ...(String(params.answerKeyText || '').trim()
+      ? { answerKeyText: String(params.answerKeyText).trim() }
+      : {}),
+    ...(params.answerKeyImage ? { answerKeyImage: params.answerKeyImage } : {}),
+    ...(params.signal ? { signal: params.signal } : {}),
+    ...(params.onChunk ? { onChunk: params.onChunk } : {}),
+  });
+  if (answerKeyEntries.length && kind === 'choice') {
+    forms = applyAnswerKeyToForms(forms, answerKeyEntries, choiceCount);
+  }
+
+  return forms;
+}
+
+/**
+ * Analyze an attached image with a vision LLM and draft one quiz question.
+ */
+export async function generateQuestionFromImage(params: {
+  profiles: LlmProviderProfile[];
+  image: QuizLlmImageInput;
+  kind: 'choice' | 'subjective';
+  answerStyle?: 'short' | 'essay';
+  choiceCount: number;
+  userInstructions?: string;
+  answerKeyText?: string;
+  answerKeyImage?: QuizLlmImageInput;
+  signal?: AbortSignal;
+  onChunk?: (accumulated: string) => void;
+}): Promise<Omit<QuizAddQuestionForm, 'displayLabel'>> {
+  const [first] = await generateQuestionsFromImage(params);
+  if (!first) throw new Error('이미지에서 문항을 인식하지 못했습니다.');
+  return first;
+}
+
+const QUIZ_MARKDOWN_IMAGE_EXAMPLE = `### 1. 맵리듀스에 대한 설명으로 가장 적절한 것은?
+
+1. Map 단계에서 키-값 변환 후 Reduce에서 집계한다. *(정답)*
+2. 실시간 스트리밍 전용이다.
+3. Reduce가 Map보다 먼저 수행된다.
+4. 단일 서버에서만 실행된다.
+
+> **💡 접근 Point!**
+> Map → Shuffle → Reduce
+>
+> **📖 해설:**
+> 맵리듀스는 분산 처리 프로그래밍 모델이다.
+
+---
+
+### 2. [단답형] HDFS의 기본 블록 크기 단위는?
+
+**정답:** 128MB
+
+> **💡 접근 Point!**
+> Hadoop 2.x 기본값을 기억하세요.
+>
+> **📖 해설:**
+> 블록 크기는 설정으로 변경할 수 있습니다.`;
+
+function buildQuizMarkdownFromImageSystemPrompt(choiceCount: number): string {
+  return `당신은 시험지 OCR·퀴즈 마크다운 변환 전문가입니다. 첨부 이미지(시험지, 문제집, 스크린샷 등)의 내용을 s3haim .quiz.md 본문 형식의 마크다운으로 변환합니다.
+
+규칙:
+- 이미지에 보이는 문항만 변환하고, 보이지 않는 내용을 만들지 마세요.
+- 응답은 마크다운 본문만 출력하세요. JSON·코드펜스·서두 설명은 금지합니다.
+- quiz-config / quiz-session HTML 주석은 넣지 마세요.
+- 객관식: ### N. 질문 제목 (본문이 있으면 빈 줄 후 이어서)
+- 객관식 보기: 1. … 형식, 정답 보기 끝에 *(정답)* 표시
+- 객관식 보기 개수: 이미지에 맞추되 최대 ${choiceCount}개 (부족하면 빈 보기 없이 실제 개수만)
+- 단답형: ### N. [단답형] 질문 … 다음 줄 **정답:** …
+- 서술형: ### N. [주관식] 질문 … > **📖 모범 답안:** 블록인용
+- 각 문항 끝에 접근 Point·해설 블록인용(내용이 없으면 짧게 작성):
+  > **💡 접근 Point!**
+  > …
+  >
+  > **📖 해설:**
+  > …
+- 문항 사이는 --- 로 구분
+- 수식은 $...$ / $$...$$ 유지
+
+예시:
+${QUIZ_MARKDOWN_IMAGE_EXAMPLE}`;
+}
+
+function buildQuizMarkdownFromImageInstruction(params: {
+  choiceCount: number;
+  imageCount: number;
+  userInstructions?: string;
+}): string {
+  const userBlock = String(params.userInstructions || '').trim();
+  return `[요청]
+첨부 이미지 ${params.imageCount}장을 분석해 퀴즈 마크다운 본문으로 변환하세요.
+${userBlock ? `\n[추가 지시]\n${userBlock}\n` : ''}
+여러 문항이 있으면 모두 포함하고, 문항 번호는 1부터 순서대로 매기세요.`;
+}
+
+function stripMarkdownCodeFence(text: string): string {
+  const trimmed = String(text || '').trim();
+  const fenced = trimmed.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$/u);
+  if (fenced?.[1]) return fenced[1].trim();
+  return trimmed;
+}
+
+/**
+ * Convert exam image(s) into `.quiz.md` body markdown via vision LLM.
+ */
+export async function generateQuizMarkdownFromImages(params: {
+  profiles: LlmProviderProfile[];
+  images: QuizLlmImageInput[];
+  choiceCount: number;
+  userInstructions?: string;
+  signal?: AbortSignal;
+  onChunk?: (accumulated: string) => void;
+}): Promise<string> {
+  if (!params.images.length) {
+    throw new Error('변환할 이미지가 없습니다.');
+  }
+  const settings = loadQuizSettings();
+  const choiceCount = clampChoiceCount(params.choiceCount);
+  const systemPrompt = buildQuizMarkdownFromImageSystemPrompt(choiceCount);
+  const instruction = buildQuizMarkdownFromImageInstruction({
+    choiceCount,
+    imageCount: params.images.length,
+    ...(String(params.userInstructions || '').trim()
+      ? { userInstructions: String(params.userInstructions).trim() }
+      : {}),
+  });
+
+  const text = await runQuizLlmPrompt({
+    ...runOpts(
+      params.profiles,
+      instruction,
+      systemPrompt,
+      settings.temperature,
+      streamExtra({
+        signal: params.signal,
+        onChunk: params.onChunk,
+      }),
+    ),
+    images: params.images,
+    stream: Boolean(params.onChunk),
+  });
+  return stripMarkdownCodeFence(text);
 }
