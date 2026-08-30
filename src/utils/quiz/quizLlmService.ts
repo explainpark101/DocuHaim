@@ -63,6 +63,7 @@ import type { QuizGenStepUpdate } from '@/utils/quiz/quizGenerationQueueTypes';
 import { resolveQuestionChoiceCount, resizeChoiceOptions } from '@/utils/quiz/quizQuestionStyle';
 import { clampChoiceCount } from '@/utils/quiz/quizFileConfig';
 import { truncateForGenerationLog } from '@/utils/quiz/quizGenerationLog';
+import { normalizeGeneratedChoiceOption } from '@/utils/quiz/normalizeGeneratedChoiceOption';
 
 const SOURCE_SUMMARY_SYSTEM_PROMPT = `당신은 시험 출제용 근거 문서 요약가입니다.
 주어진 원문에서 출제에 필요한 개념·정의·공식·절차·사례만 주제별로 정리하세요.
@@ -86,6 +87,7 @@ function buildSourceGenerationSystemPrompt(
   return `당신은 시험 출제위원입니다. 제공된 근거 요약본만 사용해 객관식 문항을 만듭니다.
 요약본 밖의 사실은 사용하지 마세요.
 선택지(options) 안에서는 인라인 수식($...$)만 사용하세요.
+options 각 항목에는 보기 번호 접두사(1., 2., a., 가. 등)를 넣지 마세요. 선택지 본문만 작성합니다.
 응답은 JSON 배열만 반환하세요. 다른 텍스트·마크다운·코드펜스는 금지합니다.
 스키마:
 [{"question":"...","options":[${Array.from({ length: choiceCount }, () => '"..."').join(',')}],"answer":1,"point":"...","explanation":"..."}]
@@ -489,7 +491,9 @@ function parseGeneratedQuestion(
     };
   }
   const options = Array.isArray(obj.options)
-    ? obj.options.map((o) => String(o || '')).slice(0, choiceCount)
+    ? obj.options
+        .map((o) => normalizeGeneratedChoiceOption(String(o || '')))
+        .slice(0, choiceCount)
     : [];
   while (options.length < Math.min(2, choiceCount)) options.push('');
   const answer =

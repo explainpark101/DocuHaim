@@ -239,7 +239,8 @@ export function buildSimilarQuestionGenerationSystemPrompt(userSystemPrompt: str
   - 수험자가 유사한 다른 문제를 만나더라도, 무엇을 먼저 판별·연결·검토해야 하는지 핵심 사고 포인트만 짚습니다.
   - 전체 풀이 과정이나 정답을 그대로 노출하지 마세요.
 - explanation: 정답 근거, 오답 함정, 풀이 흐름이 드러나는 완결된 해설을 작성합니다. 마크다운 사용 가능.
-- 원본 문항의 point/해설을 그대로 복사하지 말고, 신규 문항·선택지·정답에 맞게 새로 작성합니다.`;
+- 원본 문항의 point/해설을 그대로 복사하지 말고, 신규 문항·선택지·정답에 맞게 새로 작성합니다.
+- options 각 항목에는 보기 번호 접두사(1., 2., a., 가. 등)를 넣지 마세요. 선택지 본문만 작성합니다.`;
 }
 
 export function buildSimilarAnalysisInstruction(params: {
@@ -299,6 +300,7 @@ ${params.complexity}
   - 전체 풀이나 정답을 그대로 적지 마세요. 원본 접근 Point를 복사하지 마세요.
 - explanation(해설): 정답 근거, 오답 함정, 풀이 흐름이 드러나는 완결된 해설을 작성하세요.
 - 원본 해설/접근 Point를 그대로 복사하지 말고, 신규 문항·선택지·정답에 맞게 새로 작성하세요.
+- options 각 항목에는 1., a. 같은 번호·기호 접두사 없이 선택지 본문만 작성하세요.
 
 JSON만 반환:
 {"question":"...","options":[${Array.from({ length: params.choiceCount }, () => '"..."').join(',')}],"answer":${params.targetAnswer},"point":"...","explanation":"..."}`;
