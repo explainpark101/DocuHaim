@@ -3,14 +3,10 @@ import TocResizeHandleJs from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import type { QuizQuestion } from '@/utils/quiz/quizTypes';
 import type { LlmProviderProfile } from '@/utils/llmProviderProfiles';
-import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Sparkles, X } from 'lucide-react';
 import { type ComponentType, type KeyboardEvent, memo, useCallback, useEffect, useState } from 'react';
 import QuizLlmModelPicker from '@/components/quiz/QuizLlmModelPicker';
-import {
-  QUIZ_DOCK_OPEN_TRANSITION,
-  QUIZ_DOCK_RESIZE_TRANSITION,
-} from '@/utils/quiz/quizDockMotion';
+import QuizDockMotionAside from '@/components/quiz/QuizDockMotionAside';
 
 const CHOICE_ANALYSIS_DOCK_DEFAULT_WIDTH = 320;
 
@@ -107,21 +103,18 @@ function QuizChoiceAnalysisDock({
     [busy, onGenerate, prompt, promptRequired],
   );
 
+  const showDock = open && question != null && option != null;
+
   return (
-    <AnimatePresence initial={false}>
-      {open && question && option != null ? (
-        <Motion.aside
-          key="quiz-choice-analysis-dock"
-          role="complementary"
-          aria-label={title}
-          className={`flex h-full shrink-0 flex-col overflow-hidden border-l bg-white shadow-lg dark:bg-odp-surface ${accentBorder}`}
-          initial={{ width: 0, opacity: 0.85 }}
-          animate={{ width: dockWidth, opacity: 1 }}
-          exit={{ width: 0, opacity: 0.85 }}
-          transition={
-            isResizing ? QUIZ_DOCK_RESIZE_TRANSITION : QUIZ_DOCK_OPEN_TRANSITION
-          }
-        >
+    <QuizDockMotionAside
+      motionKey="quiz-choice-analysis-dock"
+      open={showDock}
+      width={dockWidth}
+      isResizing={isResizing}
+      aria-label={title}
+      className={`flex h-full shrink-0 flex-col overflow-hidden border-l bg-white shadow-lg dark:bg-odp-surface ${accentBorder}`}
+    >
+      {question != null && option != null ? (
           <div className="relative h-full min-h-0" style={{ width: dockWidth }}>
             <TocResizeHandle
               edge="left"
@@ -229,9 +222,8 @@ function QuizChoiceAnalysisDock({
               </div>
             </div>
           </div>
-        </Motion.aside>
       ) : null}
-    </AnimatePresence>
+    </QuizDockMotionAside>
   );
 }
 

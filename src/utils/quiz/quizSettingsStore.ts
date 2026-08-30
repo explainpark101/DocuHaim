@@ -16,6 +16,11 @@ export type QuizSettings = {
   ragMaxChars: number;
   /** When true, flush quiz markdown and vault-save after AI generation completes. */
   autoSaveOnAiGenerate: boolean;
+  /**
+   * When true, quiz side docks animate layout width with a spring (heavier on Safari/WebView).
+   * Default false: fixed width + translateX slide (same as Tauri default).
+   */
+  dockWidthSpringAnim: boolean;
 };
 
 export const DEFAULT_QUIZ_SYSTEM_PROMPT = `당신은 대한민국 자격증 및 학술 시험 문제 출제위원입니다.
@@ -40,6 +45,7 @@ export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
   ragTopK: 24,
   ragMaxChars: 120_000,
   autoSaveOnAiGenerate: true,
+  dockWidthSpringAnim: false,
 };
 
 export const QUIZ_SETTINGS_CHANGED_EVENT = 's3haim:quiz-settings-changed';
@@ -97,7 +103,13 @@ export function normalizeQuizSettings(
       ),
     ),
     autoSaveOnAiGenerate: raw?.autoSaveOnAiGenerate !== false,
+    dockWidthSpringAnim: raw?.dockWidthSpringAnim === true,
   };
+}
+
+/** Side dock width spring (off = translateX slide, on = layout width spring). */
+export function quizDockUsesLayoutWidthAnim(): boolean {
+  return loadQuizSettings().dockWidthSpringAnim;
 }
 
 export function loadQuizSettings(): QuizSettings {

@@ -1,6 +1,7 @@
 import { memo, useCallback, useState } from 'react';
-import { AnimatePresence, motion as Motion } from 'motion/react';
+import { motion as Motion } from 'motion/react';
 import { List, X } from 'lucide-react';
+import QuizDockMotionAside from '@/components/quiz/QuizDockMotionAside';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import type { QuizQuestion, SubjectiveGradeResult } from '@/utils/quiz/quizTypes';
@@ -10,11 +11,8 @@ import {
   QUIZ_GRADE_STATUS_LABEL,
   type QuizQuestionGradeStatus,
 } from '@/utils/quiz/quizScoring';
-import {
-  QUIZ_DOCK_OPEN_TRANSITION,
-  QUIZ_DOCK_RESIZE_TRANSITION,
-  QUIZ_TOC_ITEM_STAGGER_ENABLED,
-} from '@/utils/quiz/quizDockMotion';
+import { getQuizTocItemMotionProps } from '@/utils/quiz/quizDockMotion';
+import { useQuizDockUsesLayoutWidthAnim } from '@/hooks/useQuizDockUsesLayoutWidthAnim';
 import { type ComponentType } from 'react';
 
 const TOC_DOCK_DEFAULT_WIDTH = 288;
@@ -94,23 +92,17 @@ function QuizTocDock({
     setGradeFilters((prev) => ({ ...prev, [status]: !prev[status] }));
   }, []);
 
+  const useLayoutWidthAnim = useQuizDockUsesLayoutWidthAnim();
+
   return (
-    <AnimatePresence initial={false}>
-      {open ? (
-        <Motion.aside
-          key="quiz-toc-dock"
-          role="complementary"
-          aria-label="문제 목차"
-          className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-          initial={{ width: 0, opacity: 0.85 }}
-          animate={{ width: tocDockWidth, opacity: 1 }}
-          exit={{ width: 0, opacity: 0.85 }}
-          transition={
-            tocDockResizing
-              ? QUIZ_DOCK_RESIZE_TRANSITION
-              : QUIZ_DOCK_OPEN_TRANSITION
-          }
-        >
+    <QuizDockMotionAside
+      motionKey="quiz-toc-dock"
+      open={open}
+      width={tocDockWidth}
+      isResizing={tocDockResizing}
+      aria-label="문제 목차"
+      className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
+    >
           <div
             className="relative flex h-full min-h-0 flex-col"
             style={{ width: tocDockWidth }}
@@ -225,29 +217,22 @@ function QuizTocDock({
                   </button>
                 );
 
-                if (QUIZ_TOC_ITEM_STAGGER_ENABLED) {
-                  return (
-                    <Motion.li
-                      key={q.id}
-                      initial={{ opacity: 0, x: 12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{
-                        delay: Math.min(i, 12) * 0.03,
-                        duration: 0.18,
-                      }}
-                    >
-                      {rowButton}
-                    </Motion.li>
-                  );
-                }
+                const itemMotion = getQuizTocItemMotionProps(i, useLayoutWidthAnim);
 
-                return <li key={q.id}>{rowButton}</li>;
+                return (
+                  <Motion.li
+                    key={q.id}
+                    initial={itemMotion.initial}
+                    animate={itemMotion.animate}
+                    transition={itemMotion.transition}
+                  >
+                    {rowButton}
+                  </Motion.li>
+                );
               })}
             </ul>
           </div>
-        </Motion.aside>
-      ) : null}
-    </AnimatePresence>
+    </QuizDockMotionAside>
   );
 }
 

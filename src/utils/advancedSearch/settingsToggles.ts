@@ -65,6 +65,10 @@ import {
   loadTauriDownloadSaveDialogEnabled,
   saveTauriDownloadSaveDialogEnabled,
 } from '@/utils/tauriDownloadSettings';
+import {
+  loadQuizSettings,
+  saveQuizSettings,
+} from '@/utils/quiz/quizSettingsStore';
 import { advancedSearchEngine } from '@/utils/advancedSearch/engine';
 
 export type SettingsToggleId =
@@ -85,7 +89,8 @@ export type SettingsToggleId =
   | 'settings-cover-text-outline'
   | 'settings-cover-place-preview'
   | 'settings-orphan-image-auto'
-  | 'settings-tauri-download-save-dialog';
+  | 'settings-tauri-download-save-dialog'
+  | 'settings-quiz-dock-width-spring';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -310,6 +315,29 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     keywords: ['download', '다운로드', 'save', '저장', 'tauri', 'desktop', '데스크톱', 'dialog'],
     load: loadTauriDownloadSaveDialogEnabled,
     save: saveTauriDownloadSaveDialogEnabled,
+  },
+  {
+    id: 'settings-quiz-dock-width-spring',
+    enableTitle: '퀴즈 패널 width spring 켜기',
+    disableTitle: '퀴즈 패널 width spring 끄기',
+    description:
+      '퀴즈 사이드 패널을 너비 spring으로 열기 (Safari·WebView에서 무거울 수 있음)',
+    keywords: [
+      'quiz',
+      '퀴즈',
+      'dock',
+      '패널',
+      'panel',
+      'width',
+      'spring',
+      'animation',
+      '애니메이션',
+      'motion',
+    ],
+    load: () => loadQuizSettings().dockWidthSpringAnim,
+    save: (enabled) => {
+      saveQuizSettings({ dockWidthSpringAnim: enabled });
+    },
   },
 ] as const;
 

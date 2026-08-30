@@ -196,6 +196,30 @@ export default function QuizSettingsSection({
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft">
             <div className="min-w-0">
               <p className="text-xs font-semibold text-gray-700 dark:text-odp-fgStrong">
+                패널 width spring 애니메이션
+              </p>
+              <p className="mt-0.5 text-[11px] text-gray-500 dark:text-odp-muted">
+                켜면 사이드 패널이 너비 spring으로 열립니다. Safari·WebView에서는 무거울 수
+                있어 기본은 슬라이드(translate) 방식입니다.
+              </p>
+            </div>
+            <Switch.Root
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 ${
+                settings.dockWidthSpringAnim
+                  ? 'border-blue-600 bg-blue-600'
+                  : 'border-gray-300 bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+              }`}
+              checked={settings.dockWidthSpringAnim}
+              onCheckedChange={(checked) => patch({ dockWidthSpringAnim: checked })}
+              aria-label="패널 width spring 애니메이션"
+            >
+              <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-white shadow transition-transform data-[state=checked]:translate-x-[18px]" />
+            </Switch.Root>
+          </div>
+
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-700 dark:text-odp-fgStrong">
                 AI 생성 완료 시 자동 저장
               </p>
               <p className="mt-0.5 text-[11px] text-gray-500 dark:text-odp-muted">

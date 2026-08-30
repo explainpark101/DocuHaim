@@ -1,5 +1,5 @@
+import QuizDockMotionAside from '@/components/quiz/QuizDockMotionAside';
 import { memo, useCallback, useState } from 'react';
-import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Library, X } from 'lucide-react';
 import { Switch } from 'radix-ui';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
@@ -8,10 +8,6 @@ import QuizSourcePathsChips from '@/components/quiz/QuizSourcePathsChips';
 import QuizSourcesTopicGeneratePanel from '@/components/quiz/QuizSourcesTopicGeneratePanel';
 import type { QuizDocument } from '@/utils/quiz/quizTypes';
 import { isQuizSourcePathEnabled } from '@/utils/quiz';
-import {
-  QUIZ_DOCK_OPEN_TRANSITION,
-  QUIZ_DOCK_RESIZE_TRANSITION,
-} from '@/utils/quiz/quizDockMotion';
 import { type ComponentType } from 'react';
 
 const SOURCES_DOCK_DEFAULT_WIDTH = 320;
@@ -101,22 +97,14 @@ function QuizSourcesDock({
   }, []);
 
   return (
-    <AnimatePresence initial={false}>
-      {open ? (
-        <Motion.aside
-          key="quiz-sources-dock"
-          role="complementary"
-          aria-label="파일 근거 문서"
-          className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-          initial={{ width: 0, opacity: 0.85 }}
-          animate={{ width: sourcesDockWidth, opacity: 1 }}
-          exit={{ width: 0, opacity: 0.85 }}
-          transition={
-            sourcesDockResizing
-              ? QUIZ_DOCK_RESIZE_TRANSITION
-              : QUIZ_DOCK_OPEN_TRANSITION
-          }
-        >
+    <QuizDockMotionAside
+      motionKey="quiz-sources-dock"
+      open={open}
+      width={sourcesDockWidth}
+      isResizing={sourcesDockResizing}
+      aria-label="파일 근거 문서"
+      className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
+    >
           <div
             className="relative flex h-full min-h-0 flex-col"
             style={{ width: sourcesDockWidth }}
@@ -201,9 +189,7 @@ function QuizSourcesDock({
               />
             </div>
           </div>
-        </Motion.aside>
-      ) : null}
-    </AnimatePresence>
+    </QuizDockMotionAside>
   );
 }
 
