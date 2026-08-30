@@ -9,9 +9,13 @@ import {
 import { resolveQuestionChoiceCount } from '@/utils/quiz/quizQuestionStyle';
 import type { QuizDerivedQuestionTarget } from '@/utils/quiz/derivedQuestionAnalysis';
 import type { QuizAnswerStyle, QuizQuestion, QuizQuestionKind } from '@/utils/quiz/quizTypes';
+import {
+  QUIZ_DOCK_OPEN_TRANSITION,
+  QUIZ_DOCK_RESIZE_TRANSITION,
+} from '@/utils/quiz/quizDockMotion';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { GitBranch, Loader2, X } from 'lucide-react';
-import { type ComponentType, useEffect, useMemo, useState } from 'react';
+import { type ComponentType, memo, useEffect, useMemo, useState } from 'react';
 
 const DERIVED_QUESTION_DOCK_DEFAULT_WIDTH = 360;
 
@@ -55,7 +59,7 @@ function pickerFromQuestion(q: QuizQuestion | null): KindPickerId {
   return 'choice';
 }
 
-export default function QuizDerivedQuestionDock({
+function QuizDerivedQuestionDock({
   open,
   question,
   defaultChoiceCount,
@@ -118,9 +122,7 @@ export default function QuizDerivedQuestionDock({
           animate={{ width: dockWidth, opacity: 1 }}
           exit={{ width: 0, opacity: 0.85 }}
           transition={
-            isResizing
-              ? { duration: 0 }
-              : { type: 'spring', stiffness: 380, damping: 36 }
+            isResizing ? QUIZ_DOCK_RESIZE_TRANSITION : QUIZ_DOCK_OPEN_TRANSITION
           }
         >
           <div className="relative h-full min-h-0" style={{ width: dockWidth }}>
@@ -262,3 +264,5 @@ export default function QuizDerivedQuestionDock({
     </AnimatePresence>
   );
 }
+
+export default memo(QuizDerivedQuestionDock);

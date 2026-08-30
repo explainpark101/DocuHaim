@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import QuizLlmModelPicker from '@/components/quiz/QuizLlmModelPicker';
 import type { LlmProviderProfile } from '@/utils/llmProviderProfiles';
 import { Bot } from 'lucide-react';
@@ -11,7 +12,7 @@ type QuizLlmSessionBarProps = {
   busy?: boolean;
 };
 
-export default function QuizLlmSessionBar({
+function QuizLlmSessionBar({
   profiles,
   profileId,
   model,
@@ -39,3 +40,5 @@ export default function QuizLlmSessionBar({
     </section>
   );
 }
+
+export default memo(QuizLlmSessionBar);

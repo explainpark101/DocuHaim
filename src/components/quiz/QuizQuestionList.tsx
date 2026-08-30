@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  memo,
   useCallback,
   useImperativeHandle,
   useMemo,
@@ -112,8 +113,9 @@ function scrollQuestionCardIntoView(
   return true;
 }
 
-const QuizQuestionList = forwardRef<QuizQuestionListHandle, QuizQuestionListProps>(
-  function QuizQuestionList(
+const QuizQuestionList = memo(
+  forwardRef<QuizQuestionListHandle, QuizQuestionListProps>(
+    function QuizQuestionList(
     {
       questions,
       filter,
@@ -226,7 +228,7 @@ const QuizQuestionList = forwardRef<QuizQuestionListHandle, QuizQuestionListProp
         })}
       </div>
     );
-  },
+  }),
 );
 
 export default QuizQuestionList;

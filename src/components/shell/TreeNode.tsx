@@ -26,8 +26,9 @@ import {
   IconFolderFilled,
   IconTrash,
   IconSettings,
+  IconQuiz,
 } from '@/components/icons';
-import { PencilIcon, ArrowRightToLine, AlertCircle, Loader2, ClipboardList } from 'lucide-react';
+import { PencilIcon, ArrowRightToLine, AlertCircle, Loader2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { isEncMdPath } from '@/utils/encMd';
 import { isQuizMdPath } from '@/utils/quiz/quizPath';
@@ -489,7 +490,7 @@ export default function TreeNode({
       return indexExcluded ? IconFolder : IconFolderFilled;
     }
     if (node.type !== 'file') return IconFile;
-    if (isQuizMdPath(node.name) || isQuizMdPath(node.path)) return ClipboardList;
+    if (isQuizMdPath(node.name) || isQuizMdPath(node.path)) return IconQuiz;
     if (isEncMdPath(node.name) || isEncMdPath(node.path)) return IconLock;
     const lower = node.name.toLowerCase();
     const lastDot = lower.lastIndexOf('.');

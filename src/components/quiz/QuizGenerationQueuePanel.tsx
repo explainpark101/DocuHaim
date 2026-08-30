@@ -15,6 +15,7 @@ import {
 import Button from '@/components/Button';
 import { IconCheck } from '@/components/icons';
 import type { QuizGenPanelSize } from '@/hooks/useQuizGenerationQueue';
+import { QUIZ_FLOATING_PANEL_TRANSITION } from '@/utils/quiz/quizDockMotion';
 import type {
   QuizGenJob,
   QuizGenStep,
@@ -348,7 +349,7 @@ export default function QuizGenerationQueuePanel({
           initial={{ y: 48, opacity: 0, scale: 0.98 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 48, opacity: 0, scale: 0.98 }}
-          transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+          transition={QUIZ_FLOATING_PANEL_TRANSITION}
           onMouseEnter={() => onPointerEngageChange?.(true)}
           onMouseLeave={() => onPointerEngageChange?.(false)}
           onFocusCapture={() => onFocusEngageChange?.(true)}
