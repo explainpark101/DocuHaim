@@ -68,6 +68,7 @@ import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider
 import QuizPane from '@/components/quiz/QuizPane';
 import {
   markQuizPaneWarm,
+  getQuizTabMode,
   setQuizTabMode,
   useQuizPaneSessionStore,
 } from '@/stores/quizPaneSessionStore';
@@ -191,7 +192,12 @@ export default function EditorPane({
   const quizPaneWarm = useQuizPaneSessionStore((state) =>
     quizTabId ? state.warmTabIds.includes(quizTabId) : false,
   );
-  const quizMode = isQuizFile && isQuizAppPathname(location.pathname);
+  const quizModeFromTab = quizTabId ? getQuizTabMode(quizTabId) === 'quiz' : false;
+  const quizModeOnRoute =
+    isQuizFile &&
+    isQuizAppPathname(location.pathname) &&
+    parseOpenNotePathFromAppPathname(location.pathname) === currentFile?.id;
+  const quizMode = isQuizFile && (quizModeFromTab || quizModeOnRoute);
 
   useEffect(() => {
     if (!quizTabId || !isQuizFile) return;

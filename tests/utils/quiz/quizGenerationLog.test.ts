@@ -47,4 +47,28 @@ describe('serializeQuizGenerationLogMarkdown', () => {
     expect(md).toContain('Model response / artifact');
     expect(md).toContain('{"coreCategory":"Ohm"}');
   });
+
+  test('includes failed model response while step is still running', () => {
+    const job: QuizGenJob = {
+      id: 'job-2',
+      kind: 'similar',
+      questionPreview: 'Sample?',
+      status: 'running',
+      createdAt: Date.parse('2026-01-01T00:00:00.000Z'),
+      steps: [
+        {
+          id: 'generate',
+          label: '유사 문항 생성',
+          status: 'running',
+          detail: 'JSON 파싱 실패 (1/3)',
+          error: 'JSON 파싱 실패',
+          llmResponse: '{"broken":',
+        },
+      ],
+    };
+    const md = serializeQuizGenerationLogMarkdown(job, 'course/a.quiz.md');
+    expect(md).toContain('- error: JSON 파싱 실패');
+    expect(md).toContain('Model response / artifact');
+    expect(md).toContain('{"broken":');
+  });
 });

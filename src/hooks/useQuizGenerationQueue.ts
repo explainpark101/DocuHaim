@@ -3,6 +3,7 @@ import {
   buildDerivedJobSteps,
   buildSimilarJobSteps,
   buildSourceJobSteps,
+  patchQuizGenJobStep,
   truncateQuizPreview,
   type QuizGenJob,
   type QuizGenStepUpdate,
@@ -54,20 +55,7 @@ function savePanelSize(size: QuizGenPanelSize) {
 }
 
 function patchJobStep(job: QuizGenJob, update: QuizGenStepUpdate): QuizGenJob {
-  const steps = job.steps.map((s) => {
-    if (s.id !== update.step) return s;
-    const next = { ...s, status: update.status };
-    if (update.detail !== undefined) next.detail = update.detail;
-    if (update.error !== undefined) next.error = update.error;
-    if (update.llmInstruction !== undefined) next.llmInstruction = update.llmInstruction;
-    if (update.llmResponse !== undefined) next.llmResponse = update.llmResponse;
-    if (update.systemPrompt !== undefined) next.systemPrompt = update.systemPrompt;
-    if (update.status === 'running') {
-      delete next.error;
-    }
-    return next;
-  });
-  return { ...job, steps };
+  return patchQuizGenJobStep(job, update);
 }
 
 function newJobId(): string {
@@ -76,8 +64,14 @@ function newJobId(): string {
 
 export function useQuizGenerationQueue() {
   const [jobs, setJobs] = useState<QuizGenJob[]>([]);
-  const jobsRef = useRef(jobs);
-  jobsRef.current = jobs;
+  const jobsRef = useRef<QuizGenJob[]>(jobs);
+
+  const applyJobs = useCallback((updater: (prev: QuizGenJob[]) => QuizGenJob[]) => {
+    const next = updater(jobsRef.current);
+    jobsRef.current = next;
+    setJobs(next);
+    return next;
+  }, []);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelSize, setPanelSizeState] = useState<QuizGenPanelSize>(() => loadPanelSize());
@@ -140,11 +134,11 @@ export function useQuizGenerationQueue() {
         steps: buildSimilarJobSteps(params.hasRag),
         createdAt: Date.now(),
       };
-      setJobs((prev) => [job, ...prev]);
+      applyJobs((prev) => [job, ...prev]);
       openPanelForJob();
       return id;
     },
-    [openPanelForJob],
+    [applyJobs, openPanelForJob],
   );
 
   const createDerivedJob = useCallback(
@@ -159,11 +153,11 @@ export function useQuizGenerationQueue() {
         steps: buildDerivedJobSteps(params.hasRag),
         createdAt: Date.now(),
       };
-      setJobs((prev) => [job, ...prev]);
+      applyJobs((prev) => [job, ...prev]);
       openPanelForJob();
       return id;
     },
-    [openPanelForJob],
+    [applyJobs, openPanelForJob],
   );
 
   const createSourceJob = useCallback((params: { preview: string; topic?: string }) => {
@@ -180,33 +174,39 @@ export function useQuizGenerationQueue() {
       steps: buildSourceJobSteps(),
       createdAt: Date.now(),
     };
-    setJobs((prev) => [job, ...prev]);
+    applyJobs((prev) => [job, ...prev]);
     openPanelForJob();
     return id;
-  }, [openPanelForJob]);
+  }, [applyJobs, openPanelForJob]);
 
-  const updateJobStep = useCallback((jobId: string, update: QuizGenStepUpdate) => {
-    setJobs((prev) =>
-      prev.map((job) => (job.id === jobId ? patchJobStep(job, update) : job)),
+  const updateJobStep = useCallback((jobId: string, update: QuizGenStepUpdate): QuizGenJob | null => {
+    let patched: QuizGenJob | null = null;
+    applyJobs((prev) =>
+      prev.map((job) => {
+        if (job.id !== jobId) return job;
+        patched = patchJobStep(job, update);
+        return patched;
+      }),
     );
-  }, []);
+    return patched;
+  }, [applyJobs]);
 
   const setJobLogPath = useCallback((jobId: string, logPath: string) => {
-    setJobs((prev) =>
+    applyJobs((prev) =>
       prev.map((job) => (job.id === jobId ? { ...job, logPath } : job)),
     );
-  }, []);
+  }, [applyJobs]);
 
   const setJobResultQuestionId = useCallback((jobId: string, questionId: string) => {
-    setJobs((prev) =>
+    applyJobs((prev) =>
       prev.map((job) =>
         job.id === jobId ? { ...job, resultQuestionId: questionId } : job,
       ),
     );
-  }, []);
+  }, [applyJobs]);
 
   const completeJob = useCallback((jobId: string, resultLabel?: string) => {
-    setJobs((prev) =>
+    applyJobs((prev) =>
       prev.map((job) =>
         job.id === jobId
           ? {
@@ -217,23 +217,23 @@ export function useQuizGenerationQueue() {
           : job,
       ),
     );
-  }, []);
+  }, [applyJobs]);
 
   const failJob = useCallback((jobId: string, error: string) => {
-    setJobs((prev) =>
+    applyJobs((prev) =>
       prev.map((job) =>
         job.id === jobId ? { ...job, status: 'error', error } : job,
       ),
     );
-  }, []);
+  }, [applyJobs]);
 
   const removeJob = useCallback((jobId: string) => {
-    setJobs((prev) => prev.filter((j) => j.id !== jobId));
-  }, []);
+    applyJobs((prev) => prev.filter((j) => j.id !== jobId));
+  }, [applyJobs]);
 
   const clearFinishedJobs = useCallback(() => {
-    setJobs((prev) => prev.filter((j) => j.status === 'running'));
-  }, []);
+    applyJobs((prev) => prev.filter((j) => j.status === 'running'));
+  }, [applyJobs]);
 
   const hasActiveJobs = jobs.some((j) => j.status === 'running');
 

@@ -138,6 +138,73 @@ function buildContentParts({
   return parts;
 }
 
+async function generateGeminiContent(
+  apiKey: string,
+  modelId: string,
+  parts: Part[],
+  systemPrompt = '',
+  requestOptions: Record<string, unknown> = {},
+  signal?: AbortSignal,
+): Promise<string> {
+  throwIfLlmAssistAborted(signal);
+  const ai = createGeminiClient(apiKey);
+  const trimmedSystem = (systemPrompt || '').trim();
+  const generationConfig = toGeminiGenerationConfig(requestOptions);
+  const response = await ai.models.generateContent({
+    model: modelId,
+    contents: [{ role: 'user', parts }],
+    config: {
+      ...generationConfig,
+      ...(trimmedSystem ? { systemInstruction: trimmedSystem } : {}),
+      ...(signal ? { abortSignal: signal } : {}),
+    },
+  });
+
+  throwIfLlmAssistAborted(signal);
+  const text = String(response.text || '').trim();
+  if (!text) {
+    throw new Error('Gemini API가 빈 응답을 반환했습니다.');
+  }
+  return text;
+}
+
+async function generateGeminiContentWithRetry(
+  apiKey: string,
+  modelId: string,
+  parts: Part[],
+  systemPrompt = '',
+  requestOptions: Record<string, unknown> = {},
+  signal?: AbortSignal,
+): Promise<string> {
+  let attempt = 0;
+  while (true) {
+    throwIfLlmAssistAborted(signal);
+    try {
+      return await generateGeminiContent(
+        apiKey,
+        modelId,
+        parts,
+        systemPrompt,
+        requestOptions,
+        signal,
+      );
+    } catch (err) {
+      if (isLlmAssistAbortError(err)) throw err;
+      const typed = toGeminiApiError(err, modelId);
+      const canRetry =
+        typed.status === 429 &&
+        attempt < MAX_RATE_LIMIT_RETRIES &&
+        typed.retryAfterSec &&
+        typed.retryAfterSec <= 120;
+
+      if (!canRetry) throw typed;
+
+      attempt += 1;
+      await sleepUntilLlmAssistAbort((typed.retryAfterSec ?? 1) * 1000, signal);
+    }
+  }
+}
+
 async function generateGeminiContentStream(
   apiKey: string,
   modelId: string,
@@ -261,13 +328,23 @@ export async function generateGeminiTransform({
   });
 
   try {
-    return await generateGeminiContentStreamWithRetry(
+    if (onChunk) {
+      return await generateGeminiContentStreamWithRetry(
+        apiKey,
+        modelId,
+        parts,
+        (systemPrompt || '').trim(),
+        requestOptions || {},
+        onChunk,
+        signal,
+      );
+    }
+    return await generateGeminiContentWithRetry(
       apiKey,
       modelId,
       parts,
       (systemPrompt || '').trim(),
       requestOptions || {},
-      onChunk,
       signal,
     );
   } catch (err) {

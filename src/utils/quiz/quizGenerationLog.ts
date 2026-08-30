@@ -60,6 +60,9 @@ function formatStepSection(step: QuizGenStep, index: number): string {
   if (step.llmInstruction) {
     parts.push(fenceBlock('Instruction / input', step.llmInstruction));
   }
+  if (step.failureLog) {
+    parts.push(fenceBlock('Parse failure log', step.failureLog));
+  }
   if (step.llmResponse) {
     parts.push(fenceBlock('Model response / artifact', step.llmResponse));
   }

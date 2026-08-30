@@ -33,6 +33,7 @@ const EXCLUDED_PREFIXES = [
   /** Underscore alias (never create; hide / skip if present). */
   '.advanced_search/',
   '.trash/',
+  '.quiz/',
   '.images/',
   '.pictures/',
 ];
@@ -49,7 +50,7 @@ export type IndexablePathOptions = {
   excludedFolders?: readonly string[];
   /**
    * When true, ignore `excludedFolders` (user “역색인 제외 폴더”).
-   * System prefixes (`.trash`, `.advanced-search`, …) still apply.
+   * System prefixes (`.trash`, `.advanced-search`, `.quiz`, …) still apply.
    */
   ignoreExcludedFolders?: boolean;
 };

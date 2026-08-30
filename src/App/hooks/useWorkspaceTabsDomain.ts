@@ -22,6 +22,7 @@ import {
   openOrActivateChat,
   openOrActivateContentSearch,
   openOrActivateSettings,
+  patchFileTab,
 } from '@/utils/workspaceTabs/appBridge';
 import {
   collapseWorkspaceToLegacy,
@@ -34,9 +35,13 @@ import { clearEncMdPassword, isEncMdPath } from '@/utils/encMd';
 import {
   contentSearchPathname,
   isSettingsAppPathname,
-  openNotePathnameForStoragePath,
+  parseOpenNotePathFromAppPathname,
 } from '@/utils/appHref';
-import { evictQuizPaneTab, getQuizTabMode } from '@/stores/quizPaneSessionStore';
+import { evictQuizPaneTab, setQuizTabMode } from '@/stores/quizPaneSessionStore';
+import {
+  quizTabModeFromAppRoute,
+  resolveFileTabAppRoute,
+} from '@/utils/workspaceTabs/helpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { findFileTab } from '@/utils/workspaceTabs/appBridge';
 import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
@@ -100,6 +105,23 @@ export function useWorkspaceTabsDomain({
       window.removeEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
     };
   }, []);
+
+  useEffect(() => {
+    if (!workspaceTabsEnabledRef.current) return;
+    const active = getActiveFileTab(workspaceTabsRef.current);
+    if (!active) return;
+    const notePath = parseOpenNotePathFromAppPathname(location.pathname);
+    const storagePath =
+      (typeof active.currentFile?.id === 'string' && active.currentFile.id) || active.path;
+    if (!notePath || !storagePath || notePath !== storagePath) return;
+    if (active.appRoute === location.pathname) return;
+    const next = patchFileTab(workspaceTabsRef.current, active.id, {
+      appRoute: location.pathname,
+    });
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+    setQuizTabMode(active.id, quizTabModeFromAppRoute(location.pathname, notePath));
+  }, [location.pathname, setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef]);
 
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.endsWith('/chat');
@@ -189,19 +211,17 @@ export function useWorkspaceTabsDomain({
       const active = getActiveTab(activated);
       if (isFileTab(active)) {
         const file = active.currentFile;
+        const viewPath =
+          (typeof file?.id === 'string' && file.id) || active.path;
+        const targetRoute = resolveFileTabAppRoute(active);
+        setQuizTabMode(active.id, quizTabModeFromAppRoute(targetRoute, viewPath));
         setCurrentFile(file);
         currentFileRef.current = file;
         setEditorContent(active.editorContent);
         editorContentRef.current = active.editorContent;
         setEditedFileName(active.editedFileName || String(file?.name || ''));
         if (navigateUrl) {
-          const viewPath =
-            (typeof file?.id === 'string' && file.id) || active.path;
-          navigate(
-            openNotePathnameForStoragePath(viewPath, {
-              preferView: getQuizTabMode(id) === 'edit',
-            }),
-          );
+          navigate(targetRoute);
         }
       } else if (isChatTab(active)) {
         setCurrentFile(null);
@@ -464,17 +484,16 @@ export function useWorkspaceTabsDomain({
       const active = getActiveTab(next);
       if (isFileTab(active)) {
         const file = active.currentFile;
+        const viewPath =
+          (typeof file?.id === 'string' && file.id) || active.path;
+        const targetRoute = resolveFileTabAppRoute(active);
+        setQuizTabMode(active.id, quizTabModeFromAppRoute(targetRoute, viewPath));
         setCurrentFile(file);
         currentFileRef.current = file;
         setEditorContent(active.editorContent);
         editorContentRef.current = active.editorContent;
         setEditedFileName(active.editedFileName || String(file?.name || ''));
-        navigate(
-          openNotePathnameForStoragePath(
-            (typeof file?.id === 'string' && file.id) || active.path,
-            { preferView: getQuizTabMode(active.id) === 'edit' },
-          ),
-        );
+        navigate(targetRoute);
       } else if (isChatTab(active)) {
         setCurrentFile(null);
         currentFileRef.current = null;

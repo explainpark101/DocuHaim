@@ -279,6 +279,33 @@ async function readOpenAiSseStream(
   }
 }
 
+function extractOpenAiCompletionText(data: unknown): string {
+  const rec = asRecord(data);
+  const choices = rec && Array.isArray(rec.choices) ? rec.choices : [];
+  const first = asRecord(choices[0]);
+  const message = asRecord(first?.message);
+  const content = message?.content ?? first?.text;
+
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        const partRec = asRecord(part);
+        if (!partRec) return '';
+        if (typeof partRec.text === 'string') return partRec.text;
+        const inner = asRecord(partRec.text);
+        return typeof inner?.value === 'string' ? inner.value : '';
+      })
+      .filter(Boolean)
+      .join('')
+      .trim();
+  }
+  return '';
+}
+
+export { extractOpenAiCompletionText };
+
 async function postChatCompletionsStream({
   baseUrl,
   apiKey,
@@ -327,6 +354,83 @@ async function postChatCompletionsStream({
   }
 
   return readOpenAiSseStream(res, onChunk, signal);
+}
+
+async function postChatCompletions({
+  baseUrl,
+  apiKey,
+  modelId,
+  messages,
+  requestOptions,
+  signal,
+}: {
+  baseUrl: string;
+  apiKey: string;
+  modelId: string;
+  messages: ChatMessage[];
+  requestOptions?: Record<string, unknown>;
+  signal?: AbortSignal;
+}): Promise<string> {
+  throwIfLlmAssistAborted(signal);
+  const extras = toOpenAiCompatibleRequestExtras(requestOptions);
+  const res = await fetchOpenAiJson(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(apiKey),
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      ...extras,
+      model: modelId,
+      messages,
+      stream: false,
+    }),
+    ...(signal ? { signal } : {}),
+  });
+
+  if (!res.ok) {
+    const detail = await readErrorDetail(res);
+    const err = new Error(
+      formatOpenAiCompatibleError({ status: res.status, detail, modelId }),
+    ) as Error & { status?: number; retryAfterSec?: number | null };
+    err.status = res.status;
+    err.retryAfterSec = parseRetrySecondsFromOpenAiError(
+      detail,
+      res.headers.get('retry-after'),
+    );
+    throw err;
+  }
+
+  const data: unknown = await res.json();
+  const text = extractOpenAiCompletionText(data);
+  if (!text) {
+    throw new Error('OpenAI 호환 API가 빈 응답을 반환했습니다.');
+  }
+  return text;
+}
+
+async function postChatCompletionsWithRetry(
+  params: Parameters<typeof postChatCompletions>[0],
+): Promise<string> {
+  let attempt = 0;
+  while (true) {
+    throwIfLlmAssistAborted(params.signal);
+    try {
+      return await postChatCompletions(params);
+    } catch (err) {
+      if (isLlmAssistAbortError(err)) throw err;
+      const typed = err as { status?: number; retryAfterSec?: number | null };
+      const canRetry =
+        typed?.status === 429 &&
+        attempt < MAX_RATE_LIMIT_RETRIES &&
+        typed.retryAfterSec &&
+        typed.retryAfterSec <= 120;
+
+      if (!canRetry) throw err;
+      attempt += 1;
+      await sleepUntilLlmAssistAbort((typed.retryAfterSec ?? 1) * 1000, params.signal);
+    }
+  }
 }
 
 async function postChatCompletionsStreamWithRetry(
@@ -405,13 +509,21 @@ export async function generateOpenAiCompatibleTransform({
     images: imageList,
   });
 
-  return postChatCompletionsStreamWithRetry({
+  const shared = {
     baseUrl: base,
     apiKey: apiKey ?? '',
     modelId,
     messages,
     requestOptions: requestOptions ?? {},
-    ...(onChunk ? { onChunk } : {}),
     ...(signal ? { signal } : {}),
-  });
+  };
+
+  if (onChunk) {
+    return postChatCompletionsStreamWithRetry({
+      ...shared,
+      onChunk,
+    });
+  }
+
+  return postChatCompletionsWithRetry(shared);
 }

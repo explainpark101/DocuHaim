@@ -244,6 +244,7 @@ export function useAdvancedSearchTabsDomain() {
             },
             editorContent: '',
             editedFileName: fallbackName,
+            ...(tab.appRoute ? { appRoute: tab.appRoute } : {}),
           },
           Date.now(),
           { activate: false },

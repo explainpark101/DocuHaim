@@ -23,6 +23,8 @@ export type QuizGenStep = {
   llmInstruction?: string;
   /** Model output or step artifact (RAG excerpts, sampled vars, JSON, …). */
   llmResponse?: string;
+  /** Accumulated JSON parse failures (kept across retries). */
+  failureLog?: string;
   systemPrompt?: string;
 };
 
@@ -49,6 +51,7 @@ export type QuizGenStepUpdate = {
   error?: string;
   llmInstruction?: string;
   llmResponse?: string;
+  failureLog?: string;
   systemPrompt?: string;
 };
 
@@ -85,4 +88,31 @@ export function truncateQuizPreview(text: string, max = 72): string {
   const t = String(text || '').replace(/\s+/g, ' ').trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max - 1)}…`;
+}
+
+export function patchQuizGenJobStep(job: QuizGenJob, update: QuizGenStepUpdate): QuizGenJob {
+  const steps = job.steps.map((s) => {
+    if (s.id !== update.step) return s;
+    const next = { ...s, status: update.status };
+    if (update.detail !== undefined) next.detail = update.detail;
+    if (update.error !== undefined) next.error = update.error;
+    if (update.llmInstruction !== undefined) next.llmInstruction = update.llmInstruction;
+    if (update.failureLog !== undefined) next.failureLog = update.failureLog;
+    if (update.systemPrompt !== undefined) next.systemPrompt = update.systemPrompt;
+
+    const clearsError =
+      update.error === '' ||
+      ((update.status === 'done' || update.status === 'skipped') &&
+        update.error === undefined);
+    if (clearsError) {
+      delete next.error;
+    }
+
+    if (update.llmResponse !== undefined) {
+      next.llmResponse = update.llmResponse;
+    }
+
+    return next;
+  });
+  return { ...job, steps };
 }

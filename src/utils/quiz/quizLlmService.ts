@@ -61,7 +61,7 @@ import type {
   SubjectiveGradeResult,
   SubjectiveVerdict,
 } from '@/utils/quiz/quizTypes';
-import type { QuizGenStepUpdate } from '@/utils/quiz/quizGenerationQueueTypes';
+import type { QuizGenStepId, QuizGenStepUpdate } from '@/utils/quiz/quizGenerationQueueTypes';
 import { resolveQuestionChoiceCount, resizeChoiceOptions } from '@/utils/quiz/quizQuestionStyle';
 import { clampChoiceCount } from '@/utils/quiz/quizFileConfig';
 import { truncateForGenerationLog } from '@/utils/quiz/quizGenerationLog';
@@ -308,6 +308,185 @@ export function extractJsonObject(text: string): unknown {
   }
 }
 
+export const QUIZ_LLM_JSON_PARSE_MAX_ATTEMPTS = 3;
+
+/** OpenAI-compatible strict JSON response (quiz JSON-generation steps). */
+export const QUIZ_LLM_JSON_RESPONSE_FORMAT = {
+  type: 'json_object',
+  json_schema: {},
+} as const;
+
+export function buildQuizLlmRequestOptions(params: {
+  temperature: number;
+  expectJson?: boolean;
+}): Record<string, unknown> {
+  const requestOptions: Record<string, unknown> = {
+    temperature: params.temperature,
+  };
+  if (params.expectJson) {
+    requestOptions.response_format = { ...QUIZ_LLM_JSON_RESPONSE_FORMAT };
+  }
+  return requestOptions;
+}
+
+export function isQuizLlmJsonParseError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err || '');
+  return /JSON 파싱 실패|빈 LLM 응답/i.test(msg);
+}
+
+export type QuizLlmJsonParseFailureDetail = {
+  attempt: number;
+  maxAttempts: number;
+  error: Error;
+  rawResponse: string;
+  willRetry: boolean;
+};
+
+export function buildQuizGenJsonParseStepFields(
+  detail: QuizLlmJsonParseFailureDetail,
+): {
+  status: QuizGenStepUpdate['status'];
+  detail: string;
+  error: string;
+  llmResponse: string;
+} {
+  return {
+    status: detail.willRetry ? 'running' : 'error',
+    detail: detail.willRetry
+      ? `JSON 파싱 실패 (${detail.attempt}/${detail.maxAttempts})`
+      : `JSON 파싱 실패 — 최종 실패 (${detail.attempt}/${detail.maxAttempts})`,
+    error: detail.error.message,
+    llmResponse: truncateForGenerationLog(detail.rawResponse),
+  };
+}
+
+function buildQuizGenJsonRetryHandlers(
+  emit: (update: QuizGenStepUpdate) => void,
+  step: QuizGenStepId,
+  ctx: {
+    runningDetail: string;
+    llmInstruction?: string;
+    systemPrompt?: string;
+  },
+): {
+  onParseFailure: (detail: QuizLlmJsonParseFailureDetail) => void;
+  onRetryAttempt: (detail: { attempt: number; maxAttempts: number }) => void;
+} {
+  const failureBlocks: string[] = [];
+  const sharedFields = {
+    ...(ctx.llmInstruction !== undefined ? { llmInstruction: ctx.llmInstruction } : {}),
+    ...(ctx.systemPrompt !== undefined ? { systemPrompt: ctx.systemPrompt } : {}),
+  };
+  return {
+    onParseFailure: (detail) => {
+      failureBlocks.push(
+        `### JSON parse failure (${detail.attempt}/${detail.maxAttempts})\n${truncateForGenerationLog(detail.rawResponse)}`,
+      );
+      const fields = buildQuizGenJsonParseStepFields(detail);
+      const stepDetail = detail.willRetry
+        ? `${ctx.runningDetail} (재시도 ${detail.attempt + 1}/${detail.maxAttempts})`
+        : (fields.detail ?? `JSON 파싱 실패 (${detail.attempt}/${detail.maxAttempts})`);
+      emit({
+        step,
+        status: fields.status,
+        detail: stepDetail,
+        error: fields.error,
+        failureLog: failureBlocks.join('\n\n---\n\n'),
+        llmResponse: truncateForGenerationLog(detail.rawResponse),
+        ...sharedFields,
+      });
+    },
+    onRetryAttempt: ({ attempt, maxAttempts }) => {
+      emit({
+        step,
+        status: 'running',
+        detail: `${ctx.runningDetail} (재시도 ${attempt}/${maxAttempts})`,
+        error: '',
+        llmResponse: '',
+        ...sharedFields,
+      });
+    },
+  };
+}
+
+/** Run an LLM prompt and parse JSON; retry the prompt on JSON parse failure. */
+export async function runWithQuizLlmJsonParseRetry(
+  runPrompt: () => Promise<string>,
+  options?: {
+    maxAttempts?: number;
+    signal?: AbortSignal | undefined;
+    onParseFailure?: (detail: QuizLlmJsonParseFailureDetail) => void;
+    onRetryAttempt?: (detail: { attempt: number; maxAttempts: number }) => void;
+  },
+): Promise<{ text: string; parsed: unknown }> {
+  const maxAttempts = Math.max(
+    1,
+    options?.maxAttempts ?? QUIZ_LLM_JSON_PARSE_MAX_ATTEMPTS,
+  );
+  let lastError: Error | null = null;
+  let lastRawResponse = '';
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (options?.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    if (attempt > 1) {
+      options?.onRetryAttempt?.({ attempt, maxAttempts });
+    }
+    const text = await runPrompt();
+    lastRawResponse = text;
+    try {
+      return { text, parsed: extractJsonObject(text) };
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      const willRetry = isQuizLlmJsonParseError(lastError) && attempt < maxAttempts;
+      if (isQuizLlmJsonParseError(lastError)) {
+        options?.onParseFailure?.({
+          attempt,
+          maxAttempts,
+          error: lastError,
+          rawResponse: text,
+          willRetry,
+        });
+      }
+      if (!willRetry) {
+        throw lastError;
+      }
+    }
+  }
+  if (lastError && isQuizLlmJsonParseError(lastError)) {
+    options?.onParseFailure?.({
+      attempt: maxAttempts,
+      maxAttempts,
+      error: lastError,
+      rawResponse: lastRawResponse,
+      willRetry: false,
+    });
+  }
+  throw lastError ?? new Error('JSON 파싱 실패');
+}
+
+/** Quiz LLM call that forces JSON output and parses the response (with retry). */
+export async function runQuizLlmPromptForJson(
+  options: QuizLlmRunOptions,
+  retryOptions?: {
+    maxAttempts?: number;
+    signal?: AbortSignal | undefined;
+    onParseFailure?: (detail: QuizLlmJsonParseFailureDetail) => void;
+    onRetryAttempt?: (detail: { attempt: number; maxAttempts: number }) => void;
+  },
+): Promise<{ text: string; parsed: unknown }> {
+  const { onChunk: _omitChunk, ...jsonOptions } = options;
+  return runWithQuizLlmJsonParseRetry(
+    () =>
+      runQuizLlmPrompt({
+        ...jsonOptions,
+        expectJson: true,
+        stream: false,
+      }),
+    retryOptions,
+  );
+}
+
 /** Parse LLM JSON into a SubjectiveGradeResult (exported for tests). */
 export function parseSubjectiveGradeResult(raw: unknown): SubjectiveGradeResult {
   const parsed =
@@ -351,6 +530,13 @@ export type QuizLlmRunOptions = {
   model?: string;
   /** Vision inputs (Gemini, MLX-VLM, OpenAI-compatible / llama.cpp multimodal). */
   images?: QuizLlmImageInput[];
+  /** Request OpenAI-compatible `response_format` JSON object output. */
+  expectJson?: boolean;
+  /**
+   * When false, use a single completed response instead of SSE streaming.
+   * Defaults to false for JSON calls and when `onChunk` is omitted.
+   */
+  stream?: boolean;
 };
 
 function withStreamOpts<T extends Record<string, unknown>>(
@@ -385,18 +571,21 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
   ).trim();
   const systemPrompt = (options.systemPrompt || settings.systemPrompt || '').trim();
   const instruction = options.instruction.trim();
-  const requestOptions = {
+  const requestOptions = buildQuizLlmRequestOptions({
     temperature:
       typeof options.temperature === 'number'
         ? options.temperature
         : settings.temperature,
-  };
+    expectJson: options.expectJson === true,
+  });
   const streamOpts: {
     signal?: AbortSignal;
     onChunk?: (accumulated: string) => void;
   } = {};
   if (options.signal) streamOpts.signal = options.signal;
-  if (options.onChunk) streamOpts.onChunk = options.onChunk;
+  const useStreaming =
+    options.stream !== false && options.onChunk != null && options.expectJson !== true;
+  if (useStreaming && options.onChunk) streamOpts.onChunk = options.onChunk;
   const imageList = Array.isArray(options.images)
     ? options.images.filter((img) => img?.mimeType && img?.dataBase64)
     : [];
@@ -648,7 +837,7 @@ ${params.userAnswer}
 JSON만 반환:
 {"verdict":"correct"|"partial"|"wrong","score":0,"feedback":"...","rationale":"..."}`;
 
-  const text = await runQuizLlmPrompt(
+  const { parsed } = await runQuizLlmPromptForJson(
     runOpts(
       params.profiles,
       instruction,
@@ -659,8 +848,9 @@ JSON만 반환:
         onChunk: params.onChunk,
       }),
     ),
+    { signal: params.signal },
   );
-  return parseSubjectiveGradeResult(extractJsonObject(text));
+  return parseSubjectiveGradeResult(parsed);
 }
 
 export async function generateWrongChoiceExplanation(params: {
@@ -823,7 +1013,7 @@ export async function generateSimilarChoiceQuestion(params: {
     llmInstruction: analysisInstruction,
     systemPrompt: SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
   });
-  const analysisText = await runQuizLlmPrompt(
+  const { text: analysisText, parsed: analysisParsed } = await runQuizLlmPromptForJson(
     runOpts(
       params.profiles,
       analysisInstruction,
@@ -831,8 +1021,16 @@ export async function generateSimilarChoiceQuestion(params: {
       analysisTemp,
       signalExtra(params.signal),
     ),
+    {
+      signal: params.signal,
+      ...buildQuizGenJsonRetryHandlers(emit, 'analysis', {
+        runningDetail: 'LLM 문항 분석 중…',
+        llmInstruction: analysisInstruction,
+        systemPrompt: SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
+      }),
+    },
   );
-  const analysis = parseSimilarQuestionAnalysis(extractJsonObject(analysisText));
+  const analysis = parseSimilarQuestionAnalysis(analysisParsed);
   emit({
     step: 'analysis',
     status: 'done',
@@ -893,7 +1091,7 @@ export async function generateSimilarChoiceQuestion(params: {
     llmInstruction: generationInstruction,
     systemPrompt: genSystemPrompt,
   });
-  const text = await runQuizLlmPrompt(
+  const { text, parsed } = await runQuizLlmPromptForJson(
     runOpts(
       params.profiles,
       generationInstruction,
@@ -901,8 +1099,15 @@ export async function generateSimilarChoiceQuestion(params: {
       settings.temperature,
       signalExtra(params.signal),
     ),
+    {
+      signal: params.signal,
+      ...buildQuizGenJsonRetryHandlers(emit, 'generate', {
+        runningDetail: 'LLM 문항 작성 중…',
+        llmInstruction: generationInstruction,
+        systemPrompt: genSystemPrompt,
+      }),
+    },
   );
-  const parsed = extractJsonObject(text);
   emit({
     step: 'generate',
     status: 'done',
@@ -931,7 +1136,7 @@ export async function generateSimilarChoiceQuestion(params: {
       llmInstruction: repairInstruction,
       systemPrompt: genSystemPrompt,
     });
-    const repairText = await runQuizLlmPrompt(
+    const { text: repairText, parsed: repairParsed } = await runQuizLlmPromptForJson(
       runOpts(
         params.profiles,
         repairInstruction,
@@ -939,8 +1144,15 @@ export async function generateSimilarChoiceQuestion(params: {
         Math.min(settings.temperature, 0.8),
         signalExtra(params.signal),
       ),
+      {
+        signal: params.signal,
+        ...buildQuizGenJsonRetryHandlers(emit, 'generate', {
+          runningDetail: '해설·접근 Point 보완 중…',
+          llmInstruction: repairInstruction,
+          systemPrompt: genSystemPrompt,
+        }),
+      },
     );
-    const repairParsed = extractJsonObject(repairText);
     const repairObj =
       repairParsed && typeof repairParsed === 'object'
         ? (repairParsed as Record<string, unknown>)
@@ -1042,7 +1254,7 @@ export async function generateDerivedQuestion(params: {
     llmInstruction: analysisInstruction,
     systemPrompt: SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
   });
-  const analysisText = await runQuizLlmPrompt(
+  const { text: analysisText, parsed: analysisParsed } = await runQuizLlmPromptForJson(
     runOpts(
       params.profiles,
       analysisInstruction,
@@ -1050,8 +1262,16 @@ export async function generateDerivedQuestion(params: {
       analysisTemp,
       signalExtra(params.signal),
     ),
+    {
+      signal: params.signal,
+      ...buildQuizGenJsonRetryHandlers(emit, 'analysis', {
+        runningDetail: 'LLM 문항 분석 중…',
+        llmInstruction: analysisInstruction,
+        systemPrompt: SIMILAR_QUESTION_ANALYSIS_SYSTEM_PROMPT,
+      }),
+    },
   );
-  const analysis = parseSimilarQuestionAnalysis(extractJsonObject(analysisText));
+  const analysis = parseSimilarQuestionAnalysis(analysisParsed);
   emit({
     step: 'analysis',
     status: 'done',
@@ -1114,7 +1334,7 @@ export async function generateDerivedQuestion(params: {
     llmInstruction: generationInstruction,
     systemPrompt: genSystemPrompt,
   });
-  const text = await runQuizLlmPrompt(
+  const { text, parsed } = await runQuizLlmPromptForJson(
     runOpts(
       params.profiles,
       generationInstruction,
@@ -1122,8 +1342,15 @@ export async function generateDerivedQuestion(params: {
       settings.temperature,
       signalExtra(params.signal),
     ),
+    {
+      signal: params.signal,
+      ...buildQuizGenJsonRetryHandlers(emit, 'generate', {
+        runningDetail: '파생 문항 작성 중…',
+        llmInstruction: generationInstruction,
+        systemPrompt: genSystemPrompt,
+      }),
+    },
   );
-  const parsed = extractJsonObject(text);
   emit({
     step: 'generate',
     status: 'done',
@@ -1180,7 +1407,7 @@ export async function generateDerivedQuestion(params: {
       llmInstruction: repairInstruction,
       systemPrompt: genSystemPrompt,
     });
-    const repairText = await runQuizLlmPrompt(
+    const { text: repairText, parsed: repairParsed } = await runQuizLlmPromptForJson(
       runOpts(
         params.profiles,
         repairInstruction,
@@ -1188,8 +1415,15 @@ export async function generateDerivedQuestion(params: {
         Math.min(settings.temperature, 0.8),
         signalExtra(params.signal),
       ),
+      {
+        signal: params.signal,
+        ...buildQuizGenJsonRetryHandlers(emit, 'generate', {
+          runningDetail: '해설·접근 Point 보완 중…',
+          llmInstruction: repairInstruction,
+          systemPrompt: genSystemPrompt,
+        }),
+      },
     );
-    const repairParsed = extractJsonObject(repairText);
     const repairObj =
       repairParsed && typeof repairParsed === 'object'
         ? (repairParsed as Record<string, unknown>)
@@ -1274,7 +1508,7 @@ export async function generateQuestionSections(params: {
     ...(ragBlock ? { ragBlock } : {}),
   });
 
-  const text = await runQuizLlmPrompt(
+  const { parsed } = await runQuizLlmPromptForJson(
     runOpts(
       params.profiles,
       instruction,
@@ -1287,9 +1521,8 @@ export async function generateQuestionSections(params: {
         model: params.model,
       }),
     ),
+    { signal: params.signal },
   );
-
-  const parsed = extractJsonObject(text);
   const obj =
     parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? (parsed as Record<string, unknown>)
@@ -1495,7 +1728,7 @@ JSON 배열만 반환하세요.`;
     systemPrompt: genSystemPrompt,
   });
 
-  const text = await runQuizLlmPrompt(
+  const { text, parsed } = await runQuizLlmPromptForJson(
     runOpts(
       params.profiles,
       genInstruction,
@@ -1515,8 +1748,15 @@ JSON 배열만 반환하세요.`;
         },
       }),
     ),
+    {
+      signal: params.signal,
+      ...buildQuizGenJsonRetryHandlers(emit, 'generate', {
+        runningDetail: 'LLM 문항 작성 중…',
+        llmInstruction: genInstruction,
+        systemPrompt: genSystemPrompt,
+      }),
+    },
   );
-  const parsed = extractJsonObject(text);
   const list = Array.isArray(parsed) ? parsed : [parsed];
   emit({
     step: 'generate',
@@ -1661,8 +1901,8 @@ export async function generateFixedQuizQuestion(params: {
     ...(ragBlock ? { ragBlock } : {}),
   });
 
-  emit({ step: 'generate', status: 'running', detail: '문항 교정 중…' });
-  const text = await runQuizLlmPrompt(
+  emit({ step: 'generate', status: 'running', detail: '문항 교정 중…', llmInstruction: instruction, systemPrompt: FIX_QUESTION_SYSTEM_PROMPT });
+  const { text, parsed } = await runQuizLlmPromptForJson(
     runOpts(
       params.profiles,
       instruction,
@@ -1673,15 +1913,29 @@ export async function generateFixedQuizQuestion(params: {
         onChunk: params.onChunk,
       }),
     ),
+    {
+      signal: params.signal,
+      ...buildQuizGenJsonRetryHandlers(emit, 'generate', {
+        runningDetail: '문항 교정 중…',
+        llmInstruction: instruction,
+        systemPrompt: FIX_QUESTION_SYSTEM_PROMPT,
+      }),
+    },
   );
-  const parsed = extractJsonObject(text);
   const obj =
     parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? parsed
       : Array.isArray(parsed) && parsed[0]
         ? parsed[0]
         : parsed;
-  emit({ step: 'generate', status: 'done', detail: '교정 완료' });
+  emit({
+    step: 'generate',
+    status: 'done',
+    detail: '교정 완료',
+    llmInstruction: instruction,
+    llmResponse: truncateForGenerationLog(text),
+    systemPrompt: FIX_QUESTION_SYSTEM_PROMPT,
+  });
   return parseGeneratedQuestion(obj, choiceCount, fallbackAnswer);
 }
 
@@ -1783,20 +2037,22 @@ export async function generateQuestionFromImage(params: {
       : {}),
   });
 
-  const runOptions = runOpts(
-    params.profiles,
-    instruction,
-    systemPrompt,
-    settings.temperature,
-    streamExtra({
-      signal: params.signal,
-      onChunk: params.onChunk,
-    }),
+  const { parsed } = await runQuizLlmPromptForJson(
+    {
+      ...runOpts(
+        params.profiles,
+        instruction,
+        systemPrompt,
+        settings.temperature,
+        streamExtra({
+          signal: params.signal,
+          onChunk: params.onChunk,
+        }),
+      ),
+      images: [params.image],
+    },
+    { signal: params.signal },
   );
-  runOptions.images = [params.image];
-
-  const text = await runQuizLlmPrompt(runOptions);
-  const parsed = extractJsonObject(text);
   const obj =
     parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? parsed

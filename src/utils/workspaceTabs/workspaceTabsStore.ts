@@ -14,6 +14,7 @@ import {
   createSettingsTab,
   isFileTab,
   isFileTabDirty,
+  retargetFileTabAppRoute,
   revokeFileTabObjectUrl,
 } from '@/utils/workspaceTabs/helpers';
 
@@ -145,6 +146,7 @@ export type OpenFileTabInput = {
   currentFile: FileWorkspaceTab['currentFile'];
   editorContent: string;
   editedFileName?: string;
+  appRoute?: string;
 };
 
 /**
@@ -174,8 +176,14 @@ export function openOrReplaceFileTab(
     // Keep soft-cap LRU order stable for background content updates.
     const nextTab =
       !activate && isFileTab(prev)
-        ? { ...tab, lastActivatedAt: prev.lastActivatedAt }
-        : tab;
+        ? {
+            ...tab,
+            lastActivatedAt: prev.lastActivatedAt,
+            appRoute: prev.appRoute ?? tab.appRoute,
+          }
+        : isFileTab(prev)
+          ? { ...tab, appRoute: prev.appRoute ?? tab.appRoute }
+          : tab;
     tabs = state.tabs.map((t, i) => (i === idx ? nextTab : t));
   } else {
     tabs = [...state.tabs, tab];
@@ -189,7 +197,12 @@ export function patchFileTab(
   patch: Partial<
     Pick<
       FileWorkspaceTab,
-      'currentFile' | 'editorContent' | 'baselineContent' | 'editedFileName' | 'lastActivatedAt'
+      | 'currentFile'
+      | 'editorContent'
+      | 'baselineContent'
+      | 'editedFileName'
+      | 'lastActivatedAt'
+      | 'appRoute'
     >
   > & {
     /** When true, revoke previous objectUrl if replaced. */
@@ -293,6 +306,7 @@ export function retargetFileTab(
     const merged: FileWorkspaceTab = {
       ...destTab,
       path: newPath,
+      appRoute: retargetFileTabAppRoute(destTab.appRoute ?? oldTab.appRoute, newPath),
       currentFile: {
         ...destTab.currentFile,
         ...nextCurrentFile,
@@ -315,6 +329,7 @@ export function retargetFileTab(
     ...oldTab,
     id: newId,
     path: newPath,
+    appRoute: retargetFileTabAppRoute(oldTab.appRoute, newPath),
     currentFile: nextCurrentFile,
     editedFileName: nextName || oldTab.editedFileName,
   };

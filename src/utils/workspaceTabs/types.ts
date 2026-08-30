@@ -37,6 +37,8 @@ export type FileWorkspaceTab = {
   kind: 'file';
   storageType: FileStorageType;
   path: string;
+  /** App router pathname for this tab (`/view/...`, `/quiz/...`, …). */
+  appRoute?: string;
   /** Opened file payload (same shape as App `currentFile`). */
   currentFile: Record<string, unknown> & {
     type?: string;
@@ -68,7 +70,7 @@ export type PersistedWorkspaceTab =
   | { kind: 'chat' }
   | { kind: 'settings' }
   | { kind: 'content-search' }
-  | { kind: 'file'; type: FileStorageType; path: string };
+  | { kind: 'file'; type: FileStorageType; path: string; appRoute?: string };
 
 export type PersistedWorkspaceTabs = {
   version: 1;

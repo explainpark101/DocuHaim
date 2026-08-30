@@ -10,6 +10,15 @@ import {
   type WorkspaceTab,
   isEditableViewer,
 } from '@/utils/workspaceTabs/types';
+import {
+  exportPdfPathnameForStoragePath,
+  isExportPdfAppPathname,
+  isQuizAppPathname,
+  openNotePathnameForStoragePath,
+  quizPathnameForStoragePath,
+  viewPathnameForStoragePath,
+} from '@/utils/appHref';
+import { isQuizMdPath } from '@/utils/quiz/quizPath';
 
 export function fileTabId(storageType: string, path: string): string {
   return `${storageType}:${path}`;
@@ -33,6 +42,7 @@ export function createFileTab(params: {
   currentFile: FileWorkspaceTab['currentFile'];
   editorContent: string;
   editedFileName?: string;
+  appRoute?: string;
   now?: number;
 }): FileWorkspaceTab {
   const { storageType, path, currentFile, editorContent } = params;
@@ -44,12 +54,39 @@ export function createFileTab(params: {
     kind: 'file',
     storageType,
     path,
+    appRoute: params.appRoute ?? openNotePathnameForStoragePath(path),
     currentFile,
     editorContent,
     baselineContent: baseline,
     editedFileName: params.editedFileName ?? String(currentFile.name ?? path.split('/').pop() ?? ''),
     lastActivatedAt: now,
   };
+}
+
+/** Resolve the router pathname stored on a file tab. */
+export function resolveFileTabAppRoute(
+  tab: Pick<FileWorkspaceTab, 'path' | 'appRoute'>,
+): string {
+  return tab.appRoute || openNotePathnameForStoragePath(tab.path);
+}
+
+/** Retarget a tab route after rename/move while preserving quiz/view/export mode. */
+export function retargetFileTabAppRoute(
+  oldRoute: string | undefined,
+  newPath: string,
+): string {
+  if (!oldRoute) return openNotePathnameForStoragePath(newPath);
+  if (isQuizAppPathname(oldRoute)) return quizPathnameForStoragePath(newPath);
+  if (isExportPdfAppPathname(oldRoute)) return exportPdfPathnameForStoragePath(newPath);
+  return viewPathnameForStoragePath(newPath);
+}
+
+export function quizTabModeFromAppRoute(
+  appRoute: string,
+  storagePath: string,
+): 'quiz' | 'edit' {
+  if (!isQuizMdPath(storagePath)) return 'edit';
+  return isQuizAppPathname(appRoute) ? 'quiz' : 'edit';
 }
 
 export function isChatTab(tab: WorkspaceTab | null | undefined): tab is ChatWorkspaceTab {

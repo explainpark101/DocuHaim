@@ -295,5 +295,13 @@ export function toGeminiGenerationConfig(
     const mapped = GEMINI_OPTION_KEY_MAP[key] ?? key;
     out[mapped] = value;
   }
+  const responseFormat = src.response_format;
+  if (responseFormat && typeof responseFormat === 'object') {
+    const type = String((responseFormat as { type?: string }).type || '');
+    if (type === 'json_object' || type === 'json_schema') {
+      out.responseMimeType = 'application/json';
+    }
+    delete out.response_format;
+  }
   return out;
 }

@@ -11,7 +11,7 @@ import type { QuizDerivedQuestionTarget } from '@/utils/quiz/derivedQuestionAnal
 import type { QuizAnswerStyle, QuizQuestion, QuizQuestionKind } from '@/utils/quiz/quizTypes';
 import QuizDockMotionAside from '@/components/quiz/QuizDockMotionAside';
 import { GitBranch, Loader2, X } from 'lucide-react';
-import { type ComponentType, memo, useEffect, useMemo, useState } from 'react';
+import { type ComponentType, type KeyboardEvent, memo, useCallback, useEffect, useMemo, useState } from 'react';
 
 const DERIVED_QUESTION_DOCK_DEFAULT_WIDTH = 360;
 
@@ -97,14 +97,24 @@ function QuizDerivedQuestionDock({
   const { kind, answerStyle } = kindFromPicker(picker);
   const previewLabel = question?.displayLabel || question?.id || '';
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     onSubmit({
       kind,
       choiceCount: clampChoiceCount(choiceCount),
       ...(kind === 'subjective' ? { answerStyle } : {}),
       ...(userPrompt.trim() ? { userPrompt: userPrompt.trim() } : {}),
     });
-  };
+  }, [answerStyle, choiceCount, kind, onSubmit, userPrompt]);
+
+  const handlePromptKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (busy) return;
+      if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
+      event.preventDefault();
+      handleSubmit();
+    },
+    [busy, handleSubmit],
+  );
 
   const showDock = open && question != null;
 
@@ -219,7 +229,14 @@ function QuizDerivedQuestionDock({
                     value={userPrompt}
                     disabled={busy}
                     onChange={(e) => setUserPrompt(e.target.value)}
+                    onKeyDown={handlePromptKeyDown}
                   />
+                  <p className="text-[10px] text-slate-500 dark:text-odp-muted">
+                    <kbd className="rounded border border-slate-300 bg-slate-100 px-1 py-px font-mono text-[9px] dark:border-odp-borderSoft dark:bg-odp-bgSoft">
+                      ⌘/Ctrl+Enter
+                    </kbd>
+                    로 바로 생성할 수 있습니다.
+                  </p>
                 </label>
               </div>
 

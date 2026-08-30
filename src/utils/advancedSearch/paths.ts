@@ -10,9 +10,10 @@ export const SYSTEM_INDEX_EXCLUDED_FOLDERS = [
   ADVANCED_SEARCH_FOLDER,
   '.advanced_search',
   '.trash',
+  '.quiz',
 ] as const;
 
-/** True for `.trash`, `.advanced-search`, `.advanced_search` (root or descendant). */
+/** True for `.trash`, `.advanced-search`, `.advanced_search`, `.quiz` (root or descendant). */
 export function isSystemIndexExcludedFolder(path: string): boolean {
   const p = String(path || '')
     .replace(/\\/g, '/')

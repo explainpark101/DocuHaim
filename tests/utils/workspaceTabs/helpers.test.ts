@@ -9,6 +9,8 @@ import {
   isFileTab,
   isFileTabDirty,
   isSettingsTab,
+  quizTabModeFromAppRoute,
+  resolveFileTabAppRoute,
   tabDisplayTitle,
 } from '@/utils/workspaceTabs/helpers';
 
@@ -28,6 +30,31 @@ describe('workspaceTabs helpers', () => {
     expect(isFileTab(file)).toBe(true);
     expect(file.id).toBe('local:notes/hello.md');
     expect(tabDisplayTitle(file)).toBe('hello.md');
+  });
+
+  it('defaults quiz tabs to /quiz route and resolves stored appRoute', () => {
+    const quiz = createFileTab({
+      storageType: 's3',
+      path: 'notes/exam.quiz.md',
+      currentFile: { name: 'exam.quiz.md', content: '', viewer: 'markdown' },
+      editorContent: '',
+    });
+    expect(quiz.appRoute).toBe('/quiz/notes/exam.quiz.md');
+
+    const edited = createFileTab({
+      storageType: 's3',
+      path: 'notes/exam.quiz.md',
+      currentFile: { name: 'exam.quiz.md', content: '', viewer: 'markdown' },
+      editorContent: '',
+      appRoute: '/view/notes/exam.quiz.md',
+    });
+    expect(resolveFileTabAppRoute(edited)).toBe('/view/notes/exam.quiz.md');
+    expect(quizTabModeFromAppRoute('/quiz/notes/exam.quiz.md', 'notes/exam.quiz.md')).toBe(
+      'quiz',
+    );
+    expect(quizTabModeFromAppRoute('/view/notes/exam.quiz.md', 'notes/exam.quiz.md')).toBe(
+      'edit',
+    );
   });
 
   it('detects dirty editable file tabs', () => {

@@ -18,6 +18,20 @@
 .quiz-pane .quiz-md-preview .md-editor-preview {
   font-family: inherit;
   line-height: 1.5;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.quiz-pane .quiz-md-preview .md-editor {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  border: none;
+}
+
+.quiz-pane .quiz-md-preview .md-editor-preview-wrapper,
+.quiz-pane .quiz-md-preview .md-editor-preview {
+  padding: 0;
 }
 
 .quiz-pane .quiz-md-preview .md-editor-preview :where(p, li, blockquote, td, th, dd, dt, pre, code) {

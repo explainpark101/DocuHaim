@@ -161,7 +161,12 @@ export function toPersistedWorkspaceTabs(
       persisted.push({ kind: 'content-search' });
     } else if (t.kind === 'file' && t.storageType !== 'session') {
       // Session tabs are ephemeral — do not persist.
-      persisted.push({ kind: 'file', type: t.storageType, path: t.path });
+      persisted.push({
+        kind: 'file',
+        type: t.storageType,
+        path: t.path,
+        ...(t.appRoute ? { appRoute: t.appRoute } : {}),
+      });
     }
   }
   let nextActive = activeId;

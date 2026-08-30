@@ -94,7 +94,7 @@ import QuizLlmSessionBar from "@/components/quiz/QuizLlmSessionBar";
 import type { QuizVaultTextReader } from "@/utils/quiz/quizVaultSourceLoader";
 import "@/styles/quiz-pane.css";
 import { writeQuizGenerationLog } from "@/utils/quiz/quizGenerationLog";
-import type { QuizGenStepUpdate } from "@/utils/quiz/quizGenerationQueueTypes";
+import type { QuizGenJob, QuizGenStepUpdate } from "@/utils/quiz/quizGenerationQueueTypes";
 import { useToast } from "@/contexts/ToastContext";
 import { useAlertModal } from "@/contexts/AlertModalContext";
 import { useLlmAssistSessionOptional } from "@/contexts/LlmAssistSessionContext";
@@ -381,13 +381,13 @@ export default function QuizPane({
   );
 
   const persistGenerationLog = useCallback(
-    async (jobId: string, logKey: string) => {
+    async (jobId: string, logKey: string, jobSnapshot?: QuizGenJob | null) => {
       const quizPath = currentFile?.id;
       if (!quizPath) return;
       await new Promise<void>((resolve) => {
         window.setTimeout(resolve, 0);
       });
-      const job = genQueue.getJob(jobId);
+      const job = jobSnapshot ?? genQueue.getJob(jobId);
       if (!job) return;
       const backend = getBackendForType(storageType);
       if (!backend?.writeText) return;
@@ -409,8 +409,8 @@ export default function QuizPane({
 
   const handleGenerationStep = useCallback(
     (jobId: string, logKey: string, update: QuizGenStepUpdate) => {
-      genQueue.updateJobStep(jobId, update);
-      void persistGenerationLog(jobId, logKey);
+      const patched = genQueue.updateJobStep(jobId, update);
+      void persistGenerationLog(jobId, logKey, patched);
     },
     [genQueue, persistGenerationLog],
   );

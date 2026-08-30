@@ -75,6 +75,7 @@ function StepDetailPanel({ step }: { step: QuizGenStep }) {
   const hasDetail =
     Boolean(step.systemPrompt?.trim()) ||
     Boolean(step.llmInstruction?.trim()) ||
+    Boolean(step.failureLog?.trim()) ||
     Boolean(step.llmResponse?.trim()) ||
     Boolean(step.error?.trim());
 
@@ -90,6 +91,9 @@ function StepDetailPanel({ step }: { step: QuizGenStep }) {
     <div className="space-y-2">
       <LogBlock title="System prompt" body={step.systemPrompt || ''} />
       <LogBlock title="Instruction / input" body={step.llmInstruction || ''} />
+      {step.failureLog ? (
+        <LogBlock title="Parse failure log" body={step.failureLog} />
+      ) : null}
       <LogBlock title="Model response / artifact" body={step.llmResponse || ''} />
       {step.error ? <LogBlock title="Error" body={step.error} /> : null}
     </div>

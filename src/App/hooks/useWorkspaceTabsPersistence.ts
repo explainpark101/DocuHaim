@@ -37,7 +37,7 @@ function buildPersistedWorkspaceTabsPayload(
           ? { kind: 'settings' }
           : t.kind === 'content-search'
             ? { kind: 'content-search' }
-            : { kind: 'file', storageType: t.storageType, path: t.path },
+            : { kind: 'file', storageType: t.storageType, path: t.path, ...(t.appRoute ? { appRoute: t.appRoute } : {}) },
     ),
     flushed.activeId,
   );
