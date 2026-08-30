@@ -34,7 +34,10 @@ import QuizGenerationQueuePanel from "@/components/quiz/QuizGenerationQueuePanel
 import QuizStopwatchToolbar from "@/components/quiz/QuizStopwatchToolbar";
 import QuizTimeLogPanel from "@/components/quiz/QuizTimeLogPanel";
 import type { QuizQuestionSectionsTarget } from "@/components/quiz/QuizQuestionSectionsPanel";
-import QuizQuestionCard from "@/components/quiz/QuizQuestionCard";
+import QuizQuestionVirtualList, {
+  type QuizQuestionVirtualListHandle,
+} from "@/components/quiz/QuizQuestionVirtualList";
+import QuizSourcesTopicGeneratePanel from "@/components/quiz/QuizSourcesTopicGeneratePanel";
 import QuizChoiceAnalysisDock, {
   type QuizChoiceAnalysisDockMode,
 } from "@/components/quiz/QuizChoiceAnalysisDock";
@@ -574,10 +577,11 @@ export default function QuizPane({
     questionId?: string;
     onDone?: (paths: string[]) => void;
   } | null>(null);
-  const [genTopic, setGenTopic] = useState("");
   const [freshQuestionIds, setFreshQuestionIds] = useState<
     Record<string, true>
   >({});
+  const questionListRef = useRef<QuizQuestionVirtualListHandle | null>(null);
+  const pendingScrollQuestionIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const quizScrollRef = useRef<HTMLDivElement>(null);
   const contentProgressRef = useRef<HTMLDivElement>(null);
@@ -1418,6 +1422,18 @@ export default function QuizPane({
     });
   }, []);
 
+  const scrollToQuestionId = useCallback((questionId: string) => {
+    if (questionListRef.current?.scrollToQuestionId(questionId)) return;
+    pendingScrollQuestionIdRef.current = questionId;
+  }, []);
+
+  useEffect(() => {
+    const pendingId = pendingScrollQuestionIdRef.current;
+    if (!pendingId) return;
+    if (!questionListRef.current?.scrollToQuestionId(pendingId)) return;
+    pendingScrollQuestionIdRef.current = null;
+  }, [doc.questions, filter, userAnswers, graded, isSubmitted, subjGrades]);
+
 
   const submitAll = async () => {
     if (stopwatch.examInProgress) {
@@ -1542,9 +1558,7 @@ export default function QuizPane({
       showToast({ message: `${displayLabel} 유사문제 추가`, durationMs: 2500 });
       await saveAfterAiGenerate();
       window.setTimeout(() => {
-        document
-          .getElementById(`q-card-${newQ.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        scrollToQuestionId(newQ.id);
       }, 80);
     } catch (err) {
       const message =
@@ -1691,9 +1705,7 @@ export default function QuizPane({
       showToast({ message: `${displayLabel} 파생문제 추가`, durationMs: 2500 });
       await saveAfterAiGenerate();
       window.setTimeout(() => {
-        document
-          .getElementById(`q-card-${newQ.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        scrollToQuestionId(newQ.id);
       }, 80);
     } catch (err) {
       const message =
@@ -1844,7 +1856,7 @@ export default function QuizPane({
     }
   };
 
-  const handleGenerateFromSources = async () => {
+  const handleGenerateFromSources = async (topic: string) => {
     const total = doc.config.sourcePaths.length;
     const sources = getActiveSourcePaths(doc.config);
     if (!total) {
@@ -1871,7 +1883,7 @@ export default function QuizPane({
     abortRef.current = ac;
     const jobId = genQueue.createSourceJob({
       preview: doc.questions[0]?.question || "근거 기반 출제",
-      topic: genTopic,
+      topic,
     });
     const logKey = jobId;
     try {
@@ -1879,7 +1891,7 @@ export default function QuizPane({
         profiles,
         config: doc.config,
         sourcePaths: sources,
-        topic: genTopic,
+        topic,
         kind: "choice",
         count: 1,
         exampleQuestions: doc.questions,
@@ -1937,9 +1949,7 @@ export default function QuizPane({
       await saveAfterAiGenerate();
       if (firstId) {
         window.setTimeout(() => {
-          document
-            .getElementById(`q-card-${firstId}`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          scrollToQuestionId(firstId);
         }, 80);
       }
     } catch (err) {
@@ -1957,6 +1967,12 @@ export default function QuizPane({
       setBusyId(null);
     }
   };
+
+  const handleGenerateFromSourcesRef = useRef(handleGenerateFromSources);
+  handleGenerateFromSourcesRef.current = handleGenerateFromSources;
+  const handleSourceTopicGenerate = useCallback((topic: string) => {
+    void handleGenerateFromSourcesRef.current(topic);
+  }, []);
 
   const handleFixWithAi = useCallback(
     async ({
@@ -2375,66 +2391,43 @@ export default function QuizPane({
                     </div>
                   ) : null}
 
-                  {doc.questions.map((q) => {
-                    const answered =
-                      userAnswers[q.id] !== undefined &&
-                      String(userAnswers[q.id]).trim() !== "";
-                    const isQuestionGraded = Boolean(
-                      isSubmitted || graded[q.id],
-                    );
-                    let isWrong = false;
-                    if (q.kind === "choice" && isQuestionGraded && answered) {
-                      isWrong = userAnswers[q.id] !== q.answer;
-                    }
-                    if (q.kind === "subjective" && isQuestionGraded) {
-                      isWrong = subjGrades[q.id]?.verdict === "wrong";
-                    }
-                    if (filter === "wrong" && !(isQuestionGraded && isWrong)) {
-                      return null;
-                    }
-                    if (filter === "unanswered" && answered) return null;
-
-                    const selected = userAnswers[q.id];
-
-                    return (
-                      <QuizQuestionCard
-                        key={q.id}
-                        question={q}
-                        userAnswer={userAnswers[q.id]}
-                        isSubmitted={isSubmitted}
-                        isQuestionGraded={isQuestionGraded}
-                        subjectiveGrade={subjGrades[q.id]}
-                        showExplanation={Boolean(expVisible[q.id])}
-                        wrongExpsForQuestion={wrongExpsByQuestion[q.id] ?? {}}
-                        wrongExpFocusOption={resolveWrongExpFocusOption(
-                          q,
-                          typeof selected === "number" ? selected : undefined,
-                        )}
-                        questionMemo={questionMemos[q.id] || ""}
-                        busyId={busyId}
-                        examInProgress={examInProgress}
-                        isFresh={Boolean(freshQuestionIds[q.id])}
-                        onClearFresh={() => handleClearFreshQuestion(q.id)}
-                        onAnswerCommit={handleAnswerCommit}
-                        onSelectOption={selectOption}
-                        onEditQuestion={handleEditQuestion}
-                        onGradeChoice={gradeChoice}
-                        onGradeSubjective={(question, answer) =>
-                          void gradeSubjective(question, answer)
-                        }
-                        onRetry={retryQuestion}
-                        onToggleExplanation={handleToggleExplanation}
-                        onSimilar={(question) => void handleSimilar(question)}
-                        onDerived={handleDerivedQuestion}
-                        onGenerateSections={(question, target) =>
-                          void handleGenerateQuestionSections(question, target)
-                        }
-                        onWrongExpFocusChange={handleWrongExpFocusChange}
-                        onOpenAnalysisDock={openChoiceAnalysisDock}
-                        onMemoSave={handleMemoSave}
-                      />
-                    );
-                  })}
+                  {doc.questions.length > 0 ? (
+                    <QuizQuestionVirtualList
+                      ref={questionListRef}
+                      questions={doc.questions}
+                      filter={filter}
+                      scrollRef={quizScrollRef}
+                      userAnswers={userAnswers}
+                      graded={graded}
+                      subjGrades={subjGrades}
+                      isSubmitted={isSubmitted}
+                      expVisible={expVisible}
+                      wrongExpsByQuestion={wrongExpsByQuestion}
+                      questionMemos={questionMemos}
+                      freshQuestionIds={freshQuestionIds}
+                      busyId={busyId}
+                      examInProgress={examInProgress}
+                      resolveWrongExpFocusOption={resolveWrongExpFocusOption}
+                      onAnswerCommit={handleAnswerCommit}
+                      onSelectOption={selectOption}
+                      onEditQuestion={handleEditQuestion}
+                      onGradeChoice={gradeChoice}
+                      onGradeSubjective={(question, answer) =>
+                        void gradeSubjective(question, answer)
+                      }
+                      onRetry={retryQuestion}
+                      onToggleExplanation={handleToggleExplanation}
+                      onSimilar={(question) => void handleSimilar(question)}
+                      onDerived={handleDerivedQuestion}
+                      onGenerateSections={(question, target) =>
+                        void handleGenerateQuestionSections(question, target)
+                      }
+                      onWrongExpFocusChange={handleWrongExpFocusChange}
+                      onOpenAnalysisDock={openChoiceAnalysisDock}
+                      onMemoSave={handleMemoSave}
+                      onClearFresh={handleClearFreshQuestion}
+                    />
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -2658,28 +2651,10 @@ export default function QuizPane({
                           })
                         }
                       />
-                      <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-odp-borderSoft">
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-odp-fgStrong">
-                          근거로 문제 생성
-                        </label>
-                        <input
-                          className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                          placeholder="주제 (선택)"
-                          value={genTopic}
-                          onChange={(e) => setGenTopic(e.target.value)}
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="w-full"
-                          disabled={busyId === "gen-sources"}
-                          onClick={() => void handleGenerateFromSources()}
-                        >
-                          <Sparkles size={14} />
-                          근거로 문제 추가
-                        </Button>
-                      </div>
+                      <QuizSourcesTopicGeneratePanel
+                        disabled={busyId === "gen-sources"}
+                        onGenerate={handleSourceTopicGenerate}
+                      />
                     </div>
                   </div>
                 </Motion.aside>
@@ -2807,13 +2782,8 @@ export default function QuizPane({
                                   : undefined
                               }
                               onClick={() => {
-                                document
-                                  .getElementById(`q-card-${q.id}`)
-                                  ?.scrollIntoView({
-                                    behavior: "smooth",
-                                    block: "center",
-                                  });
                                 setFilter("all");
+                                scrollToQuestionId(q.id);
                               }}
                             >
                               <span
