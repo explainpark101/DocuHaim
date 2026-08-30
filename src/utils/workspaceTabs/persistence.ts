@@ -147,7 +147,7 @@ export function toPersistedWorkspaceTabs(
     | { kind: 'chat' }
     | { kind: 'settings' }
     | { kind: 'content-search' }
-    | { kind: 'file'; storageType: FileStorageType; path: string }
+    | { kind: 'file'; storageType: FileStorageType; path: string; appRoute?: string }
   >,
   activeId: string | null,
 ): PersistedWorkspaceTabs {

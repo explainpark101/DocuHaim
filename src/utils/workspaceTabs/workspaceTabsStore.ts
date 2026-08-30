@@ -14,6 +14,7 @@ import {
   createSettingsTab,
   isFileTab,
   isFileTabDirty,
+  resolveFileTabAppRoute,
   retargetFileTabAppRoute,
   revokeFileTabObjectUrl,
 } from '@/utils/workspaceTabs/helpers';
@@ -174,16 +175,13 @@ export function openOrReplaceFileTab(
       }
     }
     // Keep soft-cap LRU order stable for background content updates.
-    const nextTab =
-      !activate && isFileTab(prev)
-        ? {
-            ...tab,
-            lastActivatedAt: prev.lastActivatedAt,
-            appRoute: prev.appRoute ?? tab.appRoute,
-          }
-        : isFileTab(prev)
-          ? { ...tab, appRoute: prev.appRoute ?? tab.appRoute }
-          : tab;
+    let nextTab: WorkspaceTab = tab;
+    if (isFileTab(prev)) {
+      const mergedAppRoute = prev.appRoute ?? resolveFileTabAppRoute(tab);
+      nextTab = !activate
+        ? { ...tab, lastActivatedAt: prev.lastActivatedAt, appRoute: mergedAppRoute }
+        : { ...tab, appRoute: mergedAppRoute };
+    }
     tabs = state.tabs.map((t, i) => (i === idx ? nextTab : t));
   } else {
     tabs = [...state.tabs, tab];
