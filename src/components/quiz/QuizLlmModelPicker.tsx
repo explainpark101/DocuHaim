@@ -20,6 +20,8 @@ type QuizLlmModelPickerProps = {
   onProfileIdChange: (profileId: string) => void;
   onModelChange: (model: string) => void;
   disabled?: boolean;
+  /** When false, skip eager model-list fetch (use in secondary docks; session bar loads once). */
+  autoLoadModels?: boolean;
 };
 
 export default function QuizLlmModelPicker({
@@ -29,6 +31,7 @@ export default function QuizLlmModelPicker({
   onProfileIdChange,
   onModelChange,
   disabled = false,
+  autoLoadModels = true,
 }: QuizLlmModelPickerProps) {
   const selectedProfile = useMemo(
     () => resolveSelectedLlmProfile(profiles, profileId),
@@ -61,7 +64,7 @@ export default function QuizLlmModelPicker({
               getApiKey={() => selectedProfile.apiKey || ''}
               value={model}
               onChange={onModelChange}
-              autoLoad
+              autoLoad={autoLoadModels}
             />
           ) : selectedProfile.kind === LLM_PROVIDER_LLAMA_CPP ? (
             isTauriDesktopPlatform() ? (
@@ -69,7 +72,7 @@ export default function QuizLlmModelPicker({
                 key={`${selectedProfile.id}-llama-cpp`}
                 value={model}
                 onChange={onModelChange}
-                autoLoad
+                autoLoad={autoLoadModels}
               />
             ) : (
               <OpenAiCompatibleModelSelect
@@ -79,7 +82,7 @@ export default function QuizLlmModelPicker({
                 getApiKey={() => selectedProfile.apiKey || ''}
                 value={model}
                 onChange={onModelChange}
-                autoLoad
+                autoLoad={autoLoadModels}
                 aliasScope="llama-cpp"
               />
             )
@@ -88,7 +91,7 @@ export default function QuizLlmModelPicker({
               key={`${selectedProfile.id}-mlx`}
               value={model}
               onChange={onModelChange}
-              autoLoad
+              autoLoad={autoLoadModels}
               autoLoadModelOnSelect={false}
             />
           ) : (
@@ -98,7 +101,7 @@ export default function QuizLlmModelPicker({
               profileId={selectedProfile.id}
               value={model}
               onChange={onModelChange}
-              autoLoad
+              autoLoad={autoLoadModels}
             />
           )}
         </label>

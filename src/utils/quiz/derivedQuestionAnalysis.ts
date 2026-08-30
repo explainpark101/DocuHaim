@@ -91,6 +91,7 @@ ${answerLine}
 - JSON의 point와 explanation을 반드시 함께 채우세요.
 - point: 신규 문항의 출제 의도를 매우 간결하게(1~3개 불릿 또는 1~2문장).
 - explanation: 정답 근거와 풀이 흐름이 드러나는 완결된 해설.
+- options 각 항목에는 1., a. 같은 번호·기호 접두사 없이 선택지 본문만 작성하세요.
 
 JSON만 반환:
 ${jsonSchema}`;

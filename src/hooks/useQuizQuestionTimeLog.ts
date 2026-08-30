@@ -41,6 +41,7 @@ export function useQuizQuestionTimeLog({
   const timeLogRef = useRef(timeLog);
   const onLogChangeRef = useRef(onLogChange);
   const getElapsedMsRef = useRef(getElapsedMs);
+  const questionsRef = useRef(questions);
   const openSegmentRef = useRef<OpenSegment | null>(null);
   const activeQuestionRef = useRef<string | null>(null);
   const visibilityRef = useRef(new Map<string, number>());
@@ -48,6 +49,7 @@ export function useQuizQuestionTimeLog({
   timeLogRef.current = timeLog;
   onLogChangeRef.current = onLogChange;
   getElapsedMsRef.current = getElapsedMs;
+  questionsRef.current = questions;
 
   const flushOpenSegment = useCallback((endedAt?: string) => {
     const seg = openSegmentRef.current;
@@ -102,11 +104,11 @@ export function useQuizQuestionTimeLog({
         activeQuestionRef.current = null;
         return;
       }
-      const q = questions.find((item) => item.id === nextId);
+      const q = questionsRef.current.find((item) => item.id === nextId);
       if (!q) return;
       startSegment(q.id, q.displayLabel);
     },
-    [flushOpenSegment, questions, running, startSegment],
+    [flushOpenSegment, running, startSegment],
   );
 
   useEffect(() => {
@@ -118,11 +120,13 @@ export function useQuizQuestionTimeLog({
     applyActiveQuestion(pickMostVisibleQuestion());
   }, [running, flushOpenSegment, applyActiveQuestion, pickMostVisibleQuestion]);
 
+  const questionIdsKey = questions.map((q) => q.id).join('\0');
+
   useEffect(() => {
     const root = scrollRootRef.current;
     if (!root || !running) return;
 
-    const questionIds = new Set(questions.map((q) => q.id));
+    const questionIds = new Set(questionsRef.current.map((q) => q.id));
     visibilityRef.current = new Map(
       [...visibilityRef.current.entries()].filter(([id]) => questionIds.has(id)),
     );
@@ -148,7 +152,13 @@ export function useQuizQuestionTimeLog({
     return () => {
       observer.disconnect();
     };
-  }, [scrollRootRef, questions, running, applyActiveQuestion, pickMostVisibleQuestion]);
+  }, [
+    scrollRootRef,
+    questionIdsKey,
+    running,
+    applyActiveQuestion,
+    pickMostVisibleQuestion,
+  ]);
 }
 
 export const QUIZ_QUESTION_TRACK_ATTR = QUESTION_TRACK_ATTR;

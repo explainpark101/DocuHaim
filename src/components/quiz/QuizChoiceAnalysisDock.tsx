@@ -3,10 +3,10 @@ import TocResizeHandleJs from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import type { QuizQuestion } from '@/utils/quiz/quizTypes';
 import type { LlmProviderProfile } from '@/utils/llmProviderProfiles';
-import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Sparkles, X } from 'lucide-react';
-import { type ComponentType, type KeyboardEvent, useCallback } from 'react';
+import { type ComponentType, type KeyboardEvent, memo, useCallback, useEffect, useState } from 'react';
 import QuizLlmModelPicker from '@/components/quiz/QuizLlmModelPicker';
+import QuizDockMotionAside from '@/components/quiz/QuizDockMotionAside';
 
 const CHOICE_ANALYSIS_DOCK_DEFAULT_WIDTH = 320;
 
@@ -25,7 +25,6 @@ type QuizChoiceAnalysisDockProps = {
   question: QuizQuestion | null;
   option: number | null;
   mode: QuizChoiceAnalysisDockMode;
-  prompt: string;
   existingAnalysis?: string;
   llmProfiles: LlmProviderProfile[];
   profileId: string;
@@ -33,9 +32,8 @@ type QuizChoiceAnalysisDockProps = {
   onProfileIdChange: (profileId: string) => void;
   onModelChange: (model: string) => void;
   busy: boolean;
-  onPromptChange: (value: string) => void;
   onClose: () => void;
-  onGenerate: () => void;
+  onGenerate: (prompt: string) => void;
 };
 
 function dockTitle(isCorrectOption: boolean, mode: QuizChoiceAnalysisDockMode): string {
@@ -44,12 +42,11 @@ function dockTitle(isCorrectOption: boolean, mode: QuizChoiceAnalysisDockMode): 
   return mode === 'regenerate' ? `${base} 재생성` : base;
 }
 
-export default function QuizChoiceAnalysisDock({
+function QuizChoiceAnalysisDock({
   open,
   question,
   option,
   mode,
-  prompt,
   existingAnalysis = '',
   llmProfiles,
   profileId,
@@ -57,10 +54,10 @@ export default function QuizChoiceAnalysisDock({
   onProfileIdChange,
   onModelChange,
   busy,
-  onPromptChange,
   onClose,
   onGenerate,
 }: QuizChoiceAnalysisDockProps) {
+  const [prompt, setPrompt] = useState('');
   const {
     width: dockWidth,
     handleProps: resizeHandleProps,
@@ -90,34 +87,34 @@ export default function QuizChoiceAnalysisDock({
   const promptRequired = isFollowUp;
   const canGenerate = !busy && (!promptRequired || prompt.trim().length > 0);
 
+  useEffect(() => {
+    if (!open) return;
+    setPrompt('');
+  }, [open, question?.id, option, mode]);
+
   const handlePromptKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (busy) return;
       if (promptRequired && !prompt.trim()) return;
       if (event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey)) return;
       event.preventDefault();
-      onGenerate();
+      onGenerate(prompt);
     },
     [busy, onGenerate, prompt, promptRequired],
   );
 
+  const showDock = open && question != null && option != null;
+
   return (
-    <AnimatePresence initial={false}>
-      {open && question && option != null ? (
-        <Motion.aside
-          key="quiz-choice-analysis-dock"
-          role="complementary"
-          aria-label={title}
-          className={`flex h-full shrink-0 flex-col overflow-hidden border-l bg-white shadow-lg dark:bg-odp-surface ${accentBorder}`}
-          initial={{ width: 0, opacity: 0.85 }}
-          animate={{ width: dockWidth, opacity: 1 }}
-          exit={{ width: 0, opacity: 0.85 }}
-          transition={
-            isResizing
-              ? { duration: 0 }
-              : { type: 'spring', stiffness: 380, damping: 36 }
-          }
-        >
+    <QuizDockMotionAside
+      motionKey="quiz-choice-analysis-dock"
+      open={showDock}
+      width={dockWidth}
+      isResizing={isResizing}
+      aria-label={title}
+      className={`flex h-full shrink-0 flex-col overflow-hidden border-l bg-white shadow-lg dark:bg-odp-surface ${accentBorder}`}
+    >
+      {question != null && option != null ? (
           <div className="relative h-full min-h-0" style={{ width: dockWidth }}>
             <TocResizeHandle
               edge="left"
@@ -166,6 +163,7 @@ export default function QuizChoiceAnalysisDock({
                   onProfileIdChange={onProfileIdChange}
                   onModelChange={onModelChange}
                   disabled={busy}
+                  autoLoadModels={false}
                 />
                 <label className="block space-y-1.5">
                   <span className="text-xs font-semibold text-slate-700 dark:text-odp-fgStrong">
@@ -185,7 +183,7 @@ export default function QuizChoiceAnalysisDock({
                     }
                     value={prompt}
                     disabled={busy}
-                    onChange={(e) => onPromptChange(e.target.value)}
+                    onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={handlePromptKeyDown}
                   />
                   <p className="text-[10px] text-slate-500 dark:text-odp-muted">
@@ -216,7 +214,7 @@ export default function QuizChoiceAnalysisDock({
                   size="sm"
                   className="flex-1"
                   disabled={!canGenerate}
-                  onClick={onGenerate}
+                  onClick={() => onGenerate(prompt)}
                 >
                   <Sparkles size={14} />
                   {busy ? '생성 중…' : isFollowUp ? '답변 생성' : '생성'}
@@ -224,8 +222,9 @@ export default function QuizChoiceAnalysisDock({
               </div>
             </div>
           </div>
-        </Motion.aside>
       ) : null}
-    </AnimatePresence>
+    </QuizDockMotionAside>
   );
 }
+
+export default memo(QuizChoiceAnalysisDock);

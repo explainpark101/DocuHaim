@@ -9,9 +9,9 @@ import {
 import { resolveQuestionChoiceCount } from '@/utils/quiz/quizQuestionStyle';
 import type { QuizDerivedQuestionTarget } from '@/utils/quiz/derivedQuestionAnalysis';
 import type { QuizAnswerStyle, QuizQuestion, QuizQuestionKind } from '@/utils/quiz/quizTypes';
-import { AnimatePresence, motion as Motion } from 'motion/react';
+import QuizDockMotionAside from '@/components/quiz/QuizDockMotionAside';
 import { GitBranch, Loader2, X } from 'lucide-react';
-import { type ComponentType, useEffect, useMemo, useState } from 'react';
+import { type ComponentType, memo, useEffect, useMemo, useState } from 'react';
 
 const DERIVED_QUESTION_DOCK_DEFAULT_WIDTH = 360;
 
@@ -55,7 +55,7 @@ function pickerFromQuestion(q: QuizQuestion | null): KindPickerId {
   return 'choice';
 }
 
-export default function QuizDerivedQuestionDock({
+function QuizDerivedQuestionDock({
   open,
   question,
   defaultChoiceCount,
@@ -106,23 +106,18 @@ export default function QuizDerivedQuestionDock({
     });
   };
 
+  const showDock = open && question != null;
+
   return (
-    <AnimatePresence initial={false}>
-      {open && question ? (
-        <Motion.aside
-          key="quiz-derived-question-dock"
-          role="complementary"
-          aria-label="파생문제 생성"
-          className="flex h-full shrink-0 flex-col overflow-hidden border-l border-violet-200 bg-white shadow-lg dark:border-violet-900/60 dark:bg-odp-surface"
-          initial={{ width: 0, opacity: 0.85 }}
-          animate={{ width: dockWidth, opacity: 1 }}
-          exit={{ width: 0, opacity: 0.85 }}
-          transition={
-            isResizing
-              ? { duration: 0 }
-              : { type: 'spring', stiffness: 380, damping: 36 }
-          }
-        >
+    <QuizDockMotionAside
+      motionKey="quiz-derived-question-dock"
+      open={showDock}
+      width={dockWidth}
+      isResizing={isResizing}
+      aria-label="파생문제 생성"
+      className="flex h-full shrink-0 flex-col overflow-hidden border-l border-violet-200 bg-white shadow-lg dark:border-violet-900/60 dark:bg-odp-surface"
+    >
+      {question != null ? (
           <div className="relative h-full min-h-0" style={{ width: dockWidth }}>
             <TocResizeHandle
               edge="left"
@@ -257,8 +252,9 @@ export default function QuizDerivedQuestionDock({
               </div>
             </div>
           </div>
-        </Motion.aside>
       ) : null}
-    </AnimatePresence>
+    </QuizDockMotionAside>
   );
 }
+
+export default memo(QuizDerivedQuestionDock);

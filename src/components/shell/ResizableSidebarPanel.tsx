@@ -327,7 +327,7 @@ export default function ResizableSidebarPanel({
     : 'invisible pointer-events-none z-40';
 
   const panelClassName = isMobile
-    ? `${sharedChromeClass} fixed left-0 w-screen max-w-full transition-transform duration-300 ease-out will-change-transform ${mobilePositionClass} ${mobileLayerClass} ${mobileSlideClass}`
+    ? `${sharedChromeClass} fixed inset-x-0 w-full max-w-full transition-transform duration-300 ease-out will-change-transform ${mobilePositionClass} ${mobileLayerClass} ${mobileSlideClass}`
     : `
         ${sharedChromeClass}
         md:relative md:h-full md:shrink-0

@@ -16,6 +16,11 @@ export type QuizSettings = {
   ragMaxChars: number;
   /** When true, flush quiz markdown and vault-save after AI generation completes. */
   autoSaveOnAiGenerate: boolean;
+  /**
+   * When true, quiz side docks animate layout width with a spring (heavier on Safari/WebView).
+   * Default false: fixed width + translateX slide (same as Tauri default).
+   */
+  dockWidthSpringAnim: boolean;
 };
 
 export const DEFAULT_QUIZ_SYSTEM_PROMPT = `당신은 대한민국 자격증 및 학술 시험 문제 출제위원입니다.
@@ -28,7 +33,8 @@ export const DEFAULT_QUIZ_SYSTEM_PROMPT = `당신은 대한민국 자격증 및 
 4. '접근 Point!'는 신규 문제 문맥에 맞게 새로 작성하세요. 출제 의도를 매우 간결하게, 유사 유형에서 무엇을 먼저 생각해야 하는지 핵심 사고 포인트만 짚으세요.
 5. '해설'은 정답 근거·함정·풀이 흐름이 드러나는 완결된 해설을 반드시 함께 작성하세요.
 6. 선택지(options) 안에서는 인라인 수식($...$)만 사용하세요.
-7. 반환은 반드시 지정된 JSON 형식으로만 작성하세요.`;
+7. options 각 항목에는 보기 번호 접두사(1., 2., a., 가. 등)를 넣지 마세요. 선택지 본문만 작성하세요.
+8. 반환은 반드시 지정된 JSON 형식으로만 작성하세요.`;
 
 export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
   temperature: 1.7,
@@ -40,6 +46,7 @@ export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
   ragTopK: 24,
   ragMaxChars: 120_000,
   autoSaveOnAiGenerate: true,
+  dockWidthSpringAnim: false,
 };
 
 export const QUIZ_SETTINGS_CHANGED_EVENT = 's3haim:quiz-settings-changed';
@@ -97,7 +104,13 @@ export function normalizeQuizSettings(
       ),
     ),
     autoSaveOnAiGenerate: raw?.autoSaveOnAiGenerate !== false,
+    dockWidthSpringAnim: raw?.dockWidthSpringAnim === true,
   };
+}
+
+/** Side dock width spring (off = translateX slide, on = layout width spring). */
+export function quizDockUsesLayoutWidthAnim(): boolean {
+  return loadQuizSettings().dockWidthSpringAnim;
 }
 
 export function loadQuizSettings(): QuizSettings {

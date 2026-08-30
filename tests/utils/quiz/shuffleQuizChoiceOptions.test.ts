@@ -31,16 +31,20 @@ describe('shuffleQuizChoiceOptions', () => {
   it('remaps user answers and wrong-choice analyses', () => {
     const questions = [choiceQ('q1', ['A', 'B', 'C'], 1)];
     const wrongKey = wrongChoiceExplanationKey('q1', 2);
+    // ['A','C','B'] — old option 2 (B) moves to slot 3
+    const permutationByQuestionId = new Map<string, readonly number[]>([['q1', [0, 2, 1]]]);
     const result = shuffleQuizChoiceOptions({
       questions,
       userAnswers: { q1: 2 },
       wrongExps: { [wrongKey]: 'analysis for B' },
       wrongExpFocus: { q1: 2 },
+      permutationByQuestionId,
     });
 
     expect(result.shuffledQuestionCount).toBe(1);
-    expect(result.userAnswers.q1).not.toBe(2);
+    expect(result.questions[0]?.options).toEqual(['A', 'C', 'B']);
     const newOpt = result.userAnswers.q1 as number;
+    expect(newOpt).toBe(3);
     expect(result.wrongExps[wrongChoiceExplanationKey('q1', newOpt)]).toBe('analysis for B');
     expect(result.wrongExpFocus.q1).toBe(newOpt);
     expect(result.questions[0]?.options?.[newOpt - 1]).toBe('B');

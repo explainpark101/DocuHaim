@@ -4,48 +4,44 @@ import {
   useMemo,
   useRef,
   useState,
-  type ComponentType,
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion as Motion } from "motion/react";
 import {
-  BookOpen,
   CheckCheck,
   ChevronDown,
   ClipboardList,
   FilePlus2,
-  GitBranch,
   Library,
   List,
   PenLine,
   Plus,
   RotateCcw,
   Sparkles,
-  Wand2,
-  X,
 } from "lucide-react";
-import { DropdownMenu, Switch, Tooltip } from "radix-ui";
+import { DropdownMenu, Tooltip } from "radix-ui";
 import Button from "@/components/Button";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
-import QuizMdPreview from "@/components/quiz/QuizMdPreview";
 import { QuizImageHydrationProvider } from "@/components/quiz/QuizImageHydrationContext";
 import QuizDerivedQuestionDock from "@/components/quiz/QuizDerivedQuestionDock";
 import QuizAddQuestionModal from "@/components/quiz/QuizAddQuestionModal";
 import QuizBulkImportModal from "@/components/quiz/QuizBulkImportModal";
 import QuizSourcePickerModal from "@/components/quiz/QuizSourcePickerModal";
-import QuizSourcePathsChips from "@/components/quiz/QuizSourcePathsChips";
 import QuizGenerationQueuePanel from "@/components/quiz/QuizGenerationQueuePanel";
 import QuizStopwatchToolbar from "@/components/quiz/QuizStopwatchToolbar";
 import QuizTimeLogPanel from "@/components/quiz/QuizTimeLogPanel";
-import QuizWrongChoiceAnalysisPanel from "@/components/quiz/QuizWrongChoiceAnalysisPanel";
-import QuizQuestionSectionsPanel, {
-  type QuizQuestionSectionsTarget,
-} from "@/components/quiz/QuizQuestionSectionsPanel";
-import QuizQuestionMemoPanel from "@/components/quiz/QuizQuestionMemoPanel";
+import type { QuizQuestionSectionsTarget } from "@/components/quiz/QuizQuestionSectionsPanel";
+import QuizQuestionList, {
+  type QuizQuestionListHandle,
+} from "@/components/quiz/QuizQuestionList";
 import QuizChoiceAnalysisDock, {
   type QuizChoiceAnalysisDockMode,
 } from "@/components/quiz/QuizChoiceAnalysisDock";
-import QuizExamGradeButton from "@/components/quiz/QuizExamGradeButton";
+import QuizSourcesDock, {
+  readQuizSourceRemoveConfirm,
+} from "@/components/quiz/QuizSourcesDock";
+import QuizSourcePreviewDock from "@/components/quiz/QuizSourcePreviewDock";
+import QuizTocDock from "@/components/quiz/QuizTocDock";
 import {
   isQuizSessionEmpty,
   nextDisplayLabel,
@@ -59,16 +55,11 @@ import {
   syncQuizFileChoiceCount,
   countQuizSourcePathUsage,
   getActiveSourcePaths,
-  isQuizSourcePathEnabled,
   removeQuizSourcePathFromConfig,
   setQuizSourcePathEnabled,
 } from "@/utils/quiz";
 import {
   computeQuizScoreBoard,
-  getQuizQuestionGradeStatus,
-  QUIZ_GRADE_STATUS_DOT_CLASS,
-  QUIZ_GRADE_STATUS_LABEL,
-  type QuizQuestionGradeStatus,
 } from "@/utils/quiz/quizScoring";
 import {
   checkQuizLlmReady,
@@ -96,6 +87,7 @@ import {
 import { formToQuizQuestion } from "@/utils/quiz/buildQuestionMarkdown";
 import type { LlmProviderProfile } from "@/utils/llm/llmProviderProfiles";
 import { useQuizLlmSelection } from "@/hooks/useQuizLlmSelection";
+import { useQuizScrollSectionInView } from "@/hooks/useQuizScrollSectionInView";
 import QuizLlmSessionBar from "@/components/quiz/QuizLlmSessionBar";
 import type { QuizVaultTextReader } from "@/utils/quiz/quizVaultSourceLoader";
 import "@/styles/quiz-pane.css";
@@ -106,14 +98,10 @@ import { useAlertModal } from "@/contexts/AlertModalContext";
 import { useLlmAssistSessionOptional } from "@/contexts/LlmAssistSessionContext";
 import { useFileSession } from "@/App/hooks/useFileSession";
 import { useVault } from "@/App/hooks/useVault";
-import VaultDocumentPreviewPanel from "@/components/shared/panels/VaultDocumentPreviewPanel";
-import TocResizeHandleJs from "@/components/TocResizeHandle";
 import { useChromeOwned } from "@/App/providers/AppChromeStateProvider";
-import { useResizablePanelWidth } from "@/hooks/useResizablePanelWidth";
 import { useQuizGenerationQueue } from "@/hooks/useQuizGenerationQueue";
 import { useQuizStopwatch } from "@/hooks/useQuizStopwatch";
 import {
-  QUIZ_QUESTION_TRACK_ATTR,
   useQuizQuestionTimeLog,
 } from "@/hooks/useQuizQuestionTimeLog";
 import { findFileNodeByPath, findNodeByPath } from "@/utils/s3Tree";
@@ -163,70 +151,11 @@ import {
   type VaultStorageType,
 } from "@/utils/vault/resolveVaultFileNode";
 
-const SOURCES_DOCK_DEFAULT_WIDTH = 320;
-const TOC_DOCK_DEFAULT_WIDTH = 288;
-const PREVIEW_DOCK_DEFAULT_WIDTH = 400;
-
-const TocResizeHandle = TocResizeHandleJs as unknown as ComponentType<{
-  edge?: "left" | "right";
-  handleProps?: Record<string, unknown>;
-  isResizing?: boolean;
-  visibleOnHover?: boolean;
-  label?: string;
-}>;
-const TOC_GRADE_FILTER_ORDER: QuizQuestionGradeStatus[] = [
-  "ungraded",
-  "correct",
-  "partial",
-  "wrong",
-];
-
-const TOC_GRADE_TOGGLE_ACTIVE_CLASS: Record<QuizQuestionGradeStatus, string> = {
-  ungraded:
-    "bg-slate-100 text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800/60 dark:text-slate-200 dark:ring-slate-600",
-  correct:
-    "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-800",
-  partial:
-    "bg-amber-50 text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-800",
-  wrong:
-    "bg-rose-50 text-rose-800 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-200 dark:ring-rose-800",
-};
-
-const TOC_GRADE_TOGGLE_INACTIVE_CLASS =
-  "bg-slate-100 text-slate-400 ring-1 ring-transparent dark:bg-odp-bgSoft dark:text-odp-muted";
 const QUIZ_AUTOSAVE_DEBOUNCE_MS = 20_000;
-const QUIZ_SOURCE_REMOVE_CONFIRM_KEY = "s3haim_quiz_source_remove_confirm";
 
 /** Fixed-height slots in the quiz header so progress/score fade does not resize the bar. */
 const QUIZ_HEADER_INLINE_SLOT_CLASS =
   "flex h-6 max-h-6 min-w-0 items-center overflow-hidden";
-
-const SOURCE_REMOVE_SWITCH_ROOT_CLASS = (checked: boolean) =>
-  [
-    "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-violet-400",
-    checked
-      ? "border-violet-500 bg-violet-500 shadow-sm dark:border-violet-500 dark:bg-violet-500"
-      : "border-transparent bg-gray-300 dark:border-odp-borderStrong dark:bg-odp-borderStrong",
-  ].join(" ");
-
-const SOURCE_REMOVE_SWITCH_THUMB_CLASS =
-  "block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]";
-
-function readQuizSourceRemoveConfirm(): boolean {
-  try {
-    return localStorage.getItem(QUIZ_SOURCE_REMOVE_CONFIRM_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function writeQuizSourceRemoveConfirm(value: boolean): void {
-  try {
-    localStorage.setItem(QUIZ_SOURCE_REMOVE_CONFIRM_KEY, String(value));
-  } catch {
-    // ignore
-  }
-}
 
 type TreeNode = {
   name: string;
@@ -494,6 +423,8 @@ export default function QuizPane({
     Record<string, number | string>
   >({});
   const [graded, setGraded] = useState<Record<string, boolean>>({});
+  const gradedRef = useRef(graded);
+  gradedRef.current = graded;
   const [expVisible, setExpVisible] = useState<Record<string, boolean>>({});
   const [questionMemos, setQuestionMemos] = useState<Record<string, string>>(
     {},
@@ -509,62 +440,17 @@ export default function QuizPane({
     option: number;
     mode: QuizChoiceAnalysisDockMode;
   } | null>(null);
-  const [choiceAnalysisPrompt, setChoiceAnalysisPrompt] = useState("");
   const [subjGrades, setSubjGrades] = useState<
     Record<string, SubjectiveGradeResult>
   >({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [filter, setFilter] = useState<FilterMode>("all");
   const [tocOpen, setTocOpen] = useState(false);
-  const [tocGradeFilters, setTocGradeFilters] = useState<
-    Record<QuizQuestionGradeStatus, boolean>
-  >({
-    ungraded: true,
-    correct: true,
-    partial: true,
-    wrong: true,
-  });
   const [sourcesDockOpen, setSourcesDockOpen] = useState(false);
   const [previewSourcePath, setPreviewSourcePath] = useState<string | null>(
     null,
   );
-  const {
-    width: previewDockWidth,
-    handleProps: previewDockResizeHandleProps,
-    isResizing: previewDockResizing,
-  } = useResizablePanelWidth({
-    storageKey: "quiz-source-preview-dock-width",
-    defaultWidth: PREVIEW_DOCK_DEFAULT_WIDTH,
-    minWidth: 280,
-    maxWidth: 640,
-    edge: "left",
-  });
-  const {
-    width: sourcesDockWidth,
-    handleProps: sourcesDockResizeHandleProps,
-    isResizing: sourcesDockResizing,
-  } = useResizablePanelWidth({
-    storageKey: "quiz-sources-dock-width",
-    defaultWidth: SOURCES_DOCK_DEFAULT_WIDTH,
-    minWidth: 240,
-    maxWidth: 520,
-    edge: "right",
-  });
-  const {
-    width: tocDockWidth,
-    handleProps: tocDockResizeHandleProps,
-    isResizing: tocDockResizing,
-  } = useResizablePanelWidth({
-    storageKey: "quiz-toc-dock-width",
-    defaultWidth: TOC_DOCK_DEFAULT_WIDTH,
-    minWidth: 220,
-    maxWidth: 480,
-    edge: "right",
-  });
   const [examStartConfirmOpen, setExamStartConfirmOpen] = useState(false);
-  const [confirmSourceRemove, setConfirmSourceRemove] = useState(
-    readQuizSourceRemoveConfirm,
-  );
   const [pendingSourceRemove, setPendingSourceRemove] = useState<string | null>(
     null,
   );
@@ -581,16 +467,15 @@ export default function QuizPane({
     questionId?: string;
     onDone?: (paths: string[]) => void;
   } | null>(null);
-  const [genTopic, setGenTopic] = useState("");
   const [freshQuestionIds, setFreshQuestionIds] = useState<
     Record<string, true>
   >({});
+  const questionListRef = useRef<QuizQuestionListHandle | null>(null);
+  const pendingScrollQuestionIdRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const quizScrollRef = useRef<HTMLDivElement>(null);
   const contentProgressRef = useRef<HTMLDivElement>(null);
   const contentScoreRef = useRef<HTMLDivElement>(null);
-  const [contentProgressInView, setContentProgressInView] = useState(true);
-  const [contentScoreInView, setContentScoreInView] = useState(true);
   const [timeLog, setTimeLog] = useState<QuizTimeLog>(() =>
     createEmptyQuizTimeLog(),
   );
@@ -605,12 +490,18 @@ export default function QuizPane({
   const getElapsedMsRef = useRef<() => number>(() => 0);
   getElapsedMsRef.current = () => stopwatch.displayMs;
 
+  const questionTimeTrackItems = useMemo(
+    () =>
+      doc.questions.map((q) => ({
+        id: q.id,
+        displayLabel: q.displayLabel,
+      })),
+    [doc.questions],
+  );
+
   useQuizQuestionTimeLog({
     scrollRootRef: quizScrollRef,
-    questions: doc.questions.map((q) => ({
-      id: q.id,
-      displayLabel: q.displayLabel,
-    })),
+    questions: questionTimeTrackItems,
     running: stopwatch.running,
     getElapsedMs: () => getElapsedMsRef.current(),
     timeLog,
@@ -665,7 +556,6 @@ export default function QuizPane({
         setWrongExps({});
         setWrongExpFocus({});
         setChoiceAnalysisDock(null);
-        setChoiceAnalysisPrompt("");
         setQuestionMemos({});
         setSubjGrades({});
         setIsSubmitted(false);
@@ -681,7 +571,6 @@ export default function QuizPane({
       setQuestionMemos({ ...(session.questionMemos ?? {}) });
       setWrongExpFocus({});
       setChoiceAnalysisDock(null);
-      setChoiceAnalysisPrompt("");
       const nextExp: Record<string, boolean> = {};
       for (const [qid, done] of Object.entries(session.gradedQuestions)) {
         if (done) nextExp[qid] = true;
@@ -1003,13 +892,13 @@ export default function QuizPane({
 
   const handleSourceRemove = useCallback(
     (path: string) => {
-      if (confirmSourceRemove) {
+      if (readQuizSourceRemoveConfirm()) {
         setPendingSourceRemove(path);
         return;
       }
       removeSourcePath(path);
     },
-    [confirmSourceRemove, removeSourcePath],
+    [removeSourcePath],
   );
 
   const {
@@ -1020,12 +909,16 @@ export default function QuizPane({
 
   const modalDropHostRef = useRef<HTMLElement | null>(null);
   const dockDropHostRef = useRef<HTMLElement | null>(null);
+  const quizDropHostRef = useRef<HTMLElement | null>(null);
   const mergeModalPathsRef = useRef<((paths: string[]) => void) | null>(null);
   const sourcePickerRef = useRef(sourcePicker);
   sourcePickerRef.current = sourcePicker;
 
   const syncQuizDropHost = useCallback(() => {
-    setQuizSourceDropHost(modalDropHostRef.current ?? dockDropHostRef.current);
+    const next = modalDropHostRef.current ?? dockDropHostRef.current;
+    if (quizDropHostRef.current === next) return;
+    quizDropHostRef.current = next;
+    setQuizSourceDropHost(next);
   }, [setQuizSourceDropHost]);
 
   const handleModalDropHostChange = useCallback(
@@ -1132,6 +1025,20 @@ export default function QuizPane({
     [doc.questions, userAnswers, graded, isSubmitted, subjGrades],
   );
 
+  const headerMirrorEnabled = isActiveFile && scoreBoard.total > 0;
+  const contentProgressInView = useQuizScrollSectionInView(
+    quizScrollRef,
+    contentProgressRef,
+    headerMirrorEnabled,
+    doc.questions.length,
+  );
+  const contentScoreInView = useQuizScrollSectionInView(
+    quizScrollRef,
+    contentScoreRef,
+    headerMirrorEnabled,
+    doc.questions.length,
+  );
+
   const addQuestionStyleTemplate = useMemo(
     () => getQuizQuestionStyleTemplate(doc.questions, doc.config.choiceCount),
     [doc.questions, doc.config.choiceCount],
@@ -1142,6 +1049,17 @@ export default function QuizPane({
     [doc.config.sourcePaths, doc.config.disabledSourcePaths],
   );
 
+  const wrongExpsByQuestion = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {};
+    for (const [key, value] of Object.entries(wrongExps)) {
+      const underscore = key.indexOf("_");
+      const questionId = underscore >= 0 ? key.slice(0, underscore) : key;
+      const bucket = map[questionId] ?? (map[questionId] = {});
+      bucket[key] = value;
+    }
+    return map;
+  }, [wrongExps]);
+
   const choiceAnalysisQuestion = useMemo(() => {
     if (!choiceAnalysisDock) return null;
     return (
@@ -1151,47 +1069,10 @@ export default function QuizPane({
 
   const openChoiceAnalysisDock = useCallback(
     (questionId: string, option: number, mode: QuizChoiceAnalysisDockMode) => {
-      setChoiceAnalysisPrompt("");
       setChoiceAnalysisDock({ questionId, option, mode });
     },
     [],
   );
-
-  useEffect(() => {
-    if (!isActiveFile || scoreBoard.total <= 0) {
-      setContentProgressInView(true);
-      return;
-    }
-    const root = quizScrollRef.current;
-    const target = contentProgressRef.current;
-    if (!root || !target) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry) setContentProgressInView(entry.isIntersecting);
-      },
-      { root, threshold: 0.12 },
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [isActiveFile, scoreBoard.total, doc.questions.length]);
-
-  useEffect(() => {
-    if (!isActiveFile || scoreBoard.total <= 0) {
-      setContentScoreInView(true);
-      return;
-    }
-    const root = quizScrollRef.current;
-    const target = contentScoreRef.current;
-    if (!root || !target) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry) setContentScoreInView(entry.isIntersecting);
-      },
-      { root, threshold: 0.12 },
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [isActiveFile, scoreBoard.total, doc.questions.length]);
 
   const profiles = llmProviderProfiles;
 
@@ -1202,7 +1083,6 @@ export default function QuizPane({
     setWrongExps({});
     setWrongExpFocus({});
     setChoiceAnalysisDock(null);
-    setChoiceAnalysisPrompt("");
     setSubjGrades({});
     setIsSubmitted(false);
     setTimeLog(createEmptyQuizTimeLog());
@@ -1223,7 +1103,6 @@ export default function QuizPane({
     setWrongExps({});
     setWrongExpFocus({});
     setChoiceAnalysisDock(null);
-    setChoiceAnalysisPrompt("");
     setSubjGrades({});
     setIsSubmitted(false);
     const startedLog = appendQuizTimeLogEvent(
@@ -1278,7 +1157,7 @@ export default function QuizPane({
     handleRequestExamStart,
   ]);
 
-  const retryQuestion = (q: QuizQuestion) => {
+  const retryQuestion = useCallback((q: QuizQuestion) => {
     setGraded((prev) => {
       const next = { ...prev };
       delete next[q.id];
@@ -1303,48 +1182,129 @@ export default function QuizPane({
       }
       return next;
     });
-  };
+  }, []);
 
-  const selectOption = (qid: string, opt: number) => {
-    if (graded[qid]) return;
+  const selectOption = useCallback((qid: string, opt: number) => {
+    if (gradedRef.current[qid]) return;
     setUserAnswers((prev) => ({ ...prev, [qid]: opt }));
-  };
+  }, []);
 
-  const gradeChoice = (q: QuizQuestion) => {
-    if (stopwatch.examInProgress) return;
-    setGraded((prev) => ({ ...prev, [q.id]: true }));
-    setExpVisible((prev) => ({ ...prev, [q.id]: true }));
-  };
-
-  const gradeSubjective = async (q: QuizQuestion) => {
-    if (stopwatch.examInProgress) return;
-    const ans = String(userAnswers[q.id] || "").trim();
-    if (!ans) {
-      showToast({ message: "답안을 입력하세요.", durationMs: 2200 });
-      return;
-    }
-    if (!(await ensureQuizLlmReady())) return;
-    setBusyId(q.id);
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    try {
-      const result = await gradeSubjectiveAnswer({
-        profiles,
-        question: q,
-        userAnswer: ans,
-        signal: ac.signal,
-      });
-      setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
+  const gradeChoice = useCallback(
+    (q: QuizQuestion) => {
+      if (stopwatch.examInProgress) return;
       setGraded((prev) => ({ ...prev, [q.id]: true }));
       setExpVisible((prev) => ({ ...prev, [q.id]: true }));
-      showToast({ message: "주관식 채점 완료", durationMs: 2200 });
-    } catch (err) {
-      reportQuizError("채점 실패", err, "채점 실패");
-    } finally {
-      setBusyId(null);
-    }
-  };
+    },
+    [stopwatch.examInProgress],
+  );
+
+  const gradeSubjective = useCallback(
+    async (q: QuizQuestion, answerOverride?: string) => {
+      if (stopwatch.examInProgress) return;
+      const ans = String(
+        answerOverride ?? userAnswers[q.id] ?? "",
+      ).trim();
+      if (!ans) {
+        showToast({ message: "답안을 입력하세요.", durationMs: 2200 });
+        return;
+      }
+      if (!(await ensureQuizLlmReady())) return;
+      setBusyId(q.id);
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      try {
+        const result = await gradeSubjectiveAnswer({
+          profiles,
+          question: q,
+          userAnswer: ans,
+          signal: ac.signal,
+        });
+        setSubjGrades((prev) => ({ ...prev, [q.id]: result }));
+        setGraded((prev) => ({ ...prev, [q.id]: true }));
+        setExpVisible((prev) => ({ ...prev, [q.id]: true }));
+        if (answerOverride !== undefined) {
+          setUserAnswers((prev) => ({ ...prev, [q.id]: answerOverride }));
+        }
+        showToast({ message: "주관식 채점 완료", durationMs: 2200 });
+      } catch (err) {
+        reportQuizError("채점 실패", err, "채점 실패");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [
+      ensureQuizLlmReady,
+      profiles,
+      reportQuizError,
+      showToast,
+      stopwatch.examInProgress,
+      userAnswers,
+    ],
+  );
+
+  const handleAnswerCommit = useCallback((questionId: string, value: string) => {
+    setUserAnswers((prev) => {
+      if (prev[questionId] === value) return prev;
+      return { ...prev, [questionId]: value };
+    });
+  }, []);
+
+  const handleEditQuestion = useCallback((question: QuizQuestion) => {
+    setEditQ(question);
+    setAddOpen(true);
+  }, []);
+
+  const handleToggleExplanation = useCallback((questionId: string) => {
+    setExpVisible((prev) => ({
+      ...prev,
+      [questionId]: !prev[questionId],
+    }));
+  }, []);
+
+  const handleDerivedQuestion = useCallback((question: QuizQuestion) => {
+    setDerivedSourceQ(question);
+  }, []);
+
+  const handleWrongExpFocusChange = useCallback(
+    (questionId: string, option: number) => {
+      setWrongExpFocus((prev) => ({ ...prev, [questionId]: option }));
+    },
+    [],
+  );
+
+  const handleMemoSave = useCallback((questionId: string, next: string) => {
+    setQuestionMemos((prev) => {
+      const trimmed = next.trim();
+      if (!trimmed) {
+        const { [questionId]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [questionId]: next };
+    });
+  }, []);
+
+  const handleClearFreshQuestion = useCallback((questionId: string) => {
+    setFreshQuestionIds((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
+  }, []);
+
+  const scrollToQuestionId = useCallback((questionId: string) => {
+    if (questionListRef.current?.scrollToQuestionId(questionId)) return;
+    pendingScrollQuestionIdRef.current = questionId;
+  }, []);
+
+  useEffect(() => {
+    const pendingId = pendingScrollQuestionIdRef.current;
+    if (!pendingId) return;
+    if (!questionListRef.current?.scrollToQuestionId(pendingId)) return;
+    pendingScrollQuestionIdRef.current = null;
+  }, [doc.questions, filter, userAnswers, graded, isSubmitted, subjGrades]);
+
 
   const submitAll = async () => {
     if (stopwatch.examInProgress) {
@@ -1469,9 +1429,7 @@ export default function QuizPane({
       showToast({ message: `${displayLabel} 유사문제 추가`, durationMs: 2500 });
       await saveAfterAiGenerate();
       window.setTimeout(() => {
-        document
-          .getElementById(`q-card-${newQ.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        scrollToQuestionId(newQ.id);
       }, 80);
     } catch (err) {
       const message =
@@ -1618,9 +1576,7 @@ export default function QuizPane({
       showToast({ message: `${displayLabel} 파생문제 추가`, durationMs: 2500 });
       await saveAfterAiGenerate();
       window.setTimeout(() => {
-        document
-          .getElementById(`q-card-${newQ.id}`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        scrollToQuestionId(newQ.id);
       }, 80);
     } catch (err) {
       const message =
@@ -1699,7 +1655,6 @@ export default function QuizPane({
         wrongExpsRef.current = nextWrongExps;
         setWrongExps(nextWrongExps);
         setChoiceAnalysisDock(null);
-        setChoiceAnalysisPrompt("");
         await saveAfterAiGenerate(nextWrongExps);
       } catch (err) {
         if (ac.signal.aborted) return;
@@ -1752,7 +1707,6 @@ export default function QuizPane({
       wrongExpsRef.current = nextWrongExps;
       setWrongExps(nextWrongExps);
       setChoiceAnalysisDock(null);
-      setChoiceAnalysisPrompt("");
       await saveAfterAiGenerate(nextWrongExps);
     } catch (err) {
       if (ac.signal.aborted) return;
@@ -1771,7 +1725,7 @@ export default function QuizPane({
     }
   };
 
-  const handleGenerateFromSources = async () => {
+  const handleGenerateFromSources = async (topic: string) => {
     const total = doc.config.sourcePaths.length;
     const sources = getActiveSourcePaths(doc.config);
     if (!total) {
@@ -1798,7 +1752,7 @@ export default function QuizPane({
     abortRef.current = ac;
     const jobId = genQueue.createSourceJob({
       preview: doc.questions[0]?.question || "근거 기반 출제",
-      topic: genTopic,
+      topic,
     });
     const logKey = jobId;
     try {
@@ -1806,7 +1760,7 @@ export default function QuizPane({
         profiles,
         config: doc.config,
         sourcePaths: sources,
-        topic: genTopic,
+        topic,
         kind: "choice",
         count: 1,
         exampleQuestions: doc.questions,
@@ -1864,9 +1818,7 @@ export default function QuizPane({
       await saveAfterAiGenerate();
       if (firstId) {
         window.setTimeout(() => {
-          document
-            .getElementById(`q-card-${firstId}`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          scrollToQuestionId(firstId);
         }, 80);
       }
     } catch (err) {
@@ -1884,6 +1836,12 @@ export default function QuizPane({
       setBusyId(null);
     }
   };
+
+  const handleGenerateFromSourcesRef = useRef(handleGenerateFromSources);
+  handleGenerateFromSourcesRef.current = handleGenerateFromSources;
+  const handleSourceTopicGenerate = useCallback((topic: string) => {
+    void handleGenerateFromSourcesRef.current(topic);
+  }, []);
 
   const handleFixWithAi = useCallback(
     async ({
@@ -1958,6 +1916,88 @@ export default function QuizPane({
     ],
   );
 
+  const imageHydrationValue = useMemo(
+    () => ({
+      getPresignedUrl: onResolveWikiImageUrl,
+      currentNotePath: currentFile?.id ?? null,
+    }),
+    [currentFile?.id, onResolveWikiImageUrl],
+  );
+
+  const handleWrongExpRef = useRef(handleWrongExp);
+  handleWrongExpRef.current = handleWrongExp;
+  const handleSimilarRef = useRef(handleSimilar);
+  handleSimilarRef.current = handleSimilar;
+  const handleGenerateQuestionSectionsRef = useRef(handleGenerateQuestionSections);
+  handleGenerateQuestionSectionsRef.current = handleGenerateQuestionSections;
+  const choiceAnalysisQuestionRef = useRef(choiceAnalysisQuestion);
+  choiceAnalysisQuestionRef.current = choiceAnalysisQuestion;
+  const choiceAnalysisDockRef = useRef(choiceAnalysisDock);
+  choiceAnalysisDockRef.current = choiceAnalysisDock;
+  const derivedSourceQRef = useRef(derivedSourceQ);
+  derivedSourceQRef.current = derivedSourceQ;
+  const handleDerivedGenerateRef = useRef(handleDerivedGenerate);
+  handleDerivedGenerateRef.current = handleDerivedGenerate;
+
+  const onSimilarQuestion = useCallback((question: QuizQuestion) => {
+    void handleSimilarRef.current(question);
+  }, []);
+
+  const onGenerateQuestionSections = useCallback(
+    (question: QuizQuestion, target: QuizQuestionSectionsTarget) => {
+      void handleGenerateQuestionSectionsRef.current(question, target);
+    },
+    [],
+  );
+
+  const handleChoiceAnalysisGenerate = useCallback((prompt: string) => {
+    const question = choiceAnalysisQuestionRef.current;
+    const dock = choiceAnalysisDockRef.current;
+    if (!question || !dock) return;
+    void handleWrongExpRef.current(question, dock.option, prompt, dock.mode);
+  }, []);
+
+  const closeChoiceAnalysisDock = useCallback(() => {
+    const dock = choiceAnalysisDockRef.current;
+    if (!dock) return;
+    const busyKey = wrongChoiceExplanationKey(dock.questionId, dock.option);
+    if (busyId === busyKey) return;
+    setChoiceAnalysisDock(null);
+  }, [busyId]);
+
+  const closeDerivedDock = useCallback(() => {
+    const q = derivedSourceQRef.current;
+    if (q && busyId === `derived-${q.id}`) return;
+    setDerivedSourceQ(null);
+  }, [busyId]);
+
+  const onDerivedSubmit = useCallback((target: QuizDerivedQuestionTarget) => {
+    const q = derivedSourceQRef.current;
+    if (!q) return;
+    void handleDerivedGenerateRef.current(q, target);
+  }, []);
+
+  const closeTocDock = useCallback(() => setTocOpen(false), []);
+
+  const handleTocNavigate = useCallback(
+    (questionId: string) => {
+      setFilter("all");
+      scrollToQuestionId(questionId);
+    },
+    [scrollToQuestionId],
+  );
+
+  const handleOpenFileSourcePicker = useCallback(() => {
+    setSourcePicker({
+      paths: docRef.current.config.sourcePaths,
+      scope: "file",
+    });
+  }, []);
+
+  const handleClosePreviewDock = useCallback(() => {
+    setPreviewSourcePath(null);
+  }, []);
+
   if (!isActiveFile) {
     return (
       <div className="quiz-pane flex flex-1 items-center justify-center text-sm text-gray-400">
@@ -2006,20 +2046,12 @@ export default function QuizPane({
     </div>
   );
 
-  const imageHydrationValue = useMemo(
-    () => ({
-      getPresignedUrl: onResolveWikiImageUrl,
-      currentNotePath: currentFile?.id ?? null,
-    }),
-    [currentFile?.id, onResolveWikiImageUrl],
-  );
-
   return (
     <QuizImageHydrationProvider value={imageHydrationValue}>
       <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-        <div className="quiz-pane relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg">
-          <div className="shrink-0 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-odp-borderSoft dark:bg-odp-surface">
-            <div className="flex flex-wrap items-center gap-2 overflow-hidden">
+        <div className="quiz-pane relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg">
+          <div className="min-w-0 shrink-0 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-odp-borderSoft dark:bg-odp-surface">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-hidden">
               <div className="mr-auto flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-auto sm:gap-3">
                 <ClipboardList className="shrink-0 text-blue-600" size={18} />
                 <span className="shrink-0 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
@@ -2302,353 +2334,39 @@ export default function QuizPane({
                     </div>
                   ) : null}
 
-                  {doc.questions.map((q) => {
-                    const answered =
-                      userAnswers[q.id] !== undefined &&
-                      String(userAnswers[q.id]).trim() !== "";
-                    const isGraded = isSubmitted || graded[q.id];
-                    let isWrong = false;
-                    let isCorrect = false;
-                    if (q.kind === "choice" && isGraded && answered) {
-                      isCorrect = userAnswers[q.id] === q.answer;
-                      isWrong = !isCorrect;
-                    }
-                    if (q.kind === "subjective" && isGraded) {
-                      const g = subjGrades[q.id];
-                      isCorrect = g?.verdict === "correct";
-                      isWrong = g?.verdict === "wrong";
-                    }
-                    if (filter === "wrong" && !(isGraded && isWrong))
-                      return null;
-                    if (filter === "unanswered" && answered) return null;
-
-                    const showExp = expVisible[q.id];
-                    const selected = userAnswers[q.id];
-                    const isFreshQuestion = Boolean(freshQuestionIds[q.id]);
-                    let gradeLabel: string | null = null;
-                    if (isGraded) {
-                      if (q.kind === "choice") {
-                        if (!answered) gradeLabel = "미채점";
-                        else if (isCorrect) gradeLabel = "정답";
-                        else gradeLabel = "오답";
-                      } else {
-                        const verdict = subjGrades[q.id]?.verdict;
-                        if (verdict === "correct") gradeLabel = "정답";
-                        else if (verdict === "partial") gradeLabel = "부분정답";
-                        else if (verdict === "wrong") gradeLabel = "오답";
-                      }
-                    }
-
-                    return (
-                      <Motion.div
-                        key={q.id}
-                        id={`q-card-${q.id}`}
-                        {...{ [QUIZ_QUESTION_TRACK_ATTR]: q.id }}
-                        initial={
-                          isFreshQuestion
-                            ? { opacity: 0, y: 36, scale: 0.96 }
-                            : false
-                        }
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={
-                          isFreshQuestion
-                            ? { type: "spring", stiffness: 340, damping: 26 }
-                            : { duration: 0 }
-                        }
-                        onAnimationComplete={() => {
-                          if (!isFreshQuestion) return;
-                          setFreshQuestionIds((prev) => {
-                            if (!prev[q.id]) return prev;
-                            const next = { ...prev };
-                            delete next[q.id];
-                            return next;
-                          });
-                        }}
-                        className={`relative rounded-2xl border bg-white p-5 pr-16 shadow-xs dark:bg-odp-surface ${
-                          isGraded
-                            ? isCorrect
-                              ? "border-emerald-300"
-                              : isWrong
-                                ? "border-rose-300"
-                                : "border-slate-200 dark:border-odp-borderSoft"
-                            : "border-slate-200 dark:border-odp-borderSoft"
-                        } ${
-                          q.isGenerated
-                            ? "border-purple-300 dark:border-purple-700"
-                            : ""
-                        } ${
-                          isFreshQuestion
-                            ? "ring-2 ring-purple-300/70 dark:ring-purple-500/50"
-                            : ""
-                        }`}
-                      >
-                        <Button
-                          type="button"
-                          variant="tertiary"
-                          size="sm"
-                          className="absolute top-3 right-3 z-10"
-                          onClick={() => {
-                            setEditQ(q);
-                            setAddOpen(true);
-                          }}
-                        >
-                          <PenLine size={14} />
-                          수정
-                        </Button>
-                        <div className="mb-3">
-                          <h3 className="text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-                            <span className="mr-1.5 inline-flex items-center gap-1.5 align-middle">
-                              <span>{q.displayLabel}.</span>
-                              {gradeLabel ? (
-                                <span
-                                  className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                                    gradeLabel === "정답"
-                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200"
-                                      : gradeLabel === "오답"
-                                        ? "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
-                                        : gradeLabel === "부분정답"
-                                          ? "bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200"
-                                          : "bg-slate-100 text-slate-700 dark:bg-odp-bgSoft dark:text-odp-muted"
-                                  }`}
-                                >
-                                  {gradeLabel}
-                                </span>
-                              ) : null}
-                            </span>
-                            {q.kind === "subjective"
-                              ? q.answerStyle === "essay"
-                                ? "[주관식] "
-                                : "[단답형] "
-                              : ""}
-                            <span className="font-medium">
-                              <QuizMdPreview
-                                text={q.question}
-                                previewId={`qq-${q.id}`}
-                                className="inline"
-                              />
-                            </span>
-                          </h3>
-                        </div>
-
-                        {q.kind === "choice" ? (
-                          <div className="space-y-2">
-                            {(q.options || []).map((opt, idx) => {
-                              const n = idx + 1;
-                              const isSel = selected === n;
-                              const reveal = isGraded;
-                              const isRight = q.answer === n;
-                              let cls =
-                                "border-slate-200 bg-white hover:bg-slate-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft";
-                              if (isSel && !reveal) {
-                                cls =
-                                  "border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:bg-blue-950/30";
-                              }
-                              if (reveal && isRight) {
-                                cls =
-                                  "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500 dark:bg-emerald-950/30";
-                              } else if (reveal && isSel && !isRight) {
-                                cls =
-                                  "border-rose-400 bg-rose-50 dark:bg-rose-950/30";
-                              }
-                              return (
-                                <button
-                                  key={n}
-                                  type="button"
-                                  className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left text-sm ${cls}`}
-                                  onClick={() => selectOption(q.id, n)}
-                                >
-                                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs font-bold">
-                                    {n}
-                                  </span>
-                                  <div className="min-w-0 flex-1">
-                                    <QuizMdPreview
-                                      text={opt}
-                                      previewId={`qo-${q.id}-${n}`}
-                                    />
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {q.answerStyle === "essay" ? (
-                              <textarea
-                                className="quiz-body-field min-h-24 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                                value={String(userAnswers[q.id] || "")}
-                                disabled={isGraded}
-                                onChange={(e) =>
-                                  setUserAnswers((prev) => ({
-                                    ...prev,
-                                    [q.id]: e.target.value,
-                                  }))
-                                }
-                                placeholder="답안을 입력하세요"
-                              />
-                            ) : (
-                              <input
-                                className="quiz-body-field w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                                value={String(userAnswers[q.id] || "")}
-                                disabled={isGraded}
-                                onChange={(e) =>
-                                  setUserAnswers((prev) => ({
-                                    ...prev,
-                                    [q.id]: e.target.value,
-                                  }))
-                                }
-                                placeholder="단답 입력"
-                              />
-                            )}
-                            {subjGrades[q.id] ? (
-                              <div
-                                className={`rounded-xl border p-3 text-xs ${
-                                  subjGrades[q.id]?.verdict === "correct"
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/70 dark:bg-emerald-950/45 dark:text-emerald-100"
-                                    : subjGrades[q.id]?.verdict === "partial"
-                                      ? "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-800/70 dark:bg-amber-950/45 dark:text-amber-100"
-                                      : "border-rose-200 bg-rose-50 text-rose-950 dark:border-rose-800/70 dark:bg-rose-950/45 dark:text-rose-100"
-                                }`}
-                              >
-                                <div className="mb-1 font-bold">
-                                  {subjGrades[q.id]?.verdict} ·{" "}
-                                  {subjGrades[q.id]?.score}점
-                                </div>
-                                <div className="[&_.md-editor-preview]:text-inherit [&_.md-editor-preview]:!bg-transparent [&_.md-editor]:!bg-transparent">
-                                  <QuizMdPreview
-                                    text={subjGrades[q.id]?.feedback || ""}
-                                    previewId={`qg-${q.id}`}
-                                  />
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        )}
-
-                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                          {!isGraded ? (
-                            q.kind === "choice" ? (
-                              <QuizExamGradeButton
-                                examInProgress={examInProgress}
-                                size="sm"
-                                disabled={!answered}
-                                onClick={() => gradeChoice(q)}
-                                className="!bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-700"
-                              >
-                                <CheckCheck size={14} />
-                                채점
-                              </QuizExamGradeButton>
-                            ) : (
-                              <QuizExamGradeButton
-                                examInProgress={examInProgress}
-                                size="sm"
-                                disabled={busyId === q.id || !answered}
-                                onClick={() => void gradeSubjective(q)}
-                                className="!bg-emerald-600 !text-white hover:!bg-emerald-700 dark:!bg-emerald-600 dark:hover:!bg-emerald-700"
-                              >
-                                <Sparkles size={14} />
-                                AI 채점
-                              </QuizExamGradeButton>
-                            )
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => retryQuestion(q)}
-                            >
-                              <RotateCcw size={14} />
-                              다시풀기
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() =>
-                              setExpVisible((prev) => ({
-                                ...prev,
-                                [q.id]: !prev[q.id],
-                              }))
-                            }
-                          >
-                            <BookOpen size={14} />
-                            {showExp ? "해설 접기" : "해설 보기"}
-                          </Button>
-                          {q.kind === "choice" ? (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              disabled={busyId === `sim-${q.id}`}
-                              onClick={() => void handleSimilar(q)}
-                            >
-                              <Wand2 size={14} />
-                              유사문제
-                            </Button>
-                          ) : null}
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            disabled={busyId === `derived-${q.id}`}
-                            onClick={() => setDerivedSourceQ(q)}
-                          >
-                            <GitBranch size={14} />
-                            파생문제 생성
-                          </Button>
-                        </div>
-
-                        {isGraded ? (
-                          <QuizQuestionSectionsPanel
-                            question={q}
-                            busyKey={busyId}
-                            showContent={Boolean(showExp)}
-                            onGenerate={(target) =>
-                              void handleGenerateQuestionSections(q, target)
-                            }
-                          />
-                        ) : null}
-
-                        {isGraded && q.kind === "choice" ? (
-                          <QuizWrongChoiceAnalysisPanel
-                            question={q}
-                            focusOption={resolveWrongExpFocusOption(
-                              q,
-                              typeof selected === "number"
-                                ? selected
-                                : undefined,
-                            )}
-                            onFocusOptionChange={(option) =>
-                              setWrongExpFocus((prev) => ({
-                                ...prev,
-                                [q.id]: option,
-                              }))
-                            }
-                            wrongExps={wrongExps}
-                            busyKey={busyId}
-                            onOpenAnalysisDock={(option, mode) =>
-                              openChoiceAnalysisDock(q.id, option, mode)
-                            }
-                          />
-                        ) : null}
-
-                        <QuizQuestionMemoPanel
-                          questionId={q.id}
-                          value={questionMemos[q.id] || ""}
-                          onSave={(next) =>
-                            setQuestionMemos((prev) => {
-                              const trimmed = next.trim();
-                              if (!trimmed) {
-                                const { [q.id]: _removed, ...rest } = prev;
-                                return rest;
-                              }
-                              return { ...prev, [q.id]: next };
-                            })
-                          }
-                        />
-                      </Motion.div>
-                    );
-                  })}
+                  {doc.questions.length > 0 ? (
+                    <QuizQuestionList
+                      ref={questionListRef}
+                      questions={doc.questions}
+                      filter={filter}
+                      scrollRef={quizScrollRef}
+                      userAnswers={userAnswers}
+                      graded={graded}
+                      subjGrades={subjGrades}
+                      isSubmitted={isSubmitted}
+                      expVisible={expVisible}
+                      wrongExpsByQuestion={wrongExpsByQuestion}
+                      questionMemos={questionMemos}
+                      freshQuestionIds={freshQuestionIds}
+                      busyId={busyId}
+                      examInProgress={examInProgress}
+                      resolveWrongExpFocusOption={resolveWrongExpFocusOption}
+                      onAnswerCommit={handleAnswerCommit}
+                      onSelectOption={selectOption}
+                      onEditQuestion={handleEditQuestion}
+                      onGradeChoice={gradeChoice}
+                      onGradeSubjective={gradeSubjective}
+                      onRetry={retryQuestion}
+                      onToggleExplanation={handleToggleExplanation}
+                      onSimilar={onSimilarQuestion}
+                      onDerived={handleDerivedQuestion}
+                      onGenerateSections={onGenerateQuestionSections}
+                      onWrongExpFocusChange={handleWrongExpFocusChange}
+                      onOpenAnalysisDock={openChoiceAnalysisDock}
+                      onMemoSave={handleMemoSave}
+                      onClearFresh={handleClearFreshQuestion}
+                    />
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -2661,15 +2379,8 @@ export default function QuizPane({
                 derivedSourceQ != null &&
                 busyId === `derived-${derivedSourceQ.id}`
               }
-              onClose={() => {
-                if (derivedSourceQ && busyId === `derived-${derivedSourceQ.id}`)
-                  return;
-                setDerivedSourceQ(null);
-              }}
-              onSubmit={(target) => {
-                if (!derivedSourceQ) return;
-                void handleDerivedGenerate(derivedSourceQ, target);
-              }}
+              onClose={closeDerivedDock}
+              onSubmit={onDerivedSubmit}
             />
 
             <QuizChoiceAnalysisDock
@@ -2677,7 +2388,6 @@ export default function QuizPane({
               question={choiceAnalysisQuestion}
               option={choiceAnalysisDock?.option ?? null}
               mode={choiceAnalysisDock?.mode ?? "create"}
-              prompt={choiceAnalysisPrompt}
               existingAnalysis={
                 choiceAnalysisDock && choiceAnalysisDock.mode === "followup"
                   ? String(
@@ -2703,360 +2413,42 @@ export default function QuizPane({
                     choiceAnalysisDock.option,
                   )
               }
-              onPromptChange={setChoiceAnalysisPrompt}
-              onClose={() => {
-                if (
-                  choiceAnalysisDock &&
-                  busyId ===
-                    wrongChoiceExplanationKey(
-                      choiceAnalysisDock.questionId,
-                      choiceAnalysisDock.option,
-                    )
-                ) {
-                  return;
-                }
-                setChoiceAnalysisDock(null);
-                setChoiceAnalysisPrompt("");
-              }}
-              onGenerate={() => {
-                if (!choiceAnalysisQuestion || !choiceAnalysisDock) return;
-                void handleWrongExp(
-                  choiceAnalysisQuestion,
-                  choiceAnalysisDock.option,
-                  choiceAnalysisPrompt,
-                  choiceAnalysisDock.mode,
-                );
-              }}
+              onClose={closeChoiceAnalysisDock}
+              onGenerate={handleChoiceAnalysisGenerate}
             />
 
-            <AnimatePresence initial={false}>
-              {previewSourcePath ? (
-                <Motion.aside
-                  key="quiz-source-preview-dock"
-                  role="complementary"
-                  aria-label="근거 문서 미리보기"
-                  className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-                  initial={{ width: 0, opacity: 0.85 }}
-                  animate={{ width: previewDockWidth, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0.85 }}
-                  transition={{ type: "spring", stiffness: 380, damping: 36 }}
-                >
-                  <div
-                    className="relative h-full min-h-0"
-                    style={{ width: previewDockWidth }}
-                  >
-                    <VaultDocumentPreviewPanel
-                      embedded
-                      path={previewSourcePath}
-                      width={previewDockWidth}
-                      resizeHandleProps={previewDockResizeHandleProps}
-                      isResizing={previewDockResizing}
-                      resizeEdge="left"
-                      onClose={() => setPreviewSourcePath(null)}
-                      loadDocument={loadVaultPreviewDocument}
-                      onOpenDocument={openSourceDocument}
-                      onOpenInNewTab={openSourceInNewTab}
-                    />
-                  </div>
-                </Motion.aside>
-              ) : null}
-            </AnimatePresence>
+            <QuizSourcePreviewDock
+              path={previewSourcePath}
+              onClose={handleClosePreviewDock}
+              loadDocument={loadVaultPreviewDocument}
+              onOpenDocument={openSourceDocument}
+              onOpenInNewTab={openSourceInNewTab}
+            />
 
-            <AnimatePresence initial={false}>
-              {sourcesDockOpen ? (
-                <Motion.aside
-                  key="quiz-sources-dock"
-                  role="complementary"
-                  aria-label="파일 근거 문서"
-                  className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-                  initial={{ width: 0, opacity: 0.85 }}
-                  animate={{ width: sourcesDockWidth, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0.85 }}
-                  transition={
-                    sourcesDockResizing
-                      ? { duration: 0 }
-                      : { type: "spring", stiffness: 380, damping: 36 }
-                  }
-                >
-                  <div
-                    className="relative flex h-full min-h-0 flex-col"
-                    style={{ width: sourcesDockWidth }}
-                  >
-                    <TocResizeHandle
-                      edge="left"
-                      handleProps={sourcesDockResizeHandleProps}
-                      isResizing={sourcesDockResizing}
-                      visibleOnHover
-                      label="파일 근거 패널 너비 조절"
-                    />
-                    <div className="border-b border-slate-200 dark:border-odp-borderSoft">
-                      <div className="flex items-center justify-between px-3 py-2.5">
-                        <div className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-                          <Library
-                            size={16}
-                            className="shrink-0 text-violet-600 dark:text-violet-400"
-                          />
-                          <span className="truncate">파일 근거</span>
-                          {sourcePathUsage.total > 0 ? (
-                            <span
-                              className="ml-0.5 inline-flex shrink-0 items-baseline gap-0.5 rounded-md bg-violet-100 px-1.5 py-0.5 text-[11px] font-bold tabular-nums dark:bg-violet-950/70"
-                              aria-label={`등록 ${sourcePathUsage.total}개 중 ${sourcePathUsage.active}개 사용 중`}
-                            >
-                              <span className="text-violet-600 dark:text-violet-400">
-                                {sourcePathUsage.active}
-                              </span>
-                              <span className="font-medium text-slate-400">
-                                /
-                              </span>
-                              <span className="text-slate-700 dark:text-slate-200">
-                                {sourcePathUsage.total}
-                              </span>
-                              <span className="ml-0.5 text-[9px] font-semibold text-violet-700 dark:text-violet-300">
-                                사용
-                              </span>
-                            </span>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          aria-label="근거 패널 닫기"
-                          className="rounded p-1 hover:bg-slate-100 dark:hover:bg-odp-focusBg"
-                          onClick={closeSourcesDock}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
-                        <label
-                          htmlFor="quiz-source-remove-confirm"
-                          className="text-[11px] font-medium text-slate-600 dark:text-odp-muted"
-                        >
-                          삭제 시 확인
-                        </label>
-                        <Switch.Root
-                          id="quiz-source-remove-confirm"
-                          className={SOURCE_REMOVE_SWITCH_ROOT_CLASS(
-                            confirmSourceRemove,
-                          )}
-                          checked={confirmSourceRemove}
-                          onCheckedChange={(checked) => {
-                            setConfirmSourceRemove(checked);
-                            writeQuizSourceRemoveConfirm(checked);
-                          }}
-                          aria-label="근거 문서 삭제 시 확인"
-                        >
-                          <Switch.Thumb
-                            className={SOURCE_REMOVE_SWITCH_THUMB_CLASS}
-                          />
-                        </Switch.Root>
-                      </div>
-                    </div>
-                    <div
-                      ref={handleDockDropHostChange}
-                      className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-3"
-                    >
-                      <QuizSourcePathsChips
-                        layout="dock"
-                        paths={doc.config.sourcePaths}
-                        label="선택된 문서"
-                        onPreview={handlePreviewSource}
-                        onRemove={handleSourceRemove}
-                        isPathEnabled={(path) =>
-                          isQuizSourcePathEnabled(doc.config, path)
-                        }
-                        onToggleEnabled={handleToggleSourcePathEnabled}
-                        onOpenPicker={() =>
-                          setSourcePicker({
-                            paths: doc.config.sourcePaths,
-                            scope: "file",
-                          })
-                        }
-                      />
-                      <div className="space-y-2 border-t border-slate-100 pt-3 dark:border-odp-borderSoft">
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-odp-fgStrong">
-                          근거로 문제 생성
-                        </label>
-                        <input
-                          className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs dark:border-odp-borderSoft dark:bg-odp-bgSoft"
-                          placeholder="주제 (선택)"
-                          value={genTopic}
-                          onChange={(e) => setGenTopic(e.target.value)}
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="w-full"
-                          disabled={busyId === "gen-sources"}
-                          onClick={() => void handleGenerateFromSources()}
-                        >
-                          <Sparkles size={14} />
-                          근거로 문제 추가
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </Motion.aside>
-              ) : null}
-            </AnimatePresence>
+            <QuizSourcesDock
+              open={sourcesDockOpen}
+              docConfig={doc.config}
+              sourcePathUsage={sourcePathUsage}
+              busyGenSources={busyId === "gen-sources"}
+              onClose={closeSourcesDock}
+              onPreview={handlePreviewSource}
+              onRemove={handleSourceRemove}
+              onToggleEnabled={handleToggleSourcePathEnabled}
+              onOpenPicker={handleOpenFileSourcePicker}
+              onGenerateFromTopic={handleSourceTopicGenerate}
+              onDropHostChange={handleDockDropHostChange}
+            />
 
-            <AnimatePresence initial={false}>
-              {tocOpen ? (
-                <Motion.aside
-                  key="quiz-toc-dock"
-                  role="complementary"
-                  aria-label="문제 목차"
-                  className="flex h-full shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-                  initial={{ width: 0, opacity: 0.85 }}
-                  animate={{ width: tocDockWidth, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0.85 }}
-                  transition={
-                    tocDockResizing
-                      ? { duration: 0 }
-                      : { type: "spring", stiffness: 380, damping: 36 }
-                  }
-                >
-                  <div
-                    className="relative flex h-full min-h-0 flex-col"
-                    style={{ width: tocDockWidth }}
-                  >
-                    <TocResizeHandle
-                      edge="left"
-                      handleProps={tocDockResizeHandleProps}
-                      isResizing={tocDockResizing}
-                      visibleOnHover
-                      label="목차 패널 너비 조절"
-                    />
-                    <div className="border-b border-slate-200 dark:border-odp-borderSoft">
-                      <div className="flex items-center justify-between px-3 py-2.5">
-                        <div className="flex items-center gap-1.5 text-sm font-bold text-slate-900 dark:text-odp-fgStrong">
-                          <List
-                            size={16}
-                            className="text-slate-600 dark:text-odp-muted"
-                          />
-                          문제 목차
-                        </div>
-                        <button
-                          type="button"
-                          aria-label="목차 패널 닫기"
-                          className="rounded p-1 hover:bg-slate-100 dark:hover:bg-odp-focusBg"
-                          onClick={() => setTocOpen(false)}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1 px-3 pb-2.5">
-                        {TOC_GRADE_FILTER_ORDER.map((status) => {
-                          const active = tocGradeFilters[status];
-                          return (
-                            <button
-                              key={status}
-                              type="button"
-                              aria-pressed={active}
-                              aria-label={`목차 ${QUIZ_GRADE_STATUS_LABEL[status]} ${active ? "표시" : "숨김"}`}
-                              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
-                                active
-                                  ? TOC_GRADE_TOGGLE_ACTIVE_CLASS[status]
-                                  : TOC_GRADE_TOGGLE_INACTIVE_CLASS
-                              }`}
-                              onClick={() =>
-                                setTocGradeFilters((prev) => ({
-                                  ...prev,
-                                  [status]: !prev[status],
-                                }))
-                              }
-                            >
-                              <span
-                                className={`h-2 w-2 shrink-0 rounded-full ${
-                                  active
-                                    ? QUIZ_GRADE_STATUS_DOT_CLASS[status]
-                                    : "bg-slate-300 dark:bg-slate-600"
-                                }`}
-                                aria-hidden
-                              />
-                              {QUIZ_GRADE_STATUS_LABEL[status]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3 text-xs">
-                      {doc.questions.map((q, i) => {
-                        const isSimilarChild = Boolean(q.similarOf);
-                        const childKindLabel = /-파생\d+$/u.test(
-                          String(q.displayLabel || ""),
-                        )
-                          ? "파생문제"
-                          : "유사문제";
-                        const gradeStatus = getQuizQuestionGradeStatus({
-                          question: q,
-                          userAnswers,
-                          gradedQuestions: graded,
-                          isSubmitted,
-                          subjectiveGrades: subjGrades,
-                        });
-                        if (gradeStatus && !tocGradeFilters[gradeStatus]) {
-                          return null;
-                        }
-                        return (
-                          <Motion.li
-                            key={q.id}
-                            initial={{ opacity: 0, x: 12 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{
-                              delay: Math.min(i, 12) * 0.03,
-                              duration: 0.18,
-                            }}
-                          >
-                            <button
-                              type="button"
-                              className={`flex w-full items-center gap-2 rounded py-1.5 text-left hover:bg-slate-100 dark:hover:bg-odp-focusBg ${
-                                isSimilarChild
-                                  ? "ml-3 border-l-2 border-violet-300 pl-2.5 text-[11px] text-violet-900 dark:border-violet-600 dark:text-violet-200"
-                                  : "px-2"
-                              }`}
-                              title={
-                                isSimilarChild
-                                  ? `${q.similarOf?.displayLabel || q.similarOf?.id}의 ${childKindLabel}`
-                                  : undefined
-                              }
-                              onClick={() => {
-                                document
-                                  .getElementById(`q-card-${q.id}`)
-                                  ?.scrollIntoView({
-                                    behavior: "smooth",
-                                    block: "center",
-                                  });
-                                setFilter("all");
-                              }}
-                            >
-                              <span
-                                className="flex h-4 w-2 shrink-0 items-center justify-center"
-                                aria-hidden
-                              >
-                                {gradeStatus ? (
-                                  <span
-                                    className={`h-2 w-2 rounded-full ${QUIZ_GRADE_STATUS_DOT_CLASS[gradeStatus]}`}
-                                  />
-                                ) : null}
-                              </span>
-                              <span className="min-w-0 truncate">
-                                {isSimilarChild ? (
-                                  <span className="mr-1 text-violet-400 dark:text-violet-500">
-                                    ↳
-                                  </span>
-                                ) : null}
-                                {q.displayLabel}. {q.question.slice(0, 40)}
-                              </span>
-                            </button>
-                          </Motion.li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                </Motion.aside>
-              ) : null}
-            </AnimatePresence>
+            <QuizTocDock
+              open={tocOpen}
+              questions={doc.questions}
+              userAnswers={userAnswers}
+              gradedQuestions={graded}
+              isSubmitted={isSubmitted}
+              subjectiveGrades={subjGrades}
+              onClose={closeTocDock}
+              onNavigate={handleTocNavigate}
+            />
           </div>
 
           {addOpen ? (

@@ -1870,43 +1870,63 @@ class AdvancedSearchEngine {
     limit = 50,
     commandContext?: import('@/utils/advancedSearch/commands').AppCommandContext,
   ): Promise<AdvancedSearchHit[]> {
-    if (this.enabled) {
-      await this.ensureLoaded();
-      if (isSearchIsolationReady() && isIndexInitialized(this.index)) {
-        await this.ensureLucivyReady();
-      }
-    }
-    const useIndex = this.enabled && this.hasIndex();
+    const q = String(query || '').trim();
     const gen = ++this.searchGeneration;
+
+    // Empty palette: built-in commands only — never block on vault index / Lucivy (web UX).
+    if (!q) {
+      return runAdvancedSearch({
+        query,
+        trees,
+        index: this.index,
+        indexEnabled: false,
+        lucivySearch: null,
+        limit,
+        ...(commandContext ? { commandContext } : {}),
+      });
+    }
+
+    if (this.enabled && !this.loaded) {
+      void this.ensureLoaded();
+    }
+
+    const hasMeta =
+      this.enabled && this.loaded && isIndexInitialized(this.index);
 
     const base = await runAdvancedSearch({
       query,
       trees,
       index: this.index,
-      indexEnabled: useIndex,
-      lucivySearch: useIndex
-        ? async (terms, lim) => {
-            const api = await this.loadLucivyApi();
-            const q = api.buildContainsAndQuery('body', terms);
-            if (!q) return [];
-            const hits = await api.lucivySearch(q, { limit: lim });
-            return hits
-              .map((h) => {
-                const docId = this.docIdMap.numericToString.get(h.docId);
-                if (!docId) return null;
-                return { docId, score: h.score };
-              })
-              .filter((x): x is { docId: string; score: number } => x != null);
-          }
-        : null,
+      indexEnabled: hasMeta,
+      lucivySearch:
+        hasMeta && isSearchIsolationReady()
+          ? async (terms, lim) => {
+              if (!this.lucivyReady) {
+                await this.ensureLucivyReady();
+              }
+              if (!this.lucivyReady) return [];
+              const api = await this.loadLucivyApi();
+              const built = api.buildContainsAndQuery('body', terms);
+              if (!built) return [];
+              const hits = await api.lucivySearch(built, { limit: lim });
+              return hits
+                .map((h) => {
+                  const docId = this.docIdMap.numericToString.get(h.docId);
+                  if (!docId) return null;
+                  return { docId, score: h.score };
+                })
+                .filter((x): x is { docId: string; score: number } => x != null);
+            }
+          : null,
       limit,
       ...(commandContext ? { commandContext } : {}),
     });
 
     if (gen !== this.searchGeneration) return base;
 
-    const q = String(query || '').trim();
-    if (!q || !this.backend) return base;
+    if (!this.backend) return base;
+
+    const useIndex = this.enabled && this.hasIndex();
 
     const mergeLiveHits = (liveHits: AdvancedSearchHit[]): AdvancedSearchHit[] => {
       if (liveHits.length === 0) return base;

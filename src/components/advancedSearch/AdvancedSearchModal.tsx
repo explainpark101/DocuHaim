@@ -659,8 +659,8 @@ export default function AdvancedSearchModal({
       {uiAnimationEnabled ? (
         <AnimatePresence>
           {open ? (
-            <Dialog.Portal forceMount>
-              <Dialog.Overlay asChild>
+            <Dialog.Portal forceMount key="advanced-search-modal">
+              <Dialog.Overlay asChild forceMount>
                 <Motion.div
                   className={OVERLAY_CLASS}
                   initial={{ opacity: 0 }}
@@ -671,6 +671,7 @@ export default function AdvancedSearchModal({
               </Dialog.Overlay>
               <Dialog.Content
                 asChild
+                forceMount
                 aria-describedby={undefined}
                 onOpenAutoFocus={(e) => e.preventDefault()}
                 onKeyDown={handleContentKeyDown}

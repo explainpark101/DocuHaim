@@ -38,6 +38,7 @@ import {
   Check,
   CircleAlert,
   Undo2,
+  ClipboardList,
 } from 'lucide-react';
 
 export const IconFolder = ({ size = 16, ...props }) => <Folder size={size} {...props} />;
@@ -66,6 +67,8 @@ export const IconImage = ({ size = 14, ...props }) => <ImageIcon size={size} {..
 export const IconImageFolder = ({ size = 14, ...props }) => <ImageUp size={size} {...props} />;
 export const IconVideo = ({ size = 14, ...props }) => <VideoIcon size={size} {...props} />;
 export const IconFileCode = ({ size = 14, ...props }) => <FileCode size={size} {...props} />;
+/** Quiz note (`.quiz.md`) — sidebar tree and tabs. */
+export const IconQuiz = ({ size = 14, ...props }) => <ClipboardList size={size} {...props} />;
 export const IconFileJson = ({ size = 14, ...props }) => <FileJson size={size} {...props} />;
 export const IconRefresh = ({ size = 14, ...props }) => <RotateCw size={size} {...props} />;
 export const IconMusic = ({ size = 14, ...props }) => <Music2 size={size} {...props} />;

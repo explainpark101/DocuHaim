@@ -15,6 +15,7 @@ import {
 import Button from '@/components/Button';
 import { IconCheck } from '@/components/icons';
 import type { QuizGenPanelSize } from '@/hooks/useQuizGenerationQueue';
+import { getQuizFloatingPanelMotionProps } from '@/utils/quiz/quizDockMotion';
 import type {
   QuizGenJob,
   QuizGenStep,
@@ -334,6 +335,8 @@ export default function QuizGenerationQueuePanel({
   const errorCount = jobs.filter((j) => j.status === 'error').length;
   const hasFinished = jobs.some((j) => j.status !== 'running');
 
+  const floatingMotion = getQuizFloatingPanelMotionProps();
+
   return (
     <AnimatePresence>
       {isOpen ? (
@@ -345,10 +348,10 @@ export default function QuizGenerationQueuePanel({
           aria-label="문제 생성 대기열"
           className="fixed bottom-4 right-4 z-10050 flex flex-col overflow-hidden rounded-xl border border-violet-300/60 bg-white/95 shadow-2xl backdrop-blur-md dark:border-violet-800/50 dark:bg-odp-bgSoft/95"
           style={{ width: size.width, height: size.height }}
-          initial={{ y: 48, opacity: 0, scale: 0.98 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 48, opacity: 0, scale: 0.98 }}
-          transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+          initial={floatingMotion.initial}
+          animate={floatingMotion.animate}
+          exit={floatingMotion.exit}
+          transition={floatingMotion.transition}
           onMouseEnter={() => onPointerEngageChange?.(true)}
           onMouseLeave={() => onPointerEngageChange?.(false)}
           onFocusCapture={() => onFocusEngageChange?.(true)}

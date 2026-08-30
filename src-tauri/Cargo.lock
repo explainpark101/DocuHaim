@@ -1184,7 +1184,7 @@ dependencies = [
 
 [[package]]
 name = "docuhaim"
-version = "1.8.5"
+version = "1.8.6"
 dependencies = [
  "flate2",
  "font-kit",
