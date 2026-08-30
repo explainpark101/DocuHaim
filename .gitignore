@@ -45,3 +45,4 @@ src-tauri/gen/schemas/
 src/components/llm/__jsImportProbe.jsx
 temp
 /temp
+useProbeDomain
