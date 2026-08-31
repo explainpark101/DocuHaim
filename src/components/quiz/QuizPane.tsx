@@ -150,6 +150,7 @@ import {
   resolveVaultFileNode,
   type VaultStorageType,
 } from "@/utils/vault/resolveVaultFileNode";
+import { isTauriDesktopPlatform } from "@/utils/tauriPlatform";
 
 const QUIZ_AUTOSAVE_DEBOUNCE_MS = 20_000;
 
@@ -761,6 +762,8 @@ export default function QuizPane({
 
   useEffect(() => {
     if (!isActiveFile) return undefined;
+    // Tauri: desktop close guard owns quit; WebView2 beforeunload can block window close.
+    if (isTauriDesktopPlatform()) return undefined;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!hasUnsavedQuizProgress()) return;
       event.preventDefault();

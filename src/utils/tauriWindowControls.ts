@@ -1,3 +1,4 @@
+import { requestDesktopClose } from '@/utils/desktopWindowCloseGuard';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
 async function getAppWindow() {
@@ -26,7 +27,5 @@ export async function isDesktopWindowMaximized(): Promise<boolean> {
 }
 
 export async function closeDesktopWindow(): Promise<void> {
-  const win = await getAppWindow();
-  if (!win) return;
-  await win.close();
+  requestDesktopClose();
 }

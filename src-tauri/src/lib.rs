@@ -9,6 +9,8 @@ use std::sync::Mutex;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, RunEvent};
+#[cfg(target_os = "windows")]
+use tauri::WindowEvent;
 use url::Url;
 
 const GEMINI_ORIGIN: &str = "https://generativelanguage.googleapis.com";
@@ -363,6 +365,18 @@ pub fn run() {
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
+                    }
+                }
+                // Windows: closing the main window must kill the process. WebView2
+                // beforeunload can leave a headless runtime after the HWND is gone.
+                #[cfg(target_os = "windows")]
+                RunEvent::WindowEvent {
+                    label,
+                    event: WindowEvent::Destroyed,
+                    ..
+                } => {
+                    if label == "main" {
+                        app_handle.exit(0);
                     }
                 }
                 _ => {}
