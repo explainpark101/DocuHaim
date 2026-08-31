@@ -6,13 +6,14 @@ import type { LlamaCppInstallAction } from '@/utils/llamaCppShell';
 const INSTALL_TITLE: Record<LlamaCppInstallAction, string> = {
   brew: 'brew install llama.cpp',
   official: 'llama.app install.sh',
-  scoop: 'scoop install llama.cpp',
+  scoop: 'scoop install llama.cpp (versions)',
 };
 
 type LlamaCppInstallLogFloatingPanelProps = {
   open: boolean;
   minimized: boolean;
   action: LlamaCppInstallAction | null;
+  heading?: string;
   log: string;
   running: boolean;
   onMinimize: () => void;
@@ -24,6 +25,7 @@ export default function LlamaCppInstallLogFloatingPanel({
   open,
   minimized,
   action,
+  heading,
   log,
   running,
   onMinimize,
@@ -42,7 +44,7 @@ export default function LlamaCppInstallLogFloatingPanel({
 
   if (!open || typeof document === 'undefined') return null;
 
-  const title = action ? INSTALL_TITLE[action] : 'llama.cpp install';
+  const title = heading || (action ? INSTALL_TITLE[action] : 'llama.cpp install');
 
   if (minimized) {
     return createPortal(

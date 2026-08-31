@@ -20,6 +20,11 @@
             "/c",
             { "validator": "^\"[A-Za-z]:\\\\[^\"]+\\\\llama-server(\\.exe)?\" --help$" }
           ]
+        },
+        {
+          "name": "llama-cpp-nvidia-smi-windows",
+          "cmd": "cmd",
+          "args": ["/c", "nvidia-smi"]
         }
       ]
     },
@@ -29,7 +34,12 @@
         {
           "name": "llama-cpp-scoop-install",
           "cmd": "cmd",
-          "args": ["/c", "scoop bucket add extras 2>nul & scoop install llama.cpp"]
+          "args": [
+            "/c",
+            {
+              "validator": "^scoop bucket add versions >nul 2>&1 & scoop install llama\\.cpp-(cpu|opencl|openvino|sycl|vulkan|hip-radeon|cu[0-9]{2,3})$"
+            }
+          ]
         },
         {
           "name": "llama-cpp-server-windows",

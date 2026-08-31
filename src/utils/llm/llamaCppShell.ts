@@ -33,6 +33,15 @@ import {
   waitLlamaCppServerReady,
   type LlamaCppRuntimeStatus,
 } from '@/utils/llm/llamaCppRuntime';
+import {
+  buildLlamaCppScoopInstallShellArg,
+  formatLlamaCppCudaVersion,
+  listLlamaCppScoopInstallCandidates,
+  parseNvidiaSmiCudaVersion,
+  scoopInstallLooksFailed,
+  type LlamaCppScoopBackendId,
+  type LlamaCppWindowsCudaProbe,
+} from '@/utils/llm/llamaCppScoopWindows';
 
 export {
   abortLlamaCppServerStart,
@@ -201,8 +210,14 @@ async function runLlamaCppInstall(
       throw new LlamaCppInstallAbortedError(action);
     }
     clearLlamaCppToolkitCache();
-    if (result.code !== 0) {
-      throw new Error(result.stderr.trim() || `llama.cpp ${action} install failed.`);
+    const failure =
+      action === 'scoop'
+        ? scoopInstallLooksFailed(result.code, result.stdout, result.stderr)
+        : result.code !== 0
+          ? result.stderr.trim() || result.stdout.trim() || `llama.cpp ${action} install failed.`
+          : null;
+    if (failure) {
+      throw new Error(failure);
     }
   } catch (err) {
     if (signal.aborted || isLlamaCppInstallAbortedError(err)) {
@@ -247,29 +262,106 @@ export async function installLlamaCppViaOfficialScriptMac(options?: {
   );
 }
 
+export async function probeLlamaCppWindowsCuda(): Promise<LlamaCppWindowsCudaProbe> {
+  if (!isTauriWindows()) {
+    return { nvidiaSmiAvailable: false, cuda: null };
+  }
+  try {
+    const result = await runShellExecute('llama-cpp-nvidia-smi-windows', ['/c', 'nvidia-smi']);
+    const combined = `${result.stdout}\n${result.stderr}`;
+    const cuda = parseNvidiaSmiCudaVersion(combined);
+    if (cuda) {
+      return {
+        nvidiaSmiAvailable: true,
+        cuda,
+        detail: `CUDA ${formatLlamaCppCudaVersion(cuda)}`,
+      };
+    }
+    if (result.code === 0) {
+      return {
+        nvidiaSmiAvailable: true,
+        cuda: null,
+        detail: 'nvidia-smi ran but CUDA version was not found.',
+      };
+    }
+    return { nvidiaSmiAvailable: false, cuda: null };
+  } catch {
+    return { nvidiaSmiAvailable: false, cuda: null };
+  }
+}
+
 export async function installLlamaCppViaScoopWindows(options?: {
   onOutput?: (line: string) => void;
   signal?: AbortSignal;
+  backend?: LlamaCppScoopBackendId;
 }): Promise<void> {
   if (!isTauriWindows()) {
     throw new Error('Scoop install is only available on Windows.');
   }
-  await runLlamaCppInstall(
-    'scoop',
-    'llama-cpp-scoop-install',
-    ['/c', 'scoop bucket add extras 2>nul & scoop install llama.cpp'],
-    options,
-  );
+
+  const backend = options?.backend ?? 'auto';
+  const log = options?.onOutput;
+  const needsCudaProbe = backend === 'auto' || backend === 'cuda';
+  const probe = needsCudaProbe
+    ? await probeLlamaCppWindowsCuda()
+    : { nvidiaSmiAvailable: false, cuda: null };
+
+  if (needsCudaProbe) {
+    if (probe.cuda) {
+      log?.(`[detect] NVIDIA CUDA ${formatLlamaCppCudaVersion(probe.cuda)}\n`);
+    } else if (probe.nvidiaSmiAvailable) {
+      log?.('[detect] nvidia-smi found, but CUDA version was not parsed.\n');
+    } else {
+      log?.('[detect] no CUDA (nvidia-smi unavailable).\n');
+    }
+  }
+
+  const candidates = listLlamaCppScoopInstallCandidates(backend, probe.cuda);
+  log?.(`[scoop] versions bucket; trying: ${candidates.join(', ')}\n`);
+
+  let lastError = '';
+  for (const pkg of candidates) {
+    if (options?.signal?.aborted) {
+      throw new LlamaCppInstallAbortedError('scoop');
+    }
+    log?.(`[scoop] install ${pkg}\n`);
+    try {
+      await runLlamaCppInstall(
+        'scoop',
+        'llama-cpp-scoop-install',
+        ['/c', buildLlamaCppScoopInstallShellArg(pkg)],
+        options,
+      );
+      log?.(`[scoop] installed ${pkg}\n`);
+      return;
+    } catch (err) {
+      if (isLlamaCppInstallAbortedError(err)) throw err;
+      lastError = err instanceof Error ? err.message : String(err);
+      log?.(`[skip] ${pkg}: ${lastError}\n`);
+    }
+  }
+
+  throw new Error(lastError || 'scoop install llama.cpp failed.');
+}
+
+function inferLlamaServerPlatform(): NodeJS.Platform {
+  if (isTauriWindows()) return 'win32';
+  if (isTauriMacOS()) return 'darwin';
+  if (typeof process !== 'undefined' && process.platform) return process.platform;
+  return 'linux';
 }
 
 export function buildLlamaServerBinCandidates(
   homeDir: string,
-  platform: NodeJS.Platform = typeof process !== 'undefined' ? process.platform : 'linux',
+  platform: NodeJS.Platform = inferLlamaServerPlatform(),
 ): string[] {
   const home = String(homeDir || '').trim() || '/';
   if (platform === 'win32') {
-    const localAppData = process.env.LOCALAPPDATA || `${home}\\AppData\\Local`;
+    const localAppData =
+      (typeof process !== 'undefined' ? process.env?.LOCALAPPDATA : undefined) ||
+      `${home}\\AppData\\Local`;
     return [
+      `${home}\\scoop\\shims\\llama-server.exe`,
       `${localAppData}\\llama.cpp\\llama-server.exe`,
       `${localAppData}\\Programs\\llama.cpp\\llama-server.exe`,
       'llama-server.exe',

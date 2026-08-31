@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CircleHelp, Loader2 } from 'lucide-react';
 import { Popover } from 'radix-ui';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import LlamaCppInstallLogFloatingPanel from '@/components/settings/LlamaCppInstallLogFloatingPanel';
+import { RadixSelectField } from '@/components/ui/RadixSelectField';
 import { isTauriMacOS, isTauriWindows } from '@/utils/tauriPlatform';
 import {
   abortLlamaCppInstall,
@@ -10,9 +11,18 @@ import {
   installLlamaCppViaOfficialScriptMac,
   installLlamaCppViaScoopWindows,
   isLlamaCppInstallAbortedError,
+  probeLlamaCppWindowsCuda,
   type LlamaCppInstallAction,
   type LlamaCppToolkitStatus,
 } from '@/utils/llamaCppShell';
+import {
+  LLAMA_CPP_SCOOP_BACKEND_OPTIONS,
+  formatLlamaCppCudaVersion,
+  isLlamaCppScoopBackendId,
+  listLlamaCppScoopInstallCandidates,
+  type LlamaCppScoopBackendId,
+  type LlamaCppWindowsCudaProbe,
+} from '@/utils/llm/llamaCppScoopWindows';
 
 const LLAMA_CPP_RELEASES_URL = 'https://github.com/ggml-org/llama.cpp/releases';
 
@@ -31,8 +41,13 @@ const ACTION_BTN_CLASS =
 const INSTALL_LABEL: Record<LlamaCppInstallAction, string> = {
   brew: 'brew install llama.cpp',
   official: 'official install script',
-  scoop: 'scoop install llama.cpp',
+  scoop: 'scoop install llama.cpp (versions)',
 };
+
+const SCOOP_BACKEND_SELECT_OPTIONS = LLAMA_CPP_SCOOP_BACKEND_OPTIONS.map((opt) => ({
+  value: opt.id,
+  label: opt.label,
+}));
 
 type LlamaCppInstallHelpProps = {
   toolkit: LlamaCppToolkitStatus | null;
@@ -57,10 +72,34 @@ export default function LlamaCppInstallHelp({ toolkit, onRefresh }: LlamaCppInst
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [pendingAbortAction, setPendingAbortAction] = useState<LlamaCppInstallAction | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [scoopBackend, setScoopBackend] = useState<LlamaCppScoopBackendId>('auto');
+  const [cudaProbe, setCudaProbe] = useState<LlamaCppWindowsCudaProbe | null>(null);
 
   const binaryReady = toolkit?.binaryAvailable === true;
   const mac = isTauriMacOS();
   const win = isTauriWindows();
+
+  useEffect(() => {
+    if (!helpOpen || !win) return;
+    let cancelled = false;
+    void probeLlamaCppWindowsCuda().then((probe) => {
+      if (!cancelled) setCudaProbe(probe);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [helpOpen, win]);
+
+  const scoopCandidates = useMemo(
+    () => listLlamaCppScoopInstallCandidates(scoopBackend, cudaProbe?.cuda ?? null),
+    [scoopBackend, cudaProbe],
+  );
+  const scoopPrimaryPackage = scoopCandidates[0] ?? 'llama.cpp-cpu';
+  const scoopCudaLabel = cudaProbe?.cuda
+    ? `CUDA ${formatLlamaCppCudaVersion(cudaProbe.cuda)}`
+    : cudaProbe?.nvidiaSmiAvailable
+      ? 'CUDA version unknown'
+      : 'CUDA not detected';
 
   const startInstall = useCallback(
     async (action: LlamaCppInstallAction, fn: InstallRunner) => {
@@ -128,7 +167,23 @@ export default function LlamaCppInstallHelp({ toolkit, onRefresh }: LlamaCppInst
           </button>
         </Popover.Trigger>
         <Popover.Portal>
-          <Popover.Content side="left" sideOffset={8} className={CONTENT_CLASS}>
+          <Popover.Content
+            side="left"
+            sideOffset={8}
+            className={CONTENT_CLASS}
+            onPointerDownOutside={(event) => {
+              const target = event.target;
+              if (target instanceof Element && target.closest('[data-radix-select-content]')) {
+                event.preventDefault();
+              }
+            }}
+            onFocusOutside={(event) => {
+              const target = event.target;
+              if (target instanceof Element && target.closest('[data-radix-select-content]')) {
+                event.preventDefault();
+              }
+            }}
+          >
             <p className="mb-2 font-semibold text-gray-800 dark:text-odp-fgStrong">llama-server 설치</p>
             <ol className="list-decimal space-y-2 pl-4">
               {mac ? (
@@ -188,27 +243,51 @@ export default function LlamaCppInstallHelp({ toolkit, onRefresh }: LlamaCppInst
               {win ? (
                 <>
                   <li>
-                    Scoop
-                    <pre className={CODE_BLOCK_CLASS}>
-                      {`scoop bucket add extras\nscoop install llama.cpp`}
-                    </pre>
+                    Scoop (versions bucket)
                     <p className="mt-1 text-[10px] text-gray-500 dark:text-odp-muted">
-                      GPU builds may live in the <code className="rounded px-0.5">versions</code>{' '}
-                      bucket (e.g. <code className="rounded px-0.5">llama.cpp-cu13</code>).
+                      extras의 <code className="rounded px-0.5">llama.cpp</code>는 더 이상 없습니다.
+                      CUDA가 있으면 <code className="rounded px-0.5">llama.cpp-cuXX</code>, 없으면{' '}
+                      <code className="rounded px-0.5">llama.cpp-cpu</code>를 설치합니다.
                     </p>
+                    <p className="mt-1 text-[10px] text-gray-600 dark:text-odp-fg">
+                      감지: {scoopCudaLabel}
+                    </p>
+                    <label className="mt-1.5 block text-[10px] font-medium text-gray-600 dark:text-odp-muted">
+                      백엔드
+                      <RadixSelectField
+                        className="mt-0.5 w-full"
+                        triggerClassName="h-7 w-full text-[10px]"
+                        aria-label="llama.cpp scoop backend"
+                        value={scoopBackend}
+                        options={SCOOP_BACKEND_SELECT_OPTIONS}
+                        onValueChange={(next) => {
+                          if (isLlamaCppScoopBackendId(next)) setScoopBackend(next);
+                        }}
+                      />
+                    </label>
+                    <pre className={CODE_BLOCK_CLASS}>
+                      {`scoop bucket add versions\nscoop install ${scoopPrimaryPackage}`}
+                    </pre>
                     {!binaryReady || busyAction === 'scoop' ? (
                       <button
                         type="button"
                         className={ACTION_BTN_CLASS}
                         disabled={busyAction != null && busyAction !== 'scoop'}
-                        onClick={() => requestInstall('scoop', installLlamaCppViaScoopWindows)}
+                        onClick={() =>
+                          requestInstall('scoop', (opts) =>
+                            installLlamaCppViaScoopWindows({
+                              ...opts,
+                              backend: scoopBackend,
+                            }),
+                          )
+                        }
                       >
                         {busyAction === 'scoop' ? (
                           <Loader2 size={12} className="animate-spin" />
                         ) : null}
                         {busyAction === 'scoop'
                           ? '설치 중… (다시 누르면 Abort)'
-                          : 'scoop으로 설치'}
+                          : `scoop으로 ${scoopPrimaryPackage} 설치`}
                       </button>
                     ) : (
                       <p className="mt-1 text-[10px] text-sky-700 dark:text-sky-300">
@@ -255,6 +334,7 @@ export default function LlamaCppInstallHelp({ toolkit, onRefresh }: LlamaCppInst
         open={panelOpen}
         minimized={panelMinimized}
         action={panelAction}
+        {...(panelAction === 'scoop' ? { heading: `scoop install ${scoopPrimaryPackage}` } : {})}
         log={log}
         running={busyAction != null}
         onMinimize={() => setPanelMinimized(true)}

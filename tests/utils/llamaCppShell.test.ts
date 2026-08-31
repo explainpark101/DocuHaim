@@ -30,6 +30,7 @@ describe('buildLlamaServerBinCandidates', () => {
   it('includes LocalAppData llama-server.exe paths on windows', () => {
     const home = 'C:\\Users\\me';
     const candidates = buildLlamaServerBinCandidates(home, 'win32');
+    expect(candidates).toContain(`${home}\\scoop\\shims\\llama-server.exe`);
     const localAppData = process.env.LOCALAPPDATA || `${home}\\AppData\\Local`;
     expect(candidates).toContain(`${localAppData}\\llama.cpp\\llama-server.exe`);
     expect(candidates).toContain(`${localAppData}\\Programs\\llama.cpp\\llama-server.exe`);
