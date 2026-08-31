@@ -29,6 +29,8 @@ export default defineConfig({
     exclude: ['node_modules', 'dist', 'docs', 'src-tauri', '**/release/**'],
     clearMocks: true,
     restoreMocks: true,
+    // Heavy shim imports (Sidebar/MarkdownEditor) and ESLint bootstrap exceed 5s on Windows.
+    testTimeout: 30_000,
     // Avoid pulling the full app graph into every file unless imported.
     pool: 'forks',
   },

@@ -262,9 +262,12 @@ export async function installLlamaCppViaScoopWindows(options?: {
   );
 }
 
-export function buildLlamaServerBinCandidates(homeDir: string): string[] {
+export function buildLlamaServerBinCandidates(
+  homeDir: string,
+  platform: NodeJS.Platform = typeof process !== 'undefined' ? process.platform : 'linux',
+): string[] {
   const home = String(homeDir || '').trim() || '/';
-  if (typeof process !== 'undefined' && process.platform === 'win32') {
+  if (platform === 'win32') {
     const localAppData = process.env.LOCALAPPDATA || `${home}\\AppData\\Local`;
     return [
       `${localAppData}\\llama.cpp\\llama-server.exe`,

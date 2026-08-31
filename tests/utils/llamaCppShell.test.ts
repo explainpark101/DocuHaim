@@ -21,9 +21,18 @@ describe('parseLlamaServerBinPath', () => {
 });
 
 describe('buildLlamaServerBinCandidates', () => {
-  it('includes homebrew and local install paths', () => {
-    const candidates = buildLlamaServerBinCandidates('/Users/me');
+  it('includes homebrew and local install paths on unix', () => {
+    const candidates = buildLlamaServerBinCandidates('/Users/me', 'darwin');
     expect(candidates).toContain('/opt/homebrew/bin/llama-server');
     expect(candidates).toContain('/Users/me/.local/bin/llama-server');
+  });
+
+  it('includes LocalAppData llama-server.exe paths on windows', () => {
+    const home = 'C:\\Users\\me';
+    const candidates = buildLlamaServerBinCandidates(home, 'win32');
+    const localAppData = process.env.LOCALAPPDATA || `${home}\\AppData\\Local`;
+    expect(candidates).toContain(`${localAppData}\\llama.cpp\\llama-server.exe`);
+    expect(candidates).toContain(`${localAppData}\\Programs\\llama.cpp\\llama-server.exe`);
+    expect(candidates).toContain('llama-server.exe');
   });
 });
