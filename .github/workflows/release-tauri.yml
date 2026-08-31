@@ -100,29 +100,6 @@ jobs:
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Windows runners mangle multiline minisign keys when passed through step env to
-      # tauri-action ("Missing comment in secret key"). Write the key to a file and point
-      # TAURI_SIGNING_PRIVATE_KEY at the path. Also avoid exporting an empty password env.
-      - name: Prepare updater signing key
-        if: steps.updater_signing.outputs.signed == 'true'
-        shell: bash
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: |
-          KEY_DIR="${RUNNER_TEMP}/tauri-signing"
-          mkdir -p "$KEY_DIR"
-          KEY_FILE="$KEY_DIR/private.key"
-          if printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | head -c 20 | grep -q '^untrusted comment:'; then
-            printf '%s\n' "$TAURI_SIGNING_PRIVATE_KEY" > "$KEY_FILE"
-          else
-            printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" | tr -d '\n' | base64 -d > "$KEY_FILE"
-          fi
-          echo "TAURI_SIGNING_PRIVATE_KEY=$KEY_FILE" >> "$GITHUB_ENV"
-          if [[ -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]]; then
-            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" >> "$GITHUB_ENV"
-          fi
-
       - name: Build and upload release (unsigned)
         if: steps.signing.outputs.signed == 'false'
         uses: tauri-apps/tauri-action@v1
@@ -186,14 +163,6 @@ jobs:
           updaterJsonPreferNsis: true
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
-          releaseBody: |
-            Desktop builds (DMG / NSIS) with auto-update manifest.
-
-            - macOS: universal DMG
-            - Windows: NSIS installer (.exe)
-            - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
-
-            Unsigned builds if signing secrets are not configured — see docs/desktop/code-signing.md.
           releaseDraft: false
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
