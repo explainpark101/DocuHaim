@@ -13,9 +13,13 @@ declare module 'pagedjs' {
       stylesheets?: Array<string | Record<string, string>> | null,
       renderTo?: HTMLElement | null,
     ): Promise<PagedFlow>;
+    registerHandlers(...handlers: unknown[]): void;
   }
 
   export class Handler {
+    chunker: { source?: ParentNode | null } | null;
+    polisher: unknown;
+    caller: unknown;
     constructor(chunker: unknown, polisher: unknown, caller: unknown);
   }
 

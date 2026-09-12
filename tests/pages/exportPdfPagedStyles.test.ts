@@ -27,6 +27,8 @@ describe('exportPdf paged styles', () => {
     expect(css).toContain('list-style-type: disc');
     expect(css).toContain('padding-inline-start: 2em');
     expect(css).toContain('display: list-item');
+    expect(css).toContain('break-inside: avoid');
+    expect(css).not.toContain('break-after: avoid');
     expect(css).not.toContain('@media print');
   });
 

@@ -349,6 +349,27 @@ export const printFontStyles = `
   .export-pdf-preview-stage .export-pdf-page-slot-clone h4,
   .export-pdf-preview-stage .export-pdf-page-slot-clone h5,
   .export-pdf-preview-stage .export-pdf-page-slot-clone h6 { font-size: 1em; }
+  /* Keep headings intact (no mid-heading clip). No break-after:avoid — see paged styles. */
+  [data-export-pdf-pages] .pagedjs_page_content h1,
+  [data-export-pdf-pages] .pagedjs_page_content h2,
+  [data-export-pdf-pages] .pagedjs_page_content h3,
+  [data-export-pdf-pages] .pagedjs_page_content h4,
+  [data-export-pdf-pages] .pagedjs_page_content h5,
+  [data-export-pdf-pages] .pagedjs_page_content h6,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone h1,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone h2,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone h3,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone h4,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone h5,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone h6 {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .export-pdf-break-before-page,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-break-before-page {
+    break-before: page;
+    page-break-before: always;
+  }
   [data-export-pdf-pages] .pagedjs_page_content b,
   [data-export-pdf-pages] .pagedjs_page_content strong,
   .export-pdf-preview-stage .export-pdf-page-slot-clone b,
@@ -455,6 +476,21 @@ export const printFontStyles = `
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-line,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-line {
     display: block;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-page-chunk {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin: 0 !important;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk-first,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-page-chunk-first,
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk-oversized,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-page-chunk-oversized {
+    break-inside: auto;
+    page-break-inside: auto;
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-gutter,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-gutter {

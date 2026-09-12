@@ -1,8 +1,8 @@
 /**
  * Restructure fenced code blocks for paged.js:
- * - one flex row per source line (gutter + highlighted content)
+ * - one block row per source line (gutter + highlighted content)
  * - long lines wrap via pre-wrap
- * - rows may flow across pages; line numbers stay with each row
+ * - tall blocks are later pre-split by page height (see splitExportPdfCodeBlocksByPageHeight)
  */
 
 export type LineSplitNode =

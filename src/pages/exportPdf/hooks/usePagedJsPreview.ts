@@ -3,13 +3,17 @@ import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
 import { applyExportPdfCodeBlockFragmentChrome } from '@/utils/exportPdf/applyExportPdfCodeBlockFragmentChrome';
 import { prepareExportPdfCodeBlocksForPaging } from '@/utils/exportPdf/prepareExportPdfCodeBlocksForPaging';
 import { sanitizeExportPdfPagedSource } from '@/utils/exportPdf/sanitizeExportPdfPagedSource';
+import { splitExportPdfCodeBlocksByPageHeight } from '@/utils/exportPdf/splitExportPdfCodeBlocksByPageHeight';
 import {
   exportPdfLoadDebug,
   exportPdfLoadDebugElapsed,
 } from '@/pages/exportPdf/exportPdfLoadDebug';
 import { buildExportPdfPagedStyles } from '@/pages/exportPdf/exportPdfPagedStyles';
 import type { ExportPdfPagedStatus } from '@/pages/exportPdf/exportPdfPagedStatus';
-import type { PrintPageSizeId } from '@/utils/printPageLayout';
+import {
+  getPrintPageInnerSizePx,
+  type PrintPageSizeId,
+} from '@/utils/printPageLayout';
 
 type Args = {
   sourceRef: RefObject<HTMLElement | null>;
@@ -94,7 +98,15 @@ function tagBodyPages(root: HTMLElement): number {
   return Math.max(1, pages.length);
 }
 
-function buildPagedSourceFromPreview(preview: Element): HTMLElement | null {
+function buildPagedSourceFromPreview(
+  preview: Element,
+  options: {
+    pageSizeId: PrintPageSizeId;
+    bodyLineHeight?: string;
+    headingLineHeight?: string;
+    baseFontSizePx?: string;
+  },
+): HTMLElement | null {
   const html = preview.innerHTML?.trim() ?? '';
   if (!html) return null;
 
@@ -114,6 +126,26 @@ function buildPagedSourceFromPreview(preview: Element): HTMLElement | null {
 
   prepareExportPdfCodeBlocksForPaging(wrapper);
   sanitizeExportPdfPagedSource(wrapper);
+
+  // Split tall fences into page-sized sibling chunks so paged.js never resumes
+  // mid-fence (Layout repeated aborts and drops the remainder).
+  const inner = getPrintPageInnerSizePx(options.pageSizeId);
+  const measureCss = buildExportPdfPagedStyles(options.pageSizeId, {
+    ...(options.bodyLineHeight != null
+      ? { bodyLineHeight: options.bodyLineHeight }
+      : {}),
+    ...(options.headingLineHeight != null
+      ? { headingLineHeight: options.headingLineHeight }
+      : {}),
+    ...(options.baseFontSizePx != null
+      ? { baseFontSizePx: options.baseFontSizePx }
+      : {}),
+  });
+  splitExportPdfCodeBlocksByPageHeight(wrapper, {
+    maxHeightPx: inner.heightPx,
+    widthPx: inner.widthPx,
+    measureCss,
+  });
 
   return wrapper;
 }
@@ -324,7 +356,12 @@ export function usePagedJsPreview({
           return;
         }
 
-        const wrapper = buildPagedSourceFromPreview(preview);
+        const wrapper = buildPagedSourceFromPreview(preview, {
+          pageSizeId,
+          ...(bodyLineHeight != null ? { bodyLineHeight } : {}),
+          ...(headingLineHeight != null ? { headingLineHeight } : {}),
+          ...(baseFontSizePx != null ? { baseFontSizePx } : {}),
+        });
         if (!wrapper) {
           exportPdfLoadDebug('paged:empty-source', {
             generation,

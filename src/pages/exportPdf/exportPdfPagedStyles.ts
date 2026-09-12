@@ -174,6 +174,31 @@ export function buildExportPdfPagedStyles(
   font-size: 1em;
 }
 
+/* Keep headings intact (no mid-heading clip). Do not use break-after:avoid —
+   pairing with tall following content caused boundary vanish / empty gaps. */
+.export-pdf-paged-source h1,
+.export-pdf-paged-source h2,
+.export-pdf-paged-source h3,
+.export-pdf-paged-source h4,
+.export-pdf-paged-source h5,
+.export-pdf-paged-source h6,
+.pagedjs_page_content h1,
+.pagedjs_page_content h2,
+.pagedjs_page_content h3,
+.pagedjs_page_content h4,
+.pagedjs_page_content h5,
+.pagedjs_page_content h6 {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* When leftover space cannot fit heading + start of code, move both together. */
+.export-pdf-paged-source .export-pdf-break-before-page,
+.pagedjs_page_content .export-pdf-break-before-page {
+  break-before: page;
+  page-break-before: always;
+}
+
 .export-pdf-paged-source b,
 .export-pdf-paged-source strong,
 .pagedjs_page_content b,
@@ -281,12 +306,22 @@ export function buildExportPdfPagedStyles(
   margin-top: 0 !important;
 }
 
+.export-pdf-paged-source .md-editor-code.export-pdf-code-frag-continue .export-pdf-code-body,
+.pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue .export-pdf-code-body {
+  padding-top: 0 !important;
+}
+
 .export-pdf-paged-source .md-editor-code.export-pdf-code-frag-break,
 .pagedjs_page_content .md-editor-code.export-pdf-code-frag-break {
   border-bottom: none !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
   margin-bottom: 0 !important;
+}
+
+.export-pdf-paged-source .md-editor-code.export-pdf-code-frag-break .export-pdf-code-body,
+.pagedjs_page_content .md-editor-code.export-pdf-code-frag-break .export-pdf-code-body {
+  padding-bottom: 0 !important;
 }
 
 .export-pdf-paged-source .md-editor-code.export-pdf-code-paged pre,
@@ -315,6 +350,24 @@ export function buildExportPdfPagedStyles(
 .export-pdf-paged-source .export-pdf-code-line,
 .pagedjs_page_content .export-pdf-code-line {
   display: block;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Pre-split chunks stay atomic so paged.js moves the whole chunk to the next page.
+   The first fragment is splittable (auto) so a preceding heading is not dropped
+   when the packed box is slightly taller than leftover space. */
+.export-pdf-paged-source .md-editor-code.export-pdf-code-page-chunk,
+.pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 0 !important;
+}
+
+.export-pdf-paged-source .md-editor-code.export-pdf-code-page-chunk-first,
+.pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk-first,
+.export-pdf-paged-source .md-editor-code.export-pdf-code-page-chunk-oversized,
+.pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk-oversized {
   break-inside: auto;
   page-break-inside: auto;
 }

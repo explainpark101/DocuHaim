@@ -16,12 +16,21 @@ describe('sanitizeExportPdfPagedSource', () => {
 });
 
 describe('exportPdfPagedStyles code paging', () => {
-  it('uses block code-line layout and export-pdf-code-pre selectors', () => {
+  it('uses line-level avoid and page-chunk avoid for pre-split blocks', () => {
     const css = buildExportPdfPagedStyles('a4');
     expect(css).toContain('.export-pdf-code-pre');
     expect(css).toContain('.export-pdf-code-body');
     expect(css).toContain('.export-pdf-code-line');
     expect(css).toMatch(/\.export-pdf-code-line[^{]*\{[^}]*display:\s*block/);
+    expect(css).toMatch(/\.export-pdf-code-line[^{]*\{[^}]*break-inside:\s*avoid/);
+    expect(css).toContain('export-pdf-code-page-chunk');
+    expect(css).toMatch(
+      /\.md-editor-code\.export-pdf-code-page-chunk[^{]*\{[^}]*break-inside:\s*avoid/,
+    );
+    expect(css).toContain('export-pdf-code-page-chunk-first');
+    expect(css).toMatch(
+      /\.md-editor-code\.export-pdf-code-page-chunk-first[^{]*\{[^}]*break-inside:\s*auto/,
+    );
     expect(css).not.toMatch(
       /\.export-pdf-code-line[^{]*\{[^}]*display:\s*flex/,
     );
