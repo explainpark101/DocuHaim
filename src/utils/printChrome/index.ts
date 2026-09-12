@@ -31,6 +31,14 @@ export {
 } from '@/utils/printChrome/types';
 
 export {
+  formatPrintChromePlacementDelta,
+  nudgePrintChromePlacementByPx,
+  percentDeltaToPx,
+  printChromePositionToPercent,
+} from '@/utils/printChrome/placementMetrics';
+export type { PrintChromePageSizePx } from '@/utils/printChrome/placementMetrics';
+
+export {
   escapePrintChromeJsonForComment,
   formatPrintChromePageLabel,
   isPrintChromeLeadingMetaRegion,

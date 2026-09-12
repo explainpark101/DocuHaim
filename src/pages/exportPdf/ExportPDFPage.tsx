@@ -16,6 +16,8 @@ import { useExportPdfPrintLayout } from '@/pages/exportPdf/hooks/useExportPdfPri
 import { useExportPdfToc } from '@/pages/exportPdf/hooks/useExportPdfToc';
 import { getPrintPageMarginsMm, loadPrintPageLayout } from '@/utils/printPageLayout';
 import PrintChromePlacementConfirmModal from '@/components/print/PrintChromePlacementConfirmModal';
+import PrintChromePlacementDiscardModal from '@/components/print/PrintChromePlacementDiscardModal';
+import PrintChromePlacementBar from '@/components/print/PrintChromePlacementBar';
 
 export default function ExportPDFPage(props: ExportPDFPageProps) {
   const refs = useExportPdfPreviewRefs();
@@ -153,6 +155,7 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       chromeDraftPlacement={printChromeState.livePlacementDraft}
       onChromePlacementDraftChange={printChromeState.onPlacementDraftChange}
       onChromePlacementDraftCommit={printChromeState.onPlacementDraftCommit}
+      onChromeRequestCancelPlacement={printChromeState.requestCancelPlacement}
     />
   );
 
@@ -189,6 +192,7 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       chromeDraftPlacement={printChromeState.livePlacementDraft}
       onChromePlacementDraftChange={printChromeState.onPlacementDraftChange}
       onChromePlacementDraftCommit={printChromeState.onPlacementDraftCommit}
+      onChromeRequestCancelPlacement={printChromeState.requestCancelPlacement}
     />
   );
 
@@ -320,11 +324,22 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       haimTableEdit={tables.haimTableEdit}
       onHaimTableEditFailed={tables.onEditFailed}
     />
+      <PrintChromePlacementBar
+        draft={printChromeState.placementDraft}
+        onConfirm={printChromeState.openPlacementConfirm}
+        onCancel={printChromeState.requestCancelPlacement}
+      />
       <PrintChromePlacementConfirmModal
-        draft={printChromeState.pendingPlacement}
+        open={printChromeState.placementConfirmOpen}
+        draft={printChromeState.placementDraft}
         onApplyAll={printChromeState.applyPlacementAll}
         onApplyThisPage={printChromeState.applyPlacementThisPage}
-        onCancel={printChromeState.cancelPlacement}
+        onCancel={printChromeState.closePlacementConfirm}
+      />
+      <PrintChromePlacementDiscardModal
+        open={printChromeState.placementDiscardConfirmOpen}
+        onConfirmDiscard={printChromeState.confirmDiscardPlacement}
+        onKeepEditing={printChromeState.closePlacementDiscardConfirm}
       />
     </>
   );

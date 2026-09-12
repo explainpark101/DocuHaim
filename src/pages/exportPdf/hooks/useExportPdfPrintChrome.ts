@@ -36,11 +36,12 @@ function withAddedTemplate(
  */
 export function useExportPdfPrintChrome({ previewValue, setPreviewValue }: Args) {
   const [chromeModalOpen, setChromeModalOpen] = useState(false);
-  /** Live drag preview (before confirm). */
+  /** Live / staged drag placement (bar visible when not dragging). */
   const [placementDraft, setPlacementDraft] = useState<PrintChromePlacementDraft | null>(null);
-  /** Awaiting confirm after pointer-up. */
-  const [pendingPlacement, setPendingPlacement] =
-    useState<PrintChromePlacementDraft | null>(null);
+  /** Confirm modal opened from the bottom bar (apply all / this page). */
+  const [placementConfirmOpen, setPlacementConfirmOpen] = useState(false);
+  /** Confirm discarding unsaved placement changes. */
+  const [placementDiscardConfirmOpen, setPlacementDiscardConfirmOpen] = useState(false);
 
   const parsedChrome = useMemo(() => {
     const { chrome } = parsePrintChrome(previewValue);
@@ -75,23 +76,68 @@ export function useExportPdfPrintChrome({ previewValue, setPreviewValue }: Args)
     setChromeModalOpen(true);
   }, [setPreviewValue]);
 
-  const onPlacementDraftChange = useCallback((draft: PrintChromePlacementDraft | null) => {
-    setPlacementDraft(draft);
+  const isPlacementDraftDirty = useCallback((draft: PrintChromePlacementDraft | null) => {
+    if (!draft) return false;
+    return (
+      draft.placement.xPercent !== draft.origin.xPercent ||
+      draft.placement.yPercent !== draft.origin.yPercent
+    );
   }, []);
 
-  const onPlacementDraftCommit = useCallback((draft: PrintChromePlacementDraft) => {
-    setPlacementDraft(draft);
-    setPendingPlacement(draft);
-  }, []);
-
-  const cancelPlacement = useCallback(() => {
-    setPendingPlacement(null);
+  const clearPlacementDraft = useCallback(() => {
+    setPlacementConfirmOpen(false);
+    setPlacementDiscardConfirmOpen(false);
     setPlacementDraft(null);
   }, []);
 
+  const onPlacementDraftChange = useCallback((draft: PrintChromePlacementDraft | null) => {
+    setPlacementDraft(draft);
+    if (!draft) {
+      setPlacementConfirmOpen(false);
+      setPlacementDiscardConfirmOpen(false);
+    }
+  }, []);
+
+  /** Pointer-up after a move: keep draft for the bottom bar (do not open modal yet). */
+  const onPlacementDraftCommit = useCallback((draft: PrintChromePlacementDraft) => {
+    setPlacementDraft({ ...draft, dragging: false, moveMode: true });
+    setPlacementConfirmOpen(false);
+  }, []);
+
+  const openPlacementConfirm = useCallback(() => {
+    if (!placementDraft || placementDraft.dragging || !placementDraft.moveMode) return;
+    setPlacementDiscardConfirmOpen(false);
+    setPlacementConfirmOpen(true);
+  }, [placementDraft]);
+
+  /** Bar cancel / outside click: ask before discarding dirty moves. */
+  const requestCancelPlacement = useCallback(() => {
+    if (!placementDraft) return;
+    if (!isPlacementDraftDirty(placementDraft)) {
+      clearPlacementDraft();
+      return;
+    }
+    setPlacementConfirmOpen(false);
+    setPlacementDiscardConfirmOpen(true);
+  }, [clearPlacementDraft, isPlacementDraftDirty, placementDraft]);
+
+  const confirmDiscardPlacement = useCallback(() => {
+    clearPlacementDraft();
+  }, [clearPlacementDraft]);
+
+  /** Close discard confirm only; keep draft + bar so the user can adjust again. */
+  const closePlacementDiscardConfirm = useCallback(() => {
+    setPlacementDiscardConfirmOpen(false);
+  }, []);
+
+  /** Close apply confirm modal only; keep draft + bar so the user can adjust again. */
+  const closePlacementConfirm = useCallback(() => {
+    setPlacementConfirmOpen(false);
+  }, []);
+
   const applyPlacementAll = useCallback(() => {
-    if (!pendingPlacement) return;
-    const { templateId, placement } = pendingPlacement;
+    if (!placementDraft) return;
+    const { templateId, placement } = placementDraft;
     setPreviewValue((prev) => {
       const { chrome } = parsePrintChrome(prev);
       const base = normalizePrintChromeDoc(chrome ?? DEFAULT_PRINT_CHROME_DOC);
@@ -100,13 +146,12 @@ export function useExportPdfPrintChrome({ previewValue, setPreviewValue }: Args)
       );
       return upsertPrintChromeComment(prev, { ...base, templates });
     });
-    setPendingPlacement(null);
-    setPlacementDraft(null);
-  }, [pendingPlacement, setPreviewValue]);
+    clearPlacementDraft();
+  }, [clearPlacementDraft, placementDraft, setPreviewValue]);
 
   const applyPlacementThisPage = useCallback(() => {
-    if (!pendingPlacement) return;
-    const { templateId, pageKey, placement } = pendingPlacement;
+    if (!placementDraft) return;
+    const { templateId, pageKey, placement } = placementDraft;
     setPreviewValue((prev) => {
       const { chrome } = parsePrintChrome(prev);
       const base = normalizePrintChromeDoc(chrome ?? DEFAULT_PRINT_CHROME_DOC);
@@ -115,12 +160,8 @@ export function useExportPdfPrintChrome({ previewValue, setPreviewValue }: Args)
       );
       return upsertPrintChromeComment(prev, { ...base, templates });
     });
-    setPendingPlacement(null);
-    setPlacementDraft(null);
-  }, [pendingPlacement, setPreviewValue]);
-
-  /** Draft used while dragging or while confirm is open. */
-  const livePlacementDraft = pendingPlacement ?? placementDraft;
+    clearPlacementDraft();
+  }, [clearPlacementDraft, placementDraft, setPreviewValue]);
 
   return {
     parsedChrome,
@@ -132,11 +173,18 @@ export function useExportPdfPrintChrome({ previewValue, setPreviewValue }: Args)
     addPageNumberAndOpen,
     addTextAndOpen,
     addImageAndOpen,
-    livePlacementDraft,
-    pendingPlacement,
+    livePlacementDraft: placementDraft,
+    placementDraft,
+    placementConfirmOpen,
+    placementDiscardConfirmOpen,
     onPlacementDraftChange,
     onPlacementDraftCommit,
-    cancelPlacement,
+    openPlacementConfirm,
+    requestCancelPlacement,
+    cancelPlacement: requestCancelPlacement,
+    confirmDiscardPlacement,
+    closePlacementDiscardConfirm,
+    closePlacementConfirm,
     applyPlacementAll,
     applyPlacementThisPage,
   };

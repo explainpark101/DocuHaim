@@ -22,6 +22,12 @@ import {
   type PrintChromePosition,
   type PrintChromeTemplate,
 } from '@/utils/printChrome';
+import {
+  formatPrintChromePlacementDelta,
+  nudgePrintChromePlacementByPx,
+  printChromePositionToPercent,
+  type PrintChromePageSizePx,
+} from '@/utils/printChrome/placementMetrics';
 
 const POSITION_STYLE: Record<PrintChromePosition, CSSProperties> = {
   'top-left': { top: 0, left: 0, justifyContent: 'flex-start', textAlign: 'left' },
@@ -64,6 +70,15 @@ export type PrintChromePlacementDraft = {
   templateId: string;
   pageKey: string;
   placement: PrintChromePlacement;
+  /** Position when move mode started. */
+  origin: PrintChromePlacement;
+  /** True while the pointer is down dragging. */
+  dragging?: boolean;
+  /** Selected via click; required before drag / arrow nudge. */
+  moveMode?: boolean;
+  /** Preview page box size (CSS px) for delta labels and 1px arrow nudges. */
+  pageWidthPx?: number;
+  pageHeightPx?: number;
 };
 
 type PrintChromeLayerProps = {
@@ -81,6 +96,8 @@ type PrintChromeLayerProps = {
   draftPlacement?: PrintChromePlacementDraft | null;
   onPlacementDraftChange?: ((draft: PrintChromePlacementDraft | null) => void) | undefined;
   onPlacementDraftCommit?: ((draft: PrintChromePlacementDraft) => void) | undefined;
+  /** Outside click while in move mode (parent may confirm discard). */
+  onRequestCancelPlacement?: (() => void) | undefined;
 };
 
 function chromeInsetStyle(margins: PrintPageMarginsMm): CSSProperties {
@@ -159,20 +176,33 @@ function ChromeImage({
   );
 }
 
-function percentFromPointer(
-  layerEl: HTMLElement,
-  clientX: number,
-  clientY: number,
-): PrintChromePlacement {
-  const rect = layerEl.getBoundingClientRect();
-  const w = Math.max(rect.width, 1);
-  const h = Math.max(rect.height, 1);
-  const xPercent = ((clientX - rect.left) / w) * 100;
-  const yPercent = ((clientY - rect.top) / h) * 100;
-  return {
-    xPercent: Math.min(100, Math.max(0, Math.round(xPercent * 100) / 100)),
-    yPercent: Math.min(100, Math.max(0, Math.round(yPercent * 100) / 100)),
-  };
+const CLICK_SLOP_PX = 6;
+const ARROW_STEP_PX = 1;
+
+function clampPlacementPercent(n: number): number {
+  return Math.min(100, Math.max(0, Math.round(n * 10000) / 10000));
+}
+
+function readPageSizePx(
+  layerEl: HTMLElement | null,
+  fallback?: Pick<PrintChromePlacementDraft, 'pageWidthPx' | 'pageHeightPx'> | null,
+): PrintChromePageSizePx | null {
+  if (layerEl) {
+    const rect = layerEl.getBoundingClientRect();
+    return {
+      widthPx: Math.max(1, rect.width),
+      heightPx: Math.max(1, rect.height),
+    };
+  }
+  if (
+    fallback?.pageWidthPx != null &&
+    fallback.pageHeightPx != null &&
+    fallback.pageWidthPx > 0 &&
+    fallback.pageHeightPx > 0
+  ) {
+    return { widthPx: fallback.pageWidthPx, heightPx: fallback.pageHeightPx };
+  }
+  return null;
 }
 
 function ChromeItem({
@@ -187,6 +217,7 @@ function ChromeItem({
   layerRef,
   onPlacementDraftChange,
   onPlacementDraftCommit,
+  onRequestCancelPlacement,
 }: {
   template: PrintChromeTemplate;
   pageKey: string;
@@ -199,20 +230,151 @@ function ChromeItem({
   layerRef: RefObject<HTMLDivElement | null>;
   onPlacementDraftChange?: ((draft: PrintChromePlacementDraft | null) => void) | undefined;
   onPlacementDraftCommit?: ((draft: PrintChromePlacementDraft) => void) | undefined;
+  onRequestCancelPlacement?: (() => void) | undefined;
 }) {
+  const itemRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const movedRef = useRef(false);
+  const clickArmRef = useRef<{ x: number; y: number } | null>(null);
+  const dragStartRef = useRef<{
+    clientX: number;
+    clientY: number;
+    placement: PrintChromePlacement;
+  } | null>(null);
+  const originRef = useRef<PrintChromePlacement | null>(null);
+  const placementRef = useRef<PrintChromePlacement | null>(null);
 
-  if (!template.enabled) return null;
-  if (template.type === 'page-number' && !showPageNumber) return null;
+  const canEdit = Boolean(
+    editable &&
+      template.type === 'page-number' &&
+      template.enabled &&
+      showPageNumber,
+  );
 
   const draftForThis =
     draftPlacement &&
     draftPlacement.templateId === template.id &&
     draftPlacement.pageKey === pageKey
-      ? draftPlacement.placement
+      ? draftPlacement
       : null;
-  const free = draftForThis ?? resolvePrintChromePlacement(template, pageKey);
+  const draftForThisRef = useRef(draftForThis);
+  draftForThisRef.current = draftForThis;
+  const inMoveMode = Boolean(canEdit && draftForThis?.moveMode);
+
+  useEffect(() => {
+    if (draftForThis?.placement) {
+      placementRef.current = draftForThis.placement;
+      originRef.current = draftForThis.origin;
+    } else if (!draftForThis) {
+      placementRef.current = null;
+      originRef.current = null;
+      dragStartRef.current = null;
+    }
+  }, [draftForThis]);
+
+  useEffect(() => {
+    if (!inMoveMode) return undefined;
+    itemRef.current?.focus({ preventScroll: true });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      const key = event.key;
+      if (
+        key !== 'ArrowLeft' &&
+        key !== 'ArrowRight' &&
+        key !== 'ArrowUp' &&
+        key !== 'ArrowDown'
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const pageSize = readPageSizePx(layerRef.current, draftForThisRef.current);
+      if (!pageSize) return;
+      const origin =
+        originRef.current ??
+        resolvePrintChromePlacement(template, pageKey) ??
+        printChromePositionToPercent(template.position);
+      const current =
+        placementRef.current ??
+        resolvePrintChromePlacement(template, pageKey) ??
+        printChromePositionToPercent(template.position);
+      let dxPx = 0;
+      let dyPx = 0;
+      if (key === 'ArrowLeft') dxPx = -ARROW_STEP_PX;
+      if (key === 'ArrowRight') dxPx = ARROW_STEP_PX;
+      if (key === 'ArrowUp') dyPx = -ARROW_STEP_PX;
+      if (key === 'ArrowDown') dyPx = ARROW_STEP_PX;
+      const placement = nudgePrintChromePlacementByPx(current, dxPx, dyPx, pageSize);
+      originRef.current = origin;
+      placementRef.current = placement;
+      const draft: PrintChromePlacementDraft = {
+        templateId: template.id,
+        pageKey,
+        placement,
+        origin,
+        dragging: false,
+        moveMode: true,
+        pageWidthPx: pageSize.widthPx,
+        pageHeightPx: pageSize.heightPx,
+      };
+      onPlacementDraftChange?.(draft);
+      onPlacementDraftCommit?.(draft);
+    };
+
+    const onPointerDownOutside = (event: PointerEvent) => {
+      const el = itemRef.current;
+      if (!el) return;
+      if (event.target instanceof Node && el.contains(event.target)) return;
+      // Ignore clicks on placement bar / confirm modal.
+      if (
+        event.target instanceof Element &&
+        (event.target.closest('[data-print-chrome-placement-bar]') ||
+          event.target.closest('[role="dialog"]'))
+      ) {
+        return;
+      }
+      // Do not clear local refs yet — parent may ask to keep editing.
+      if (onRequestCancelPlacement) {
+        onRequestCancelPlacement();
+      } else {
+        originRef.current = null;
+        placementRef.current = null;
+        dragStartRef.current = null;
+        onPlacementDraftChange?.(null);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('pointerdown', onPointerDownOutside, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('pointerdown', onPointerDownOutside, true);
+    };
+  }, [
+    inMoveMode,
+    layerRef,
+    onPlacementDraftChange,
+    onPlacementDraftCommit,
+    onRequestCancelPlacement,
+    pageKey,
+    template,
+  ]);
+
+  if (!template.enabled) return null;
+  if (template.type === 'page-number' && !showPageNumber) return null;
+
+  const free = draftForThis?.placement ?? resolvePrintChromePlacement(template, pageKey);
   const pos = free ? placementStyle(free) : POSITION_STYLE[template.position];
   const fontFamily =
     template.type === 'image'
@@ -220,40 +382,30 @@ function ChromeItem({
       : printFontCssVarValue(template.fontFamily) ??
         'var(--print-font-body, var(--font-sans-builtin))';
 
+  const textStyle: CSSProperties = {
+    fontFamily,
+    fontSize:
+      template.type === 'page-number' || template.type === 'text'
+        ? `${template.fontSizePx}px`
+        : undefined,
+    color: '#111827',
+    lineHeight: 1.2,
+    whiteSpace: 'nowrap',
+    overflow: 'visible',
+    WebkitPrintColorAdjust: 'exact',
+    printColorAdjust: 'exact',
+  };
+
   let content: ReactNode = null;
   if (template.type === 'page-number') {
     content = (
-      <span
-        style={{
-          fontFamily,
-          fontSize: `${template.fontSizePx}px`,
-          color: '#111827',
-          lineHeight: 1.2,
-          whiteSpace: 'pre-wrap',
-          WebkitPrintColorAdjust: 'exact',
-          printColorAdjust: 'exact',
-        } as CSSProperties}
-      >
+      <span style={textStyle}>
         {formatPrintChromePageLabel(template.format, page, total)}
       </span>
     );
   } else if (template.type === 'text') {
     if (!template.text) return null;
-    content = (
-      <span
-        style={{
-          fontFamily,
-          fontSize: `${template.fontSizePx}px`,
-          color: '#111827',
-          lineHeight: 1.2,
-          whiteSpace: 'pre-wrap',
-          WebkitPrintColorAdjust: 'exact',
-          printColorAdjust: 'exact',
-        } as CSSProperties}
-      >
-        {template.text}
-      </span>
-    );
+    content = <span style={textStyle}>{template.text}</span>;
   } else if (template.type === 'image') {
     if (!template.path.trim()) return null;
     content = (
@@ -268,31 +420,167 @@ function ChromeItem({
 
   if (!content) return null;
 
-  const canDrag = Boolean(editable && template.type === 'page-number');
+  const pageSizeForLabel = readPageSizePx(layerRef.current, draftForThis);
+  const deltaLabel =
+    draftForThis && canEdit && draftForThis.moveMode
+      ? formatPrintChromePlacementDelta(
+          draftForThis.origin,
+          draftForThis.placement,
+          pageSizeForLabel,
+        ).label
+      : null;
+
+  const withPageSize = (
+    draft: Omit<PrintChromePlacementDraft, 'pageWidthPx' | 'pageHeightPx'> &
+      Partial<Pick<PrintChromePlacementDraft, 'pageWidthPx' | 'pageHeightPx'>>,
+  ): PrintChromePlacementDraft => {
+    const pageSize = readPageSizePx(layerRef.current, {
+      pageWidthPx: draft.pageWidthPx ?? draftForThis?.pageWidthPx,
+      pageHeightPx: draft.pageHeightPx ?? draftForThis?.pageHeightPx,
+    });
+    return {
+      ...draft,
+      ...(pageSize
+        ? { pageWidthPx: pageSize.widthPx, pageHeightPx: pageSize.heightPx }
+        : {}),
+    };
+  };
+
+  const enterMoveMode = () => {
+    const current =
+      resolvePrintChromePlacement(template, pageKey) ??
+      printChromePositionToPercent(template.position);
+    originRef.current = current;
+    placementRef.current = current;
+    onPlacementDraftChange?.(
+      withPageSize({
+        templateId: template.id,
+        pageKey,
+        placement: current,
+        origin: current,
+        dragging: false,
+        moveMode: true,
+      }),
+    );
+  };
+
+  const emitDraft = (
+    placement: PrintChromePlacement,
+    dragging: boolean,
+    origin = originRef.current,
+  ) => {
+    if (!origin) return;
+    placementRef.current = placement;
+    onPlacementDraftChange?.(
+      withPageSize({
+        templateId: template.id,
+        pageKey,
+        placement,
+        origin,
+        dragging,
+        moveMode: true,
+      }),
+    );
+  };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!canDrag || event.button !== 0) return;
-    const layerEl = layerRef.current;
-    if (!layerEl) return;
+    if (!canEdit || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
+
+    // Not in move mode: arm click-to-select only (no drag).
+    if (!inMoveMode) {
+      clickArmRef.current = { x: event.clientX, y: event.clientY };
+      draggingRef.current = false;
+      movedRef.current = false;
+      return;
+    }
+
+    // Move mode: drag by delta from the live placement (no snap-to-cursor).
+    const layerEl = layerRef.current;
+    if (!layerEl) return;
     draggingRef.current = true;
     movedRef.current = false;
+    clickArmRef.current = null;
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    const placement = percentFromPointer(layerEl, event.clientX, event.clientY);
-    onPlacementDraftChange?.({ templateId: template.id, pageKey, placement });
+    if (!originRef.current) {
+      originRef.current =
+        draftForThis?.origin ??
+        resolvePrintChromePlacement(template, pageKey) ??
+        printChromePositionToPercent(template.position);
+    }
+    const placement =
+      placementRef.current ??
+      draftForThis?.placement ??
+      resolvePrintChromePlacement(template, pageKey) ??
+      printChromePositionToPercent(template.position);
+    placementRef.current = placement;
+    dragStartRef.current = {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      placement,
+    };
+    emitDraft(placement, true);
+  };
+
+  const placementFromDragDelta = (
+    clientX: number,
+    clientY: number,
+  ): PrintChromePlacement | null => {
+    const start = dragStartRef.current;
+    const layerEl = layerRef.current;
+    if (!start || !layerEl) return null;
+    const rect = layerEl.getBoundingClientRect();
+    const w = Math.max(1, rect.width);
+    const h = Math.max(1, rect.height);
+    return {
+      xPercent: clampPlacementPercent(
+        start.placement.xPercent + ((clientX - start.clientX) / w) * 100,
+      ),
+      yPercent: clampPlacementPercent(
+        start.placement.yPercent + ((clientY - start.clientY) / h) * 100,
+      ),
+    };
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!canEdit) return;
+
+    if (!inMoveMode) {
+      const arm = clickArmRef.current;
+      if (!arm) return;
+      const dx = event.clientX - arm.x;
+      const dy = event.clientY - arm.y;
+      if (dx * dx + dy * dy > CLICK_SLOP_PX * CLICK_SLOP_PX) {
+        // Direct drag without move mode — cancel click-select, do not move.
+        clickArmRef.current = null;
+      }
+      return;
+    }
+
     if (!draggingRef.current) return;
-    const layerEl = layerRef.current;
-    if (!layerEl) return;
+    const placement = placementFromDragDelta(event.clientX, event.clientY);
+    if (!placement) return;
     movedRef.current = true;
-    const placement = percentFromPointer(layerEl, event.clientX, event.clientY);
-    onPlacementDraftChange?.({ templateId: template.id, pageKey, placement });
+    emitDraft(placement, true);
   };
 
   const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!canEdit) return;
+
+    // Click without move mode → enter move mode.
+    if (!inMoveMode) {
+      const arm = clickArmRef.current;
+      clickArmRef.current = null;
+      if (!arm) return;
+      const dx = event.clientX - arm.x;
+      const dy = event.clientY - arm.y;
+      if (dx * dx + dy * dy <= CLICK_SLOP_PX * CLICK_SLOP_PX) {
+        enterMoveMode();
+      }
+      return;
+    }
+
     if (!draggingRef.current) return;
     draggingRef.current = false;
     try {
@@ -300,35 +588,90 @@ function ChromeItem({
     } catch {
       // ignore
     }
+    const origin = originRef.current;
+    if (!origin) {
+      dragStartRef.current = null;
+      return;
+    }
     if (!movedRef.current) {
-      onPlacementDraftChange?.(null);
+      // Click again while in move mode — keep mode, no new commit needed.
+      dragStartRef.current = null;
+      emitDraft(
+        placementRef.current ??
+          draftForThis?.placement ??
+          resolvePrintChromePlacement(template, pageKey) ??
+          printChromePositionToPercent(template.position),
+        false,
+      );
       return;
     }
-    const layerEl = layerRef.current;
-    if (!layerEl) {
-      onPlacementDraftChange?.(null);
-      return;
-    }
-    const placement = percentFromPointer(layerEl, event.clientX, event.clientY);
-    onPlacementDraftCommit?.({ templateId: template.id, pageKey, placement });
+    const placement =
+      placementFromDragDelta(event.clientX, event.clientY) ??
+      placementRef.current ??
+      draftForThis?.placement ??
+      resolvePrintChromePlacement(template, pageKey) ??
+      printChromePositionToPercent(template.position);
+    dragStartRef.current = null;
+    const draft = withPageSize({
+      templateId: template.id,
+      pageKey,
+      placement,
+      origin,
+      dragging: false,
+      moveMode: true,
+    });
+    onPlacementDraftChange?.(draft);
+    onPlacementDraftCommit?.(draft);
   };
 
   return (
     <div
+      ref={itemRef}
       key={template.id}
       data-print-chrome-item={template.type}
-      className={`absolute flex max-w-[90%] print:pointer-events-none ${
-        canDrag
-          ? 'pointer-events-auto cursor-grab touch-none select-none active:cursor-grabbing'
+      data-print-chrome-move-mode={inMoveMode ? '1' : undefined}
+      tabIndex={canEdit ? 0 : undefined}
+      role={canEdit ? 'button' : undefined}
+      aria-label={
+        canEdit
+          ? inMoveMode
+            ? '쪽번호 이동 모드. 드래그하거나 화살표 키로 이동'
+            : '쪽번호. 클릭하여 이동 모드'
+          : undefined
+      }
+      aria-pressed={canEdit ? inMoveMode : undefined}
+      className={`absolute max-w-none outline-none print:pointer-events-none ${
+        canEdit
+          ? `pointer-events-auto touch-none select-none ${
+              inMoveMode
+                ? 'cursor-grab active:cursor-grabbing'
+                : 'cursor-pointer'
+            }`
           : 'pointer-events-none'
       }`}
       style={pos}
-      onPointerDown={canDrag ? onPointerDown : undefined}
-      onPointerMove={canDrag ? onPointerMove : undefined}
-      onPointerUp={canDrag ? endDrag : undefined}
-      onPointerCancel={canDrag ? endDrag : undefined}
+      onPointerDown={canEdit ? onPointerDown : undefined}
+      onPointerMove={canEdit ? onPointerMove : undefined}
+      onPointerUp={canEdit ? endDrag : undefined}
+      onPointerCancel={canEdit ? endDrag : undefined}
     >
-      {content}
+      <div
+        className={`relative flex items-center justify-center rounded-sm ${
+          inMoveMode
+            ? 'ring-2 ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSoft'
+            : ''
+        }`}
+      >
+        {content}
+        {deltaLabel ? (
+          <span
+            className="pointer-events-none absolute left-1/2 top-[calc(100%+4px)] z-10 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white print:hidden"
+            aria-hidden
+          >
+            {deltaLabel}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -350,6 +693,7 @@ export function PrintChromeLayer({
   draftPlacement = null,
   onPlacementDraftChange,
   onPlacementDraftCommit,
+  onRequestCancelPlacement,
 }: PrintChromeLayerProps) {
   const layerRef = useRef<HTMLDivElement | null>(null);
   const pageKey = printChromePageKey({ isCover, bodyIndex });
@@ -392,6 +736,7 @@ export function PrintChromeLayer({
           layerRef={layerRef}
           onPlacementDraftChange={onPlacementDraftChange}
           onPlacementDraftCommit={onPlacementDraftCommit}
+          onRequestCancelPlacement={onRequestCancelPlacement}
         />
       ))}
     </div>
@@ -411,6 +756,7 @@ type PrintChromePagesMountProps = {
   draftPlacement?: PrintChromePlacementDraft | null;
   onPlacementDraftChange?: ((draft: PrintChromePlacementDraft | null) => void) | undefined;
   onPlacementDraftCommit?: ((draft: PrintChromePlacementDraft) => void) | undefined;
+  onRequestCancelPlacement?: (() => void) | undefined;
 };
 export function PrintChromePagesMount({
   pagesHostRef,
@@ -424,6 +770,7 @@ export function PrintChromePagesMount({
   draftPlacement = null,
   onPlacementDraftChange,
   onPlacementDraftCommit,
+  onRequestCancelPlacement,
 }: PrintChromePagesMountProps) {
   const [pages, setPages] = useState<HTMLElement[]>([]);
 
@@ -481,6 +828,7 @@ export function PrintChromePagesMount({
             draftPlacement={draftPlacement}
             onPlacementDraftChange={onPlacementDraftChange}
             onPlacementDraftCommit={onPlacementDraftCommit}
+            onRequestCancelPlacement={onRequestCancelPlacement}
           />,
           pageEl,
         );

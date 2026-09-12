@@ -40,6 +40,7 @@ type CoverPagesProps = {
   chromeDraftPlacement?: PrintChromePlacementDraft | null;
   onChromePlacementDraftChange?: ((draft: PrintChromePlacementDraft | null) => void) | undefined;
   onChromePlacementDraftCommit?: ((draft: PrintChromePlacementDraft) => void) | undefined;
+  onChromeRequestCancelPlacement?: (() => void) | undefined;
 };
 
 export function ExportPdfCoverPages({
@@ -70,6 +71,7 @@ export function ExportPdfCoverPages({
   chromeDraftPlacement = null,
   onChromePlacementDraftChange,
   onChromePlacementDraftCommit,
+  onChromeRequestCancelPlacement,
 }: CoverPagesProps) {
   const coverChromeOverlay =
     printChrome && printChrome.showOnCover && printChrome.templates.length > 0 ? (
@@ -84,6 +86,7 @@ export function ExportPdfCoverPages({
         draftPlacement={chromeDraftPlacement}
         onPlacementDraftChange={onChromePlacementDraftChange}
         onPlacementDraftCommit={onChromePlacementDraftCommit}
+        onRequestCancelPlacement={onChromeRequestCancelPlacement}
       />
     ) : null;
 

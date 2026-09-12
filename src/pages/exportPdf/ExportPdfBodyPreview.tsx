@@ -54,6 +54,7 @@ export type ExportPdfBodyPreviewProps = {
   chromeDraftPlacement?: PrintChromePlacementDraft | null;
   onChromePlacementDraftChange?: ((draft: PrintChromePlacementDraft | null) => void) | undefined;
   onChromePlacementDraftCommit?: ((draft: PrintChromePlacementDraft) => void) | undefined;
+  onChromeRequestCancelPlacement?: (() => void) | undefined;
 };
 
 export function ExportPdfBodyPreview({
@@ -88,6 +89,7 @@ export function ExportPdfBodyPreview({
   chromeDraftPlacement = null,
   onChromePlacementDraftChange,
   onChromePlacementDraftCommit,
+  onChromeRequestCancelPlacement,
 }: ExportPdfBodyPreviewProps) {
   const coverStackRef = useRef<HTMLDivElement | null>(null);
   const zoomClipHeight = useExportPdfPreviewZoomClip(
@@ -177,6 +179,7 @@ export function ExportPdfBodyPreview({
             draftPlacement={chromeDraftPlacement}
             onPlacementDraftChange={onChromePlacementDraftChange}
             onPlacementDraftCommit={onChromePlacementDraftCommit}
+            onRequestCancelPlacement={onChromeRequestCancelPlacement}
           />
         </div>
         {/* Staging: continuous MdPreview for measure/fit; paged.js clones into pagesHost. */}
