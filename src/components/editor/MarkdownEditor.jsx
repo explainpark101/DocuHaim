@@ -88,7 +88,11 @@ import {
 } from '@codemirror/commands';
 import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
-import { highlightSelectionMatches, selectNextOccurrence } from '@codemirror/search';
+import {
+  highlightSelectionMatches,
+  openSearchPanel,
+  selectNextOccurrence,
+} from '@codemirror/search';
 import { Loader2 } from 'lucide-react';
 import { applyAppMarkdownItPluginsFromList } from '@/utils/appMarkdownItPlugins';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
@@ -361,6 +365,8 @@ config({
       const key = String(binding?.key || '').toLowerCase();
       const mac = String(binding?.mac || '').toLowerCase();
       return (
+        // searchKeymap Mod-f — replaced by explicit Ctrl/Cmd-f → openSearchPanel
+        key !== 'mod-f' &&
         key !== 'ctrl-d' &&
         key !== 'mod-d' &&
         mac !== 'cmd-d' &&
@@ -428,6 +434,14 @@ config({
       {
         key: 'Ctrl-Tab',
         run: toggleTaskCheckboxBetweenChecked,
+      },
+      // Explicit find: md-editor-rt's Ctrl-f binding only wires Shift (prettier),
+      // and Windows Mod-f from searchKeymap can lose to capture-phase app handlers.
+      {
+        key: 'Ctrl-f',
+        mac: 'Cmd-f',
+        preventDefault: true,
+        run: openSearchPanel,
       },
       {
         key: 'Ctrl-d',

@@ -2301,7 +2301,10 @@ export default function ChatWithMyselfPane({
     setSearchFocusTick((n) => n + 1);
   }, [isMobileLayout, closeOtherMobileRails]);
 
+  // Only while chat tab is active. Keep-alive mounts this pane under file tabs;
+  // a capture Ctrl/Cmd+F listener would steal in-editor search (md-editor-rt / CM).
   useEffect(() => {
+    if (!isActive) return undefined;
     const onKeyDown = (e) => {
       if (e.defaultPrevented || e.isComposing) return;
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
@@ -2309,7 +2312,9 @@ export default function ChatWithMyselfPane({
       const target = e.target;
       if (
         target instanceof Element &&
-        target.closest('[role="dialog"], [data-radix-dialog-content]')
+        target.closest(
+          '[role="dialog"], [data-radix-dialog-content], .cm-editor, .md-editor',
+        )
       ) {
         return;
       }
@@ -2319,7 +2324,7 @@ export default function ChatWithMyselfPane({
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [openSearchRail]);
+  }, [isActive, openSearchRail]);
 
   const mobileRailOpen = groupOpen || dateOpen || searchOpen || pinnedOpen;
   useHistoryOverlayBack(
