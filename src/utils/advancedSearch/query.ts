@@ -92,6 +92,9 @@ function commandHits(
 /**
  * Merge built-in commands, filename/path matches, and Lucivy content hits.
  * Empty query → built-in commands only (palette suggestions).
+ *
+ * Pass `skipContentSearch: true` for the fast palette path (commands + name/path)
+ * so UI can show selectable hits before Lucivy / live body scan finishes.
  */
 export async function runAdvancedSearch(options: {
   query: string;
@@ -100,6 +103,8 @@ export async function runAdvancedSearch(options: {
   indexEnabled: boolean;
   /** Lucivy content search; null when index unavailable. */
   lucivySearch?: LucivyContentSearchFn | null;
+  /** Skip body/chat Lucivy + indexed fuzzy content (commands + name/path only). */
+  skipContentSearch?: boolean;
   limit?: number;
   commandContext?: AppCommandContext;
 }): Promise<AdvancedSearchHit[]> {
@@ -225,8 +230,13 @@ export async function runAdvancedSearch(options: {
     }
   }
 
-  // Content / chat via Lucivy
-  if (options.indexEnabled && options.index && options.lucivySearch) {
+  // Content / chat via Lucivy (skipped on fast path so palette stays interactive)
+  if (
+    !options.skipContentSearch &&
+    options.indexEnabled &&
+    options.index &&
+    options.lucivySearch
+  ) {
     const terms = await tokenizeForIndexAsync(q, []);
     const queryTerms =
       terms.length > 0

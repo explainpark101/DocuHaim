@@ -11,6 +11,7 @@ import {
   FolderPlus,
   Home,
   ListTree,
+  Loader2,
   MessageSquare,
   Printer,
   Search,
@@ -28,10 +29,18 @@ import { loadAdvancedSearchUiAnimationEnabled } from '@/utils/advancedSearch/set
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
 import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
 
+export type AdvancedSearchOnSearch = (
+  query: string,
+  options?: {
+    /** Fast hits (commands / name / path) before body-index results append. */
+    onPartial?: (hits: AdvancedSearchHit[]) => void;
+  },
+) => Promise<AdvancedSearchHit[]>;
+
 export type AdvancedSearchModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSearch: (query: string) => Promise<AdvancedSearchHit[]>;
+  onSearch: AdvancedSearchOnSearch;
   onSelectHit: (hit: AdvancedSearchHit) => boolean | void;
   indexEnabled?: boolean;
   hasIndex?: boolean;
@@ -42,6 +51,11 @@ export type AdvancedSearchModalProps = {
   /** Body search path: Lucivy index, live vault scan, or off. */
   contentSearchMode?: 'index' | 'live' | 'off';
   building?: boolean;
+  /**
+   * Bump when index load / Lucivy readiness changes so an open query
+   * re-runs and appends content hits that were unavailable earlier.
+   */
+  searchRefreshKey?: string | number;
   /** Show editor toolbar shortcuts in empty-state hints. */
   editorActionsAvailable?: boolean;
   /** Show print-page shortcuts in empty-state hints. */
@@ -258,6 +272,7 @@ export default function AdvancedSearchModal({
   isolationReady = true,
   contentSearchMode = 'off',
   building = false,
+  searchRefreshKey = 0,
   editorActionsAvailable = false,
   printActionsAvailable = false,
   chatActionsAvailable = false,
@@ -289,6 +304,11 @@ export default function AdvancedSearchModal({
     loadAdvancedSearchUiAnimationEnabled(),
   );
   const reqSeq = useRef(0);
+  const activeDocIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeDocIdRef.current = hits[activeIndex]?.docId ?? null;
+  }, [hits, activeIndex]);
 
   useEffect(() => {
     if (!open) return;
@@ -333,7 +353,7 @@ export default function AdvancedSearchModal({
     setActiveIndex(0);
   }, [circleNumberPickerMode, open]);
 
-  // Always highlight the first result as soon as the query changes.
+  // Highlight the first result when the typed query changes (not on progressive appends).
   useEffect(() => {
     if (!open) return;
     setActiveIndex(0);
@@ -344,20 +364,43 @@ export default function AdvancedSearchModal({
     const seq = ++reqSeq.current;
     setSearching(true);
     const delay = query.trim() ? 160 : 0;
+    let sawPartial = false;
+
+    const applyHits = (next: AdvancedSearchHit[], preferKeepSelection: boolean) => {
+      if (seq !== reqSeq.current) return;
+      setHits(next);
+      if (!preferKeepSelection) {
+        setActiveIndex(0);
+        return;
+      }
+      const keepId = activeDocIdRef.current;
+      if (!keepId) {
+        setActiveIndex(0);
+        return;
+      }
+      const idx = next.findIndex((h) => h.docId === keepId);
+      setActiveIndex(idx >= 0 ? idx : 0);
+    };
+
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const next = await onSearch(query);
+          const next = await onSearch(query, {
+            onPartial: (partial) => {
+              // First wave replaces the previous query list; later waves append/merge.
+              applyHits(partial, sawPartial);
+              sawPartial = true;
+            },
+          });
           if (seq !== reqSeq.current) return;
-          setHits(next);
-          setActiveIndex(0);
+          applyHits(next, sawPartial);
         } finally {
           if (seq === reqSeq.current) setSearching(false);
         }
       })();
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [query, open, onSearch]);
+  }, [query, open, onSearch, searchRefreshKey]);
 
   useEffect(() => {
     if (!open || hits.length === 0) return;
@@ -519,19 +562,30 @@ export default function AdvancedSearchModal({
           aria-autocomplete="list"
           aria-activedescendant={activeOptionId}
         />
+        {searching ? (
+          <Loader2
+            size={16}
+            className="shrink-0 animate-spin text-blue-500 dark:text-blue-400"
+            aria-label="검색 중"
+          />
+        ) : null}
         {building ? (
-          <span className="shrink-0 text-[11px] text-amber-600 dark:text-amber-400">
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+            <Loader2 size={14} className="animate-spin" aria-hidden />
             색인 중
           </span>
-        ) : listFooterHint && !building ? (
+        ) : indexEnabled && !indexLoaded ? (
+          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-gray-400 dark:text-odp-muted">
+            <Loader2 size={14} className="animate-spin" aria-hidden />
+            로드 중
+          </span>
+        ) : listFooterHint ? (
           <span className="hidden shrink-0 text-[11px] text-gray-400 dark:text-odp-muted sm:inline">
             {contentSearchMode === 'live'
               ? '직접 검색'
-              : indexEnabled && !indexLoaded
-                ? '로드 중'
-                : indexEnabled && !hasIndex
-                  ? '색인 없음'
-                  : null}
+              : indexEnabled && !hasIndex
+                ? '색인 없음'
+                : null}
           </span>
         ) : null}
         <Dialog.Close asChild>

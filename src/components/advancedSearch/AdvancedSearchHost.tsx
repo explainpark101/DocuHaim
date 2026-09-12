@@ -361,7 +361,10 @@ export default function AdvancedSearchHost({
   );
 
   const handleSearch = useCallback(
-    async (query: string) => {
+    async (
+      query: string,
+      options?: { onPartial?: (hits: AdvancedSearchHit[]) => void },
+    ) => {
       if (pickerMode === 'print-paper') {
         return advancedSearchEngine.search(query, [], 50, {
           printPaperPickerMode: true,
@@ -399,52 +402,66 @@ export default function AdvancedSearchHost({
 
       lastSearchQueryRef.current = query;
 
-      const hits = await advancedSearchEngine.search(query, getTrees(), 50, {
-        currentFile,
-        editorActionsAvailable,
-        printActionsAvailable,
-        chatActionsAvailable,
-        chatTabActive,
-        mlxVlmActionsAvailable,
-        llamaCppActionsAvailable,
-        editorAutocompleteEnabled,
-        editorMirrorEditEnabled,
-        ...(snippetConfig ? { snippetConfig } : {}),
-      });
+      const mergePrintToc = (hits: AdvancedSearchHit[]): AdvancedSearchHit[] => {
+        if (!printActionsAvailable) return hits;
 
-      if (!printActionsAvailable) return hits;
+        const q = query.trim().toLowerCase();
+        const tocHits: AdvancedSearchHit[] = matchPrintTocEntries(query, 40)
+          .map((e, index) => {
+            const title = e.text;
+            const score = q
+              ? scoreFuzzyRelevance(title, q) || 400 - index
+              : 150 - index;
+            return {
+              docId: `print-toc:${e.id}`,
+              kind: 'command' as const,
+              path: e.id,
+              title,
+              preview: `H${e.level} · 목차로 스크롤`,
+              commandId: 'print-scroll-heading' as const,
+              reasons: ['command' as const],
+              score,
+            };
+          })
+          .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'));
 
-      const q = query.trim().toLowerCase();
-      const tocHits: AdvancedSearchHit[] = matchPrintTocEntries(query, 40)
-        .map((e, index) => {
-          const title = e.text;
-          const score = q
-            ? scoreFuzzyRelevance(title, q) || 400 - index
-            : 150 - index;
-          return {
-            docId: `print-toc:${e.id}`,
-            kind: 'command' as const,
-            path: e.id,
-            title,
-            preview: `H${e.level} · 목차로 스크롤`,
-            commandId: 'print-scroll-heading' as const,
-            reasons: ['command' as const],
-            score,
-          };
-        })
-        .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'));
+        const seen = new Set<string>();
+        const merged: AdvancedSearchHit[] = [];
+        for (const hit of [...tocHits, ...hits].sort(
+          (a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'),
+        )) {
+          if (seen.has(hit.docId)) continue;
+          seen.add(hit.docId);
+          merged.push(hit);
+          if (merged.length >= 50) break;
+        }
+        return merged;
+      };
 
-      const seen = new Set<string>();
-      const merged: AdvancedSearchHit[] = [];
-      for (const hit of [...tocHits, ...hits].sort(
-        (a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'),
-      )) {
-        if (seen.has(hit.docId)) continue;
-        seen.add(hit.docId);
-        merged.push(hit);
-        if (merged.length >= 50) break;
-      }
-      return merged;
+      const hits = await advancedSearchEngine.search(
+        query,
+        getTrees(),
+        50,
+        {
+          currentFile,
+          editorActionsAvailable,
+          printActionsAvailable,
+          chatActionsAvailable,
+          chatTabActive,
+          mlxVlmActionsAvailable,
+          llamaCppActionsAvailable,
+          editorAutocompleteEnabled,
+          editorMirrorEditEnabled,
+          ...(snippetConfig ? { snippetConfig } : {}),
+        },
+        {
+          onPartialHits: (partial) => {
+            options?.onPartial?.(mergePrintToc(partial));
+          },
+        },
+      );
+
+      return mergePrintToc(hits);
     },
     [
       getTrees,
@@ -454,6 +471,7 @@ export default function AdvancedSearchHost({
       chatActionsAvailable,
       chatTabActive,
       mlxVlmActionsAvailable,
+      llamaCppActionsAvailable,
       editorAutocompleteEnabled,
       editorMirrorEditEnabled,
       snippetConfig,
@@ -749,6 +767,7 @@ export default function AdvancedSearchHost({
       isolationReady={status.isolationReady}
       contentSearchMode={status.contentSearchMode}
       building={status.building}
+      searchRefreshKey={`${status.loaded}:${status.hasIndex}:${status.contentSearchMode}:${status.building ? 1 : 0}`}
       editorActionsAvailable={editorActionsAvailable}
       printActionsAvailable={printActionsAvailable}
       chatActionsAvailable={chatActionsAvailable}
