@@ -25,9 +25,10 @@ const FRAG_BREAK_CLASS = 'export-pdf-code-frag-break';
 
 /**
  * Subsequent chunk height as a fraction of the page content box.
- * Near-full so continuation pages fill densely.
+ * Near-full so continuation pages fill densely (chunks themselves are
+ * break-inside:auto so leftover space still accepts the next fragment).
  */
-export const CODE_PAGE_CHUNK_FILL_RATIO = 0.88;
+export const CODE_PAGE_CHUNK_FILL_RATIO = 0.92;
 
 /**
  * Safety factor applied to measured leftover space (margins / chrome drift).

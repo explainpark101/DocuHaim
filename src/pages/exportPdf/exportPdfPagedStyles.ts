@@ -354,22 +354,18 @@ export function buildExportPdfPagedStyles(
   page-break-inside: avoid;
 }
 
-/* Pre-split chunks stay atomic so paged.js moves the whole chunk to the next page.
-   The first fragment is splittable (auto) so a preceding heading is not dropped
-   when the packed box is slightly taller than leftover space. */
+/* Pre-split chunks are NOT avoid boxes: leftover page space must fill with the
+   next fragment's lines. Line-level break-inside:avoid still keeps breaks between
+   source lines. margin:0 so continuation fragments don't add empty gaps. */
 .export-pdf-paged-source .md-editor-code.export-pdf-code-page-chunk,
-.pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk {
-  break-inside: avoid;
-  page-break-inside: avoid;
-  margin: 0 !important;
-}
-
+.pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk,
 .export-pdf-paged-source .md-editor-code.export-pdf-code-page-chunk-first,
 .pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk-first,
 .export-pdf-paged-source .md-editor-code.export-pdf-code-page-chunk-oversized,
 .pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk-oversized {
   break-inside: auto;
   page-break-inside: auto;
+  margin: 0 !important;
 }
 
 .export-pdf-paged-source .export-pdf-code-gutter,

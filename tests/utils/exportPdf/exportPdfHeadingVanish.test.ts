@@ -112,19 +112,14 @@ describe('export PDF heading vanish regression', () => {
     expect(printFontStyles).not.toContain('page-break-after: avoid');
   });
 
-  it('first page-chunk is break-inside:auto so it cannot trap/drop a preceding heading', () => {
+  it('page-chunks are break-inside:auto so leftover space fills (no empty bottom gap)', () => {
     const css = buildExportPdfPagedStyles('a4');
     expect(css).toContain(EXPORT_PDF_CODE_PAGE_CHUNK_FIRST_CLASS);
     expect(css).toMatch(
-      /\.md-editor-code\.export-pdf-code-page-chunk-first[^{]*\{[^}]*break-inside:\s*auto/,
+      /\.md-editor-code\.export-pdf-code-page-chunk[^{]*\{[^}]*break-inside:\s*auto/,
     );
-    // Later chunks stay avoid (atomic move), but first must not.
-    expect(css).toMatch(
-      /\.md-editor-code\.export-pdf-code-page-chunk[^{]*\{[^}]*break-inside:\s*avoid/,
-    );
-    expect(printFontStyles).toContain(EXPORT_PDF_CODE_PAGE_CHUNK_FIRST_CLASS);
     expect(printFontStyles).toMatch(
-      /\.md-editor-code\.export-pdf-code-page-chunk-first[^{]*\{[^}]*break-inside:\s*auto/,
+      /\.md-editor-code\.export-pdf-code-page-chunk[^{]*\{[^}]*break-inside:\s*auto/,
     );
   });
 

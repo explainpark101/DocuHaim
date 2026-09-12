@@ -480,17 +480,14 @@ export const printFontStyles = `
     page-break-inside: avoid;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-page-chunk {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    margin: 0 !important;
-  }
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-page-chunk,
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk-first,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-page-chunk-first,
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-page-chunk-oversized,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-page-chunk-oversized {
     break-inside: auto;
     page-break-inside: auto;
+    margin: 0 !important;
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-gutter,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-gutter {
