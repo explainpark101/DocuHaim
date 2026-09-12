@@ -254,6 +254,69 @@ export const printFontStyles = `
   .export-pdf-preview-stage .export-pdf-page-slot-clone li {
     line-height: var(--print-line-height-body, 1.7);
   }
+  /* Restore list chrome after Tailwind preflight + leave .md-editor-preview. */
+  [data-export-pdf-pages] .pagedjs_page_content ul,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ul {
+    list-style-type: disc;
+    list-style-position: outside;
+    padding-inline-start: 2em;
+    margin-block: 1em 0;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content ol,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ol {
+    list-style-type: decimal;
+    list-style-position: outside;
+    padding-inline-start: 2em;
+    margin-block: 1em 0;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content li,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone li {
+    display: list-item;
+    margin-block: 0;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content li > p,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone li > p {
+    margin-block: 0;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content ol li + li,
+  [data-export-pdf-pages] .pagedjs_page_content ul li + li,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ol li + li,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ul li + li {
+    margin-block-start: 0.25em;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content ul ul,
+  [data-export-pdf-pages] .pagedjs_page_content ol ul,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ul ul,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ol ul {
+    list-style-type: circle;
+    margin-block: 0;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content ul ul ul,
+  [data-export-pdf-pages] .pagedjs_page_content ol ul ul,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ul ul ul,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ol ul ul {
+    list-style-type: square;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content ol ol,
+  [data-export-pdf-pages] .pagedjs_page_content ul ol,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ol ol,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ul ol {
+    list-style-type: lower-roman;
+    margin-block: 0;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content ol .task-list-item,
+  [data-export-pdf-pages] .pagedjs_page_content ul .task-list-item,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ol .task-list-item,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ul .task-list-item {
+    list-style-type: none;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content ol .task-list-item input,
+  [data-export-pdf-pages] .pagedjs_page_content ul .task-list-item input,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ol .task-list-item input,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone ul .task-list-item input {
+    margin-inline-start: -1.5em;
+    margin-inline-end: 0.1em;
+  }
   [data-export-pdf-pages] .pagedjs_page_content h1,
   [data-export-pdf-pages] .pagedjs_page_content h2,
   [data-export-pdf-pages] .pagedjs_page_content h3,
@@ -333,10 +396,7 @@ export const printFontStyles = `
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-mermaid[data-processed],
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-mermaid[data-processed] {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: block;
     text-align: center;
     margin-inline: auto;
     width: 100%;
@@ -346,13 +406,17 @@ export const printFontStyles = `
     margin-inline: auto;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code pre,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code pre {
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code .export-pdf-code-pre,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code pre,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code .export-pdf-code-pre {
     margin: 0;
     background-color: #fafafa;
     overflow: visible;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code pre code,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code pre code {
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code .export-pdf-code-body,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code pre code,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code .export-pdf-code-body {
     display: block;
     background-color: #fafafa;
     color: #383a42;
@@ -383,27 +447,31 @@ export const printFontStyles = `
     margin-bottom: 0 !important;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-paged pre code,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-paged pre code {
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-paged .export-pdf-code-body,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-paged pre code,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-paged .export-pdf-code-body {
     padding: 0.75em 0.9em 0.75em 0;
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-line,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-line {
-    display: flex;
-    align-items: flex-start;
+    display: block;
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-gutter,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-gutter {
-    flex: 0 0 3em;
+    display: inline-block;
+    width: 3em;
     padding-inline-end: 0.5em;
     text-align: right;
+    vertical-align: top;
     color: #6b7280;
     font-variant-numeric: tabular-nums;
     user-select: none;
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-content,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-content {
-    flex: 1 1 auto;
-    min-width: 0;
+    display: inline-block;
+    width: calc(100% - 3.5em);
+    vertical-align: top;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     word-break: break-word;

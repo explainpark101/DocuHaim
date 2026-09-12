@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAlertModal } from '@/contexts/AlertModalContext';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import { usePrintImageAspectFit } from '@/hooks/usePrintImageAspectFit';
 import { usePrintMermaidFit } from '@/hooks/usePrintMermaidFit';
@@ -29,6 +30,7 @@ import {
   loadPrintFontsFromStorage,
   PRINT_SETTINGS_STORE_CHANGED_EVENT,
 } from '@/utils/printSettingsStore';
+import { exportPdfLoadDebug } from '@/pages/exportPdf/exportPdfLoadDebug';
 import type { ExportPdfCoverState } from '@/pages/exportPdf/hooks/useExportPdfCover';
 import type { ExportPdfDocumentState } from '@/pages/exportPdf/hooks/useExportPdfDocument';
 import { usePagedJsPreview } from '@/pages/exportPdf/hooks/usePagedJsPreview';
@@ -69,6 +71,8 @@ export function useExportPdfPrintLayout({
   refs,
   printLayoutRef,
 }: UseExportPdfPrintLayoutArgs) {
+  const { showAlert } = useAlertModal();
+  const pagedErrorAlertSigRef = useRef('');
   const { paperContentRef, pagesHostRef, imageMaxProbeRef, previewContainerRef, previewPanRoot } =
     refs;
 
@@ -117,6 +121,30 @@ export function useExportPdfPrintLayout({
     headingLineHeight: fonts.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight,
     baseFontSizePx: fonts.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx,
   });
+
+  useEffect(() => {
+    if (pagedStatus !== 'error') {
+      pagedErrorAlertSigRef.current = '';
+      return;
+    }
+    const detail =
+      (pagedErrorMessage && pagedErrorMessage.trim()) ||
+      '페이지 미리보기를 만들지 못했습니다.';
+    const sig = `${pagedHasPages ? 'has-pages' : 'no-pages'}|${detail}`;
+    if (sig === pagedErrorAlertSigRef.current) return;
+    pagedErrorAlertSigRef.current = sig;
+    exportPdfLoadDebug('layout:paged-error-alert', {
+      detail,
+      pagedHasPages,
+    });
+    showAlert({
+      title: '미리보기 생성 실패',
+      message: pagedHasPages
+        ? `페이지 다시 나누기에 실패했습니다. 이전 미리보기는 그대로 두고 있습니다.\n\n${detail}`
+        : `인쇄 미리보기를 만들지 못했습니다.\n\n${detail}`,
+      confirmLabel: '확인',
+    });
+  }, [pagedErrorMessage, pagedHasPages, pagedStatus, showAlert]);
 
   useEffect(() => {
     const onStore = () => setPrintStoreEpoch(getPrintSettingsStoreEpoch());

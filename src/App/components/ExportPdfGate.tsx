@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { LoaderCircle } from 'lucide-react';
 import { AuthModal } from '@/components/modals/AuthModal';
@@ -13,8 +13,15 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
 import { useMacosTitlebarChrome } from '@/hooks/useMacosTitlebarChrome';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
+import { exportPdfLoadDebug } from '@/pages/exportPdf/exportPdfLoadDebug';
 
-const ExportPDFPage = lazy(() => import('@/pages/exportPdf/ExportPDFPage'));
+const ExportPDFPage = lazy(() => {
+  exportPdfLoadDebug('gate:lazy-import-start');
+  return import('@/pages/exportPdf/ExportPDFPage').then((mod) => {
+    exportPdfLoadDebug('gate:lazy-import-done');
+    return mod;
+  });
+});
 
 /** Export-pdf route gate — reads domain hooks instead of prop-drilling from AppShellView. */
 export function ExportPdfGate() {
@@ -39,6 +46,32 @@ export function ExportPdfGate() {
     && documentFile?.id !== routeExportPath;
   const openCoverEdit = Boolean((navState as any)?.openCoverEdit);
   const hasNavigationSession = Boolean(navState) || Boolean(routeExportPath);
+
+  useEffect(() => {
+    exportPdfLoadDebug('gate:session', {
+      routeExportPath,
+      waitingForRouteDoc,
+      hasNavigationSession,
+      openCoverEdit,
+      hasNavStateValue: typeof (navState as any)?.value === 'string',
+      navStateValueLength:
+        typeof (navState as any)?.value === 'string'
+          ? ((navState as any).value as string).length
+          : 0,
+      documentFileId: documentFile?.id ?? null,
+      documentValueLength: typeof documentValue === 'string' ? documentValue.length : 0,
+      pathname: location.pathname,
+    });
+  }, [
+    documentFile?.id,
+    documentValue,
+    hasNavigationSession,
+    location.pathname,
+    navState,
+    openCoverEdit,
+    routeExportPath,
+    waitingForRouteDoc,
+  ]);
 
   const { storageMode, localTree, webdavTree, s3Tree } = vault;
   const macDesktopChrome = isTauriMacOS();

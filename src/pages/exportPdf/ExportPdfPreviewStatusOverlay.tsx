@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, LoaderCircle } from 'lucide-react';
+import { exportPdfLoadDebug } from '@/pages/exportPdf/exportPdfLoadDebug';
 import {
   EXPORT_PDF_PAGED_STATUS_LABEL,
   isExportPdfPagedBusy,
@@ -34,6 +35,20 @@ export function ExportPdfPreviewStatusOverlay({
   const [elapsedSec, setElapsedSec] = useState(0);
 
   useEffect(() => {
+    exportPdfLoadDebug('ui:status-overlay', {
+      status,
+      hasPages,
+      busy,
+      showError,
+      errorMessage: errorMessage ?? null,
+      label:
+        status === 'error'
+          ? EXPORT_PDF_PAGED_STATUS_LABEL.error
+          : EXPORT_PDF_PAGED_STATUS_LABEL[status] || null,
+    });
+  }, [busy, errorMessage, hasPages, showError, status]);
+
+  useEffect(() => {
     if (!busy && !showError) {
       setElapsedSec(0);
       return undefined;
@@ -45,7 +60,6 @@ export function ExportPdfPreviewStatusOverlay({
     }, 1000);
     return () => window.clearInterval(id);
   }, [busy, showError, status]);
-
   if (!busy && !showError) return null;
 
   const label =

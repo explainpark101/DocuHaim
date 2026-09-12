@@ -24,7 +24,9 @@ describe('exportPdf paged styles', () => {
     expect(css).toContain('.md-editor-copy-button');
     expect(css).toContain('.md-editor-mermaid[data-processed]');
     expect(css).toContain('.md-editor-mermaid-action');
-    expect(css).toContain('align-items: center');
+    expect(css).toContain('list-style-type: disc');
+    expect(css).toContain('padding-inline-start: 2em');
+    expect(css).toContain('display: list-item');
     expect(css).not.toContain('@media print');
   });
 

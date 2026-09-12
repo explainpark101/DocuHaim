@@ -2,6 +2,11 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
 import { applyExportPdfCodeBlockFragmentChrome } from '@/utils/exportPdf/applyExportPdfCodeBlockFragmentChrome';
 import { prepareExportPdfCodeBlocksForPaging } from '@/utils/exportPdf/prepareExportPdfCodeBlocksForPaging';
+import { sanitizeExportPdfPagedSource } from '@/utils/exportPdf/sanitizeExportPdfPagedSource';
+import {
+  exportPdfLoadDebug,
+  exportPdfLoadDebugElapsed,
+} from '@/pages/exportPdf/exportPdfLoadDebug';
 import { buildExportPdfPagedStyles } from '@/pages/exportPdf/exportPdfPagedStyles';
 import type { ExportPdfPagedStatus } from '@/pages/exportPdf/exportPdfPagedStatus';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
@@ -43,23 +48,33 @@ function cleanupPagedJsStyles(): void {
   }
 }
 
-function waitForImages(root: ParentNode): Promise<void> {
+function waitForImages(root: ParentNode): Promise<{
+  total: number;
+  pending: number;
+  alreadyComplete: number;
+}> {
   const images = [...root.querySelectorAll('img')];
-  if (!images.length) return Promise.resolve();
+  if (!images.length) {
+    return Promise.resolve({ total: 0, pending: 0, alreadyComplete: 0 });
+  }
+  let alreadyComplete = 0;
+  let pending = 0;
   return Promise.all(
     images.map(
       (img) =>
         new Promise<void>((resolve) => {
           if (img.complete) {
+            alreadyComplete += 1;
             resolve();
             return;
           }
+          pending += 1;
           const done = () => resolve();
           img.addEventListener('load', done, { once: true });
           img.addEventListener('error', done, { once: true });
         }),
     ),
-  ).then(() => undefined);
+  ).then(() => ({ total: images.length, pending, alreadyComplete }));
 }
 
 function afterPaint(): Promise<void> {
@@ -98,6 +113,7 @@ function buildPagedSourceFromPreview(preview: Element): HTMLElement | null {
   }
 
   prepareExportPdfCodeBlocksForPaging(wrapper);
+  sanitizeExportPdfPagedSource(wrapper);
 
   return wrapper;
 }
@@ -106,6 +122,11 @@ function formatPagedError(error: unknown): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
   if (typeof error === 'string' && error.trim()) return error.trim();
   return 'Unknown pagination error';
+}
+
+function summarizeLayoutKey(layoutKey: string): string {
+  if (layoutKey.length <= 120) return layoutKey;
+  return `${layoutKey.slice(0, 80)}…(${layoutKey.length} chars)`;
 }
 
 /**
@@ -129,16 +150,38 @@ export function usePagedJsPreview({
   const [hasPages, setHasPages] = useState(false);
   const generationRef = useRef(0);
   const previewerRef = useRef<PagedPreviewer | null>(null);
+  const runSeqRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     const generation = (generationRef.current += 1);
+    const effectStartedAt = Date.now();
     const timers: number[] = [];
     const pendingDelayResolvers = new Set<() => void>();
     setStatus('settling');
     setErrorMessage(null);
 
+    exportPdfLoadDebug('paged:effect-start', {
+      generation,
+      pageSizeId,
+      settleMs: SETTLE_MS,
+      followUpMs: FOLLOW_UP_MS,
+      layoutKey: summarizeLayoutKey(layoutKey),
+      bodyLineHeight,
+      headingLineHeight,
+      baseFontSizePx,
+    });
+
     const isCurrent = () => !cancelled && generation === generationRef.current;
+
+    const setStatusLogged = (next: ExportPdfPagedStatus, detail?: Record<string, unknown>) => {
+      setStatus(next);
+      exportPdfLoadDebug('paged:status', {
+        generation,
+        status: next,
+        ...detail,
+      });
+    };
 
     const delay = (ms: number) =>
       new Promise<void>((resolve) => {
@@ -150,60 +193,165 @@ export function usePagedJsPreview({
         timers.push(window.setTimeout(finish, ms));
       });
 
-    const waitForPreviewEl = async (): Promise<Element | null> => {
+    const waitForPreviewEl = async (
+      runId: number,
+      isActive: () => boolean,
+    ): Promise<Element | null> => {
       const started = Date.now();
-      while (isCurrent()) {
+      let attempts = 0;
+      let loggedWaitingStatus = false;
+      while (isActive()) {
         const source = sourceRef.current;
         const preview = source?.querySelector('.md-editor-preview') ?? null;
-        if (preview) return preview;
-        if (Date.now() - started >= PREVIEW_RETRY_MAX_MS) return null;
+        attempts += 1;
+        if (preview) {
+          exportPdfLoadDebugElapsed('paged:preview-ready', started, {
+            generation,
+            runId,
+            attempts,
+            htmlLength: preview.innerHTML?.length ?? 0,
+          });
+          return preview;
+        }
+        if (Date.now() - started >= PREVIEW_RETRY_MAX_MS) {
+          exportPdfLoadDebugElapsed('paged:preview-timeout', started, {
+            generation,
+            runId,
+            attempts,
+            maxMs: PREVIEW_RETRY_MAX_MS,
+            hasSource: Boolean(source),
+          });
+          return null;
+        }
+        if (!loggedWaitingStatus) {
+          loggedWaitingStatus = true;
+          setStatusLogged('waiting-preview', { generation, runId, attempts });
+        }
+        if (attempts === 1 || attempts % 10 === 0) {
+          exportPdfLoadDebug('paged:preview-waiting', {
+            generation,
+            runId,
+            attempts,
+            waitedMs: Math.round(Date.now() - started),
+            hasSource: Boolean(source),
+          });
+        }
         setStatus('waiting-preview');
         await delay(PREVIEW_RETRY_MS);
       }
       return null;
     };
 
-    const run = async () => {
-      if (!isCurrent()) return;
+    /**
+     * Only one pagination pass may own the previewer at a time.
+     * Overlapping settle + follow-up used to destroy the in-flight Previewer and
+     * surface paged.js crashes like: Cannot read properties of null (reading 'getAttribute').
+     */
+    let activeRunId = 0;
+
+    const run = async (pass: 'settle' | 'follow-up') => {
+      if (!isCurrent()) {
+        exportPdfLoadDebug('paged:run-skip-stale', { generation, pass });
+        return;
+      }
+
+      const runId = (runSeqRef.current += 1);
+      activeRunId = runId;
+      const isActive = () => isCurrent() && activeRunId === runId;
+      const runStartedAt = Date.now();
+      setErrorMessage(null);
+      exportPdfLoadDebug('paged:run-start', {
+        generation,
+        runId,
+        pass,
+        pageSizeId,
+        layoutKey: summarizeLayoutKey(layoutKey),
+      });
 
       const source = sourceRef.current;
       const output = outputRef.current;
       if (!source || !output) {
+        if (!isActive()) return;
+        exportPdfLoadDebug('paged:missing-containers', {
+          generation,
+          runId,
+          pass,
+          hasSource: Boolean(source),
+          hasOutput: Boolean(output),
+        });
         setPageCount(1);
         setPackLayoutKey(`${layoutKey}|empty`);
         setHasPages(false);
-        setStatus('error');
+        setStatusLogged('error', { generation, runId, reason: 'missing-containers' });
         setErrorMessage('미리보기 컨테이너를 찾지 못했습니다.');
         return;
       }
 
-      setStatus('waiting-preview');
-      const preview = await waitForPreviewEl();
-      if (!isCurrent()) return;
+      setStatusLogged('waiting-preview', { generation, runId, pass });
+      const preview = await waitForPreviewEl(runId, isActive);
+      if (!isActive()) {
+        exportPdfLoadDebug('paged:run-aborted-after-preview-wait', {
+          generation,
+          runId,
+          pass,
+        });
+        return;
+      }
       if (!preview) {
-        setStatus('error');
+        setStatusLogged('error', { generation, runId, reason: 'preview-not-ready' });
         setErrorMessage('마크다운 미리보기가 준비되지 않았습니다. 페이지를 새로고침해 보세요.');
         return;
       }
 
-      setStatus('waiting-images');
+      setStatusLogged('waiting-images', { generation, runId, pass });
       let scratch: HTMLDivElement | null = null;
+      let ownedPreviewer: PagedPreviewer | null = null;
       try {
-        await waitForImages(preview);
+        const imageStats = await waitForImages(preview);
+        exportPdfLoadDebugElapsed('paged:images-ready', runStartedAt, {
+          generation,
+          runId,
+          pass,
+          ...imageStats,
+        });
         await afterPaint();
-        if (!isCurrent()) return;
+        if (!isActive()) {
+          exportPdfLoadDebug('paged:run-aborted-after-images', {
+            generation,
+            runId,
+            pass,
+          });
+          return;
+        }
 
         const wrapper = buildPagedSourceFromPreview(preview);
         if (!wrapper) {
+          exportPdfLoadDebug('paged:empty-source', {
+            generation,
+            runId,
+            pass,
+            previewHtmlLength: preview.innerHTML?.length ?? 0,
+          });
           // Empty markdown — treat as a single blank page, not a failure.
           output.replaceChildren();
           setPageCount(1);
           setPackLayoutKey(`${layoutKey}|empty`);
           setHasPages(false);
-          setStatus('idle');
+          setStatusLogged('idle', { generation, runId, reason: 'empty-source' });
           setErrorMessage(null);
           return;
         }
+
+        exportPdfLoadDebug('paged:source-built', {
+          generation,
+          runId,
+          pass,
+          sourceHtmlLength: wrapper.innerHTML.length,
+          imgCount: wrapper.querySelectorAll('img').length,
+          mermaidCount: wrapper.querySelectorAll('.md-editor-mermaid').length,
+          codeBlockCount: wrapper.querySelectorAll('.md-editor-code').length,
+          tableCount: wrapper.querySelectorAll('table').length,
+        });
 
         scratch = document.createElement('div');
         scratch.className = 'export-pdf-pages-scratch';
@@ -216,9 +364,25 @@ export function usePagedJsPreview({
         previewerRef.current = null;
         cleanupPagedJsStyles();
 
-        setStatus('loading-engine');
-        const { Previewer } = await import('pagedjs');
-        if (!isCurrent()) return;
+        setStatusLogged('loading-engine', { generation, runId, pass });
+        const engineImportStartedAt = Date.now();
+        const { loadPagedJsPreviewer } = await import(
+          '@/utils/exportPdf/loadPagedJsPreviewer'
+        );
+        const Previewer = await loadPagedJsPreviewer();
+        exportPdfLoadDebugElapsed('paged:engine-imported', engineImportStartedAt, {
+          generation,
+          runId,
+          pass,
+        });
+        if (!isActive()) {
+          exportPdfLoadDebug('paged:run-aborted-after-engine-import', {
+            generation,
+            runId,
+            pass,
+          });
+          return;
+        }
 
         const stylesCss = buildExportPdfPagedStyles(pageSizeId, {
           ...(bodyLineHeight != null ? { bodyLineHeight } : {}),
@@ -226,16 +390,37 @@ export function usePagedJsPreview({
           ...(baseFontSizePx != null ? { baseFontSizePx } : {}),
         });
         const paged = new Previewer() as PagedPreviewer;
+        ownedPreviewer = paged;
         previewerRef.current = paged;
 
-        setStatus('paginating');
+        setStatusLogged('paginating', {
+          generation,
+          runId,
+          pass,
+          stylesCssLength: stylesCss.length,
+        });
+        const paginateStartedAt = Date.now();
         const flow = await paged.preview(
           wrapper,
           [{ [`${window.location.origin}/export-pdf-paged.css`]: stylesCss }],
           scratch,
         );
+        exportPdfLoadDebugElapsed('paged:paginate-done', paginateStartedAt, {
+          generation,
+          runId,
+          pass,
+          flowTotal: flow?.total ?? null,
+          scratchPageCount: scratch.querySelectorAll('.pagedjs_page').length,
+        });
 
-        if (!isCurrent()) return;
+        if (!isActive()) {
+          exportPdfLoadDebug('paged:run-aborted-after-paginate', {
+            generation,
+            runId,
+            pass,
+          });
+          return;
+        }
 
         const count = tagBodyPages(scratch);
         applyExportPdfCodeBlockFragmentChrome(scratch);
@@ -248,41 +433,94 @@ export function usePagedJsPreview({
         setPageCount(Math.max(1, total));
         setPackLayoutKey(`${layoutKey}|paged|${total}`);
         setHasPages(true);
-        setStatus('idle');
+        setStatusLogged('idle', {
+          generation,
+          runId,
+          pass,
+          pageCount: Math.max(1, total),
+        });
         setErrorMessage(null);
+        exportPdfLoadDebugElapsed('paged:run-success', runStartedAt, {
+          generation,
+          runId,
+          pass,
+          pageCount: Math.max(1, total),
+          effectElapsedMs: Math.round(Date.now() - effectStartedAt),
+        });
       } catch (error) {
-        console.warn('[usePagedJsPreview] pagination failed', error);
-        if (isCurrent()) {
-          const outputEl = outputRef.current;
-          const stillHasPages = Boolean(outputEl?.querySelector('.pagedjs_page'));
-          setHasPages(stillHasPages);
-          if (!stillHasPages) {
-            setPageCount(1);
-            setPackLayoutKey(`${layoutKey}|error`);
-          }
-          setStatus('error');
-          setErrorMessage(formatPagedError(error));
+        if (!isActive()) {
+          // Superseded / unmounted — paged.js often throws getAttribute-on-null when
+          // its Previewer was destroyed mid-flight. Do not treat as a user-facing failure.
+          exportPdfLoadDebugElapsed('paged:run-aborted-with-throw', runStartedAt, {
+            generation,
+            runId,
+            pass,
+            error: formatPagedError(error),
+          });
+          return;
         }
+        console.warn('[usePagedJsPreview] pagination failed', error);
+        exportPdfLoadDebugElapsed('paged:run-error', runStartedAt, {
+          generation,
+          runId,
+          pass,
+          error: formatPagedError(error),
+        });
+        const outputEl = outputRef.current;
+        const stillHasPages = Boolean(outputEl?.querySelector('.pagedjs_page'));
+        setHasPages(stillHasPages);
+        if (!stillHasPages) {
+          setPageCount(1);
+          setPackLayoutKey(`${layoutKey}|error`);
+        }
+        setStatusLogged('error', {
+          generation,
+          runId,
+          pass,
+          stillHasPages,
+          error: formatPagedError(error),
+        });
+        setErrorMessage(formatPagedError(error));
       } finally {
         scratch?.remove();
+        if (ownedPreviewer && previewerRef.current === ownedPreviewer && !isActive()) {
+          destroyPreviewer(ownedPreviewer);
+          previewerRef.current = null;
+        }
       }
     };
 
-    // Debounced first pass after settle (MdPreview + fit/mermaid).
+    // First pass after settle, then a follow-up — never overlapping (overlap broke paged.js).
     timers.push(
       window.setTimeout(() => {
-        if (isCurrent()) void run();
+        void (async () => {
+          if (!isCurrent()) return;
+          exportPdfLoadDebug('paged:schedule-settle', { generation });
+          await run('settle');
+          if (!isCurrent()) return;
+          exportPdfLoadDebug('paged:schedule-follow-up-wait', {
+            generation,
+            followUpMs: FOLLOW_UP_MS,
+          });
+          await delay(FOLLOW_UP_MS);
+          if (!isCurrent()) return;
+          exportPdfLoadDebug('paged:schedule-follow-up', { generation });
+          await run('follow-up');
+        })();
       }, SETTLE_MS),
     );
-    // Follow-up for late-loading images / mermaid SVG.
-    timers.push(
-      window.setTimeout(() => {
-        if (isCurrent()) void run();
-      }, SETTLE_MS + FOLLOW_UP_MS),
-    );
+
+    exportPdfLoadDebug('paged:timers-scheduled', {
+      generation,
+      settleAtMs: SETTLE_MS,
+      followUpAfterSettleMs: FOLLOW_UP_MS,
+    });
 
     return () => {
       cancelled = true;
+      exportPdfLoadDebugElapsed('paged:effect-cleanup', effectStartedAt, {
+        generation,
+      });
       for (const id of timers) window.clearTimeout(id);
       for (const resolve of pendingDelayResolvers) resolve();
       pendingDelayResolvers.clear();

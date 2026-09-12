@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode, RefObject } from 'react';
+import { useEffect, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   Save,
   Settings,
 } from 'lucide-react';
+import { exportPdfLoadDebug } from '@/pages/exportPdf/exportPdfLoadDebug';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
@@ -225,6 +226,22 @@ export function ExportPdfShell({
   onHaimTableEditFailed,
 }: ExportPdfShellProps) {
   const totalPageCount = (hasEnabledCover ? 1 : 0) + Math.max(1, bodyPageCount);
+
+  useEffect(() => {
+    if (!isDocumentLoading) return;
+    exportPdfLoadDebug('shell:document-loading-ui', {
+      routeExportPath,
+      hasNavigationSession,
+      previewValueLength: previewValue?.length ?? 0,
+      currentFileId: currentFile?.id ?? null,
+    });
+  }, [
+    currentFile?.id,
+    hasNavigationSession,
+    isDocumentLoading,
+    previewValue,
+    routeExportPath,
+  ]);
 
   if (isDocumentLoading) {
     return (

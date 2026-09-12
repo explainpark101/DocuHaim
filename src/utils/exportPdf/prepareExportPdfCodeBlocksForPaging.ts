@@ -125,8 +125,18 @@ function buildPagedCodeLines(codeRoot: HTMLElement, block: HTMLElement): void {
     linesHost.append(row);
   });
 
-  code.classList.add('export-pdf-code-paged');
-  code.replaceChildren(linesHost);
+  // Replace <pre>/<code> with divs. paged.js treats PRE as a non-container and
+  // often crashes in createBreakToken (findElement on null) on tall PRE trees.
+  const preReplacement = document.createElement('div');
+  preReplacement.className = 'export-pdf-code-pre';
+  const codeReplacement = document.createElement('div');
+  codeReplacement.className = 'export-pdf-code-body export-pdf-code-paged';
+  for (const cls of code.classList) {
+    if (cls && cls !== 'export-pdf-code-paged') codeReplacement.classList.add(cls);
+  }
+  codeReplacement.append(linesHost);
+  preReplacement.append(codeReplacement);
+  pre.replaceWith(preReplacement);
   codeRoot.classList.add('export-pdf-code-paged');
 }
 

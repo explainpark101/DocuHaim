@@ -80,6 +80,115 @@ function fixMermaidKatexNewlinesPlugin(): Plugin {
   };
 }
 
+/** Shared string rewrites for paged.js null-safety (findElement / createBreakToken). */
+function applyPagedJsSourcePatches(code: string, filePath: string): string | null {
+  const normalizedId = filePath.replace(/\\/g, '/');
+  if (!normalizedId.includes('pagedjs')) return null;
+
+  const findElementNeedle = 'export function findElement(node, doc, forceQuery) {';
+  const findElementGuard =
+    'export function findElement(node, doc, forceQuery) {\n' +
+    '\tif (!node || typeof node.getAttribute !== "function") {\n' +
+    '\t\treturn;\n' +
+    '\t}';
+  const cjsNeedle = 'function findElement(node, doc, forceQuery) {';
+  const cjsGuard =
+    'function findElement(node, doc, forceQuery) {\n' +
+    '\tif (!node || typeof node.getAttribute !== "function") {\n' +
+    '\t\treturn;\n' +
+    '\t}';
+  const breakNeedle =
+    '\tcreateBreakToken(overflow, rendered, source) {\n\t\tlet container = overflow.startContainer;';
+  const breakGuard =
+    '\tcreateBreakToken(overflow, rendered, source) {\n' +
+    '\t\ttry {\n' +
+    '\t\t\treturn this.__s3haimCreateBreakToken(overflow, rendered, source);\n' +
+    '\t\t} catch (error) {\n' +
+    '\t\t\tconst message = error && error.message ? String(error.message) : String(error);\n' +
+    '\t\t\tif (\n' +
+    '\t\t\t\tmessage.includes("getAttribute") ||\n' +
+    '\t\t\t\tmessage.includes("of null") ||\n' +
+    '\t\t\t\tmessage.includes("of undefined") ||\n' +
+    '\t\t\t\tmessage.includes("createTreeWalker") ||\n' +
+    '\t\t\t\tmessage.includes("nextSibling") ||\n' +
+    '\t\t\t\tmessage.includes("parentElement")\n' +
+    '\t\t\t) {\n' +
+    '\t\t\t\treturn;\n' +
+    '\t\t\t}\n' +
+    '\t\t\tthrow error;\n' +
+    '\t\t}\n' +
+    '\t}\n' +
+    '\n' +
+    '\t__s3haimCreateBreakToken(overflow, rendered, source) {\n' +
+    '\t\tlet container = overflow.startContainer;';
+
+  let next = code;
+  let changed = false;
+
+  if (
+    (normalizedId.includes('/utils/dom.') || normalizedId.includes('utils/dom'))
+    && !next.includes('typeof node.getAttribute')
+  ) {
+    if (next.includes(findElementNeedle)) {
+      next = next.replace(findElementNeedle, findElementGuard);
+      changed = true;
+    } else if (next.includes(cjsNeedle)) {
+      next = next.replace(cjsNeedle, cjsGuard);
+      changed = true;
+    }
+  }
+
+  if (
+    (normalizedId.includes('/chunker/layout.') || normalizedId.includes('chunker/layout'))
+    && !next.includes('__s3haimCreateBreakToken')
+    && next.includes(breakNeedle)
+  ) {
+    next = next.replace(breakNeedle, breakGuard);
+    changed = true;
+  }
+
+  return changed ? next : null;
+}
+
+/**
+ * paged.js 0.4.x createBreakToken can call findElement(null). Patch via Vite transform
+ * (prod / non-prebundled) and optimizeDeps.esbuild plugin (dev prebundle).
+ * Do NOT exclude pagedjs from optimizeDeps — that breaks css-tree CJS default export.
+ */
+function patchPagedJsFindElementPlugin(): Plugin {
+  return {
+    name: 'patch-pagedjs-findelement',
+    enforce: 'pre',
+    transform(code, id) {
+      const next = applyPagedJsSourcePatches(code, id);
+      if (next == null) return;
+      return { code: next, map: null };
+    },
+  };
+}
+
+function createPagedJsOptimizeEsbuildPlugin(): {
+  name: string;
+  setup: (build: {
+    onLoad: (
+      options: { filter: RegExp },
+      callback: (args: { path: string }) => Promise<{ contents: string; loader: 'js' } | undefined>,
+    ) => void;
+  }) => void;
+} {
+  return {
+    name: 'patch-pagedjs-findelement-optimize',
+    setup(build) {
+      build.onLoad({ filter: /[\\/]pagedjs[\\/].*\.(js|cjs)$/ }, async (args) => {
+        const code = await fs.promises.readFile(args.path, 'utf8');
+        const next = applyPagedJsSourcePatches(code, args.path);
+        if (next == null) return undefined;
+        return { contents: next, loader: 'js' };
+      });
+    },
+  };
+}
+
 /** `/docs` (no slash) → `/docs/` so SPA history fallback does not serve the app shell. */
 function docsTrailingSlashPlugin(): Plugin {
   const bareDocsPath = `${normalizedBase.replace(/\/$/, '')}/docs`.replace(/\/{2,}/g, '/');
@@ -212,6 +321,7 @@ export function useRegisterSW(_options) {
 
 const plugins: PluginOption[] = [
   fixMermaidKatexNewlinesPlugin(),
+  patchPagedJsFindElementPlugin(),
   react({
     // Keep node_modules out; also skip VitePress caches (Babel would otherwise
     // transform huge prebundled deps under .vitepress/cache/deps).
@@ -459,6 +569,11 @@ export default defineConfig({
   assetsInclude: ['**/*.wasm', '**/*.gmdl'],
   optimizeDeps: {
     exclude: ['garu-ko', 'lucivy-wasm'],
+    // Patch paged.js while prebundling so findElement/createBreakToken guards land in
+    // .vite/deps (and css-tree keeps normal CJS→ESM interop).
+    esbuildOptions: {
+      plugins: [createPagedJsOptimizeEsbuildPlugin()],
+    },
   },
   build: {
     rollupOptions: {

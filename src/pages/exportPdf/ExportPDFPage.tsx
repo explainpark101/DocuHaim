@@ -1,7 +1,8 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { ExportPdfBodyPreview } from '@/pages/exportPdf/ExportPdfBodyPreview';
 import { ExportPdfCoverPages, ExportPdfCoverSidebar } from '@/pages/exportPdf/ExportPdfCoverSection';
 import { ExportPdfShell } from '@/pages/exportPdf/ExportPdfShell';
+import { exportPdfLoadDebug } from '@/pages/exportPdf/exportPdfLoadDebug';
 import type { ExportPDFPageProps } from '@/pages/exportPdf/exportPdfTypes';
 import { useExportPdfCover } from '@/pages/exportPdf/hooks/useExportPdfCover';
 import { useExportPdfCoverChrome } from '@/pages/exportPdf/hooks/useExportPdfCoverChrome';
@@ -17,6 +18,29 @@ import { loadPrintPageLayout } from '@/utils/printPageLayout';
 export default function ExportPDFPage(props: ExportPDFPageProps) {
   const refs = useExportPdfPreviewRefs();
   const printLayoutRef = useRef(loadPrintPageLayout());
+
+  useEffect(() => {
+    exportPdfLoadDebug('page:mount', {
+      isDocumentLoading: Boolean(props.isDocumentLoading),
+      hasNavigationSession: Boolean(props.hasNavigationSession),
+      documentFileId: props.documentFile?.id ?? null,
+      documentValueLength:
+        typeof props.documentValue === 'string' ? props.documentValue.length : 0,
+      openCoverEdit: Boolean(props.openCoverEdit),
+    });
+    return () => {
+      exportPdfLoadDebug('page:unmount');
+    };
+  }, []);
+
+  useEffect(() => {
+    exportPdfLoadDebug('page:document-loading', {
+      isDocumentLoading: Boolean(props.isDocumentLoading),
+      documentFileId: props.documentFile?.id ?? null,
+      documentValueLength:
+        typeof props.documentValue === 'string' ? props.documentValue.length : 0,
+    });
+  }, [props.documentFile?.id, props.documentValue, props.isDocumentLoading]);
 
   const doc = useExportPdfDocument({ ...props, refs, printLayoutRef });
   const cover = useExportPdfCover({

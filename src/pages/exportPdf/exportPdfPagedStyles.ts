@@ -53,9 +53,79 @@ export function buildExportPdfPagedStyles(
   margin: 0.75em 0;
 }
 
+/* Lists: Tailwind preflight clears bullets/indent; .md-editor-preview rules do not
+   apply after paged.js moves nodes into .pagedjs_page_content. */
+.export-pdf-paged-source ul,
+.pagedjs_page_content ul {
+  list-style-type: disc;
+  list-style-position: outside;
+  padding-inline-start: 2em;
+  margin-block: 1em 0;
+}
+
+.export-pdf-paged-source ol,
+.pagedjs_page_content ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+  padding-inline-start: 2em;
+  margin-block: 1em 0;
+}
+
 .export-pdf-paged-source li,
 .pagedjs_page_content li {
+  display: list-item;
   line-height: ${bodyLh};
+  margin-block: 0;
+}
+
+.export-pdf-paged-source li > p,
+.pagedjs_page_content li > p {
+  margin-block: 0;
+}
+
+.export-pdf-paged-source ol li + li,
+.export-pdf-paged-source ul li + li,
+.pagedjs_page_content ol li + li,
+.pagedjs_page_content ul li + li {
+  margin-block-start: 0.25em;
+}
+
+.export-pdf-paged-source ul ul,
+.export-pdf-paged-source ol ul,
+.pagedjs_page_content ul ul,
+.pagedjs_page_content ol ul {
+  list-style-type: circle;
+  margin-block: 0;
+}
+
+.export-pdf-paged-source ul ul ul,
+.export-pdf-paged-source ol ul ul,
+.pagedjs_page_content ul ul ul,
+.pagedjs_page_content ol ul ul {
+  list-style-type: square;
+}
+
+.export-pdf-paged-source ol ol,
+.export-pdf-paged-source ul ol,
+.pagedjs_page_content ol ol,
+.pagedjs_page_content ul ol {
+  list-style-type: lower-roman;
+  margin-block: 0;
+}
+
+.export-pdf-paged-source ol .task-list-item,
+.export-pdf-paged-source ul .task-list-item,
+.pagedjs_page_content ol .task-list-item,
+.pagedjs_page_content ul .task-list-item {
+  list-style-type: none;
+}
+
+.export-pdf-paged-source ol .task-list-item input,
+.export-pdf-paged-source ul .task-list-item input,
+.pagedjs_page_content ol .task-list-item input,
+.pagedjs_page_content ul .task-list-item input {
+  margin-inline-start: -1.5em;
+  margin-inline-end: 0.1em;
 }
 
 .export-pdf-paged-source h1,
@@ -164,7 +234,9 @@ export function buildExportPdfPagedStyles(
 }
 
 .export-pdf-paged-source .md-editor-code pre,
-.pagedjs_page_content .md-editor-code pre {
+.export-pdf-paged-source .md-editor-code .export-pdf-code-pre,
+.pagedjs_page_content .md-editor-code pre,
+.pagedjs_page_content .md-editor-code .export-pdf-code-pre {
   margin: 0;
   padding: 0;
   background-color: #fafafa;
@@ -172,7 +244,9 @@ export function buildExportPdfPagedStyles(
 }
 
 .export-pdf-paged-source .md-editor-code pre code,
-.pagedjs_page_content .md-editor-code pre code {
+.export-pdf-paged-source .md-editor-code .export-pdf-code-body,
+.pagedjs_page_content .md-editor-code pre code,
+.pagedjs_page_content .md-editor-code .export-pdf-code-body {
   display: block;
   background-color: #fafafa;
   color: #383a42;
@@ -189,7 +263,7 @@ export function buildExportPdfPagedStyles(
   color: unset;
 }
 
-/* Per-line rows: page breaks between lines; wrapped long lines stay on one row. */
+/* Per-line rows: avoid flex (paged.js break-token bugs); allow splitting tall wraps. */
 .export-pdf-paged-source .md-editor-code.export-pdf-code-paged,
 .pagedjs_page_content .md-editor-code.export-pdf-code-paged {
   break-inside: auto;
@@ -216,14 +290,18 @@ export function buildExportPdfPagedStyles(
 }
 
 .export-pdf-paged-source .md-editor-code.export-pdf-code-paged pre,
-.pagedjs_page_content .md-editor-code.export-pdf-code-paged pre {
+.export-pdf-paged-source .md-editor-code.export-pdf-code-paged .export-pdf-code-pre,
+.pagedjs_page_content .md-editor-code.export-pdf-code-paged pre,
+.pagedjs_page_content .md-editor-code.export-pdf-code-paged .export-pdf-code-pre {
   margin: 0;
   padding: 0;
   overflow: visible;
 }
 
 .export-pdf-paged-source .md-editor-code.export-pdf-code-paged pre code,
-.pagedjs_page_content .md-editor-code.export-pdf-code-paged pre code {
+.export-pdf-paged-source .md-editor-code.export-pdf-code-paged .export-pdf-code-body,
+.pagedjs_page_content .md-editor-code.export-pdf-code-paged pre code,
+.pagedjs_page_content .md-editor-code.export-pdf-code-paged .export-pdf-code-body {
   display: block;
   padding: 0.75em 0.9em 0.75em 0;
   background-color: #fafafa;
@@ -236,17 +314,18 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .export-pdf-code-line,
 .pagedjs_page_content .export-pdf-code-line {
-  display: flex;
-  align-items: flex-start;
-  break-inside: avoid;
-  page-break-inside: avoid;
+  display: block;
+  break-inside: auto;
+  page-break-inside: auto;
 }
 
 .export-pdf-paged-source .export-pdf-code-gutter,
 .pagedjs_page_content .export-pdf-code-gutter {
-  flex: 0 0 3em;
+  display: inline-block;
+  width: 3em;
   padding-inline-end: 0.5em;
   text-align: right;
+  vertical-align: top;
   color: #6b7280;
   user-select: none;
   font-variant-numeric: tabular-nums;
@@ -254,8 +333,9 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .export-pdf-code-content,
 .pagedjs_page_content .export-pdf-code-content {
-  flex: 1 1 auto;
-  min-width: 0;
+  display: inline-block;
+  width: calc(100% - 3.5em);
+  vertical-align: top;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -295,8 +375,7 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source figure,
 .pagedjs_page_content figure {
-  display: flex;
-  flex-direction: column;
+  display: block;
   text-align: left;
   margin: 0 0 1em;
 }
@@ -309,13 +388,10 @@ export function buildExportPdfPagedStyles(
   print-color-adjust: exact;
 }
 
-/* Only processed hosts — flex on placeholders breaks lazy Mermaid source (white-space:pre). */
+/* Only processed hosts — keep block layout for paged.js (flex break-token bugs). */
 .export-pdf-paged-source .md-editor-mermaid[data-processed],
 .pagedjs_page_content .md-editor-mermaid[data-processed] {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  display: block;
   text-align: center;
   margin-inline: auto;
   width: 100%;
@@ -371,10 +447,15 @@ export function buildExportPdfPagedStyles(
 }
 
 figure,
-table,
-.md-editor-mermaid {
+table {
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+/* Tall Mermaid diagrams must be allowed to split — avoid + flex crashed paged.js. */
+.md-editor-mermaid {
+  break-inside: auto;
+  page-break-inside: auto;
 }
 
 /* Code fences may split across pages when taller than the page box. */
