@@ -1869,9 +1869,17 @@ class AdvancedSearchEngine {
     trees: Array<TreeNode[] | null | undefined>,
     limit = 50,
     commandContext?: import('@/utils/advancedSearch/commands').AppCommandContext,
+    hooks?: {
+      /** Fast hits (commands + name/path) before Lucivy / live body scan. */
+      onPartialHits?: (hits: AdvancedSearchHit[]) => void;
+    },
   ): Promise<AdvancedSearchHit[]> {
     const q = String(query || '').trim();
     const gen = ++this.searchGeneration;
+    const emitPartial = (hits: AdvancedSearchHit[]) => {
+      if (gen !== this.searchGeneration) return;
+      hooks?.onPartialHits?.(hits);
+    };
 
     // Empty palette: built-in commands only — never block on vault index / Lucivy (web UX).
     if (!q) {
@@ -1881,6 +1889,7 @@ class AdvancedSearchEngine {
         index: this.index,
         indexEnabled: false,
         lucivySearch: null,
+        skipContentSearch: true,
         limit,
         ...(commandContext ? { commandContext } : {}),
       });
@@ -1892,37 +1901,64 @@ class AdvancedSearchEngine {
 
     const hasMeta =
       this.enabled && this.loaded && isIndexInitialized(this.index);
+    const lucivyUsable =
+      hasMeta && this.lucivyReady && isSearchIsolationReady();
 
-    const base = await runAdvancedSearch({
+    // Warm Lucivy in background; never block the fast palette path.
+    if (
+      this.enabled &&
+      hasMeta &&
+      !this.lucivyReady &&
+      isSearchIsolationReady()
+    ) {
+      void this.ensureLucivyReady();
+    }
+
+    const fast = await runAdvancedSearch({
       query,
       trees,
       index: this.index,
       indexEnabled: hasMeta,
-      lucivySearch:
-        hasMeta && isSearchIsolationReady()
-          ? async (terms, lim) => {
-              if (!this.lucivyReady) {
-                await this.ensureLucivyReady();
-              }
-              if (!this.lucivyReady) return [];
-              const api = await this.loadLucivyApi();
-              const built = api.buildContainsAndQuery('body', terms);
-              if (!built) return [];
-              const hits = await api.lucivySearch(built, { limit: lim });
-              return hits
-                .map((h) => {
-                  const docId = this.docIdMap.numericToString.get(h.docId);
-                  if (!docId) return null;
-                  return { docId, score: h.score };
-                })
-                .filter((x): x is { docId: string; score: number } => x != null);
-            }
-          : null,
+      lucivySearch: null,
+      skipContentSearch: true,
       limit,
       ...(commandContext ? { commandContext } : {}),
     });
+    emitPartial(fast);
+    // Let the modal paint selectable command/name hits before heavy content work.
+    await yieldToMain();
+    if (gen !== this.searchGeneration) return fast;
 
-    if (gen !== this.searchGeneration) return base;
+    let base = fast;
+
+    if (lucivyUsable) {
+      const withContent = await runAdvancedSearch({
+        query,
+        trees,
+        index: this.index,
+        indexEnabled: hasMeta,
+        lucivySearch: async (terms, lim) => {
+          const api = await this.loadLucivyApi();
+          const built = api.buildContainsAndQuery('body', terms);
+          if (!built) return [];
+          const hits = await api.lucivySearch(built, { limit: lim });
+          return hits
+            .map((h) => {
+              const docId = this.docIdMap.numericToString.get(h.docId);
+              if (!docId) return null;
+              return { docId, score: h.score };
+            })
+            .filter((x): x is { docId: string; score: number } => x != null);
+        },
+        limit,
+        ...(commandContext ? { commandContext } : {}),
+      });
+      if (gen !== this.searchGeneration) return withContent;
+      base = withContent;
+      emitPartial(base);
+      await yieldToMain();
+      if (gen !== this.searchGeneration) return base;
+    }
 
     if (!this.backend) return base;
 
