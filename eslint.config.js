@@ -28,6 +28,8 @@ export default defineConfig([
     'docs/node_modules/**',
     // Cargo/Tauri build output (hashed assets are not app source)
     'src-tauri/target/**',
+    // paged.js patch snippets (partial JS; not standalone modules)
+    'vite/pagedjs/**/*.inc.js',
   ]),
   {
     files: ['electron/**/*.js'],

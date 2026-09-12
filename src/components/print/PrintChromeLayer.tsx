@@ -185,7 +185,10 @@ function clampPlacementPercent(n: number): number {
 
 function readPageSizePx(
   layerEl: HTMLElement | null,
-  fallback?: Pick<PrintChromePlacementDraft, 'pageWidthPx' | 'pageHeightPx'> | null,
+  fallback?: {
+    pageWidthPx?: number | undefined;
+    pageHeightPx?: number | undefined;
+  } | null,
 ): PrintChromePageSizePx | null {
   if (layerEl) {
     const rect = layerEl.getBoundingClientRect();
@@ -194,13 +197,10 @@ function readPageSizePx(
       heightPx: Math.max(1, rect.height),
     };
   }
-  if (
-    fallback?.pageWidthPx != null &&
-    fallback.pageHeightPx != null &&
-    fallback.pageWidthPx > 0 &&
-    fallback.pageHeightPx > 0
-  ) {
-    return { widthPx: fallback.pageWidthPx, heightPx: fallback.pageHeightPx };
+  const widthPx = fallback?.pageWidthPx;
+  const heightPx = fallback?.pageHeightPx;
+  if (widthPx != null && heightPx != null && widthPx > 0 && heightPx > 0) {
+    return { widthPx, heightPx };
   }
   return null;
 }
