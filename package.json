@@ -5,7 +5,7 @@
   "author": "Jaehyung Park <explainpark101@gmail.com>",
   "type": "module",
   "scripts": {
-    "dev": "rm -rf node_modules/.vite && vite",
+    "dev": "vite",
     "build": "bun run llms && cross-env NODE_OPTIONS=--max-old-space-size=8192 vite build && bun run docs:build && test -f dist/docs/index.html",
     "docs:dev": "bun run --cwd docs dev",
     "docs:build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 bun run --cwd docs build",

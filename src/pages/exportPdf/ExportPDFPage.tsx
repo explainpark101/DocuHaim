@@ -11,9 +11,11 @@ import { useExportPdfHaimTableInteractions } from '@/pages/exportPdf/hooks/useEx
 import { useExportPdfImageInteractions } from '@/pages/exportPdf/hooks/useExportPdfImageInteractions';
 import { useExportPdfPreviewRefs } from '@/pages/exportPdf/hooks/useExportPdfPreviewRefs';
 import { useExportPdfPrintActions } from '@/pages/exportPdf/hooks/useExportPdfPrintActions';
+import { useExportPdfPrintChrome } from '@/pages/exportPdf/hooks/useExportPdfPrintChrome';
 import { useExportPdfPrintLayout } from '@/pages/exportPdf/hooks/useExportPdfPrintLayout';
 import { useExportPdfToc } from '@/pages/exportPdf/hooks/useExportPdfToc';
-import { loadPrintPageLayout } from '@/utils/printPageLayout';
+import { getPrintPageMarginsMm, loadPrintPageLayout } from '@/utils/printPageLayout';
+import PrintChromePlacementConfirmModal from '@/components/print/PrintChromePlacementConfirmModal';
 
 export default function ExportPDFPage(props: ExportPDFPageProps) {
   const refs = useExportPdfPreviewRefs();
@@ -43,6 +45,10 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
   }, [props.documentFile?.id, props.documentValue, props.isDocumentLoading]);
 
   const doc = useExportPdfDocument({ ...props, refs, printLayoutRef });
+  const printChromeState = useExportPdfPrintChrome({
+    previewValue: doc.previewValue,
+    setPreviewValue: doc.setPreviewValue,
+  });
   const cover = useExportPdfCover({
     setPreviewValue: doc.setPreviewValue,
     currentFile: doc.currentFile,
@@ -101,6 +107,10 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
     setPreviewView: layout.setPreviewView,
     updatePreviewView: layout.updatePreviewView,
     updatePrintLayout: layout.updatePrintLayout,
+    openChromeModal: printChromeState.openChromeModal,
+    addPageNumberAndOpen: printChromeState.addPageNumberAndOpen,
+    addTextAndOpen: printChromeState.addTextAndOpen,
+    addImageAndOpen: printChromeState.addImageAndOpen,
     coverEditMode: cover.coverEditMode,
     coverSelectedIds: cover.coverSelectedIds,
     onCoverChange: cover.onCoverChange,
@@ -111,6 +121,8 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
     tocItems: toc.tocItems,
     refs,
   });
+
+  const pageMarginsMm = getPrintPageMarginsMm(layout.printLayout);
 
   const coverPages = (
     <ExportPdfCoverPages
@@ -134,6 +146,13 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       setCoverPlaceMode={cover.setCoverPlaceMode}
       undoCover={cover.undoCover}
       redoCover={cover.redoCover}
+      printChrome={printChromeState.parsedChrome}
+      printChromeMarginsMm={pageMarginsMm}
+      bodyPageCount={layout.bodyPageCount}
+      chromeEditable
+      chromeDraftPlacement={printChromeState.livePlacementDraft}
+      onChromePlacementDraftChange={printChromeState.onPlacementDraftChange}
+      onChromePlacementDraftCommit={printChromeState.onPlacementDraftCommit}
     />
   );
 
@@ -164,6 +183,12 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       metricRef={layout.metricRef}
       bodyMarkdown={doc.bodyMarkdown}
       previewFootnotesRenderKey={layout.previewFootnotesRenderKey}
+      printChrome={printChromeState.parsedChrome}
+      printChromeMarginsMm={pageMarginsMm}
+      chromeEditable
+      chromeDraftPlacement={printChromeState.livePlacementDraft}
+      onChromePlacementDraftChange={printChromeState.onPlacementDraftChange}
+      onChromePlacementDraftCommit={printChromeState.onPlacementDraftCommit}
     />
   );
 
@@ -210,6 +235,7 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
   );
 
   return (
+    <>
     <ExportPdfShell
       isDocumentLoading={Boolean(props.isDocumentLoading)}
       hasNavigationSession={Boolean(props.hasNavigationSession)}
@@ -238,6 +264,10 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       fontModalOpen={layout.fontModalOpen}
       fonts={layout.fonts}
       setFonts={layout.setFonts}
+      chromeModalOpen={printChromeState.chromeModalOpen}
+      setChromeModalOpen={printChromeState.setChromeModalOpen}
+      printChrome={printChromeState.parsedChrome}
+      applyPrintChrome={printChromeState.applyChrome}
       toggleCoverEditMode={cover.toggleCoverEditMode}
       coverEditMode={cover.coverEditMode}
       parsedCover={doc.parsedCover}
@@ -290,5 +320,12 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       haimTableEdit={tables.haimTableEdit}
       onHaimTableEditFailed={tables.onEditFailed}
     />
+      <PrintChromePlacementConfirmModal
+        draft={printChromeState.pendingPlacement}
+        onApplyAll={printChromeState.applyPlacementAll}
+        onApplyThisPage={printChromeState.applyPlacementThisPage}
+        onCancel={printChromeState.cancelPlacement}
+      />
+    </>
   );
 }

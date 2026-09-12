@@ -1,7 +1,10 @@
 import {
   PRINT_PAGE_MARGIN_MM,
-  getCssPageSizeDescriptor,
+  formatPrintPageMarginsCss,
+  normalizePrintPageMarginsMm,
+  type PrintPageMarginsMm,
   type PrintPageSizeId,
+  getCssPageSizeDescriptor,
 } from '@/utils/printPageLayout';
 import { DEFAULT_PRINT_FONTS } from '@/utils/print/printFonts';
 
@@ -9,8 +12,8 @@ export type ExportPdfPagedStyleOptions = {
   bodyLineHeight?: string;
   headingLineHeight?: string;
   baseFontSizePx?: string;
-  /** @page margin in mm (default Chromium 10mm). Use 0 for full-bleed pages. */
-  marginMm?: number;
+  /** @page margin in mm (number = uniform; object = TRBL). Default Chromium 10mm. */
+  marginMm?: number | PrintPageMarginsMm;
 };
 
 /**
@@ -29,14 +32,26 @@ export function buildExportPdfPagedStyles(
   const bodyLh = options.bodyLineHeight || DEFAULT_PRINT_FONTS.bodyLineHeight;
   const headingLh = options.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight;
   const baseFs = options.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx;
-  const marginMm =
+  const margins: PrintPageMarginsMm =
     typeof options.marginMm === 'number' && Number.isFinite(options.marginMm)
-      ? Math.max(0, options.marginMm)
-      : PRINT_PAGE_MARGIN_MM;
+      ? {
+          top: Math.max(0, options.marginMm),
+          right: Math.max(0, options.marginMm),
+          bottom: Math.max(0, options.marginMm),
+          left: Math.max(0, options.marginMm),
+        }
+      : options.marginMm && typeof options.marginMm === 'object'
+        ? normalizePrintPageMarginsMm(options.marginMm)
+        : {
+            top: PRINT_PAGE_MARGIN_MM,
+            right: PRINT_PAGE_MARGIN_MM,
+            bottom: PRINT_PAGE_MARGIN_MM,
+            left: PRINT_PAGE_MARGIN_MM,
+          };
   return `
 @page {
   size: ${size};
-  margin: ${marginMm}mm;
+  margin: ${formatPrintPageMarginsCss(margins)};
 }
 
 /* Content root before chunk + page boxes after chunk */

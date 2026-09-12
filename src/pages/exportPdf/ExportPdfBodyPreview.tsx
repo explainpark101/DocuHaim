@@ -3,10 +3,13 @@ import { MdPreview } from 'md-editor-rt';
 import '@/styles/md-editor-rt/style.css';
 import CoverSlide from '@/components/noteCover/CoverSlide';
 import PrintPreviewStage from '@/components/print/PrintPreviewStage';
+import { PrintChromePagesMount } from '@/components/print/PrintChromeLayer';
 import { MD_EDITOR_EXPORT_PDF_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import type { NoteCover } from '@/utils/noteCover';
-import type { PrintPageSizeId } from '@/utils/printPageLayout';
+import type { PrintChromeDoc } from '@/utils/printChrome';
+import type { PrintPageMarginsMm, PrintPageSizeId } from '@/utils/printPageLayout';
+import type { PrintChromePlacementDraft } from '@/components/print/PrintChromeLayer';
 import type {
   PrintPreviewNavigation,
   PrintPreviewPageCount,
@@ -45,6 +48,12 @@ export type ExportPdfBodyPreviewProps = {
   metricRef: RefObject<HTMLDivElement | null>;
   bodyMarkdown: string;
   previewFootnotesRenderKey: number;
+  printChrome: PrintChromeDoc | null;
+  printChromeMarginsMm: PrintPageMarginsMm;
+  chromeEditable?: boolean;
+  chromeDraftPlacement?: PrintChromePlacementDraft | null;
+  onChromePlacementDraftChange?: ((draft: PrintChromePlacementDraft | null) => void) | undefined;
+  onChromePlacementDraftCommit?: ((draft: PrintChromePlacementDraft) => void) | undefined;
 };
 
 export function ExportPdfBodyPreview({
@@ -73,6 +82,12 @@ export function ExportPdfBodyPreview({
   metricRef,
   bodyMarkdown,
   previewFootnotesRenderKey,
+  printChrome,
+  printChromeMarginsMm,
+  chromeEditable = true,
+  chromeDraftPlacement = null,
+  onChromePlacementDraftChange,
+  onChromePlacementDraftCommit,
 }: ExportPdfBodyPreviewProps) {
   const coverStackRef = useRef<HTMLDivElement | null>(null);
   const zoomClipHeight = useExportPdfPreviewZoomClip(
@@ -150,6 +165,19 @@ export function ExportPdfBodyPreview({
             data-export-pdf-pages="1"
             className="export-pdf-pages w-full"
           />
+          <PrintChromePagesMount
+            pagesHostRef={pagesHostRef}
+            chrome={printChrome}
+            bodyPageCount={bodyPageCount}
+            hasCover={Boolean(activeCover?.enabled)}
+            marginsMm={printChromeMarginsMm}
+            getPresignedUrl={getPresignedUrl}
+            layoutKey={packLayoutKey}
+            editable={chromeEditable}
+            draftPlacement={chromeDraftPlacement}
+            onPlacementDraftChange={onChromePlacementDraftChange}
+            onPlacementDraftCommit={onChromePlacementDraftCommit}
+          />
         </div>
         {/* Staging: continuous MdPreview for measure/fit; paged.js clones into pagesHost. */}
         <div
@@ -157,7 +185,10 @@ export function ExportPdfBodyPreview({
           style={{
             width: 'var(--print-page-width)',
             minHeight: 'var(--print-page-height)',
-            padding: 'var(--print-page-margin)',
+            paddingTop: 'var(--print-page-margin-top, var(--print-page-margin))',
+            paddingRight: 'var(--print-page-margin-right, var(--print-page-margin))',
+            paddingBottom: 'var(--print-page-margin-bottom, var(--print-page-margin))',
+            paddingLeft: 'var(--print-page-margin-left, var(--print-page-margin))',
             position: 'absolute',
             left: 0,
             top: 0,

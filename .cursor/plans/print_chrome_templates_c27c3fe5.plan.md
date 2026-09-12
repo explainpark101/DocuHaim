@@ -4,19 +4,19 @@ overview: 노트별 `<!-- print-chrome -->` 메타로 페이지번호·고정 �
 todos:
   - id: schema-parse
     content: printChrome types (page-number|text|image) + parse/serialize/upsert/rebuildLeadingMeta with note-cover order
-    status: pending
+    status: completed
   - id: docs
     content: docs/custom-markdown/print-chrome.md + index + VitePress sidebar
-    status: pending
+    status: completed
   - id: render-layer
-    content: "PrintChromeLayer on each .pagedjs_page + cover; respect --print-page-margin / zeroPageMargin; page-number tokens; getPresignedUrl images"
-    status: pending
+    content: PrintChromeLayer on each .pagedjs_page + cover; respect --print-page-margin / zeroPageMargin; page-number tokens; getPresignedUrl images
+    status: completed
   - id: modal-ui
     content: PrintChromeModal + ExportPdfShell toolbar + document parse/upsert via exportPdf hooks
-    status: pending
+    status: completed
   - id: as-actions
     content: printActions open/add page-number, text, image (+ focus); coexist with print-toggle-zero-page-margin
-    status: pending
+    status: completed
 isProject: false
 ---
 

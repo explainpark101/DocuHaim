@@ -120,8 +120,9 @@ export function parseDocumentSettingsMeta(markdown: string): ParseDocumentSettin
 function isLeadingMetaRegion(before: string): boolean {
   const rest = String(before || '')
     .replace(/^\uFEFF/, '')
-    .replace(/<!--\s*note-cover\b[\s\S]*?-->/i, '')
-    .replace(/<!--\s*footnotes\b[\s\S]*?-->/i, '')
+    .replace(/<!--\s*note-cover\b[\s\S]*?-->/gi, '')
+    .replace(/<!--\s*print-chrome\b[\s\S]*?-->/gi, '')
+    .replace(/<!--\s*footnotes\b[\s\S]*?-->/gi, '')
     .trim();
   return rest === '';
 }
@@ -142,7 +143,8 @@ export function upsertDocumentSettingsMeta(
   if (!meta) return body;
 
   const comment = serializeDocumentSettingsComment(meta);
-  const leadingMetaRe = /^[\uFEFF\s]*(?:<!--\s*note-cover\b[\s\S]*?-->\s*)?(?:<!--\s*footnotes\b[\s\S]*?-->\s*)?/i;
+  const leadingMetaRe =
+    /^[\uFEFF\s]*(?:<!--\s*note-cover\b[\s\S]*?-->\s*)?(?:<!--\s*print-chrome\b[\s\S]*?-->\s*)?(?:<!--\s*footnotes\b[\s\S]*?-->\s*)?/i;
   const match = leadingMetaRe.exec(body);
   const insertAt = match?.[0]?.length ?? 0;
   const head = body.slice(0, insertAt).replace(/\s*$/, '');

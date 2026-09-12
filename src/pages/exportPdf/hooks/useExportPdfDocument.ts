@@ -19,6 +19,7 @@ import {
   parseNoteCover,
   stripNoteCoverComment,
 } from '@/utils/noteCover';
+import { stripPrintChromeComment } from '@/utils/printChrome';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { savePrintMarkdownToStorage } from '@/utils/printMarkdownSave';
 import type { PrintPageLayout } from '@/utils/printPageLayout';
@@ -93,7 +94,7 @@ export function useExportPdfDocument({
   }, [previewValue]);
 
   const bodyMarkdown = useMemo(
-    () => stripNoteCoverComment(previewValue),
+    () => stripPrintChromeComment(stripNoteCoverComment(previewValue)),
     [previewValue],
   );
 

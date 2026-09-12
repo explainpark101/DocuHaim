@@ -72,6 +72,7 @@ export default defineConfig({
             { text: 'Encrypted markdown (.enc.md)', link: '/custom-markdown/enc-md' },
             { text: 'Chat saved note', link: '/custom-markdown/chat-saved-note' },
             { text: 'Note cover', link: '/custom-markdown/note-cover' },
+            { text: 'Print chrome', link: '/custom-markdown/print-chrome' },
             { text: 'Haim table', link: '/custom-markdown/haim-table' },
             { text: 'Plan frontmatter', link: '/custom-markdown/plan-frontmatter' },
             { text: 'Footnotes / Sources', link: '/custom-markdown/footnotes' },

@@ -12,6 +12,7 @@ import { buildExportPdfPagedStyles } from '@/pages/exportPdf/exportPdfPagedStyle
 import type { ExportPdfPagedStatus } from '@/pages/exportPdf/exportPdfPagedStatus';
 import {
   getPrintPageInnerSizePx,
+  type PrintPageMarginsMm,
   type PrintPageSizeId,
 } from '@/utils/printPageLayout';
 
@@ -20,8 +21,8 @@ type Args = {
   outputRef: RefObject<HTMLElement | null>;
   layoutKey: string;
   pageSizeId: PrintPageSizeId;
-  /** paged.js @page margin in mm (0 = full-bleed content box). */
-  marginMm?: number;
+  /** paged.js @page margin in mm (0 = full-bleed; object = TRBL). */
+  marginMm?: number | PrintPageMarginsMm;
   bodyLineHeight?: string;
   headingLineHeight?: string;
   baseFontSizePx?: string;
@@ -104,7 +105,7 @@ function buildPagedSourceFromPreview(
   preview: Element,
   options: {
     pageSizeId: PrintPageSizeId;
-    marginMm?: number;
+    marginMm?: number | PrintPageMarginsMm;
     bodyLineHeight?: string;
     headingLineHeight?: string;
     baseFontSizePx?: string;
@@ -165,6 +166,12 @@ function summarizeLayoutKey(layoutKey: string): string {
   return `${layoutKey.slice(0, 80)}…(${layoutKey.length} chars)`;
 }
 
+function marginMmDepKey(marginMm: number | PrintPageMarginsMm | undefined): string {
+  if (marginMm == null) return '';
+  if (typeof marginMm === 'number') return String(marginMm);
+  return `${marginMm.top},${marginMm.right},${marginMm.bottom},${marginMm.left}`;
+}
+
 /**
  * Run paged.js Previewer from staging MdPreview into outputRef.
  * Re-runs only when `layoutKey` / `pageSizeId` change — not on every fit-hook style mutation
@@ -188,6 +195,8 @@ export function usePagedJsPreview({
   const generationRef = useRef(0);
   const previewerRef = useRef<PagedPreviewer | null>(null);
   const runSeqRef = useRef(0);
+  /** Object margins are new each render — depend on a stable key, not identity. */
+  const marginKey = marginMmDepKey(marginMm);
 
   useEffect(() => {
     let cancelled = false;
@@ -581,7 +590,7 @@ export function usePagedJsPreview({
     bodyLineHeight,
     headingLineHeight,
     layoutKey,
-    marginMm,
+    marginKey,
     outputRef,
     pageSizeId,
     sourceRef,

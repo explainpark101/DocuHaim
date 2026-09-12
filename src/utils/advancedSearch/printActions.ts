@@ -17,7 +17,8 @@ export type PrintToolbarFocusTarget =
   | 'paper'
   | 'image-max'
   | 'zoom'
-  | 'zero-margin';
+  | 'zero-margin'
+  | 'page-chrome';
 
 export type PrintActionId =
   | 'print-save'
@@ -26,6 +27,10 @@ export type PrintActionId =
   | 'print-change-paper'
   | 'print-toggle-toc'
   | 'print-toggle-zero-page-margin'
+  | 'print-page-chrome'
+  | 'print-add-page-number'
+  | 'print-add-chrome-text'
+  | 'print-add-chrome-image'
   | 'print-zoom-in'
   | 'print-zoom-out'
   | 'print-zoom-reset'
@@ -46,6 +51,7 @@ export type PrintActionId =
   | 'print-focus-image-max'
   | 'print-focus-zoom'
   | 'print-focus-zero-margin'
+  | 'print-focus-page-chrome'
   | 'print-scroll-heading'
   | `print-paper-${PrintPageSizeId}`;
 
@@ -200,21 +206,30 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     description: '목차 사이드바 보이기/숨기기',
     keywords: ['toc', '목차', 'outline', 'sidebar'],
   },
+  // zero-page-margin toggle/focus stay registered in handlers but are hidden from AS UI
   {
-    id: 'print-toggle-zero-page-margin',
-    title: '페이지 여백 없음 토글',
-    description: 'paged.js 내부 여백을 끄고 꽉 차게 인쇄 (인쇄 대화상자 여백도 없음)',
-    keywords: [
-      'margin',
-      '여백',
-      '없음',
-      'bleed',
-      'full',
-      '꽉',
-      'zero',
-      'page margin',
-      'full bleed',
-    ],
+    id: 'print-page-chrome',
+    title: '페이지 크롬 설정',
+    description: '쪽번호·고정 텍스트·이미지 크롬 모달 열기',
+    keywords: ['chrome', '크롬', 'header', 'footer', '쪽번호', 'page number', 'watermark'],
+  },
+  {
+    id: 'print-add-page-number',
+    title: '쪽번호 크롬 추가',
+    description: '하단 중앙 {page} 템플릿을 추가하고 모달 열기',
+    keywords: ['page number', '쪽번호', 'page', 'chrome', '크롬'],
+  },
+  {
+    id: 'print-add-chrome-text',
+    title: '텍스트 크롬 추가',
+    description: '고정 텍스트 템플릿을 추가하고 모달 열기',
+    keywords: ['text', '텍스트', 'header', 'chrome', '크롬'],
+  },
+  {
+    id: 'print-add-chrome-image',
+    title: '이미지 크롬 추가',
+    description: '고정 이미지 템플릿을 추가하고 모달 열기',
+    keywords: ['image', '이미지', 'logo', '로고', 'chrome', '크롬'],
   },
   {
     id: 'print-zoom-in',
@@ -331,10 +346,10 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     keywords: ['focus', 'zoom', '포커스', '확대'],
   },
   {
-    id: 'print-focus-zero-margin',
-    title: '여백 없음으로 포커스',
-    description: '툴바 · 페이지 여백 없음',
-    keywords: ['focus', 'margin', '여백', '포커스', '없음'],
+    id: 'print-focus-page-chrome',
+    title: '페이지 크롬으로 포커스',
+    description: '툴바 · 페이지 크롬',
+    keywords: ['focus', 'chrome', '크롬', '포커스', '쪽번호'],
   },
 ] as const;
 

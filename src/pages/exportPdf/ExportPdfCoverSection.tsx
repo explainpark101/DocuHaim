@@ -2,9 +2,13 @@ import type { RefObject } from 'react';
 import CoverEditor from '@/components/noteCover/CoverEditor';
 import CoverSlide from '@/components/noteCover/CoverSlide';
 import CoverSidebar from '@/components/noteCover/CoverSidebar';
+import PrintChromeLayer from '@/components/print/PrintChromeLayer';
 import PrintCoverPageChrome from '@/components/print/PrintCoverPageChrome';
 import type { NoteCover } from '@/utils/noteCover';
 import type { CoverPlaceMode } from '@/utils/noteCover/placeMode';
+import type { PrintPageMarginsMm } from '@/utils/printPageLayout';
+import type { PrintChromeDoc } from '@/utils/printChrome';
+import type { PrintChromePlacementDraft } from '@/components/print/PrintChromeLayer';
 import type { ExportPdfCoverChromeState } from '@/pages/exportPdf/hooks/useExportPdfCoverChrome';
 import type { ExportPdfDocumentFile } from '@/pages/exportPdf/exportPdfTypes';
 
@@ -29,6 +33,13 @@ type CoverPagesProps = {
   setCoverPlaceMode: React.Dispatch<React.SetStateAction<CoverPlaceMode>>;
   undoCover: () => void;
   redoCover: () => void;
+  printChrome?: PrintChromeDoc | null;
+  printChromeMarginsMm?: PrintPageMarginsMm;
+  bodyPageCount?: number;
+  chromeEditable?: boolean;
+  chromeDraftPlacement?: PrintChromePlacementDraft | null;
+  onChromePlacementDraftChange?: ((draft: PrintChromePlacementDraft | null) => void) | undefined;
+  onChromePlacementDraftCommit?: ((draft: PrintChromePlacementDraft) => void) | undefined;
 };
 
 export function ExportPdfCoverPages({
@@ -52,7 +63,30 @@ export function ExportPdfCoverPages({
   setCoverPlaceMode,
   undoCover,
   redoCover,
+  printChrome = null,
+  printChromeMarginsMm = { top: 10, right: 10, bottom: 10, left: 10 },
+  bodyPageCount = 1,
+  chromeEditable = false,
+  chromeDraftPlacement = null,
+  onChromePlacementDraftChange,
+  onChromePlacementDraftCommit,
 }: CoverPagesProps) {
+  const coverChromeOverlay =
+    printChrome && printChrome.showOnCover && printChrome.templates.length > 0 ? (
+      <PrintChromeLayer
+        chrome={printChrome}
+        isCover
+        hasCover={Boolean(activeCover?.enabled)}
+        bodyPageCount={bodyPageCount}
+        marginsMm={printChromeMarginsMm}
+        getPresignedUrl={getPresignedUrl}
+        editable={chromeEditable}
+        draftPlacement={chromeDraftPlacement}
+        onPlacementDraftChange={onChromePlacementDraftChange}
+        onPlacementDraftCommit={onChromePlacementDraftCommit}
+      />
+    ) : null;
+
   if (!activeCover?.enabled && !coverEditMode) {
     return null;
   }
@@ -84,14 +118,20 @@ export function ExportPdfCoverPages({
               onRedo={redoCover}
               className="mx-auto print:hidden print:mx-0"
             />
+            <div className="pointer-events-none absolute inset-0 print:hidden">
+              {coverChromeOverlay}
+            </div>
           </PrintCoverPageChrome>
         </div>
         {activeCover.enabled ? (
-          <CoverSlide
-            cover={activeCover}
-            getPresignedUrl={getPresignedUrl}
-            className="mx-auto hidden shadow-none print:block print:mx-0"
-          />
+          <div className="relative mx-auto hidden w-fit max-w-full print:block">
+            <CoverSlide
+              cover={activeCover}
+              getPresignedUrl={getPresignedUrl}
+              className="mx-auto shadow-none print:mx-0"
+            />
+            {coverChromeOverlay}
+          </div>
         ) : null}
       </>
     );
@@ -109,6 +149,7 @@ export function ExportPdfCoverPages({
             getPresignedUrl={getPresignedUrl}
             className="mx-auto shadow-[0_8px_28px_rgba(15,23,42,0.12)] print:shadow-none print:mx-0"
           />
+          {coverChromeOverlay}
         </PrintCoverPageChrome>
       </div>
     );

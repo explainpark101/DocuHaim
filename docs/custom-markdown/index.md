@@ -22,6 +22,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [enc-md.md](./enc-md.md) | `.enc.md` vault 파일 | 암호화 노트 |
 | [chat-saved-note.md](./chat-saved-note.md) | `<!-- chat-with-myself … -->` + 카드 | 채팅→노트 |
 | [note-cover.md](./note-cover.md) | `<!-- note-cover … -->` | 인쇄 표지 |
+| [print-chrome.md](./print-chrome.md) | `<!-- print-chrome … -->` | 인쇄 페이지 크롬 |
 | [haim-table.md](./haim-table.md) | `<!-- haim-table … -->` + GFM 표 | 에디터 / 미리보기 / 인쇄 / 다운로드 |
 | [plan-frontmatter.md](./plan-frontmatter.md) | `---` YAML plan (`name` / `todos` / …) | 에디터 / 미리보기 / 인쇄 |
 | [footnotes.md](./footnotes.md) | `[^1]` + `<!-- footnotes {json} -->` | 에디터 / 미리보기 / 인쇄 |

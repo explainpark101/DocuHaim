@@ -1,21 +1,23 @@
-import { useEffect, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   LayoutTemplate,
   ListTree,
   LoaderCircle,
+  PanelTop,
   Printer,
   Save,
   Settings,
 } from 'lucide-react';
 import { exportPdfLoadDebug } from '@/pages/exportPdf/exportPdfLoadDebug';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
+import PrintChromeModal from '@/components/print/PrintChromeModal';
+import ExportPdfToolsDock from '@/components/print/ExportPdfToolsDock';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
 import PrintPreviewZoomControls from '@/components/print/PrintPreviewZoomControls';
 import PrintVisiblePageBadge from '@/components/print/PrintVisiblePageBadge';
-import PrintZeroPageMarginSwitch from '@/components/print/PrintZeroPageMarginSwitch';
 import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
 import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
@@ -26,9 +28,12 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { PrintPgbrContextMenu } from '@/components/print/PrintPgbrContextMenu';
 import { tocTitleTextClass } from '@/hooks/useTocTitleWrap';
-import { buildPrintPageAtRule, getPrintPageMarginMm } from '@/utils/printPageLayout';
+import { useIsLandscapeOrientation } from '@/hooks/useIsLandscapeOrientation';
+import { useExportPdfToolsDock } from '@/pages/exportPdf/hooks/useExportPdfToolsDock';
+import { buildPrintPageAtRule, getPrintPageMarginsMm } from '@/utils/printPageLayout';
 import type { PrintPageLayout } from '@/utils/printPageLayout';
 import type { PrintPreviewViewState } from '@/utils/printPreviewView';
+import type { PrintChromeDoc } from '@/utils/printChrome';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { findExportPdfOverlayPortal } from '@/utils/cssZoom';
 import { findHaimTablePreviewRoot } from '@/utils/haimTable';
@@ -91,6 +96,10 @@ export type ExportPdfShellProps = {
   fontModalOpen: boolean;
   fonts: PrintFontsState;
   setFonts: React.Dispatch<React.SetStateAction<PrintFontsState>>;
+  chromeModalOpen: boolean;
+  setChromeModalOpen: (open: boolean) => void;
+  printChrome: PrintChromeDoc | null;
+  applyPrintChrome: (chrome: PrintChromeDoc | null) => void;
   toggleCoverEditMode: () => void;
   coverEditMode: boolean;
   parsedCover: NoteCover | null | undefined;
@@ -174,6 +183,10 @@ export function ExportPdfShell({
   fontModalOpen,
   fonts,
   setFonts,
+  chromeModalOpen,
+  setChromeModalOpen,
+  printChrome,
+  applyPrintChrome,
   toggleCoverEditMode,
   coverEditMode,
   parsedCover,
@@ -227,6 +240,22 @@ export function ExportPdfShell({
   onHaimTableEditFailed,
 }: ExportPdfShellProps) {
   const totalPageCount = (hasEnabledCover ? 1 : 0) + Math.max(1, bodyPageCount);
+  const isLandscape = useIsLandscapeOrientation();
+  const toolsDock = useExportPdfToolsDock({
+    isLandscape,
+    fontModalOpen,
+    setFontModalOpen,
+    chromeModalOpen,
+    setChromeModalOpen,
+  });
+  const onToolsDockWidthChange = useCallback(
+    (width: number) => {
+      toolsDock.setToolsDockWidth(width);
+    },
+    [toolsDock.setToolsDockWidth],
+  );
+  const rightChromeWidth =
+    (tocVisible ? tocWidth : 0) + (toolsDock.dockTool ? toolsDock.toolsDockWidth : 0);
 
   useEffect(() => {
     if (!isDocumentLoading) return;
@@ -293,10 +322,7 @@ export function ExportPdfShell({
       ) : null}
       <style data-export-pdf-shell-style="1">{printFontStyles}</style>
       <style data-export-pdf-shell-style="1">
-        {buildPrintPageAtRule(
-          printLayout.pageSizeId,
-          getPrintPageMarginMm(printLayout.zeroPageMargin),
-        )}
+        {buildPrintPageAtRule(printLayout.pageSizeId, getPrintPageMarginsMm(printLayout))}
       </style>
       <div
         ref={headerRef}
@@ -327,7 +353,17 @@ export function ExportPdfShell({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setFontModalOpen(true)}
+              onClick={toolsDock.openChrome}
+              data-print-toolbar="page-chrome"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
+              aria-label="페이지 크롬"
+            >
+              <PanelTop size={16} />
+              페이지 크롬
+            </button>
+            <button
+              type="button"
+              onClick={toolsDock.openFont}
               data-print-toolbar="font"
               className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 dark:text-odp-fg hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
               aria-label="폰트 설정"
@@ -381,10 +417,6 @@ export function ExportPdfShell({
               value={printLayout.pageSizeId}
               onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}
             />
-            <PrintZeroPageMarginSwitch
-              checked={printLayout.zeroPageMargin}
-              onCheckedChange={(zeroPageMargin) => updatePrintLayout({ zeroPageMargin })}
-            />
             <PrintPreviewZoomControls
               value={previewView.zoomPercent}
               onChange={(zoomPercent) => updatePreviewView({ zoomPercent })}
@@ -422,13 +454,14 @@ export function ExportPdfShell({
         style={{
           '--export-toc-width': `${tocWidth}px`,
           '--export-cover-sidebar-width': `${coverChromeWidth}px`,
+          '--export-right-chrome-width': `${rightChromeWidth}px`,
         } as CSSProperties}
       >
         <div
           ref={setPreviewContainerRef}
           className={`export-pdf-preview-scroll relative px-4 py-6 min-h-0 flex-1 bg-neutral-200 dark:bg-neutral-800 text-gray-900 print:bg-white print:h-auto print:max-h-none print:overflow-visible print:p-0 ${
             isLiveScroll1 ? 'overflow-auto' : 'overflow-hidden'
-          } ${tocVisible ? 'md:pr-(--export-toc-width)' : ''} ${
+          } ${rightChromeWidth > 0 ? 'md:pr-(--export-right-chrome-width)' : ''} ${
             coverEditMode ? 'md:pl-(--export-cover-sidebar-width)' : ''
           }`}
         >
@@ -445,8 +478,12 @@ export function ExportPdfShell({
         {coverSidebar}
         {tocVisible ? (
           <aside
-            className="hidden md:flex fixed right-0 bottom-0 border-l border-gray-200 dark:border-odp-borderSoft bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-sm z-30 print:hidden"
-            style={{ top: tocTopPx, width: tocWidth }}
+            className="hidden md:flex fixed bottom-0 border-l border-gray-200 dark:border-odp-borderSoft bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-sm z-30 print:hidden"
+            style={{
+              top: tocTopPx,
+              width: tocWidth,
+              right: toolsDock.dockTool ? toolsDock.toolsDockWidth : 0,
+            }}
           >
             {/* TocResizeHandle is JS; edge prop typing is a string-literal overload artifact. */}
             {/* @ts-expect-error js resize handle prop types */}
@@ -537,11 +574,58 @@ export function ExportPdfShell({
         ) : null}
       </div>
 
+      <ExportPdfToolsDock
+        open={Boolean(toolsDock.dockTool)}
+        title={toolsDock.dockTool === 'chrome' ? '페이지 크롬' : '프린트 폰트 설정'}
+        topPx={tocTopPx}
+        onClose={toolsDock.closeDock}
+        onUndock={
+          toolsDock.dockTool === 'chrome'
+            ? toolsDock.undockChromeToModal
+            : toolsDock.undockFontToModal
+        }
+        onWidthChange={onToolsDockWidthChange}
+      >
+        {toolsDock.dockTool === 'font' ? (
+          <PrintFontOptionsModal
+            isOpen
+            presentation="dock"
+            onClose={toolsDock.closeDock}
+            fonts={fonts}
+            onFontsChange={(next: PrintFontsState) => setFonts(next)}
+          />
+        ) : toolsDock.dockTool === 'chrome' ? (
+          <PrintChromeModal
+            isOpen
+            presentation="dock"
+            onClose={toolsDock.closeDock}
+            chrome={printChrome}
+            onApply={applyPrintChrome}
+            currentFile={currentFile}
+            printLayout={printLayout}
+            onPrintLayoutChange={updatePrintLayout}
+          />
+        ) : null}
+      </ExportPdfToolsDock>
+
       <PrintFontOptionsModal
-        isOpen={fontModalOpen}
+        isOpen={fontModalOpen && toolsDock.fontPresentation === 'modal'}
+        presentation="modal"
         onClose={() => setFontModalOpen(false)}
+        onDock={isLandscape ? toolsDock.dockFontFromModal : undefined}
         fonts={fonts}
         onFontsChange={(next: PrintFontsState) => setFonts(next)}
+      />
+      <PrintChromeModal
+        isOpen={chromeModalOpen && toolsDock.chromePresentation === 'modal'}
+        presentation="modal"
+        onClose={() => setChromeModalOpen(false)}
+        onDock={isLandscape ? toolsDock.dockChromeFromModal : undefined}
+        chrome={printChrome}
+        onApply={applyPrintChrome}
+        currentFile={currentFile}
+        printLayout={printLayout}
+        onPrintLayoutChange={updatePrintLayout}
       />
       <WikiImageSizeModal
         key={

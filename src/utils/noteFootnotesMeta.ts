@@ -76,11 +76,12 @@ export function parseNoteFootnotesMeta(markdown: string): ParseNoteFootnotesMeta
   return { meta, body, range: { start, end } };
 }
 
-/** True when `before` is only BOM, whitespace, and/or a leading note-cover comment. */
+/** True when `before` is only BOM, whitespace, and/or leading meta comments. */
 function isLeadingMetaRegion(before: string): boolean {
   const rest = String(before || '')
     .replace(/^\uFEFF/, '')
-    .replace(/<!--\s*note-cover\b[\s\S]*?-->/i, '')
+    .replace(/<!--\s*note-cover\b[\s\S]*?-->/gi, '')
+    .replace(/<!--\s*print-chrome\b[\s\S]*?-->/gi, '')
     .trim();
   return rest === '';
 }
@@ -101,7 +102,7 @@ export function serializeNoteFootnotesComment(meta: NoteFootnotesMeta): string {
 }
 
 /**
- * Insert/replace leading footnotes comment (keeps note-cover first when present).
+ * Insert/replace leading footnotes comment (keeps note-cover + print-chrome first).
  */
 export function upsertNoteFootnotesMeta(
   markdown: string,
@@ -113,10 +114,12 @@ export function upsertNoteFootnotesMeta(
   if (!meta) return body;
 
   const comment = serializeNoteFootnotesComment(meta);
-  const coverMatch = /^[\uFEFF\s]*<!--\s*note-cover\b[\s\S]*?-->/.exec(body);
-  if (coverMatch) {
-    const head = coverMatch[0];
-    const rest = body.slice(head.length).replace(/^\n*/, '\n');
+  const leadingRe =
+    /^[\uFEFF\s]*(?:<!--\s*note-cover\b[\s\S]*?-->\s*)?(?:<!--\s*print-chrome\b[\s\S]*?-->\s*)?/i;
+  const match = leadingRe.exec(body);
+  if (match?.[0]) {
+    const head = match[0].replace(/\s*$/, '');
+    const rest = body.slice(match[0].length).replace(/^\n*/, '\n');
     return `${head}\n${comment}${rest}`;
   }
 

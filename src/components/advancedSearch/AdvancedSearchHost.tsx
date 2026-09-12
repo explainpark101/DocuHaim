@@ -96,6 +96,7 @@ const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
   'print-focus-image-max': 'image-max',
   'print-focus-zoom': 'zoom',
   'print-focus-zero-margin': 'zero-margin',
+  'print-focus-page-chrome': 'page-chrome',
 };
 
 /** Parent folder of an open file (`''` = vault root). */

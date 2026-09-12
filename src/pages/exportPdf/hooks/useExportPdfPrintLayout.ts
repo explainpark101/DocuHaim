@@ -11,10 +11,13 @@ import { FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT } from '@/utils/previewFootnotesSet
 import { printFontCssVarValue } from '@/utils/fontFallback';
 import {
   buildPrintLayoutCssVars,
+  arePrintPageMarginsZero,
   getPrintPageInnerSizePx,
-  getPrintPageMarginMm,
+  getPrintPageMarginsMm,
   loadPrintPageLayout,
   savePrintPageLayout,
+  withPrintPageMargins,
+  ZERO_PRINT_PAGE_MARGINS_MM,
   type PrintPageLayout,
 } from '@/utils/printPageLayout';
 import {
@@ -78,7 +81,17 @@ export function useExportPdfPrintLayout({
     refs;
 
   const [fonts, setFonts] = useState(() => ({ ...DEFAULT_PRINT_FONTS }));
-  const [printLayout, setPrintLayout] = useState<PrintPageLayout>(() => loadPrintPageLayout());
+  const [printLayout, setPrintLayout] = useState<PrintPageLayout>(() => {
+    const loaded = loadPrintPageLayout();
+    // Ensure marginsMm always present (legacy localStorage / HMR).
+    if (loaded.marginsMm && typeof loaded.marginsMm === 'object') return loaded;
+    return {
+      ...loaded,
+      marginsMm: loaded.zeroPageMargin
+        ? { top: 0, right: 0, bottom: 0, left: 0 }
+        : { top: 10, right: 10, bottom: 10, left: 10 },
+    };
+  });
   printLayoutRef.current = printLayout;
 
   const [fontModalOpen, setFontModalOpen] = useState(false);
@@ -90,7 +103,8 @@ export function useExportPdfPrintLayout({
   const [previewFootnotesRenderKey, setPreviewFootnotesRenderKey] = useState(0);
   const [printStoreEpoch, setPrintStoreEpoch] = useState(() => getPrintSettingsStoreEpoch());
 
-  const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}|${printLayout.zeroPageMargin ? '0m' : '10m'}`;
+  const pageMargins = getPrintPageMarginsMm(printLayout);
+  const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}|${pageMargins.top},${pageMargins.right},${pageMargins.bottom},${pageMargins.left}`;
   const fontLayoutKey = `${fonts.baseFontSizePx}|${fonts.bodyLineHeight}|${fonts.headingLineHeight}`;
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
   usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
@@ -103,8 +117,7 @@ export function useExportPdfPrintLayout({
 
   useEffect(() => mountExportPdfBrowserPrintPrep(), []);
 
-  const pageMarginMm = getPrintPageMarginMm(printLayout.zeroPageMargin);
-  const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId, pageMarginMm);
+  const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId, pageMargins);
   const effectivePageInnerHeightPx =
     pageInnerHeightPx > 1 ? pageInnerHeightPx : printPageInnerPx.heightPx;
   const pagedSourceKey = `${printLayoutKey}|${fontLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}`;
@@ -119,7 +132,7 @@ export function useExportPdfPrintLayout({
     outputRef: pagesHostRef,
     layoutKey: pagedSourceKey,
     pageSizeId: printLayout.pageSizeId,
-    marginMm: pageMarginMm,
+    marginMm: pageMargins,
     bodyLineHeight: fonts.bodyLineHeight || DEFAULT_PRINT_FONTS.bodyLineHeight,
     headingLineHeight: fonts.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight,
     baseFontSizePx: fonts.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx,
@@ -231,7 +244,29 @@ export function useExportPdfPrintLayout({
   const updatePrintLayout = useCallback(
     (partial: Partial<PrintPageLayout>) => {
       setPrintLayout((prev) => {
-        const next = { ...prev, ...partial };
+        let next: PrintPageLayout = { ...prev, ...partial };
+        if (partial.marginsMm) {
+          next = withPrintPageMargins(prev, partial.marginsMm);
+          if (partial.pageSizeId) next = { ...next, pageSizeId: partial.pageSizeId };
+          if (partial.imageMaxWidth != null) next = { ...next, imageMaxWidth: partial.imageMaxWidth };
+          if (partial.imageMaxHeight != null) {
+            next = { ...next, imageMaxHeight: partial.imageMaxHeight };
+          }
+        } else if (partial.zeroPageMargin === true) {
+          next = {
+            ...next,
+            zeroPageMargin: true,
+            marginsMm: { ...ZERO_PRINT_PAGE_MARGINS_MM },
+          };
+        } else if (partial.zeroPageMargin === false && arePrintPageMarginsZero(prev.marginsMm)) {
+          next = withPrintPageMargins(prev, {
+            top: 10,
+            right: 10,
+            bottom: 10,
+            left: 10,
+          });
+          next = { ...next, zeroPageMargin: false };
+        }
         savePrintPageLayout(next);
         return next;
       });

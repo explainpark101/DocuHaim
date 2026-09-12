@@ -48,8 +48,9 @@ The parser accepts the comment only when it appears in the leading metadata regi
 
 1. Optional BOM / whitespace.
 2. Optional `<!-- note-cover … -->`.
-3. Optional `<!-- footnotes … -->`.
-4. Then `<!-- document-settings … -->`.
+3. Optional `<!-- print-chrome … -->`.
+4. Optional `<!-- footnotes … -->`.
+5. Then `<!-- document-settings … -->`.
 
 If the comment appears later in the body, it is ignored and left as normal text.
 

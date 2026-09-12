@@ -4,7 +4,7 @@ Numeric source footnotes. Body `[^N]` becomes an in-preview link; matching defin
 
 ## Per-document enable (JSON comment)
 
-Place **below** optional `<!-- note-cover … -->` at the document top:
+Place **below** optional `<!-- note-cover … -->` / `<!-- print-chrome … -->` at the document top:
 
 ```html
 <!-- note-cover

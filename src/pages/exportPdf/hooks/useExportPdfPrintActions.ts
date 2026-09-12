@@ -18,6 +18,7 @@ import {
 } from '@/utils/printPreviewView';
 import type { ExportPdfCoverState } from '@/pages/exportPdf/hooks/useExportPdfCover';
 import type { ExportPdfDocumentState } from '@/pages/exportPdf/hooks/useExportPdfDocument';
+import type { ExportPdfPrintChromeState } from '@/pages/exportPdf/hooks/useExportPdfPrintChrome';
 import type { ExportPdfPrintLayoutState } from '@/pages/exportPdf/hooks/useExportPdfPrintLayout';
 import type { ExportPdfPreviewRefs } from '@/pages/exportPdf/hooks/useExportPdfPreviewRefs';
 import type { ExportPdfTocState } from '@/pages/exportPdf/hooks/useExportPdfToc';
@@ -31,6 +32,13 @@ type UseExportPdfPrintActionsArgs = Pick<ExportPdfDocumentState, 'handleSave' | 
     | 'setPreviewView'
     | 'updatePreviewView'
     | 'updatePrintLayout'
+  > &
+  Pick<
+    ExportPdfPrintChromeState,
+    | 'openChromeModal'
+    | 'addPageNumberAndOpen'
+    | 'addTextAndOpen'
+    | 'addImageAndOpen'
   > &
   Pick<ExportPdfCoverState, 'coverEditMode' | 'coverSelectedIds' | 'onCoverChange' | 'toggleCoverEditMode'> & {
     setCoverPlaceMode: React.Dispatch<React.SetStateAction<CoverPlaceMode>>;
@@ -48,6 +56,10 @@ export function useExportPdfPrintActions({
   setPreviewView,
   updatePreviewView,
   updatePrintLayout,
+  openChromeModal,
+  addPageNumberAndOpen,
+  addTextAndOpen,
+  addImageAndOpen,
   coverEditMode,
   coverSelectedIds,
   onCoverChange,
@@ -71,6 +83,10 @@ export function useExportPdfPrintActions({
       'print-toggle-zero-page-margin': () => {
         updatePrintLayout({ zeroPageMargin: !printLayout.zeroPageMargin });
       },
+      'print-page-chrome': () => openChromeModal(),
+      'print-add-page-number': () => addPageNumberAndOpen(),
+      'print-add-chrome-text': () => addTextAndOpen(),
+      'print-add-chrome-image': () => addImageAndOpen(),
       'print-zoom-in': () => {
         setPreviewView((prev) => {
           const next = { ...prev, zoomPercent: stepZoomPercent(prev.zoomPercent, 1) };
@@ -146,11 +162,15 @@ export function useExportPdfPrintActions({
     return registerPrintActions(handlers);
   }, [
     activeCover,
+    addImageAndOpen,
+    addPageNumberAndOpen,
+    addTextAndOpen,
     coverEditMode,
     coverSelectedIds,
     handleExport,
     handleSave,
     onCoverChange,
+    openChromeModal,
     printLayout.zeroPageMargin,
     setCoverPlaceMode,
     setFontModalOpen,
