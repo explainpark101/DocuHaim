@@ -1,11 +1,11 @@
 import { Suspense, lazy } from 'react';
 import { useLocation } from 'react-router';
+import { LoaderCircle } from 'lucide-react';
 import { AuthModal } from '@/components/modals/AuthModal';
 import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
 import UserWebfontStyles from '@/components/UserWebfontStyles';
 import { isStoredWithWebAuthn } from '@/utils/webauthn';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
-import { RouteSuspenseFallback } from '@/App/RouteSuspenseFallback';
 import { isExportPdfAppPathname, parseExportPdfPathFromAppPathname } from '@/utils/appHref';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useVault } from '@/App/hooks/useVault';
@@ -51,7 +51,28 @@ export function ExportPdfGate() {
       }`}
     >
       <UserWebfontStyles />
-      <Suspense fallback={<RouteSuspenseFallback />}>
+      <Suspense
+        fallback={
+          <div
+            className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800"
+            role="status"
+            aria-live="polite"
+            aria-busy
+          >
+            <LoaderCircle
+              className="animate-spin text-gray-500 dark:text-odp-muted"
+              size={28}
+              aria-hidden
+            />
+            <p className="text-sm font-medium text-gray-700 dark:text-odp-fg">
+              PDF 내보내기 페이지 로딩 중…
+            </p>
+            <p className="max-w-sm text-center text-xs text-gray-500 dark:text-odp-muted">
+              인쇄 미리보기 모듈을 불러오는 중입니다.
+            </p>
+          </div>
+        }
+      >
         <ExportPDFPage
           documentValue={documentValue}
           documentFile={documentFile}

@@ -3,6 +3,7 @@ mod desktop_menu;
 mod stronghold_kdf;
 mod system_fonts;
 
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -84,6 +85,30 @@ async fn gemini_api_fetch(
 }
 
 struct PendingOpenPaths(Mutex<Vec<String>>);
+
+impl PendingOpenPaths {
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+    fn extend_unique(&self, paths: &[String]) {
+        if let Ok(mut guard) = self.0.lock() {
+            for p in paths {
+                if !guard.iter().any(|x| x == p) {
+                    guard.push(p.clone());
+                }
+            }
+        }
+    }
+
+    fn take_all(&self) -> Vec<String> {
+        self.0
+            .lock()
+            .map(|mut g| std::mem::take(&mut *g))
+            .unwrap_or_default()
+    }
+
+    fn snapshot(&self) -> Vec<String> {
+        self.0.lock().map(|g| g.clone()).unwrap_or_default()
+    }
+}
 
 fn path_from_url_or_raw(s: &str) -> Option<String> {
     let trimmed = s.trim();
@@ -218,29 +243,21 @@ fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
+/// Queue + emit paths from OS "open with" / file-association URLs (not CLI args).
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
 fn push_paths(app: &AppHandle, paths: Vec<String>) {
     if paths.is_empty() {
         return;
     }
     if let Some(state) = app.try_state::<PendingOpenPaths>() {
-        if let Ok(mut guard) = state.0.lock() {
-            for p in &paths {
-                if !guard.iter().any(|x| x == p) {
-                    guard.push(p.clone());
-                }
-            }
-        }
+        state.extend_unique(&paths);
     }
     let _ = app.emit("desktop-open-files", paths);
 }
 
 #[tauri::command]
 fn take_pending_open_paths(state: tauri::State<'_, PendingOpenPaths>) -> Vec<String> {
-    state
-        .0
-        .lock()
-        .map(|mut g| std::mem::take(&mut *g))
-        .unwrap_or_default()
+    state.take_all()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -319,16 +336,14 @@ pub fn run() {
                 .build(),
             )?;
             if let Some(state) = app.try_state::<PendingOpenPaths>() {
-                if let Ok(guard) = state.0.lock() {
-                    if !guard.is_empty() {
-                        let paths = guard.clone();
-                        let handle = app.handle().clone();
-                        // Defer emit until the webview is ready to listen.
-                        std::thread::spawn(move || {
-                            std::thread::sleep(std::time::Duration::from_millis(800));
-                            let _ = handle.emit("desktop-open-files", paths);
-                        });
-                    }
+                let paths = state.snapshot();
+                if !paths.is_empty() {
+                    let handle = app.handle().clone();
+                    // Defer emit until the webview is ready to listen.
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(800));
+                        let _ = handle.emit("desktop-open-files", paths);
+                    });
                 }
             }
             Ok(())

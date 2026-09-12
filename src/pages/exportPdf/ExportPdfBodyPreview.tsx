@@ -11,6 +11,8 @@ import type {
   PrintPreviewNavigation,
   PrintPreviewPageCount,
 } from '@/utils/printPreviewView';
+import { ExportPdfPreviewStatusOverlay } from '@/pages/exportPdf/ExportPdfPreviewStatusOverlay';
+import type { ExportPdfPagedStatus } from '@/pages/exportPdf/exportPdfPagedStatus';
 import {
   EDITOR_ID,
   headingId,
@@ -29,6 +31,9 @@ export type ExportPdfBodyPreviewProps = {
   pageSizeId: PrintPageSizeId;
   bodyPageCount: number;
   packLayoutKey: string;
+  pagedStatus: ExportPdfPagedStatus;
+  pagedErrorMessage: string | null;
+  pagedHasPages: boolean;
   activeCover: NoteCover | null | undefined;
   getPresignedUrl: ((path: string) => Promise<string | null>) | null | undefined;
   flipIndex: number;
@@ -54,6 +59,9 @@ export function ExportPdfBodyPreview({
   pageSizeId,
   bodyPageCount,
   packLayoutKey,
+  pagedStatus,
+  pagedErrorMessage,
+  pagedHasPages,
   activeCover,
   getPresignedUrl,
   flipIndex,
@@ -131,11 +139,18 @@ export function ExportPdfBodyPreview({
           />
         ) : null}
         {coverPages}
-        <div
-          ref={pagesHostRef}
-          data-export-pdf-pages="1"
-          className="export-pdf-pages w-full"
-        />
+        <div className="relative w-full">
+          <ExportPdfPreviewStatusOverlay
+            status={pagedStatus}
+            errorMessage={pagedErrorMessage}
+            hasPages={pagedHasPages}
+          />
+          <div
+            ref={pagesHostRef}
+            data-export-pdf-pages="1"
+            className="export-pdf-pages w-full"
+          />
+        </div>
         {/* Staging: continuous MdPreview for measure/fit; paged.js clones into pagesHost. */}
         <div
           className="export-pdf-paper export-pdf-staging relative mx-auto bg-white text-gray-900 print:hidden"

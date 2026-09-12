@@ -125,6 +125,9 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       pageSizeId={layout.printLayout.pageSizeId}
       bodyPageCount={layout.bodyPageCount}
       packLayoutKey={layout.packLayoutKey}
+      pagedStatus={layout.pagedStatus}
+      pagedErrorMessage={layout.pagedErrorMessage}
+      pagedHasPages={layout.pagedHasPages}
       activeCover={doc.activeCover}
       getPresignedUrl={layout.getPresignedUrl}
       flipIndex={layout.flipIndex}

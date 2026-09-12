@@ -3,6 +3,7 @@ import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
 import { applyExportPdfCodeBlockFragmentChrome } from '@/utils/exportPdf/applyExportPdfCodeBlockFragmentChrome';
 import { prepareExportPdfCodeBlocksForPaging } from '@/utils/exportPdf/prepareExportPdfCodeBlocksForPaging';
 import { buildExportPdfPagedStyles } from '@/pages/exportPdf/exportPdfPagedStyles';
+import type { ExportPdfPagedStatus } from '@/pages/exportPdf/exportPdfPagedStatus';
 import type { PrintPageSizeId } from '@/utils/printPageLayout';
 
 type Args = {
@@ -28,6 +29,9 @@ type PagedPreviewer = {
 const SETTLE_MS = 280;
 /** One follow-up pass for late image/mermaid paint after the first successful run. */
 const FOLLOW_UP_MS = 700;
+/** Retry interval while waiting for MdPreview to mount. */
+const PREVIEW_RETRY_MS = 120;
+const PREVIEW_RETRY_MAX_MS = 12_000;
 
 function destroyPreviewer(previewer: PagedPreviewer | null): void {
   previewer?.polisher?.destroy?.();
@@ -98,6 +102,12 @@ function buildPagedSourceFromPreview(preview: Element): HTMLElement | null {
   return wrapper;
 }
 
+function formatPagedError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (typeof error === 'string' && error.trim()) return error.trim();
+  return 'Unknown pagination error';
+}
+
 /**
  * Run paged.js Previewer from staging MdPreview into outputRef.
  * Re-runs only when `layoutKey` / `pageSizeId` change — not on every fit-hook style mutation
@@ -114,7 +124,9 @@ export function usePagedJsPreview({
 }: Args) {
   const [pageCount, setPageCount] = useState(1);
   const [packLayoutKey, setPackLayoutKey] = useState(layoutKey);
-  const [isRendering, setIsRendering] = useState(false);
+  const [status, setStatus] = useState<ExportPdfPagedStatus>('settling');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasPages, setHasPages] = useState(false);
   const generationRef = useRef(0);
   const previewerRef = useRef<PagedPreviewer | null>(null);
 
@@ -122,31 +134,76 @@ export function usePagedJsPreview({
     let cancelled = false;
     const generation = (generationRef.current += 1);
     const timers: number[] = [];
+    const pendingDelayResolvers = new Set<() => void>();
+    setStatus('settling');
+    setErrorMessage(null);
+
+    const isCurrent = () => !cancelled && generation === generationRef.current;
+
+    const delay = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const finish = () => {
+          pendingDelayResolvers.delete(finish);
+          resolve();
+        };
+        pendingDelayResolvers.add(finish);
+        timers.push(window.setTimeout(finish, ms));
+      });
+
+    const waitForPreviewEl = async (): Promise<Element | null> => {
+      const started = Date.now();
+      while (isCurrent()) {
+        const source = sourceRef.current;
+        const preview = source?.querySelector('.md-editor-preview') ?? null;
+        if (preview) return preview;
+        if (Date.now() - started >= PREVIEW_RETRY_MAX_MS) return null;
+        setStatus('waiting-preview');
+        await delay(PREVIEW_RETRY_MS);
+      }
+      return null;
+    };
 
     const run = async () => {
-      if (cancelled || generation !== generationRef.current) return;
+      if (!isCurrent()) return;
 
       const source = sourceRef.current;
       const output = outputRef.current;
       if (!source || !output) {
         setPageCount(1);
         setPackLayoutKey(`${layoutKey}|empty`);
-        setIsRendering(false);
+        setHasPages(false);
+        setStatus('error');
+        setErrorMessage('미리보기 컨테이너를 찾지 못했습니다.');
         return;
       }
 
-      const preview = source.querySelector('.md-editor-preview');
-      if (!preview) return;
+      setStatus('waiting-preview');
+      const preview = await waitForPreviewEl();
+      if (!isCurrent()) return;
+      if (!preview) {
+        setStatus('error');
+        setErrorMessage('마크다운 미리보기가 준비되지 않았습니다. 페이지를 새로고침해 보세요.');
+        return;
+      }
 
-      setIsRendering(true);
+      setStatus('waiting-images');
       let scratch: HTMLDivElement | null = null;
       try {
         await waitForImages(preview);
         await afterPaint();
-        if (cancelled || generation !== generationRef.current) return;
+        if (!isCurrent()) return;
 
         const wrapper = buildPagedSourceFromPreview(preview);
-        if (!wrapper) return;
+        if (!wrapper) {
+          // Empty markdown — treat as a single blank page, not a failure.
+          output.replaceChildren();
+          setPageCount(1);
+          setPackLayoutKey(`${layoutKey}|empty`);
+          setHasPages(false);
+          setStatus('idle');
+          setErrorMessage(null);
+          return;
+        }
 
         scratch = document.createElement('div');
         scratch.className = 'export-pdf-pages-scratch';
@@ -159,8 +216,9 @@ export function usePagedJsPreview({
         previewerRef.current = null;
         cleanupPagedJsStyles();
 
+        setStatus('loading-engine');
         const { Previewer } = await import('pagedjs');
-        if (cancelled || generation !== generationRef.current) return;
+        if (!isCurrent()) return;
 
         const stylesCss = buildExportPdfPagedStyles(pageSizeId, {
           ...(bodyLineHeight != null ? { bodyLineHeight } : {}),
@@ -170,13 +228,14 @@ export function usePagedJsPreview({
         const paged = new Previewer() as PagedPreviewer;
         previewerRef.current = paged;
 
+        setStatus('paginating');
         const flow = await paged.preview(
           wrapper,
           [{ [`${window.location.origin}/export-pdf-paged.css`]: stylesCss }],
           scratch,
         );
 
-        if (cancelled || generation !== generationRef.current) return;
+        if (!isCurrent()) return;
 
         const count = tagBodyPages(scratch);
         applyExportPdfCodeBlockFragmentChrome(scratch);
@@ -188,39 +247,45 @@ export function usePagedJsPreview({
 
         setPageCount(Math.max(1, total));
         setPackLayoutKey(`${layoutKey}|paged|${total}`);
+        setHasPages(true);
+        setStatus('idle');
+        setErrorMessage(null);
       } catch (error) {
         console.warn('[usePagedJsPreview] pagination failed', error);
-        if (!cancelled && generation === generationRef.current) {
+        if (isCurrent()) {
           const outputEl = outputRef.current;
-          if (outputEl && !outputEl.querySelector('.pagedjs_page')) {
+          const stillHasPages = Boolean(outputEl?.querySelector('.pagedjs_page'));
+          setHasPages(stillHasPages);
+          if (!stillHasPages) {
             setPageCount(1);
             setPackLayoutKey(`${layoutKey}|error`);
           }
+          setStatus('error');
+          setErrorMessage(formatPagedError(error));
         }
       } finally {
         scratch?.remove();
-        if (!cancelled && generation === generationRef.current) {
-          setIsRendering(false);
-        }
       }
     };
 
     // Debounced first pass after settle (MdPreview + fit/mermaid).
     timers.push(
       window.setTimeout(() => {
-        if (!cancelled && generation === generationRef.current) void run();
+        if (isCurrent()) void run();
       }, SETTLE_MS),
     );
     // Follow-up for late-loading images / mermaid SVG.
     timers.push(
       window.setTimeout(() => {
-        if (!cancelled && generation === generationRef.current) void run();
+        if (isCurrent()) void run();
       }, SETTLE_MS + FOLLOW_UP_MS),
     );
 
     return () => {
       cancelled = true;
       for (const id of timers) window.clearTimeout(id);
+      for (const resolve of pendingDelayResolvers) resolve();
+      pendingDelayResolvers.clear();
       destroyPreviewer(previewerRef.current);
       previewerRef.current = null;
       cleanupPagedJsStyles();
@@ -230,5 +295,12 @@ export function usePagedJsPreview({
     };
   }, [baseFontSizePx, bodyLineHeight, headingLineHeight, layoutKey, outputRef, pageSizeId, sourceRef]);
 
-  return { pageCount, packLayoutKey, isRendering };
+  return {
+    pageCount,
+    packLayoutKey,
+    status,
+    errorMessage,
+    hasPages,
+    isRendering: status !== 'idle' && status !== 'error',
+  };
 }

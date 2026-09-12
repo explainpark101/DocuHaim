@@ -1,6 +1,14 @@
 import type { CSSProperties, ReactNode, RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, LayoutTemplate, ListTree, Printer, Save, Settings } from 'lucide-react';
+import {
+  ArrowLeft,
+  LayoutTemplate,
+  ListTree,
+  LoaderCircle,
+  Printer,
+  Save,
+  Settings,
+} from 'lucide-react';
 import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
@@ -220,8 +228,21 @@ export function ExportPdfShell({
 
   if (isDocumentLoading) {
     return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800">
-        <p className="text-sm text-gray-600 dark:text-odp-fg">문서를 불러오는 중…</p>
+      <div
+        className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-neutral-200 px-4 dark:bg-neutral-800"
+        role="status"
+        aria-live="polite"
+        aria-busy
+      >
+        <LoaderCircle
+          className="animate-spin text-gray-500 dark:text-odp-muted"
+          size={28}
+          aria-hidden
+        />
+        <p className="text-sm font-medium text-gray-700 dark:text-odp-fg">문서를 불러오는 중…</p>
+        <p className="max-w-sm text-center text-xs text-gray-500 dark:text-odp-muted">
+          편집기에서 연 노트 내용을 인쇄 미리보기로 넘기는 중입니다.
+        </p>
       </div>
     );
   }

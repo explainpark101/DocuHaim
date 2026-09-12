@@ -105,6 +105,9 @@ export function useExportPdfPrintLayout({
   const {
     pageCount: bodyPageCount,
     packLayoutKey,
+    status: pagedStatus,
+    errorMessage: pagedErrorMessage,
+    hasPages: pagedHasPages,
   } = usePagedJsPreview({
     sourceRef: paperContentRef,
     outputRef: pagesHostRef,
@@ -290,6 +293,9 @@ export function useExportPdfPrintLayout({
     printLayoutKey,
     packLayoutKey,
     bodyPageCount,
+    pagedStatus,
+    pagedErrorMessage,
+    pagedHasPages,
     effectivePageInnerHeightPx,
     printPageInnerPx,
     metricRef,
