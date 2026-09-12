@@ -16,7 +16,8 @@ export type PrintToolbarFocusTarget =
   | 'export'
   | 'paper'
   | 'image-max'
-  | 'zoom';
+  | 'zoom'
+  | 'zero-margin';
 
 export type PrintActionId =
   | 'print-save'
@@ -24,6 +25,7 @@ export type PrintActionId =
   | 'print-export'
   | 'print-change-paper'
   | 'print-toggle-toc'
+  | 'print-toggle-zero-page-margin'
   | 'print-zoom-in'
   | 'print-zoom-out'
   | 'print-zoom-reset'
@@ -43,6 +45,7 @@ export type PrintActionId =
   | 'print-focus-paper'
   | 'print-focus-image-max'
   | 'print-focus-zoom'
+  | 'print-focus-zero-margin'
   | 'print-scroll-heading'
   | `print-paper-${PrintPageSizeId}`;
 
@@ -198,6 +201,22 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     keywords: ['toc', '목차', 'outline', 'sidebar'],
   },
   {
+    id: 'print-toggle-zero-page-margin',
+    title: '페이지 여백 없음 토글',
+    description: 'paged.js 내부 여백을 끄고 꽉 차게 인쇄 (인쇄 대화상자 여백도 없음)',
+    keywords: [
+      'margin',
+      '여백',
+      '없음',
+      'bleed',
+      'full',
+      '꽉',
+      'zero',
+      'page margin',
+      'full bleed',
+    ],
+  },
+  {
     id: 'print-zoom-in',
     title: '미리보기 확대',
     description: '미리보기 확대 비율 +5%',
@@ -310,6 +329,12 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     title: '확대로 포커스',
     description: '툴바 · 미리보기 확대 비율',
     keywords: ['focus', 'zoom', '포커스', '확대'],
+  },
+  {
+    id: 'print-focus-zero-margin',
+    title: '여백 없음으로 포커스',
+    description: '툴바 · 페이지 여백 없음',
+    keywords: ['focus', 'margin', '여백', '포커스', '없음'],
   },
 ] as const;
 

@@ -3,6 +3,15 @@ const LOCAL_STORAGE_KEY = 's3haim_print_page_layout';
 /** Chromium `PrintSettings` default margin per side (1.0 cm). */
 export const PRINT_PAGE_MARGIN_MM = 10;
 
+/**
+ * Page margin used by paged.js `@page` and browser print `@page`.
+ * When `zeroPageMargin` is on, both are 0 so page breaks stay but content
+ * fills the sheet (set the print dialog margins to None as well).
+ */
+export function getPrintPageMarginMm(zeroPageMargin = false): number {
+  return zeroPageMargin ? 0 : PRINT_PAGE_MARGIN_MM;
+}
+
 export const PRINT_PAGE_SIZES = [
   { id: 'a4', label: 'A4', widthMm: 210, heightMm: 297 },
   { id: 'a4-landscape', label: 'A4 가로', widthMm: 297, heightMm: 210 },
@@ -27,12 +36,15 @@ export type PrintPageLayout = {
   pageSizeId: PrintPageSizeId;
   imageMaxWidth: string;
   imageMaxHeight: string;
+  /** No @page / paged.js page margin — fill the sheet (print dialog: None). */
+  zeroPageMargin: boolean;
 };
 
 export const DEFAULT_PRINT_PAGE_LAYOUT: PrintPageLayout = {
   pageSizeId: 'a4',
   imageMaxWidth: '718px',
   imageMaxHeight: '1047px',
+  zeroPageMargin: false,
 };
 
 const PAGE_SIZE_IDS = new Set<string>(PRINT_PAGE_SIZES.map((size) => size.id));
@@ -61,22 +73,29 @@ export function mmToCssPx(mm: number): number {
   return (mm * 96) / 25.4;
 }
 
-export function getPrintPageInnerSizeMm(pageSizeId: PrintPageSizeId): {
+export function getPrintPageInnerSizeMm(
+  pageSizeId: PrintPageSizeId,
+  marginMm: number = PRINT_PAGE_MARGIN_MM,
+): {
   widthMm: number;
   heightMm: number;
 } {
   const page = getPrintPageSize(pageSizeId);
+  const margin = Math.max(0, marginMm);
   return {
-    widthMm: Math.max(0, page.widthMm - PRINT_PAGE_MARGIN_MM * 2),
-    heightMm: Math.max(0, page.heightMm - PRINT_PAGE_MARGIN_MM * 2),
+    widthMm: Math.max(0, page.widthMm - margin * 2),
+    heightMm: Math.max(0, page.heightMm - margin * 2),
   };
 }
 
-export function getPrintPageInnerSizePx(pageSizeId: PrintPageSizeId): {
+export function getPrintPageInnerSizePx(
+  pageSizeId: PrintPageSizeId,
+  marginMm: number = PRINT_PAGE_MARGIN_MM,
+): {
   widthPx: number;
   heightPx: number;
 } {
-  const inner = getPrintPageInnerSizeMm(pageSizeId);
+  const inner = getPrintPageInnerSizeMm(pageSizeId, marginMm);
   return {
     widthPx: Math.max(1, Math.round(mmToCssPx(inner.widthMm))),
     heightPx: Math.max(1, Math.round(mmToCssPx(inner.heightMm))),
@@ -170,7 +189,9 @@ export function loadPrintPageLayout(): PrintPageLayout {
     const pageSizeId = isPrintPageSizeId(record.pageSizeId)
       ? record.pageSizeId
       : DEFAULT_PRINT_PAGE_LAYOUT.pageSizeId;
-    const inner = getPrintPageInnerSizePx(pageSizeId);
+    const zeroPageMargin = record.zeroPageMargin === true;
+    const marginMm = getPrintPageMarginMm(zeroPageMargin);
+    const inner = getPrintPageInnerSizePx(pageSizeId, marginMm);
     const imageMaxWidth = coercePrintImageMaxToPx(
       record.imageMaxWidth,
       inner.widthPx,
@@ -181,7 +202,7 @@ export function loadPrintPageLayout(): PrintPageLayout {
       inner.heightPx,
       inner.heightPx,
     );
-    return { pageSizeId, imageMaxWidth, imageMaxHeight };
+    return { pageSizeId, imageMaxWidth, imageMaxHeight, zeroPageMargin };
   } catch {
     return { ...DEFAULT_PRINT_PAGE_LAYOUT };
   }
@@ -198,9 +219,10 @@ export function savePrintPageLayout(layout: PrintPageLayout): void {
 
 export function buildPrintLayoutCssVars(layout: PrintPageLayout): Record<string, string> {
   const page = getPrintPageSize(layout.pageSizeId);
-  const innerWidthMm = Math.max(0, page.widthMm - PRINT_PAGE_MARGIN_MM * 2);
-  const innerHeightMm = Math.max(0, page.heightMm - PRINT_PAGE_MARGIN_MM * 2);
-  const innerPx = getPrintPageInnerSizePx(layout.pageSizeId);
+  const marginMm = getPrintPageMarginMm(layout.zeroPageMargin);
+  const innerWidthMm = Math.max(0, page.widthMm - marginMm * 2);
+  const innerHeightMm = Math.max(0, page.heightMm - marginMm * 2);
+  const innerPx = getPrintPageInnerSizePx(layout.pageSizeId, marginMm);
   const maxWidth = layout.imageMaxWidth.trim() || `${innerPx.widthPx}px`;
   const maxHeight = layout.imageMaxHeight.trim() || `${innerPx.heightPx}px`;
   // Fit full-page aspect into the printable (margin) box so cover images are not
@@ -214,7 +236,7 @@ export function buildPrintLayoutCssVars(layout: PrintPageLayout): Record<string,
   return {
     '--print-page-width': `${page.widthMm}mm`,
     '--print-page-height': `${page.heightMm}mm`,
-    '--print-page-margin': `${PRINT_PAGE_MARGIN_MM}mm`,
+    '--print-page-margin': `${marginMm}mm`,
     '--print-page-inner-width': `${innerWidthMm}mm`,
     '--print-page-inner-height': `${innerHeightMm}mm`,
     '--print-cover-fit-width': `${coverFitWidthMm}mm`,
@@ -228,7 +250,8 @@ export function buildPrintLayoutCssVars(layout: PrintPageLayout): Record<string,
  * CSS `@page size` keyword (e.g. `A4`) so the print/PDF dialog selects the
  * named preset instead of a custom mm×mm size.
  *
- * Margins match Chromium print dialog "Default" (1.0 cm per side).
+ * Default margins match Chromium print dialog "Default" (1.0 cm per side).
+ * With `zeroPageMargin`, margin is 0 — pair with print dialog "None".
  */
 export function getCssPageSizeDescriptor(pageSizeId: PrintPageSizeId): string {
   switch (pageSizeId) {
@@ -267,11 +290,14 @@ export function getCssPageSizeDescriptor(pageSizeId: PrintPageSizeId): string {
   }
 }
 
-export function buildPrintPageAtRule(pageSizeId: PrintPageSizeId): string {
+export function buildPrintPageAtRule(
+  pageSizeId: PrintPageSizeId,
+  marginMm: number = PRINT_PAGE_MARGIN_MM,
+): string {
   return `
     @page {
       size: ${getCssPageSizeDescriptor(pageSizeId)};
-      margin: ${PRINT_PAGE_MARGIN_MM}mm;
+      margin: ${Math.max(0, marginMm)}mm;
     }
   `;
 }

@@ -7,6 +7,7 @@ describe('exportPdf paged styles', () => {
     const css = buildExportPdfPagedStyles('a4');
     expect(css).toContain('@page');
     expect(css).toContain('size: A4');
+    expect(css).toContain('margin: 10mm');
     expect(css).toContain('.md-pgbr');
     expect(css).toContain('break-before: page');
     expect(css).toContain('.export-pdf-paged-source');
@@ -30,6 +31,12 @@ describe('exportPdf paged styles', () => {
     expect(css).toContain('break-inside: avoid');
     expect(css).not.toContain('break-after: avoid');
     expect(css).not.toContain('@media print');
+  });
+
+  it('emits zero @page margin for full-bleed pagination', () => {
+    const css = buildExportPdfPagedStyles('a4', { marginMm: 0 });
+    expect(css).toContain('size: A4');
+    expect(css).toContain('margin: 0mm');
   });
 
   it('inlines custom body/heading line-heights for paged measure', () => {

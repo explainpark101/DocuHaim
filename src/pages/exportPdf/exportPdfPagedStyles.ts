@@ -9,6 +9,8 @@ export type ExportPdfPagedStyleOptions = {
   bodyLineHeight?: string;
   headingLineHeight?: string;
   baseFontSizePx?: string;
+  /** @page margin in mm (default Chromium 10mm). Use 0 for full-bleed pages. */
+  marginMm?: number;
 };
 
 /**
@@ -27,10 +29,14 @@ export function buildExportPdfPagedStyles(
   const bodyLh = options.bodyLineHeight || DEFAULT_PRINT_FONTS.bodyLineHeight;
   const headingLh = options.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight;
   const baseFs = options.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx;
+  const marginMm =
+    typeof options.marginMm === 'number' && Number.isFinite(options.marginMm)
+      ? Math.max(0, options.marginMm)
+      : PRINT_PAGE_MARGIN_MM;
   return `
 @page {
   size: ${size};
-  margin: ${PRINT_PAGE_MARGIN_MM}mm;
+  margin: ${marginMm}mm;
 }
 
 /* Content root before chunk + page boxes after chunk */

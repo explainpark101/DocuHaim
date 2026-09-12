@@ -96,6 +96,7 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
     handleSave: doc.handleSave,
     activeCover: doc.activeCover,
     handleExport: layout.handleExport,
+    printLayout: layout.printLayout,
     setFontModalOpen: layout.setFontModalOpen,
     setPreviewView: layout.setPreviewView,
     updatePreviewView: layout.updatePreviewView,

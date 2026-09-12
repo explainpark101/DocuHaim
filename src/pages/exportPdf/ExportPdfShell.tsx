@@ -15,6 +15,7 @@ import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeContr
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
 import PrintPreviewZoomControls from '@/components/print/PrintPreviewZoomControls';
 import PrintVisiblePageBadge from '@/components/print/PrintVisiblePageBadge';
+import PrintZeroPageMarginSwitch from '@/components/print/PrintZeroPageMarginSwitch';
 import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
 import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
@@ -25,7 +26,7 @@ import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToggle from '@/components/TocTitleWrapToggle';
 import { PrintPgbrContextMenu } from '@/components/print/PrintPgbrContextMenu';
 import { tocTitleTextClass } from '@/hooks/useTocTitleWrap';
-import { buildPrintPageAtRule } from '@/utils/printPageLayout';
+import { buildPrintPageAtRule, getPrintPageMarginMm } from '@/utils/printPageLayout';
 import type { PrintPageLayout } from '@/utils/printPageLayout';
 import type { PrintPreviewViewState } from '@/utils/printPreviewView';
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
@@ -291,7 +292,12 @@ export function ExportPdfShell({
         <style data-s3haim-document-webfonts="1">{documentSettings.webfontCss}</style>
       ) : null}
       <style data-export-pdf-shell-style="1">{printFontStyles}</style>
-      <style data-export-pdf-shell-style="1">{buildPrintPageAtRule(printLayout.pageSizeId)}</style>
+      <style data-export-pdf-shell-style="1">
+        {buildPrintPageAtRule(
+          printLayout.pageSizeId,
+          getPrintPageMarginMm(printLayout.zeroPageMargin),
+        )}
+      </style>
       <div
         ref={headerRef}
         className="export-pdf-toolbar sticky top-0 z-20 flex w-full shrink-0 flex-col gap-2 border-b border-gray-200 bg-white print:hidden dark:border-odp-borderSoft dark:bg-odp-bgSoft"
@@ -374,6 +380,10 @@ export function ExportPdfShell({
             <PrintPageSizeSelect
               value={printLayout.pageSizeId}
               onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}
+            />
+            <PrintZeroPageMarginSwitch
+              checked={printLayout.zeroPageMargin}
+              onCheckedChange={(zeroPageMargin) => updatePrintLayout({ zeroPageMargin })}
             />
             <PrintPreviewZoomControls
               value={previewView.zoomPercent}

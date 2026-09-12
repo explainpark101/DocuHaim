@@ -26,6 +26,7 @@ type UseExportPdfPrintActionsArgs = Pick<ExportPdfDocumentState, 'handleSave' | 
   Pick<
     ExportPdfPrintLayoutState,
     | 'handleExport'
+    | 'printLayout'
     | 'setFontModalOpen'
     | 'setPreviewView'
     | 'updatePreviewView'
@@ -42,6 +43,7 @@ export function useExportPdfPrintActions({
   handleSave,
   activeCover,
   handleExport,
+  printLayout,
   setFontModalOpen,
   setPreviewView,
   updatePreviewView,
@@ -66,6 +68,9 @@ export function useExportPdfPrintActions({
       'print-font-settings': () => setFontModalOpen(true),
       'print-export': () => handleExport(),
       'print-toggle-toc': () => setTocVisible((v) => !v),
+      'print-toggle-zero-page-margin': () => {
+        updatePrintLayout({ zeroPageMargin: !printLayout.zeroPageMargin });
+      },
       'print-zoom-in': () => {
         setPreviewView((prev) => {
           const next = { ...prev, zoomPercent: stepZoomPercent(prev.zoomPercent, 1) };
@@ -146,6 +151,7 @@ export function useExportPdfPrintActions({
     handleExport,
     handleSave,
     onCoverChange,
+    printLayout.zeroPageMargin,
     setCoverPlaceMode,
     setFontModalOpen,
     setPreviewView,

@@ -20,6 +20,8 @@ type Args = {
   outputRef: RefObject<HTMLElement | null>;
   layoutKey: string;
   pageSizeId: PrintPageSizeId;
+  /** paged.js @page margin in mm (0 = full-bleed content box). */
+  marginMm?: number;
   bodyLineHeight?: string;
   headingLineHeight?: string;
   baseFontSizePx?: string;
@@ -102,6 +104,7 @@ function buildPagedSourceFromPreview(
   preview: Element,
   options: {
     pageSizeId: PrintPageSizeId;
+    marginMm?: number;
     bodyLineHeight?: string;
     headingLineHeight?: string;
     baseFontSizePx?: string;
@@ -129,7 +132,7 @@ function buildPagedSourceFromPreview(
 
   // Split tall fences into page-sized sibling chunks so paged.js never resumes
   // mid-fence (Layout repeated aborts and drops the remainder).
-  const inner = getPrintPageInnerSizePx(options.pageSizeId);
+  const inner = getPrintPageInnerSizePx(options.pageSizeId, options.marginMm);
   const measureCss = buildExportPdfPagedStyles(options.pageSizeId, {
     ...(options.bodyLineHeight != null
       ? { bodyLineHeight: options.bodyLineHeight }
@@ -140,6 +143,7 @@ function buildPagedSourceFromPreview(
     ...(options.baseFontSizePx != null
       ? { baseFontSizePx: options.baseFontSizePx }
       : {}),
+    ...(options.marginMm != null ? { marginMm: options.marginMm } : {}),
   });
   splitExportPdfCodeBlocksByPageHeight(wrapper, {
     maxHeightPx: inner.heightPx,
@@ -171,6 +175,7 @@ export function usePagedJsPreview({
   outputRef,
   layoutKey,
   pageSizeId,
+  marginMm,
   bodyLineHeight,
   headingLineHeight,
   baseFontSizePx,
@@ -196,6 +201,7 @@ export function usePagedJsPreview({
     exportPdfLoadDebug('paged:effect-start', {
       generation,
       pageSizeId,
+      marginMm: marginMm ?? null,
       settleMs: SETTLE_MS,
       followUpMs: FOLLOW_UP_MS,
       layoutKey: summarizeLayoutKey(layoutKey),
@@ -358,6 +364,7 @@ export function usePagedJsPreview({
 
         const wrapper = buildPagedSourceFromPreview(preview, {
           pageSizeId,
+          ...(marginMm != null ? { marginMm } : {}),
           ...(bodyLineHeight != null ? { bodyLineHeight } : {}),
           ...(headingLineHeight != null ? { headingLineHeight } : {}),
           ...(baseFontSizePx != null ? { baseFontSizePx } : {}),
@@ -425,6 +432,7 @@ export function usePagedJsPreview({
           ...(bodyLineHeight != null ? { bodyLineHeight } : {}),
           ...(headingLineHeight != null ? { headingLineHeight } : {}),
           ...(baseFontSizePx != null ? { baseFontSizePx } : {}),
+          ...(marginMm != null ? { marginMm } : {}),
         });
         const paged = new Previewer() as PagedPreviewer;
         ownedPreviewer = paged;
@@ -568,7 +576,16 @@ export function usePagedJsPreview({
         el.remove();
       }
     };
-  }, [baseFontSizePx, bodyLineHeight, headingLineHeight, layoutKey, outputRef, pageSizeId, sourceRef]);
+  }, [
+    baseFontSizePx,
+    bodyLineHeight,
+    headingLineHeight,
+    layoutKey,
+    marginMm,
+    outputRef,
+    pageSizeId,
+    sourceRef,
+  ]);
 
   return {
     pageCount,

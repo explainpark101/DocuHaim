@@ -12,6 +12,7 @@ import { printFontCssVarValue } from '@/utils/fontFallback';
 import {
   buildPrintLayoutCssVars,
   getPrintPageInnerSizePx,
+  getPrintPageMarginMm,
   loadPrintPageLayout,
   savePrintPageLayout,
   type PrintPageLayout,
@@ -89,7 +90,7 @@ export function useExportPdfPrintLayout({
   const [previewFootnotesRenderKey, setPreviewFootnotesRenderKey] = useState(0);
   const [printStoreEpoch, setPrintStoreEpoch] = useState(() => getPrintSettingsStoreEpoch());
 
-  const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}`;
+  const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}|${printLayout.zeroPageMargin ? '0m' : '10m'}`;
   const fontLayoutKey = `${fonts.baseFontSizePx}|${fonts.bodyLineHeight}|${fonts.headingLineHeight}`;
   const { metricRef, pageInnerHeightPx } = usePrintPageInnerHeightPx(printLayoutKey);
   usePrintImageAspectFit(paperContentRef, imageMaxProbeRef, printLayoutKey);
@@ -102,7 +103,8 @@ export function useExportPdfPrintLayout({
 
   useEffect(() => mountExportPdfBrowserPrintPrep(), []);
 
-  const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId);
+  const pageMarginMm = getPrintPageMarginMm(printLayout.zeroPageMargin);
+  const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId, pageMarginMm);
   const effectivePageInnerHeightPx =
     pageInnerHeightPx > 1 ? pageInnerHeightPx : printPageInnerPx.heightPx;
   const pagedSourceKey = `${printLayoutKey}|${fontLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}`;
@@ -117,6 +119,7 @@ export function useExportPdfPrintLayout({
     outputRef: pagesHostRef,
     layoutKey: pagedSourceKey,
     pageSizeId: printLayout.pageSizeId,
+    marginMm: pageMarginMm,
     bodyLineHeight: fonts.bodyLineHeight || DEFAULT_PRINT_FONTS.bodyLineHeight,
     headingLineHeight: fonts.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight,
     baseFontSizePx: fonts.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx,
