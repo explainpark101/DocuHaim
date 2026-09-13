@@ -130,7 +130,7 @@ import {
   FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT,
 } from '@/utils/previewFootnotesSettings';
 import { parseDocumentSettingsMeta } from '@/utils/documentSettingsMeta';
-import { withFontFallback } from '@/utils/fontFallback';
+import { printFontCssVarValue } from '@/utils/fontFallback';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
@@ -1012,15 +1012,22 @@ export default function MarkdownEditor({
     return meta;
   }, [value]);
 
+  // Match export PDF: only set --print-font-* when a family is chosen.
+  // Empty values must stay unset so CSS can fall back to --font-*-builtin (Paperozi/A2z).
   const documentFontStyleVars = useMemo(() => {
     const fonts = documentSettings?.fonts;
     if (!fonts) return {};
-    return {
-      '--print-font-body': withFontFallback(fonts.body),
-      '--print-font-heading': withFontFallback(fonts.heading),
-      '--print-font-bold': withFontFallback(fonts.bold),
-      '--print-font-code': withFontFallback(fonts.code, 'mono'),
-    };
+    /** @type {Record<string, string>} */
+    const vars = {};
+    const body = printFontCssVarValue(fonts.body);
+    const heading = printFontCssVarValue(fonts.heading);
+    const bold = printFontCssVarValue(fonts.bold);
+    const code = printFontCssVarValue(fonts.code, 'mono');
+    if (body) vars['--print-font-body'] = body;
+    if (heading) vars['--print-font-heading'] = heading;
+    if (bold) vars['--print-font-bold'] = bold;
+    if (code) vars['--print-font-code'] = code;
+    return vars;
   }, [documentSettings]);
 
   useEffect(() => {

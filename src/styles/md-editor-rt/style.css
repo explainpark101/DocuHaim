@@ -3720,10 +3720,13 @@ div.smart-blue-theme hr {
 .md-editor-preview h5,
 .md-editor-preview h6,
 .md-editor-preview h6[data-heading-level],
-.md-editor-preview b,
-.md-editor-preview strong,
 .md-editor-preview th {
-  font-family: var(--font-display);
+  font-family: var(--print-font-heading, var(--font-display-builtin));
+}
+
+.md-editor-preview b,
+.md-editor-preview strong {
+  font-family: var(--print-font-bold, var(--font-sans-builtin));
 }
 
 .md-editor .md-editor-fullscreen {

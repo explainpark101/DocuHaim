@@ -267,14 +267,18 @@ button {
 
 /*
  * Unlayered: beat md-editor-rt / CodeMirror font-family hardcodes.
- * App chrome, chat, notes preview/modals → Paperozi + system glyph fallback.
+ * Editor chrome / modals follow app UI font (--font-sans).
+ * Note preview matches print: --print-font-* → builtin Paperozi / A2z.
  * Chat composer input also uses sans (matches message bubbles).
  */
 .md-editor,
 .md-editor-modal,
-.md-editor-modal-container,
-.md-editor-preview {
+.md-editor-modal-container {
   font-family: var(--font-sans);
+}
+
+.md-editor-preview {
+  font-family: var(--print-font-body, var(--font-sans-builtin));
 }
 
 .chat-composer-editor .md-editor .ͼ1 .cm-scroller,
@@ -290,10 +294,13 @@ button {
 .md-editor-preview h5,
 .md-editor-preview h6,
 .md-editor-preview h6[data-heading-level],
-.md-editor-preview b,
-.md-editor-preview strong,
 .md-editor-preview th {
-  font-family: var(--font-display);
+  font-family: var(--print-font-heading, var(--font-display-builtin));
+}
+
+.md-editor-preview b,
+.md-editor-preview strong {
+  font-family: var(--print-font-bold, var(--font-sans-builtin));
 }
 
 /* —— Advanced Search sidebar trigger (icon lift + soft violet/blue/green glow) —— */

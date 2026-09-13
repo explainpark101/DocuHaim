@@ -1,7 +1,8 @@
 /* Footnote / Sources list (numeric [^N] bottom sources) */
 
+/* Same fallbacks as exportPdfPrintStyles — builtin Paperozi / A2z / mono */
 .md-editor .md-editor-preview {
-  font-family: var(--print-font-body, inherit);
+  font-family: var(--print-font-body, var(--font-sans-builtin));
 }
 
 .md-editor .md-editor-preview h1,
@@ -10,17 +11,17 @@
 .md-editor .md-editor-preview h4,
 .md-editor .md-editor-preview h5,
 .md-editor .md-editor-preview h6 {
-  font-family: var(--print-font-heading, inherit);
+  font-family: var(--print-font-heading, var(--font-display-builtin));
 }
 
 .md-editor .md-editor-preview b,
 .md-editor .md-editor-preview strong {
-  font-family: var(--print-font-bold, inherit);
+  font-family: var(--print-font-bold, var(--font-sans-builtin));
 }
 
 .md-editor .md-editor-preview code,
 .md-editor .md-editor-preview pre {
-  font-family: var(--print-font-code, inherit);
+  font-family: var(--print-font-code, var(--font-mono-builtin));
 }
 
 .md-editor .md-editor-preview .footnote-ref {
