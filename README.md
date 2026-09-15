@@ -151,8 +151,9 @@ Arch/Omarchy에서 AppImage 번들 시 흔한 이슈:
 
 1. `linuxdeploy` strip이 `.relr.dyn`에서 실패 → `NO_STRIP=true`
 2. `gdk-pixbuf2` 2.42+에 `/usr/lib/gdk-pixbuf-2.0/2.10.0` 로더 디렉터리가 없음 → 패치된 GTK 플러그인 필요
+3. Wayland(HiDPI)에서 AppImage가 X11로 강제되어 UI가 ~2배 크게 보이는 경우 → AppRun/`WEBKIT_DISABLE_DMABUF_RENDERER`로 GDK 배율 1로 맞춤 (필요 시 `GDK_SCALE` 직접 지정)
 
-`bun run tauri:build`는 둘 다 자동 처리합니다 (`NO_STRIP` + `src-tauri/linux/linuxdeploy-plugin-gtk.sh`를 `~/.cache/tauri/`에 복사).
+`bun run tauri:build`는 1–2를 자동 처리합니다 (`NO_STRIP` + `src-tauri/linux/linuxdeploy-plugin-gtk.sh`를 `~/.cache/tauri/`에 복사). 3은 빌드에 포함된 AppRun 훅과 런타임 env로 적용됩니다.
 
 산출물: `src-tauri/target/release/bundle/appimage/*.AppImage`, `src-tauri/target/release/bundle/deb/*.deb`.
 

@@ -185,6 +185,13 @@ export APPDIR="${APPDIR:-"$(dirname "$(realpath "$0")")"}" # Workaround to run e
 export GTK_DATA_PREFIX="$APPDIR"
 export GTK_THEME="$APPIMAGE_GTK_THEME" # Custom themes are broken
 export GDK_BACKEND=x11 # Crash with Wayland backend on Wayland - We tested it without it and ended up with this: https://github.com/tauri-apps/tauri/issues/8541
+# XWayland already applies compositor HiDPI scale; leave GDK at 1x unless user overrides.
+# Without this, AppImage UI is often ~2x too large on HiDPI Wayland (e.g. Hyprland).
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+  export GDK_SCALE="${GDK_SCALE:-1}"
+  export GDK_DPI_SCALE="${GDK_DPI_SCALE:-1}"
+fi
+export WEBKIT_DISABLE_DMABUF_RENDERER="${WEBKIT_DISABLE_DMABUF_RENDERER:-1}"
 export XDG_DATA_DIRS="$APPDIR/usr/share:/usr/share:$XDG_DATA_DIRS" # g_get_system_data_dirs() from GLib
 EOF
 

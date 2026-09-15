@@ -3,6 +3,9 @@ mod desktop_menu;
 mod stronghold_kdf;
 mod system_fonts;
 
+#[cfg(target_os = "linux")]
+mod linux_env;
+
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -269,6 +272,9 @@ fn take_pending_open_paths(state: tauri::State<'_, PendingOpenPaths>) -> Vec<Str
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "linux")]
+    linux_env::apply_linux_webview_env();
+
     let pending = PendingOpenPaths(Mutex::new(collect_cli_file_args()));
 
     let mut builder = tauri::Builder::default()
