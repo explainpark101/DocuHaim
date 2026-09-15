@@ -9,7 +9,14 @@ use std::sync::Mutex;
 
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, RunEvent};
+use tauri::{AppHandle, Emitter, Manager};
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "android",
+    target_os = "windows"
+))]
+use tauri::RunEvent;
 #[cfg(target_os = "windows")]
 use tauri::WindowEvent;
 use url::Url;
@@ -394,7 +401,10 @@ pub fn run() {
                         app_handle.exit(0);
                     }
                 }
-                _ => {}
+                // Linux (and other cfgs without dedicated arms): keep handler params used.
+                _ => {
+                    let _ = app_handle;
+                }
             }
         });
 }

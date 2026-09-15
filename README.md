@@ -48,9 +48,9 @@ Nextcloud 등은 기본 CORS가 꺼져 있는 경우가 많습니다. CORS 오�
 
 ## Tauri
 
-이 앱은 [Tauri](https://tauri.app/)로 macOS / Windows 데스크톱 빌드를 제공합니다. Google AI Studio 사용 등 브라우저 CORS 제약을 피할 수 있습니다. 공식 릴리스 서명·공증은 [docs/desktop/code-signing.md](docs/desktop/code-signing.md)와 GitHub Actions **Release Tauri** 워크플로를 참고하세요.
+이 앱은 [Tauri](https://tauri.app/)로 macOS / Windows / Linux 데스크톱 빌드를 제공합니다. Google AI Studio 사용 등 브라우저 CORS 제약을 피할 수 있습니다. 공식 릴리스 서명·공증은 [docs/desktop/code-signing.md](docs/desktop/code-signing.md)와 GitHub Actions **Release Tauri** 워크플로를 참고하세요.
 
-사전 준비: `bun install`, Rust toolchain, macOS에서는 Xcode Command Line Tools.
+사전 준비: `bun install`, Rust toolchain, macOS에서는 Xcode Command Line Tools. Linux에서는 WebKitGTK 등 시스템 패키지(아래 Linux 절)가 필요합니다.
 
 ### MacOS
 
@@ -119,6 +119,46 @@ bun run tauri:build
 ### Windows
 > 아직 Windows 의 tauri app은 테스트되지 않아 불안정할 수 있습니다.
 
+### Linux
+
+Debian/Ubuntu 계열에서 로컬 빌드하려면 WebKitGTK 4.1 및 번들 도구가 필요합니다.
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  libwebkit2gtk-4.1-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev \
+  patchelf \
+  libssl-dev
+```
+
+archlinux 는 아래와 같음.
+```
+sudo pacman -Syu --needed \
+  webkit2gtk-4.1 \
+  libayatana-appindicator \
+  librsvg \
+  patchelf \
+  openssl
+```
+
+```bash
+bun run tauri:build
+```
+
+Arch/Omarchy에서 AppImage 번들 시 흔한 이슈:
+
+1. `linuxdeploy` strip이 `.relr.dyn`에서 실패 → `NO_STRIP=true`
+2. `gdk-pixbuf2` 2.42+에 `/usr/lib/gdk-pixbuf-2.0/2.10.0` 로더 디렉터리가 없음 → 패치된 GTK 플러그인 필요
+
+`bun run tauri:build`는 둘 다 자동 처리합니다 (`NO_STRIP` + `src-tauri/linux/linuxdeploy-plugin-gtk.sh`를 `~/.cache/tauri/`에 복사).
+
+산출물: `src-tauri/target/release/bundle/appimage/*.AppImage`, `src-tauri/target/release/bundle/deb/*.deb`.
+
+> Arch에서 만든 AppImage는 같은 계열 배포판에서만 안정적인 경우가 많습니다. 배포용 바이너리는 CI(`ubuntu-22.04`) 산출물을 권장합니다. Wayland/X11·배포판에 따라 WebView 동작이 다를 수 있습니다.
+>
+> `~/.cache/tauri` 또는 `src-tauri/target/.../appimage`가 root 소유라면 (sudo로 빌드한 경우) `sudo chown -R "$USER:$USER"`로 되돌려야 이후 일반 사용자 빌드가 됩니다.
 
 ### Android
 > 안드로이드 빌드는 아직 테스트되지 않았습니다. 빌드가 불가능하거나 불안정할 수 있으며, 예상치 못한 동작이 진행될 수 있습니다.

@@ -24,7 +24,7 @@
     "build:tauri": "bun run sync:tauri-version && bun run llms && cross-env VITE_ELECTRON=true VITE_BASE_PATH=/ NODE_OPTIONS=--max-old-space-size=8192 vite build",
     "tauri": "tauri",
     "tauri:dev": "bun run sync:tauri-version && tauri dev",
-    "tauri:build": "bun run sync:tauri-version && tauri build",
+    "tauri:build": "bun run sync:tauri-version && bun scripts/tauri-build.mjs",
     "macos:adhoc": "bun scripts/macos-adhoc-sign.mjs",
     "tauri:macos": "bun run tauri:build && bun run macos:adhoc -- --install",
     "sync:tauri-version": "bun scripts/sync-tauri-version-from-package.mjs",
