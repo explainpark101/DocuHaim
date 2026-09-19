@@ -30,9 +30,10 @@ import {
   type WorkspaceTab,
 } from '@/utils/workspaceTabs';
 import {
+  flushPaneDropOverlayForCommit,
+  getPaneDropOverlayHit,
   getWorkspaceTabDrag,
   hitTestPaneDropAt,
-  setPaneDropOverlayHit,
   setWorkspaceTabDrag,
   subscribeWorkspaceTabDrag,
   updateWorkspaceTabDragPoint,
@@ -256,7 +257,8 @@ export default function WorkspaceMainPanels({
           ? prev
           : next,
       );
-      setPaneDropOverlayHit(next);
+      // Overlay hit for commit is published when the throttled display applies
+      // (see WorkspacePaneDropOverlay) so drop matches what the user saw.
     },
     [],
   );
@@ -590,8 +592,12 @@ export default function WorkspaceMainPanels({
       unlockSelection?.();
       unlockSelection = null;
       const snap = getWorkspaceTabDrag();
-      // Prefer the overlay hit the user last saw (before tearing down the drag).
-      const hit = dropHighlightRef.current ?? resolveDropHighlight(clientX, clientY);
+      // Prefer the overlay target the user last saw (flush pending 500ms move first).
+      flushPaneDropOverlayForCommit();
+      const hit =
+        getPaneDropOverlayHit() ??
+        dropHighlightRef.current ??
+        resolveDropHighlight(clientX, clientY);
       setWorkspaceTabDrag(null);
       if (!started || !snap?.paneLeafId) return;
       if (!hit) return;

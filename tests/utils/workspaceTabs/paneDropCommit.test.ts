@@ -18,3 +18,4 @@ describe('resolvePaneDropForCommit', () => {
     expect(hit).toEqual({ leafId: 'leaf-b', zone: 'center', workspaceEdge: false });
   });
 });
+
