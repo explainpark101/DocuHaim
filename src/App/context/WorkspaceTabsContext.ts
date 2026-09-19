@@ -16,6 +16,13 @@ export type WorkspaceTabsCtxValue = ReturnType<typeof useWorkspaceTabs> & {
   reorderWorkspaceTabs: (...args: any[]) => any;
   collapseToLegacyWorkspace: (...args: any[]) => any;
   cycleWorkspaceTab: (...args: any[]) => any;
+  focusWorkspacePane: (...args: any[]) => any;
+  resizeWorkspaceSplit: (...args: any[]) => any;
+  handleWorkspacePaneDrop: (...args: any[]) => any;
+  splitWorkspaceTabToEdge: (...args: any[]) => any;
+  applyWorkspacePaneLayout: (...args: any[]) => any;
+  openExportPdfInFocusedPane: (...args: any[]) => any;
+  clearExportPdfInFocusedPane: (...args: any[]) => any;
 };
 
 export const WorkspaceTabsContext = createContext<WorkspaceTabsCtxValue | null>(null);

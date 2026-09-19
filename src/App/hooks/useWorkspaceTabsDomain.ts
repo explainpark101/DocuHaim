@@ -16,13 +16,29 @@ import {
 } from '@/utils/workspaceTabs';
 import {
   activateTab,
+  clearExportPdfInLeaf,
   closeTab,
   flushEditorIntoActiveFileTab,
   moveTab,
+  moveTabIntoLeaf,
+  openExportPdfInLeaf,
   openOrActivateChat,
   openOrActivateContentSearch,
   openOrActivateSettings,
+  replaceWorkspaceLayout,
+  setFocusedPane,
+  splitTabToEdge,
 } from '@/utils/workspaceTabs/appBridge';
+import {
+  findLeafContainingTab,
+  flattenTabIdsFromLayout,
+  resizeSplit,
+  type PaneNode,
+  type PaneSplitEdge,
+} from '@/utils/workspaceTabs/paneLayout';
+import { isQuizMdPath } from '@/utils/quiz/quizPath';
+import { isQuizAppPathname, openNotePathnameForStoragePath, contentSearchPathname, isSettingsAppPathname } from '@/utils/appHref';
+import { patchFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
 import {
   collapseWorkspaceToLegacy,
   stripChatTab,
@@ -31,11 +47,6 @@ import {
 } from '@/utils/workspaceTabs/legacyMode';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 import { clearEncMdPassword, isEncMdPath } from '@/utils/encMd';
-import {
-  contentSearchPathname,
-  isSettingsAppPathname,
-  openNotePathnameForStoragePath,
-} from '@/utils/appHref';
 import { useAuth } from '@/contexts/AuthContext';
 import { findFileTab } from '@/utils/workspaceTabs/appBridge';
 import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
@@ -183,9 +194,19 @@ export function useWorkspaceTabsDomain({
         onLeavingDirty(leaving.currentFile, leaving.editorContent);
       }
       const activated = activateTab(flushed, id);
-      workspaceTabsRef.current = activated;
-      setWorkspaceTabs(activated);
-      const active = getActiveTab(activated);
+      // Keep quiz vs edit surface on file tabs so secondary panes stay correct.
+      let withSurface = activated;
+      const nextActive = getActiveTab(activated);
+      if (isFileTab(nextActive) && isQuizMdPath(nextActive.path || nextActive.currentFile?.id)) {
+        const wantQuiz = isQuizAppPathname(location.pathname);
+        const surface = wantQuiz ? 'quiz' : 'edit';
+        if (nextActive.noteSurface !== surface) {
+          withSurface = patchFileTab(activated, nextActive.id, { noteSurface: surface });
+        }
+      }
+      workspaceTabsRef.current = withSurface;
+      setWorkspaceTabs(withSurface);
+      const active = getActiveTab(withSurface);
       if (isFileTab(active)) {
         const file = active.currentFile;
         setCurrentFile(file);
@@ -196,9 +217,11 @@ export function useWorkspaceTabsDomain({
         if (navigateUrl) {
           const viewPath =
             (typeof file?.id === 'string' && file.id) || active.path;
+          const preferView = active.noteSurface === 'edit';
           navigate(
             openNotePathnameForStoragePath(viewPath, {
               currentPathname: location.pathname,
+              ...(preferView ? { preferView: true } : {}),
             }),
           );
         }
@@ -516,16 +539,114 @@ export function useWorkspaceTabsDomain({
     [workspaceTabsRef, setWorkspaceTabs],
   );
 
+  const focusWorkspacePane = useCallback(
+    (paneId: string) => {
+      const next = setFocusedPane(workspaceTabsRef.current, paneId);
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      const active = getActiveTab(next);
+      if (active) activateWorkspaceTab(active.id, { navigateUrl: true });
+    },
+    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+  );
+
+  const resizeWorkspaceSplit = useCallback(
+    (splitId: string, ratio: number) => {
+      const prev = workspaceTabsRef.current;
+      const layout = resizeSplit(prev.layout, splitId, ratio);
+      const next = { ...prev, layout };
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+    },
+    [setWorkspaceTabs, workspaceTabsRef],
+  );
+
+  const handleWorkspacePaneDrop = useCallback(
+    (tabId: string, leafId: string, zone: PaneSplitEdge | 'center'): boolean => {
+      const prev = workspaceTabsRef.current;
+      let next = prev;
+      if (zone === 'center') {
+        next = moveTabIntoLeaf(prev, tabId, leafId);
+      } else {
+        const split = splitTabToEdge(prev, leafId, zone, tabId);
+        if (!split) return false;
+        next = split;
+      }
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      activateWorkspaceTab(tabId, { navigateUrl: true });
+      return true;
+    },
+    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+  );
+
+  const splitWorkspaceTabToEdge = useCallback(
+    (tabId: string, edge: PaneSplitEdge): boolean => {
+      const prev = workspaceTabsRef.current;
+      const host = findLeafContainingTab(prev.layout, tabId);
+      const leafId = host?.id ?? prev.focusedPaneId;
+      if (!leafId) return false;
+      // Need another tab in the host leaf or the empty remnant collapses back.
+      if (!host || host.tabIds.length <= 1) return false;
+      const split = splitTabToEdge(prev, leafId, edge, tabId);
+      if (!split) return false;
+      workspaceTabsRef.current = split;
+      setWorkspaceTabs(split);
+      activateWorkspaceTab(tabId, { navigateUrl: true });
+      return true;
+    },
+    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+  );
+
+  const applyWorkspacePaneLayout = useCallback(
+    (layout: PaneNode, focusedPaneId?: string | null) => {
+      const prev = workspaceTabsRef.current;
+      const next = replaceWorkspaceLayout(prev, layout, focusedPaneId);
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      const active = getActiveTab(next);
+      if (active) activateWorkspaceTab(active.id, { navigateUrl: true });
+    },
+    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+  );
+
+  const openExportPdfInFocusedPane = useCallback(
+    (tabId?: string | null) => {
+      const state = workspaceTabsRef.current;
+      const id = tabId || state.activeId;
+      if (!id) return false;
+      const leafId = state.focusedPaneId;
+      const next = openExportPdfInLeaf(state, leafId, id);
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      return true;
+    },
+    [setWorkspaceTabs, workspaceTabsRef],
+  );
+
+  const clearExportPdfInFocusedPane = useCallback(
+    (leafId?: string | null) => {
+      const state = workspaceTabsRef.current;
+      const id = leafId || state.focusedPaneId;
+      const next = clearExportPdfInLeaf(state, id);
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+    },
+    [setWorkspaceTabs, workspaceTabsRef],
+  );
+
   const cycleWorkspaceTab = useCallback(
     (delta: number) => {
       if (!workspaceTabsEnabledRef.current) return;
-      const { tabs, activeId } = workspaceTabsRef.current;
-      if (!tabs.length) return;
-      let idx = tabs.findIndex((t: { id: string }) => t.id === activeId);
+      const state = workspaceTabsRef.current;
+      const order = flattenTabIdsFromLayout(state.layout);
+      const ids = order.length > 0 ? order : state.tabs.map((t: { id: string }) => t.id);
+      if (!ids.length) return;
+      let idx = ids.findIndex((id: string) => id === state.activeId);
       if (idx < 0) idx = delta > 0 ? -1 : 0;
-      const nextIdx = (idx + delta + tabs.length) % tabs.length;
-      const next = tabs[nextIdx];
-      if (next) activateWorkspaceTab(next.id);
+      const nextIdx = (idx + delta + ids.length) % ids.length;
+      const nextId = ids[nextIdx];
+      if (nextId) activateWorkspaceTab(nextId);
     },
     [activateWorkspaceTab, workspaceTabsEnabledRef, workspaceTabsRef],
   );
@@ -556,5 +677,12 @@ export function useWorkspaceTabsDomain({
     reorderWorkspaceTabs,
     collapseToLegacyWorkspace,
     cycleWorkspaceTab,
+    focusWorkspacePane,
+    resizeWorkspaceSplit,
+    handleWorkspacePaneDrop,
+    splitWorkspaceTabToEdge,
+    applyWorkspacePaneLayout,
+    openExportPdfInFocusedPane,
+    clearExportPdfInFocusedPane,
   };
 }

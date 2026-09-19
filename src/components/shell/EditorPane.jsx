@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { motion as Motion, useReducedMotion } from 'motion/react';
 import {
   IconCloud,
@@ -16,14 +16,12 @@ import {
 } from '@/components/icons';
 import AudioLevelIndicator from '@/components/AudioLevelIndicator';
 import RecordingDropdownButton from '@/components/RecordingDropdownButton';
-import { EDITOR_TYPE_NOVEL, loadEditorType } from '@/utils/editorTypeSettings';
 import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
 import { Tooltip } from 'radix-ui';
-import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, ListTree, Loader2, PenLine, Settings, Shuffle, Sparkles, X } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, Loader2, PenLine, Settings, Shuffle, Sparkles, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
-import PrintButton from '@/components/PrintButton';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import DocumentSettingsModal from '@/components/DocumentSettingsModal';
@@ -63,9 +61,10 @@ import {
   viewPathnameForStoragePath,
 } from '@/utils/appHref';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
+import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
+import { patchFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
 
 const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
-const NovelMarkdownEditor = lazy(() => import('@/components/NovelMarkdownEditor'));
 const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
 const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
 const QuizPane = lazy(() => import('@/components/quiz/QuizPane'));
@@ -139,13 +138,15 @@ export default function EditorPane({
   onResolveWikiImageUrl,
   onOpenViewPath,
   snippetConfig = { snippets: [] },
-  editorType,
+  editorType: _editorType,
   hideRecordingCompanions = false,
   llmProviderProfiles = [],
   getImgbbApiKey,
   isActiveFile = true,
+  /** When set, overrides pathname-based quiz mode (split panes). */
+  forceQuizMode = undefined,
+  noteSurface = undefined,
 }) {
-  const effectiveEditorType = editorType ?? loadEditorType();
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
   const pdfIframeRef = useRef(null);
   const [recordingViewMode, setRecordingViewMode] = useState(false);
@@ -154,9 +155,7 @@ export default function EditorPane({
   const [fileManagementOpen, setFileManagementOpen] = useState(false);
   const fileManagementRef = useRef(null);
   const { open: aiSettingsDockOpen, toggleDock: toggleAiSettingsDock } = useAiSettingsDock();
-  const [novelTocVisible, setNovelTocVisible] = useState(true);
   const editorTopChromeRef = useRef(null);
-  const novelFlushBeforeSaveRef = useRef(null);
   const convertAllImagesToWikiRef = useRef(null);
   const [convertAllImagesConfirmOpen, setConvertAllImagesConfirmOpen] = useState(false);
   const [convertingAllImages, setConvertingAllImages] = useState(false);
@@ -164,7 +163,6 @@ export default function EditorPane({
   const [imgbbCopyConfirmOpen, setImgbbCopyConfirmOpen] = useState(false);
   const [imgbbCopyCandidates, setImgbbCopyCandidates] = useState([]);
   const [imgbbCopyUploading, setImgbbCopyUploading] = useState(false);
-  const [mobileTocOverlayTopPx, setMobileTocOverlayTopPx] = useState(null);
   const [documentSettingsOpen, setDocumentSettingsOpen] = useState(false);
   const [quizToolbarNode, setQuizToolbarNode] = useState(null);
   const [quizFileManagement, setQuizFileManagement] = useState(null);
@@ -172,15 +170,22 @@ export default function EditorPane({
   const [quizModeSwitchTarget, setQuizModeSwitchTarget] = useState(null);
   const quizSwitchNavigatedRef = useRef(false);
   const { quizHasUnsavedProgressRef, quizFlushBeforeSaveRef } = useFileSessionOwned();
+  const tabsCtx = useWorkspaceTabsCtxOptional();
   const { showAlert } = useAlertModal();
   const location = useLocation();
   const navigate = useNavigate();
 
   const isQuizFile = isQuizMdPath(currentFile?.id || currentFile?.name);
-  const quizMode = isQuizFile && isQuizAppPathname(location.pathname);
+  const quizMode =
+    typeof forceQuizMode === 'boolean'
+      ? forceQuizMode
+      : noteSurface === 'quiz'
+        ? true
+        : noteSurface === 'edit'
+          ? false
+          : isQuizFile && isQuizAppPathname(location.pathname);
 
   const flushBeforeSave = useCallback(() => {
-    novelFlushBeforeSaveRef.current?.();
     quizFlushBeforeSaveRef.current?.();
   }, [quizFlushBeforeSaveRef]);
 
@@ -207,6 +212,14 @@ export default function EditorPane({
           : viewPathnameForStoragePath(path),
       );
       quizSwitchNavigatedRef.current = true;
+      if (tabsCtx?.workspaceTabsEnabled && currentFile?.type && path) {
+        const tabId = `${currentFile.type}:${path}`;
+        const next = patchFileTab(tabsCtx.workspaceTabsRef.current, tabId, {
+          noteSurface: target === 'quiz' ? 'quiz' : 'edit',
+        });
+        tabsCtx.workspaceTabsRef.current = next;
+        tabsCtx.setState(next);
+      }
     } catch {
       quizSwitchNavigatedRef.current = false;
       setQuizModeSwitching(false);
@@ -214,12 +227,14 @@ export default function EditorPane({
     }
   }, [
     currentFile?.id,
+    currentFile?.type,
     flushBeforeSave,
     isQuizFile,
     navigate,
     onSave,
     quizMode,
     quizModeSwitching,
+    tabsCtx,
   ]);
 
   useEffect(() => {
@@ -288,13 +303,11 @@ export default function EditorPane({
   }, [quizMode, handleToolbarSave]);
 
   const handleToolbarRefreshFromDisk = useCallback(() => {
-    novelFlushBeforeSaveRef.current?.();
     quizFlushBeforeSaveRef.current?.();
     onRefreshFromDisk?.();
   }, [onRefreshFromDisk, quizFlushBeforeSaveRef]);
 
   const handlePullFromRemote = useCallback(() => {
-    novelFlushBeforeSaveRef.current?.();
     quizFlushBeforeSaveRef.current?.();
     onPullFromRemote?.();
   }, [onPullFromRemote, quizFlushBeforeSaveRef]);
@@ -323,7 +336,6 @@ export default function EditorPane({
     if (copyingFormattedHtml || imgbbCopyUploading) return;
     setCopyingFormattedHtml(true);
     try {
-      novelFlushBeforeSaveRef.current?.();
       quizFlushBeforeSaveRef.current?.();
       const candidates = collectImgbbCopyCandidates();
       if (candidates.length > 0) {
@@ -464,7 +476,7 @@ export default function EditorPane({
       if (typeof convertAllImagesToWikiRef.current === 'function') {
         result = await convertAllImagesToWikiRef.current();
       } else {
-        novelFlushBeforeSaveRef.current?.();
+        quizFlushBeforeSaveRef.current?.();
         if (typeof onUploadImage !== 'function') {
           throw new Error('이미지 업로드를 사용할 수 없습니다.');
         }
@@ -511,37 +523,6 @@ export default function EditorPane({
     onChangeEditor,
     onUploadImage,
     showAlert,
-  ]);
-
-  useLayoutEffect(() => {
-    if (!isMobileLayout) return;
-    const el = editorTopChromeRef.current;
-    if (!el) return;
-    const update = () => {
-      const node = editorTopChromeRef.current;
-      if (!node) return;
-      const r = node.getBoundingClientRect();
-      setMobileTocOverlayTopPx(r.bottom);
-    };
-    update();
-    const ro = new ResizeObserver(() => update());
-    ro.observe(el);
-    window.addEventListener('resize', update);
-    window.addEventListener('scroll', update, true);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', update);
-      window.removeEventListener('scroll', update, true);
-    };
-  }, [
-    isMobileLayout,
-    currentFile?.viewer,
-    showRecordingToolbar,
-    recordingsList.length,
-    recordingViewMode,
-    effectiveEditorType,
-    novelTocVisible,
-    currentFile?.id,
   ]);
 
   useEffect(() => {
@@ -1175,44 +1156,6 @@ export default function EditorPane({
           )}
         </div>
       )}
-      {viewer === 'markdown' && effectiveEditorType === EDITOR_TYPE_NOVEL && !recordingViewMode && (
-        <div
-          className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-gray-200 dark:border-odp-borderSoft bg-gray-50/90 dark:bg-odp-bgSoft/90"
-          role="toolbar"
-          aria-label="Markdown 편집기"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-white dark:bg-odp-surface px-2 py-0.5 text-xs font-semibold text-gray-800 dark:text-odp-fgStrong border border-gray-200 dark:border-odp-borderSoft shadow-sm shrink-0">
-              <PenLine className="size-3.5 opacity-85" aria-hidden />
-              Markdown
-            </span>
-            <span className="text-xs text-gray-500 dark:text-odp-muted truncate hidden sm:inline">
-              `/` 로 커맨드 입력
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <PrintButton
-              value={editorContent}
-              theme={theme}
-              currentFile={currentFile}
-            />
-            <button
-              type="button"
-              className={`shrink-0 inline-flex items-center justify-center rounded-md border p-1.5 shadow-sm transition dark:border-odp-borderSoft ${
-                novelTocVisible
-                  ? 'border-gray-300 bg-gray-100 text-gray-900 dark:bg-odp-bg dark:text-odp-fgStrong'
-                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-odp-surface dark:text-odp-muted dark:hover:bg-odp-bgSoft dark:hover:text-odp-fgStrong'
-              }`}
-              onClick={() => setNovelTocVisible((v) => !v)}
-              title={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
-              aria-pressed={novelTocVisible}
-              aria-label={novelTocVisible ? '목차 숨기기' : '목차 보이기'}
-            >
-              <ListTree className="size-4" aria-hidden />
-            </button>
-          </div>
-        </div>
-      )}
       </div>
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-odp-surface h-full">
         {viewer === 'loading' ? (
@@ -1249,34 +1192,7 @@ export default function EditorPane({
                 />
               ) : (
                 <Suspense fallback={<EditorPaneSuspenseFallback message="에디터 로딩 중…" />}>
-                  {effectiveEditorType === EDITOR_TYPE_NOVEL ? (
-                    <NovelMarkdownEditor
-                      key={currentFile?.id ?? 'novel-md'}
-                      documentKey={currentFile?.id ?? ''}
-                      value={editorContent}
-                      onChange={onChangeEditor}
-                      onSave={onSave}
-                      theme={theme}
-                      currentFile={currentFile}
-                      previewOnly={previewOnly}
-                      tocVisible={novelTocVisible}
-                      onTocRequestClose={() => setNovelTocVisible(false)}
-                      mobileTocOverlayTopPx={isMobileLayout ? mobileTocOverlayTopPx : null}
-                      onRegisterFlushBeforeSave={(fn) => {
-                        novelFlushBeforeSaveRef.current = fn;
-                      }}
-                      onRegisterConvertAllImagesToWiki={(fn) => {
-                        convertAllImagesToWikiRef.current = fn;
-                      }}
-                      onUploadImage={onUploadImage}
-                      isUploadingEditorImage={isUploadingEditorImage}
-                      uploadImagePercent={uploadImagePercent}
-                      onCancelUploadImage={onCancelUploadImage}
-                      onResolveWikiImageUrl={onResolveWikiImageUrl}
-                      getImgbbApiKey={getImgbbApiKey}
-                    />
-                  ) : (
-                    <MarkdownEditor
+                  <MarkdownEditor
                       value={editorContent}
                       onChange={onChangeEditor}
                       onSave={onSave}
@@ -1299,7 +1215,6 @@ export default function EditorPane({
                         convertAllImagesToWikiRef.current = fn;
                       }}
                     />
-                  )}
                 </Suspense>
               )}
             </div>

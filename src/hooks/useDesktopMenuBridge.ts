@@ -8,6 +8,7 @@ import {
   stopDesktopMenuActionBridge,
   syncDesktopMenuUi,
 } from '@/utils/desktopMenuBridge';
+import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 
 type OpenFileLike = {
   id?: string | null;
@@ -42,6 +43,7 @@ export function useDesktopMenuBridge({
   toggleLlmAssist,
 }: UseDesktopMenuBridgeOptions): void {
   const navigate = useNavigate();
+  const tabsCtx = useWorkspaceTabsCtxOptional();
   const handlersRef = useRef({
     setStorageMode,
     openLocalFolder,
@@ -54,7 +56,13 @@ export function useDesktopMenuBridge({
     openLocalFolder,
     openPrintPage: () => {
       if (!isMarkdownFileOpenForPrint(currentFile)) return;
-      buildDesktopPrintNavigation(currentFile, editorContent, theme, navigate);
+      buildDesktopPrintNavigation(
+        currentFile,
+        editorContent,
+        theme,
+        navigate,
+        (tabId) => Boolean(tabsCtx?.openExportPdfInFocusedPane?.(tabId)),
+      );
     },
     toggleLlmAssist,
   };

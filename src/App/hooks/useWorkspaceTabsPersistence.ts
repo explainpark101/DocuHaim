@@ -5,6 +5,7 @@ import {
 } from '@/utils/workspaceTabs';
 import { flushEditorIntoActiveFileTab } from '@/utils/workspaceTabs/appBridge';
 import type { WorkspaceTabsState } from '@/utils/workspaceTabs/types';
+import { toPersistedPaneNode } from '@/utils/workspaceTabs/paneLayout';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 
 type PersistDeps = {
@@ -40,6 +41,8 @@ function buildPersistedWorkspaceTabsPayload(
             : { kind: 'file', storageType: t.storageType, path: t.path },
     ),
     flushed.activeId,
+    toPersistedPaneNode(flushed.layout),
+    flushed.focusedPaneId,
   );
 }
 
@@ -90,6 +93,8 @@ export function useWorkspaceTabsPersistence(deps: PersistDeps) {
 
     const persistForQuit = () => {
       if (!workspaceTabsEnabledRef.current) return;
+      // Avoid overwriting a saved split layout with the empty/pre-restore shell.
+      if (!hasRestoredPersistedWorkspaceTabsRef.current) return;
       const payload = buildPersistedWorkspaceTabsPayload(workspaceTabsRef.current, {
         editorContent: editorContentRef.current ?? '',
         currentFile: currentFileRef.current,
@@ -133,5 +138,6 @@ export function useWorkspaceTabsPersistence(deps: PersistDeps) {
     editorContentRef,
     currentFileRef,
     editedFileNameRef,
+    hasRestoredPersistedWorkspaceTabsRef,
   ]);
 }

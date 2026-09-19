@@ -7,6 +7,7 @@ import {
   useSensors,
   type DragCancelEvent,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
 import {
@@ -37,6 +38,7 @@ import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   type SVGProps,
 } from 'react';
 import type { FileWorkspaceTab, WorkspaceTab } from '@/utils/workspaceTabs';
@@ -46,16 +48,46 @@ import {
   tabDirectoryPath,
   tabDisplayTitle,
 } from '@/utils/workspaceTabs';
+import {
+  AdaptiveContextMenu,
+  AdaptiveMenuItem,
+  AdaptiveMenuSeparator,
+} from '@/components/contextMenu/AdaptiveContextMenu';
+import {
+  DESKTOP_CONTEXT_MENU_Z_CLASS,
+  MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
+  MOBILE_CONTEXT_MENU_ITEM_CLASS,
+} from '@/components/contextMenu/mobileContextMenuStyles';
+import { chatMenuContentClass, chatMenuItemClass } from '@/components/chatWithMyself/ui/chatUiStyles';
+import WorkspacePaneLayoutModal from '@/components/shell/workspace/WorkspacePaneLayoutModal';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
 import { vibrateLongPressAction } from '@/utils/hapticFeedback';
 import { PRESSABLE_CARD_MENU_MS } from '@/components/chatWithMyself/usePressableCardMenu';
 import { restrictToHorizontalAxis } from '@/utils/workspace/restrictToHorizontalAxis';
+import {
+  hitTestPaneDropAt,
+  setWorkspaceTabDrag,
+  updateWorkspaceTabDragPoint,
+} from '@/utils/workspaceTabs/workspaceTabDragBridge';
+import {
+  WORKSPACE_PANE_SOFT_CAP,
+  countLeaves,
+  findLeafContainingTab,
+  type PaneNode,
+  type PaneSplitEdge,
+} from '@/utils/workspaceTabs/paneLayout';
 
 /** Horizontal-only translate; never scale tabs during sortable shifts. */
 function horizontalSortableTransform(transform: Transform | null): Transform | null {
   if (!transform) return null;
   return { ...transform, y: 0, scaleX: 1, scaleY: 1 };
 }
+
+export type WorkspaceTabGroup = {
+  leafId: string;
+  tabIds: string[];
+  focused: boolean;
+};
 
 type WorkspaceTabBarProps = {
   tabs: WorkspaceTab[];
@@ -64,23 +96,36 @@ type WorkspaceTabBarProps = {
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
   onReorder: (activeId: string, overId: string) => void;
-  /** Open TreeNode / Sidebar context menu for a file tab (right-click / long-press). */
+  /** When set (split layout), tabs render in contiguous groups. */
+  tabGroups?: WorkspaceTabGroup[] | null;
+  onPaneDrop?: (
+    tabId: string,
+    leafId: string,
+    zone: 'left' | 'right' | 'top' | 'bottom' | 'center',
+  ) => boolean;
+  /** Allow vertical drag / pane drop (desktop split). */
+  splitDragEnabled?: boolean;
+  /** Context-menu split (same edges as pane drop). */
+  onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
+  paneLayout?: PaneNode | null;
+  onApplyPaneLayout?: (layout: PaneNode) => void;
   onFileTabContextMenu?: (
     tab: FileWorkspaceTab,
     point: { clientX: number; clientY: number },
   ) => void;
   isMobileLayout?: boolean;
-  /**
-   * `inline` — bordered strip above editor panels (web / default).
-   * `titlebar` — embedded in DesktopTitlebar (no own border/bg; parent owns chrome).
-   */
   variant?: 'inline' | 'titlebar';
   className?: string;
 };
 
+const tabMenuContentClass = `${chatMenuContentClass} ${DESKTOP_CONTEXT_MENU_Z_CLASS}`;
+const tabMenuItemClass = chatMenuItemClass;
+const tabMenuDangerClass =
+  'flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-red-50 dark:text-red-400 dark:data-[highlighted]:bg-red-950/40';
+
+
 type IconComp = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
 
-/** Match sidebar TreeNode file icon rules. */
 function fileTabIcon(tab: FileWorkspaceTab): IconComp {
   const name = String(tab.editedFileName || tab.currentFile.name || tab.path || '');
   const lower = name.toLowerCase();
@@ -135,10 +180,10 @@ type WorkspaceTabRowProps = {
   saving: boolean;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
-  onFileTabContextMenu?: WorkspaceTabBarProps['onFileTabContextMenu'];
+  /** Opens the adaptive tab menu (mobile long-press). Desktop uses Radix ContextMenu. */
+  onOpenTabMenu?: (point: { clientX: number; clientY: number }) => void;
   mobileContextMenu: boolean;
   variant: 'inline' | 'titlebar';
-  /** DragOverlay clone — no sortable listeners or context-menu gestures. */
   overlay?: boolean;
   dragHandleProps?: Record<string, unknown>;
   innerRef?: (node: HTMLElement | null) => void;
@@ -151,7 +196,7 @@ function WorkspaceTabRow({
   saving,
   onActivate,
   onClose,
-  onFileTabContextMenu,
+  onOpenTabMenu,
   mobileContextMenu,
   variant,
   overlay = false,
@@ -185,14 +230,6 @@ function WorkspaceTabRow({
     pressStartRef.current = null;
   }, []);
 
-  const openFileMenu = useCallback(
-    (clientX: number, clientY: number) => {
-      if (!isFileTab(tab) || !onFileTabContextMenu) return;
-      onFileTabContextMenu(tab, { clientX, clientY });
-    },
-    [onFileTabContextMenu, tab],
-  );
-
   const handleMiddleClose = (e: ReactMouseEvent) => {
     if (overlay || e.button !== 1) return;
     e.preventDefault();
@@ -202,15 +239,17 @@ function WorkspaceTabRow({
 
   const handleContextMenu = (e: ReactMouseEvent) => {
     if (overlay) return;
-    // Suppress the browser menu on workspace tabs.
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isFileTab(tab) || !onFileTabContextMenu) return;
-    openFileMenu(e.clientX, e.clientY);
+    // Desktop AdaptiveContextMenu owns the native contextmenu via Radix Trigger.
+    // Prevent browser default when we have a menu handler (mobile falls through to open).
+    if (onOpenTabMenu && mobileContextMenu) {
+      e.preventDefault();
+      e.stopPropagation();
+      onOpenTabMenu({ clientX: e.clientX, clientY: e.clientY });
+    }
   };
 
   const handlePointerDown = (e: ReactPointerEvent) => {
-    if (overlay || !mobileContextMenu || !isFileTab(tab) || !onFileTabContextMenu) return;
+    if (overlay || !mobileContextMenu || !onOpenTabMenu) return;
     if (e.pointerType === 'mouse') return;
     if (e.button !== 0) return;
     longPressOpenedRef.current = false;
@@ -221,7 +260,7 @@ function WorkspaceTabRow({
       longPressOpenedRef.current = true;
       vibrateLongPressAction();
       const start = pressStartRef.current;
-      openFileMenu(start?.x ?? e.clientX, start?.y ?? e.clientY);
+      onOpenTabMenu({ clientX: start?.x ?? e.clientX, clientY: start?.y ?? e.clientY });
     }, PRESSABLE_CARD_MENU_MS);
   };
 
@@ -283,7 +322,6 @@ function WorkspaceTabRow({
       aria-selected={active}
       onMouseDown={(e) => {
         if (overlay) return;
-        // Prevent middle-click auto-scroll / paste quirks.
         if (e.button === 1) e.preventDefault();
       }}
       onAuxClick={handleMiddleClose}
@@ -342,7 +380,7 @@ type SortableTabProps = {
   saving: boolean;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
-  onFileTabContextMenu?: WorkspaceTabBarProps['onFileTabContextMenu'];
+  onOpenTabMenu?: (point: { clientX: number; clientY: number }) => void;
   mobileContextMenu: boolean;
   variant: 'inline' | 'titlebar';
 };
@@ -353,7 +391,7 @@ function SortableWorkspaceTab({
   saving,
   onActivate,
   onClose,
-  onFileTabContextMenu,
+  onOpenTabMenu,
   mobileContextMenu,
   variant,
 }: SortableTabProps) {
@@ -379,7 +417,7 @@ function SortableWorkspaceTab({
       saving={saving}
       onActivate={onActivate}
       onClose={onClose}
-      onFileTabContextMenu={onFileTabContextMenu}
+      {...(onOpenTabMenu ? { onOpenTabMenu } : {})}
       mobileContextMenu={mobileContextMenu}
       variant={variant}
       innerRef={setNodeRef}
@@ -389,10 +427,229 @@ function SortableWorkspaceTab({
   );
 }
 
+type TabMenuProps = {
+  tab: WorkspaceTab;
+  active: boolean;
+  saving: boolean;
+  onActivate: (id: string) => void;
+  onClose: (id: string) => void;
+  onFileTabContextMenu?: WorkspaceTabBarProps['onFileTabContextMenu'];
+  onSplitTab?: WorkspaceTabBarProps['onSplitTab'];
+  canSplitThisTab: boolean;
+  mobileContextMenu: boolean;
+  isMobileLayout: boolean;
+  variant: 'inline' | 'titlebar';
+};
+
+function WorkspaceTabWithMenu({
+  tab,
+  active,
+  saving,
+  onActivate,
+  onClose,
+  onFileTabContextMenu,
+  onSplitTab,
+  canSplitThisTab,
+  mobileContextMenu,
+  isMobileLayout,
+  variant,
+}: TabMenuProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuPointRef = useRef<{ clientX: number; clientY: number }>({ clientX: 0, clientY: 0 });
+  const title = tabDisplayTitle(tab);
+  const itemClass = mobileContextMenu ? MOBILE_CONTEXT_MENU_ITEM_CLASS : tabMenuItemClass;
+  const dangerClass = mobileContextMenu
+    ? MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS
+    : tabMenuDangerClass;
+
+  const openMenu = useCallback((point: { clientX: number; clientY: number }) => {
+    menuPointRef.current = point;
+    setMenuOpen(true);
+  }, []);
+
+  const splitEdges: { edge: PaneSplitEdge; label: string }[] = [
+    { edge: 'left', label: '왼쪽에 분할' },
+    { edge: 'right', label: '오른쪽에 분할' },
+    { edge: 'top', label: '위에 분할' },
+    { edge: 'bottom', label: '아래에 분할' },
+  ];
+
+  return (
+    <AdaptiveContextMenu
+      open={menuOpen}
+      onOpenChange={setMenuOpen}
+      title={title}
+      subtitle="워크스페이스 탭"
+      contentClassName={tabMenuContentClass}
+      isMobileLayout={isMobileLayout}
+      trigger={
+        <div className="flex h-full min-w-0 shrink-0 items-stretch">
+          <SortableWorkspaceTab
+            tab={tab}
+            active={active}
+            saving={saving}
+            onActivate={onActivate}
+            onClose={onClose}
+            onOpenTabMenu={openMenu}
+            mobileContextMenu={mobileContextMenu}
+            variant={variant}
+          />
+        </div>
+      }
+    >
+      {onSplitTab
+        ? splitEdges.map(({ edge, label }) => (
+            <AdaptiveMenuItem
+              key={edge}
+              className={itemClass}
+              disabled={!canSplitThisTab}
+              onSelect={() => {
+                onSplitTab(tab.id, edge);
+              }}
+            >
+              {label}
+            </AdaptiveMenuItem>
+          ))
+        : null}
+      {onSplitTab && (isFileTab(tab) && onFileTabContextMenu) ? <AdaptiveMenuSeparator /> : null}
+      {isFileTab(tab) && onFileTabContextMenu ? (
+        <AdaptiveMenuItem
+          className={itemClass}
+          onSelect={() => {
+            const point = menuPointRef.current;
+            // Defer so the adaptive menu closes before the tree menu opens.
+            requestAnimationFrame(() => {
+              onFileTabContextMenu(tab, point);
+            });
+          }}
+        >
+          파일 옵션…
+        </AdaptiveMenuItem>
+      ) : null}
+      {(onSplitTab || (isFileTab(tab) && onFileTabContextMenu)) ? <AdaptiveMenuSeparator /> : null}
+      <AdaptiveMenuItem
+        className={dangerClass}
+        danger
+        onSelect={() => onClose(tab.id)}
+      >
+        탭 닫기
+      </AdaptiveMenuItem>
+    </AdaptiveContextMenu>
+  );
+}
+
 type ActiveDragState = {
   tab: WorkspaceTab;
   size: { width: number; height: number } | null;
 };
+
+type TabGroupChromeProps = {
+  group: WorkspaceTabGroup;
+  children: ReactNode;
+  isMobileLayout: boolean;
+  mobileContextMenu: boolean;
+  onOpenLayoutEditor: () => void;
+};
+
+function WorkspaceTabGroupChrome({
+  group,
+  children,
+  isMobileLayout,
+  mobileContextMenu,
+  onOpenLayoutEditor,
+}: TabGroupChromeProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const itemClass = mobileContextMenu ? MOBILE_CONTEXT_MENU_ITEM_CLASS : tabMenuItemClass;
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    pressStartRef.current = null;
+  }, []);
+
+  const openGroupMenu = useCallback(() => {
+    setMenuOpen(true);
+  }, []);
+
+  const grip = (
+    <div
+      data-tab-group-chrome={group.leafId}
+      className="flex w-2.5 shrink-0 cursor-context-menu items-stretch self-stretch rounded-sm hover:bg-blue-500/20 dark:hover:bg-blue-400/25"
+      aria-label="분할 탭 그룹 메뉴"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (mobileContextMenu) openGroupMenu();
+        // Desktop: Radix ContextMenu.Trigger handles open via AdaptiveContextMenu.
+      }}
+      onPointerDown={(e) => {
+        if (!mobileContextMenu) return;
+        if (e.pointerType === 'mouse') return;
+        if (e.button !== 0) return;
+        pressStartRef.current = { x: e.clientX, y: e.clientY };
+        clearLongPress();
+        longPressTimerRef.current = setTimeout(() => {
+          longPressTimerRef.current = null;
+          vibrateLongPressAction();
+          openGroupMenu();
+        }, PRESSABLE_CARD_MENU_MS);
+      }}
+      onPointerMove={(e) => {
+        if (!pressStartRef.current || !longPressTimerRef.current) return;
+        const dx = e.clientX - pressStartRef.current.x;
+        const dy = e.clientY - pressStartRef.current.y;
+        if (dx * dx + dy * dy > 64) clearLongPress();
+      }}
+      onPointerUp={clearLongPress}
+      onPointerCancel={clearLongPress}
+    />
+  );
+
+  return (
+    <div
+      role="group"
+      aria-label="스플릿 탭 그룹"
+      data-tab-group={group.leafId}
+      className={`flex h-[calc(100%-3px)] shrink-0 items-stretch gap-0 self-end rounded-t-lg px-1 pt-0.5 ${
+        group.focused
+          ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
+          : 'bg-gray-300/90 ring-1 ring-gray-400/50 dark:bg-odp-bg dark:ring-odp-borderStrong'
+      }`}
+      onContextMenu={(e) => {
+        const target = e.target as HTMLElement | null;
+        if (target?.closest?.('[role="tab"]')) return;
+        if (target?.closest?.('[data-tab-group-chrome]')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openGroupMenu();
+      }}
+    >
+      <AdaptiveContextMenu
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        title="분할 탭 그룹"
+        subtitle="레이아웃"
+        contentClassName={tabMenuContentClass}
+        isMobileLayout={isMobileLayout}
+        trigger={grip}
+      >
+        <AdaptiveMenuItem
+          className={itemClass}
+          onSelect={() => {
+            onOpenLayoutEditor();
+          }}
+        >
+          레이아웃 조절…
+        </AdaptiveMenuItem>
+      </AdaptiveContextMenu>
+      {children}
+    </div>
+  );
+}
 
 export default function WorkspaceTabBar({
   tabs,
@@ -401,6 +658,12 @@ export default function WorkspaceTabBar({
   onActivate,
   onClose,
   onReorder,
+  tabGroups = null,
+  onPaneDrop,
+  splitDragEnabled = false,
+  onSplitTab,
+  paneLayout = null,
+  onApplyPaneLayout,
   onFileTabContextMenu,
   isMobileLayout = false,
   variant = 'inline',
@@ -411,33 +674,87 @@ export default function WorkspaceTabBar({
       activationConstraint: { distance: 6 },
     }),
   );
-  const sortableIds = useMemo(() => tabs.map((t) => t.id), [tabs]);
+  const byId = useMemo(() => new Map(tabs.map((t) => [t.id, t])), [tabs]);
+  const orderedTabs = useMemo(() => {
+    if (!tabGroups || tabGroups.length === 0) return tabs;
+    const out: WorkspaceTab[] = [];
+    for (const g of tabGroups) {
+      for (const id of g.tabIds) {
+        const t = byId.get(id);
+        if (t) out.push(t);
+      }
+    }
+    return out.length > 0 ? out : tabs;
+  }, [tabGroups, tabs, byId]);
+
+  const sortableIds = useMemo(() => orderedTabs.map((t) => t.id), [orderedTabs]);
   const savingSet = useMemo(() => new Set(savingTabIds), [savingTabIds]);
   const mobileContextMenu = useMobileContextMenuMode(isMobileLayout);
   const [activeDrag, setActiveDrag] = useState<ActiveDragState | null>(null);
   const [tabListEl, setTabListEl] = useState<HTMLDivElement | null>(null);
+  const [layoutModalOpen, setLayoutModalOpen] = useState(false);
+  const showGroups = Boolean(tabGroups && tabGroups.length > 1);
+  const leafCount = paneLayout ? countLeaves(paneLayout) : 1;
+  const canAddPane = splitDragEnabled && leafCount < WORKSPACE_PANE_SOFT_CAP;
 
-  useHorizontalOverflowScroll(tabListEl, tabs.length > 0);
+  useHorizontalOverflowScroll(tabListEl, orderedTabs.length > 0);
 
-  if (tabs.length === 0) return null;
+  if (orderedTabs.length === 0) return null;
 
-  const clearActiveDrag = () => setActiveDrag(null);
+  const clearActiveDrag = () => {
+    setActiveDrag(null);
+    setWorkspaceTabDrag(null);
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
-    const tab = tabs.find((t) => t.id === event.active.id);
+    const tab = orderedTabs.find((t) => t.id === event.active.id);
     if (!tab) return;
     const initial = event.active.rect.current.initial;
     setActiveDrag({
       tab,
       size: initial ? { width: initial.width, height: initial.height } : null,
     });
+    const rect = event.active.rect.current.initial;
+    setWorkspaceTabDrag({
+      tabId: tab.id,
+      clientX: rect ? rect.left + rect.width / 2 : 0,
+      clientY: rect ? rect.top + rect.height / 2 : 0,
+    });
+  };
+
+  const handleDragMove = (event: DragMoveEvent) => {
+    const translated = event.active.rect.current.translated;
+    if (translated) {
+      updateWorkspaceTabDragPoint(
+        translated.left + translated.width / 2,
+        translated.top + translated.height / 2,
+      );
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    clearActiveDrag();
     const { active, over } = event;
-    if (!over) return;
     const from = String(active.id);
+    const translated = event.active.rect.current.translated;
+    const cx = translated ? translated.left + translated.width / 2 : 0;
+    const cy = translated ? translated.top + translated.height / 2 : 0;
+    clearActiveDrag();
+
+    if (splitDragEnabled && onPaneDrop) {
+      const hit = hitTestPaneDropAt(cx, cy);
+      if (
+        hit &&
+        (hit.zone === 'left' ||
+          hit.zone === 'right' ||
+          hit.zone === 'top' ||
+          hit.zone === 'bottom' ||
+          hit.zone === 'center')
+      ) {
+        if (onPaneDrop(from, hit.leafId, hit.zone)) return;
+      }
+    }
+
+    if (!over) return;
     const to = String(over.id);
     if (from === to) return;
     onReorder(from, to);
@@ -447,13 +764,16 @@ export default function WorkspaceTabBar({
     clearActiveDrag();
   };
 
-  const titlebarTabListClass =
-    'workspace-tab-bar__tablist flex h-full min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+  const titlebarTabListClass = showGroups
+    ? 'workspace-tab-bar__tablist flex h-full min-w-0 flex-1 items-end gap-2 overflow-x-auto overflow-y-hidden px-1.5 pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+    : 'workspace-tab-bar__tablist flex h-full min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
   const listClass =
     variant === 'titlebar'
       ? titlebarTabListClass
-      : `flex h-9 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-gray-50 px-1 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${className}`.trim();
+      : showGroups
+        ? `flex h-9 shrink-0 items-end gap-2 overflow-x-auto border-b border-gray-200 bg-gray-100 px-1.5 dark:border-odp-borderSoft dark:bg-odp-bg ${className}`.trim()
+        : `flex h-9 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-gray-50 px-1 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${className}`.trim();
 
   const overlayStyle: CSSProperties | undefined = activeDrag?.size
     ? {
@@ -463,12 +783,86 @@ export default function WorkspaceTabBar({
       }
     : undefined;
 
+  const canSplitTab = (tabId: string): boolean => {
+    if (!canAddPane || !onSplitTab || !paneLayout) return false;
+    const host = findLeafContainingTab(paneLayout, tabId);
+    return Boolean(host && host.tabIds.length > 1);
+  };
+
+  const renderTab = (tab: WorkspaceTab) => (
+    <WorkspaceTabWithMenu
+      key={tab.id}
+      tab={tab}
+      active={tab.id === activeId}
+      saving={savingSet.has(tab.id)}
+      onActivate={onActivate}
+      onClose={onClose}
+      {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
+      {...(onSplitTab ? { onSplitTab } : {})}
+      canSplitThisTab={canSplitTab(tab.id)}
+      mobileContextMenu={mobileContextMenu}
+      isMobileLayout={isMobileLayout}
+      variant={variant}
+    />
+  );
+
+  const tabListBody = showGroups && tabGroups ? (
+    <>
+      {tabGroups.map((group) => {
+        const groupTabs = group.tabIds
+          .map((id) => byId.get(id))
+          .filter(Boolean) as WorkspaceTab[];
+        if (groupTabs.length === 0) return null;
+        const groupInner = groupTabs.map(renderTab);
+        if (paneLayout && onApplyPaneLayout) {
+          return (
+            <WorkspaceTabGroupChrome
+              key={group.leafId}
+              group={group}
+              isMobileLayout={isMobileLayout}
+              mobileContextMenu={mobileContextMenu}
+              onOpenLayoutEditor={() => setLayoutModalOpen(true)}
+            >
+              {groupInner}
+            </WorkspaceTabGroupChrome>
+          );
+        }
+        return (
+          <div
+            key={group.leafId}
+            role="group"
+            aria-label="스플릿 탭 그룹"
+            data-tab-group={group.leafId}
+            className={`flex h-[calc(100%-3px)] shrink-0 items-stretch gap-0 self-end rounded-t-lg px-1 pt-0.5 ${
+              group.focused
+                ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
+                : 'bg-gray-300/90 ring-1 ring-gray-400/50 dark:bg-odp-bg dark:ring-odp-borderStrong'
+            }`}
+          >
+            {groupInner}
+          </div>
+        );
+      })}
+      {variant === 'titlebar' ? (
+        <div data-tauri-drag-region className="min-w-8 flex-1 shrink-0 self-stretch" />
+      ) : null}
+    </>
+  ) : (
+    <>
+      {orderedTabs.map(renderTab)}
+      {variant === 'titlebar' ? (
+        <div data-tauri-drag-region className="min-w-8 flex-1 shrink-0 self-stretch" />
+      ) : null}
+    </>
+  );
+
   const tabStrip = (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      modifiers={[restrictToHorizontalAxis]}
+      modifiers={splitDragEnabled ? [] : [restrictToHorizontalAxis]}
       onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
@@ -479,22 +873,7 @@ export default function WorkspaceTabBar({
           aria-label="워크스페이스 탭"
           className={listClass}
         >
-          {tabs.map((tab) => (
-            <SortableWorkspaceTab
-              key={tab.id}
-              tab={tab}
-              active={tab.id === activeId}
-              saving={savingSet.has(tab.id)}
-              onActivate={onActivate}
-              onClose={onClose}
-              onFileTabContextMenu={onFileTabContextMenu}
-              mobileContextMenu={mobileContextMenu}
-              variant={variant}
-            />
-          ))}
-          {variant === 'titlebar' ? (
-            <div data-tauri-drag-region className="min-w-8 flex-1 shrink-0 self-stretch" />
-          ) : null}
+          {tabListBody}
         </div>
       </SortableContext>
       <DragOverlay dropAnimation={null}>
@@ -505,7 +884,6 @@ export default function WorkspaceTabBar({
             saving={savingSet.has(activeDrag.tab.id)}
             onActivate={onActivate}
             onClose={onClose}
-            {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
             mobileContextMenu={mobileContextMenu}
             variant={variant}
             overlay
@@ -527,6 +905,15 @@ export default function WorkspaceTabBar({
       ) : (
         tabStrip
       )}
+      {paneLayout && onApplyPaneLayout ? (
+        <WorkspacePaneLayoutModal
+          open={layoutModalOpen}
+          onClose={() => setLayoutModalOpen(false)}
+          layout={paneLayout}
+          tabs={tabs}
+          onApply={onApplyPaneLayout}
+        />
+      ) : null}
     </Tooltip.Provider>
   );
 }

@@ -25,12 +25,6 @@ import {
   WIKI_IMAGE_CACHE_MODE_URL,
 } from '@/utils/wikiImageSettings';
 import {
-  EDITOR_TYPE_MD_EDITOR_RT,
-  EDITOR_TYPE_NOVEL,
-  loadEditorType,
-  saveEditorType,
-} from '@/utils/editorTypeSettings';
-import {
   FOOTNOTE_DISPLAY_MODE_OPTIONS,
   loadFootnoteDisplayMode,
   setFootnoteDisplayMode,
@@ -135,8 +129,8 @@ export default function SettingsPage({
   onSaveSnippetConfig,
   isSavingSnippets = false,
   snippetConfigLoaded = false,
-  editorType: editorTypeProp,
-  onEditorTypeChange,
+  editorType: _editorTypeProp,
+  onEditorTypeChange: _onEditorTypeChange,
   storageMode = STORAGE_MODE_S3,
   onStorageModeChange,
   localFolderName = '',
@@ -169,7 +163,6 @@ export default function SettingsPage({
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported);
   const [wikiImageCacheMode, setWikiImageCacheMode] = useState(() => loadWikiImageCacheMode());
-  const [editorType, setEditorType] = useState(() => editorTypeProp ?? loadEditorType());
   const [altVimNavigationEnabled, setAltVimNavigationEnabled] = useState(() =>
     loadAltVimNavigationEnabled(),
   );
@@ -318,10 +311,6 @@ export default function SettingsPage({
       basePath: '',
     });
   }, [webdavConfig]);
-
-  useEffect(() => {
-    if (editorTypeProp !== undefined) setEditorType(editorTypeProp);
-  }, [editorTypeProp]);
 
   useEffect(() => {
     let cancelled = false;
@@ -965,46 +954,12 @@ export default function SettingsPage({
         >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">마크다운 에디터</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
-            .md 파일을 편집할 때 사용할 에디터를 고릅니다.
+            .md 파일은 <span className="font-semibold text-gray-700 dark:text-odp-fg">md-editor-rt</span>로
+            편집합니다. 미리보기, 위키 이미지{' '}
+            <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code> /{' '}
+            <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path|w=50%]]</code>,
+            스니펫 단축키가 이 구성에 맞춰져 있습니다.
           </p>
-          <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="editorType"
-                value={EDITOR_TYPE_MD_EDITOR_RT}
-                checked={editorType === EDITOR_TYPE_MD_EDITOR_RT}
-                onChange={() => {
-                  setEditorType(EDITOR_TYPE_MD_EDITOR_RT);
-                  saveEditorType(EDITOR_TYPE_MD_EDITOR_RT);
-                  onEditorTypeChange?.(EDITOR_TYPE_MD_EDITOR_RT);
-                }}
-                className="mt-0.5 shrink-0"
-              />
-              <span>
-                <span className="font-semibold">md-editor-rt</span>
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  기본 에디터. 미리보기, 위키 이미지 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code> / <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path|w=50%]]</code>, 스니펫 단축키 등이 이 구성에 맞춰져 있습니다.
-                </span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 cursor-not-allowed opacity-60">
-              <input
-                type="radio"
-                name="editorType"
-                value={EDITOR_TYPE_NOVEL}
-                checked={false}
-                disabled
-                className="mt-0.5 shrink-0"
-              />
-              <span>
-                <span className="font-semibold">novel</span>
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  준비중입니다.
-                </span>
-              </span>
-            </label>
-          </div>
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
               문서 상단 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<!-- footnotes {"v":1,"enabled":true} -->'}</code>
@@ -1037,7 +992,6 @@ export default function SettingsPage({
             </div>
           </div>
         </div>
-
 
         <div id="settings-snippets" tabIndex={-1} className="scroll-mt-4">
           <SnippetSettings

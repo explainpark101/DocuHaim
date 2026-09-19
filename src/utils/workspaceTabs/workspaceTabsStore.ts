@@ -3,10 +3,12 @@ import {
   CONTENT_SEARCH_TAB_ID,
   SETTINGS_TAB_ID,
   WORKSPACE_TAB_SOFT_CAP,
+  defaultWorkspaceLayout,
   type FileWorkspaceTab,
   type WorkspaceTab,
   type WorkspaceTabsState,
 } from '@/utils/workspaceTabs/types';
+import type { PaneNode } from '@/utils/workspaceTabs/paneLayout';
 import {
   createChatTab,
   createContentSearchTab,
@@ -16,11 +18,51 @@ import {
   isFileTabDirty,
   revokeFileTabObjectUrl,
 } from '@/utils/workspaceTabs/helpers';
+import {
+  addTabToFocusedLeaf,
+  findLeafContainingTab,
+  flattenTabIdsFromLayout,
+  getFocusedLeafActiveId,
+  moveTabToLeaf,
+  removeTabFromLayout,
+  reorderInLeaf,
+  retargetTabIdInLayout,
+  setLeafActive,
+  setLeafExportPdf,
+  splitLeaf,
+  syncLayoutWithTabs,
+  type PaneSplitEdge,
+} from '@/utils/workspaceTabs/paneLayout';
 
-export const emptyWorkspaceTabsState = (): WorkspaceTabsState => ({
-  tabs: [],
-  activeId: null,
-});
+export const emptyWorkspaceTabsState = (): WorkspaceTabsState => {
+  const { layout, focusedPaneId } = defaultWorkspaceLayout();
+  return {
+    tabs: [],
+    activeId: null,
+    layout,
+    focusedPaneId,
+  };
+};
+
+function withSyncedActiveId(state: Omit<WorkspaceTabsState, 'activeId'> & { activeId?: string | null }): WorkspaceTabsState {
+  const activeId = getFocusedLeafActiveId(state.layout, state.focusedPaneId);
+  return { ...state, activeId };
+}
+
+function ensureLayout(state: {
+  tabs: WorkspaceTab[];
+  layout: PaneNode;
+  focusedPaneId: string;
+  activeId?: string | null;
+}): WorkspaceTabsState {
+  const tabIds = state.tabs.map((t) => t.id);
+  const synced = syncLayoutWithTabs(state.layout, tabIds, state.focusedPaneId);
+  return withSyncedActiveId({
+    tabs: state.tabs,
+    layout: synced.layout,
+    focusedPaneId: synced.focusedPaneId,
+  });
+}
 
 export function getActiveTab(state: WorkspaceTabsState): WorkspaceTab | null {
   if (!state.activeId) return null;
@@ -85,10 +127,29 @@ export function evictForSoftCap(
 
 export function activateTab(state: WorkspaceTabsState, id: string, now = Date.now()): WorkspaceTabsState {
   if (!state.tabs.some((t) => t.id === id)) return state;
-  return {
+  const leaf = findLeafContainingTab(state.layout, id);
+  let layout = state.layout;
+  let focusedPaneId = state.focusedPaneId;
+  if (leaf) {
+    layout = setLeafActive(layout, leaf.id, id);
+    focusedPaneId = leaf.id;
+  } else {
+    const added = addTabToFocusedLeaf(layout, focusedPaneId, id, { activate: true });
+    layout = added.layout;
+    focusedPaneId = added.focusedPaneId;
+  }
+  return ensureLayout({
     tabs: touchActivate(state.tabs, id, now),
-    activeId: id,
-  };
+    layout,
+    focusedPaneId,
+  });
+}
+
+export function setFocusedPane(state: WorkspaceTabsState, paneId: string): WorkspaceTabsState {
+  return ensureLayout({
+    ...state,
+    focusedPaneId: paneId,
+  });
 }
 
 export function openOrActivateChat(
@@ -101,10 +162,15 @@ export function openOrActivateChat(
   if (existing) {
     return activate ? activateTab(state, CHAT_TAB_ID, now) : state;
   }
-  return {
-    tabs: [...state.tabs, createChatTab()],
-    activeId: activate ? CHAT_TAB_ID : state.activeId,
-  };
+  const tabs = [...state.tabs, createChatTab()];
+  const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, CHAT_TAB_ID, {
+    activate,
+  });
+  return ensureLayout({
+    tabs: activate ? touchActivate(tabs, CHAT_TAB_ID, now) : tabs,
+    layout: placed.layout,
+    focusedPaneId: placed.focusedPaneId,
+  });
 }
 
 export function openOrActivateSettings(
@@ -117,10 +183,15 @@ export function openOrActivateSettings(
   if (existing) {
     return activate ? activateTab(state, SETTINGS_TAB_ID, now) : state;
   }
-  return {
-    tabs: [...state.tabs, createSettingsTab()],
-    activeId: activate ? SETTINGS_TAB_ID : state.activeId,
-  };
+  const tabs = [...state.tabs, createSettingsTab()];
+  const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, SETTINGS_TAB_ID, {
+    activate,
+  });
+  return ensureLayout({
+    tabs: activate ? touchActivate(tabs, SETTINGS_TAB_ID, now) : tabs,
+    layout: placed.layout,
+    focusedPaneId: placed.focusedPaneId,
+  });
 }
 
 export function openOrActivateContentSearch(
@@ -133,10 +204,15 @@ export function openOrActivateContentSearch(
   if (existing) {
     return activate ? activateTab(state, CONTENT_SEARCH_TAB_ID, now) : state;
   }
-  return {
-    tabs: [...state.tabs, createContentSearchTab()],
-    activeId: activate ? CONTENT_SEARCH_TAB_ID : state.activeId,
-  };
+  const tabs = [...state.tabs, createContentSearchTab()];
+  const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, CONTENT_SEARCH_TAB_ID, {
+    activate,
+  });
+  return ensureLayout({
+    tabs: activate ? touchActivate(tabs, CONTENT_SEARCH_TAB_ID, now) : tabs,
+    layout: placed.layout,
+    focusedPaneId: placed.focusedPaneId,
+  });
 }
 
 export type OpenFileTabInput = {
@@ -145,6 +221,7 @@ export type OpenFileTabInput = {
   currentFile: FileWorkspaceTab['currentFile'];
   editorContent: string;
   editedFileName?: string;
+  noteSurface?: FileWorkspaceTab['noteSurface'];
 };
 
 /**
@@ -171,16 +248,50 @@ export function openOrReplaceFileTab(
         revokeFileTabObjectUrl(prev);
       }
     }
-    // Keep soft-cap LRU order stable for background content updates.
-    const nextTab =
-      !activate && isFileTab(prev)
-        ? { ...tab, lastActivatedAt: prev.lastActivatedAt }
-        : tab;
+    let nextTab: FileWorkspaceTab = tab;
+    if (isFileTab(prev)) {
+      nextTab = {
+        ...tab,
+        lastActivatedAt: !activate ? prev.lastActivatedAt : tab.lastActivatedAt,
+      };
+      const surface = input.noteSurface ?? prev.noteSurface;
+      if (surface) {
+        nextTab = { ...nextTab, noteSurface: surface };
+      }
+    } else if (input.noteSurface) {
+      nextTab = { ...tab, noteSurface: input.noteSurface };
+    }
     tabs = state.tabs.map((t, i) => (i === idx ? nextTab : t));
   } else {
     tabs = [...state.tabs, tab];
   }
-  return { tabs, activeId: activate ? tab.id : state.activeId };
+
+  if (!activate) {
+    // New tab still needs a leaf slot.
+    if (idx < 0) {
+      const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, tab.id, {
+        activate: false,
+      });
+      return ensureLayout({
+        tabs,
+        layout: placed.layout,
+        focusedPaneId: placed.focusedPaneId,
+      });
+    }
+    return ensureLayout({ ...state, tabs });
+  }
+
+  if (idx >= 0) {
+    return activateTab({ ...state, tabs }, tab.id, now);
+  }
+  const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, tab.id, {
+    activate: true,
+  });
+  return ensureLayout({
+    tabs: touchActivate(tabs, tab.id, now),
+    layout: placed.layout,
+    focusedPaneId: placed.focusedPaneId,
+  });
 }
 
 export function patchFileTab(
@@ -189,7 +300,12 @@ export function patchFileTab(
   patch: Partial<
     Pick<
       FileWorkspaceTab,
-      'currentFile' | 'editorContent' | 'baselineContent' | 'editedFileName' | 'lastActivatedAt'
+      | 'currentFile'
+      | 'editorContent'
+      | 'baselineContent'
+      | 'editedFileName'
+      | 'lastActivatedAt'
+      | 'noteSurface'
     >
   > & {
     /** When true, revoke previous objectUrl if replaced. */
@@ -214,7 +330,7 @@ export function patchFileTab(
 }
 
 /**
- * Close a tab. If it was active, activate a neighbor (prefer right, else left; chat ok).
+ * Close a tab. If it was active in its leaf, activate a neighbor in that leaf.
  */
 export function closeTab(state: WorkspaceTabsState, id: string): WorkspaceTabsState {
   const idx = state.tabs.findIndex((t) => t.id === id);
@@ -224,11 +340,12 @@ export function closeTab(state: WorkspaceTabsState, id: string): WorkspaceTabsSt
     revokeFileTabObjectUrl(closing);
   }
   const tabs = state.tabs.filter((t) => t.id !== id);
-  if (state.activeId !== id) {
-    return { tabs, activeId: state.activeId };
-  }
-  const neighbor = tabs[idx] ?? tabs[idx - 1] ?? null;
-  return { tabs, activeId: neighbor?.id ?? null };
+  const layout = removeTabFromLayout(state.layout, id);
+  return ensureLayout({
+    tabs,
+    layout,
+    focusedPaneId: state.focusedPaneId,
+  });
 }
 
 export function findFileTab(
@@ -289,7 +406,6 @@ export function retargetFileTab(
   };
 
   if (destTab && destTab.id !== oldId) {
-    // Destination already open — keep dest slot, drop source, preserve editor if dest empty.
     const merged: FileWorkspaceTab = {
       ...destTab,
       path: newPath,
@@ -301,14 +417,20 @@ export function retargetFileTab(
       editorContent: destTab.editorContent || oldTab.editorContent,
       baselineContent: destTab.baselineContent || oldTab.baselineContent,
       lastActivatedAt: Math.max(destTab.lastActivatedAt, oldTab.lastActivatedAt),
+      ...(destTab.noteSurface || oldTab.noteSurface
+        ? { noteSurface: destTab.noteSurface ?? oldTab.noteSurface }
+        : {}),
     };
     revokeFileTabObjectUrl(oldTab);
     const tabs = state.tabs
       .filter((t) => t.id !== oldId)
       .map((t) => (t.id === newId ? merged : t));
-    const activeId =
-      state.activeId === oldId || state.activeId === newId ? newId : state.activeId;
-    return { tabs, activeId };
+    const layout = removeTabFromLayout(retargetTabIdInLayout(state.layout, oldId, newId), oldId);
+    return ensureLayout({
+      tabs,
+      layout,
+      focusedPaneId: state.focusedPaneId,
+    });
   }
 
   const retargeted: FileWorkspaceTab = {
@@ -319,8 +441,12 @@ export function retargetFileTab(
     editedFileName: nextName || oldTab.editedFileName,
   };
   const tabs = state.tabs.map((t) => (t.id === oldId ? retargeted : t));
-  const activeId = state.activeId === oldId ? newId : state.activeId;
-  return { tabs, activeId };
+  const layout = retargetTabIdInLayout(state.layout, oldId, newId);
+  return ensureLayout({
+    tabs,
+    layout,
+    focusedPaneId: state.focusedPaneId,
+  });
 }
 
 /**
@@ -350,19 +476,131 @@ export function retargetFileTabsByPathPrefix(
   return next;
 }
 
-/** Reorder tabs by moving `activeId` to the position of `overId`. */
+/**
+ * Reorder within the same leaf, or move across leaves when `overId` is in another leaf.
+ * Also keeps `tabs[]` order aligned with flattened layout display order.
+ */
 export function moveTab(
   state: WorkspaceTabsState,
   activeId: string,
   overId: string,
 ): WorkspaceTabsState {
   if (activeId === overId) return state;
-  const oldIndex = state.tabs.findIndex((t) => t.id === activeId);
-  const newIndex = state.tabs.findIndex((t) => t.id === overId);
-  if (oldIndex < 0 || newIndex < 0) return state;
-  const tabs = state.tabs.slice();
-  const [removed] = tabs.splice(oldIndex, 1);
-  if (!removed) return state;
-  tabs.splice(newIndex, 0, removed);
-  return { ...state, tabs };
+  const fromLeaf = findLeafContainingTab(state.layout, activeId);
+  const toLeaf = findLeafContainingTab(state.layout, overId);
+  if (!fromLeaf || !toLeaf) return state;
+
+  let layout = state.layout;
+  let focusedPaneId = state.focusedPaneId;
+  if (fromLeaf.id === toLeaf.id) {
+    layout = reorderInLeaf(layout, fromLeaf.id, activeId, overId);
+  } else {
+    const moved = moveTabToLeaf(layout, activeId, toLeaf.id, {
+      activate: true,
+      beforeTabId: overId,
+    });
+    layout = moved.layout;
+    focusedPaneId = moved.focusedPaneId;
+  }
+
+  const order = flattenTabIdsFromLayout(layout);
+  const byId = new Map(state.tabs.map((t) => [t.id, t]));
+  const tabs = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
+  // Append any missing (should not happen).
+  for (const t of state.tabs) {
+    if (!order.includes(t.id)) tabs.push(t);
+  }
+
+  return ensureLayout({
+    tabs,
+    layout,
+    focusedPaneId,
+  });
+}
+
+export function splitTabToEdge(
+  state: WorkspaceTabsState,
+  leafId: string,
+  edge: PaneSplitEdge,
+  tabId: string,
+): WorkspaceTabsState | null {
+  if (!state.tabs.some((t) => t.id === tabId)) return null;
+  const result = splitLeaf(state.layout, leafId, edge, tabId);
+  if (!result) return null;
+  const order = flattenTabIdsFromLayout(result.layout);
+  const byId = new Map(state.tabs.map((t) => [t.id, t]));
+  const tabs = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
+  for (const t of state.tabs) {
+    if (!order.includes(t.id)) tabs.push(t);
+  }
+  return ensureLayout({
+    tabs,
+    layout: result.layout,
+    focusedPaneId: result.focusedPaneId,
+  });
+}
+
+export function moveTabIntoLeaf(
+  state: WorkspaceTabsState,
+  tabId: string,
+  targetLeafId: string,
+): WorkspaceTabsState {
+  if (!state.tabs.some((t) => t.id === tabId)) return state;
+  const moved = moveTabToLeaf(state.layout, tabId, targetLeafId, { activate: true });
+  const order = flattenTabIdsFromLayout(moved.layout);
+  const byId = new Map(state.tabs.map((t) => [t.id, t]));
+  const tabs = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
+  for (const t of state.tabs) {
+    if (!order.includes(t.id)) tabs.push(t);
+  }
+  return ensureLayout({
+    tabs,
+    layout: moved.layout,
+    focusedPaneId: moved.focusedPaneId,
+  });
+}
+
+export function openExportPdfInLeaf(
+  state: WorkspaceTabsState,
+  leafId: string,
+  tabId: string,
+): WorkspaceTabsState {
+  if (!state.tabs.some((t) => t.id === tabId)) return state;
+  const layout = setLeafExportPdf(setLeafActive(state.layout, leafId, tabId), leafId, tabId);
+  return ensureLayout({
+    ...state,
+    layout,
+    focusedPaneId: leafId,
+  });
+}
+
+export function clearExportPdfInLeaf(
+  state: WorkspaceTabsState,
+  leafId: string,
+): WorkspaceTabsState {
+  const layout = setLeafExportPdf(state.layout, leafId, null);
+  return ensureLayout({
+    ...state,
+    layout,
+  });
+}
+
+/** Replace the pane tree (e.g. after layout editor apply). Preserves tab records. */
+export function replaceWorkspaceLayout(
+  state: WorkspaceTabsState,
+  layout: PaneNode,
+  focusedPaneId?: string | null,
+): WorkspaceTabsState {
+  const order = flattenTabIdsFromLayout(layout);
+  const byId = new Map(state.tabs.map((t) => [t.id, t]));
+  const tabs = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
+  for (const t of state.tabs) {
+    if (!order.includes(t.id)) tabs.push(t);
+  }
+  const focus = focusedPaneId || state.focusedPaneId;
+  return ensureLayout({
+    tabs,
+    layout,
+    focusedPaneId: focus,
+  });
 }

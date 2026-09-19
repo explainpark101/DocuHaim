@@ -7,6 +7,13 @@ import {
   loadPersistedWorkspaceTabs,
   savePersistedWorkspaceTabs,
 } from '@/utils/workspaceTabs/persistence';
+import {
+  createSingleLeafLayout,
+  fromPersistedPaneNode,
+  isPersistedPaneNode,
+  syncLayoutWithTabs,
+  toPersistedPaneNode,
+} from '@/utils/workspaceTabs/paneLayout';
 
 /**
  * Last non-empty open-tab list from the previous session (localStorage).
@@ -64,11 +71,33 @@ function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
 function normalizeSnapshot(raw: unknown): PersistedWorkspaceTabs | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
-  if (o.version !== 1 || !Array.isArray(o.tabs)) return null;
+  if ((o.version !== 1 && o.version !== 2) || !Array.isArray(o.tabs)) return null;
   const tabs = o.tabs.filter(isPersistedTab);
   if (tabs.length === 0) return null;
   const activeId = typeof o.activeId === 'string' || o.activeId === null ? o.activeId : null;
-  return { version: 1, tabs, activeId };
+  const tabIds = tabs.map(persistedTabId);
+
+  // Keep split trees even when focusedPaneId is absent (derive focus).
+  if (isPersistedPaneNode(o.layout)) {
+    const focusHint = typeof o.focusedPaneId === 'string' ? o.focusedPaneId : null;
+    const synced = syncLayoutWithTabs(fromPersistedPaneNode(o.layout), tabIds, focusHint);
+    return {
+      version: 2,
+      tabs,
+      activeId,
+      layout: toPersistedPaneNode(synced.layout),
+      focusedPaneId: synced.focusedPaneId,
+    };
+  }
+
+  const leaf = createSingleLeafLayout(tabIds, activeId);
+  return {
+    version: 2,
+    tabs,
+    activeId,
+    layout: toPersistedPaneNode(leaf),
+    focusedPaneId: leaf.id,
+  };
 }
 
 function isClosedTabEntry(value: unknown): value is ClosedTabEntry {

@@ -1,5 +1,4 @@
 const COPY_ROOT_SELECTORS = [
-  '.novel-editor-surface',
   '.md-editor-preview',
 ];
 
