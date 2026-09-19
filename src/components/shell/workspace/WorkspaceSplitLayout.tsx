@@ -6,6 +6,8 @@ type WorkspaceSplitLayoutProps = {
   layout: PaneNode;
   onResizeSplit: (splitId: string, ratio: number) => void;
   renderLeaf: (leafId: string) => ReactNode;
+  /** Leaf ids that should show the amber appear glow. */
+  freshPaneIds?: ReadonlySet<string>;
 };
 
 function SplitResizeHandle({
@@ -16,6 +18,13 @@ function SplitResizeHandle({
   onRatioDelta: (deltaFraction: number, containerSize: number) => void;
 }) {
   const startRef = useRef<{ pos: number; size: number } | null>(null);
+  const prevUserSelectRef = useRef<string | null>(null);
+
+  const unlockUserSelect = () => {
+    if (prevUserSelectRef.current == null) return;
+    document.body.style.userSelect = prevUserSelectRef.current;
+    prevUserSelectRef.current = null;
+  };
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -28,6 +37,8 @@ function SplitResizeHandle({
       pos: direction === 'horizontal' ? e.clientX : e.clientY,
       size,
     };
+    prevUserSelectRef.current = document.body.style.userSelect;
+    document.body.style.userSelect = 'none';
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -42,6 +53,7 @@ function SplitResizeHandle({
 
   const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     startRef.current = null;
+    unlockUserSelect();
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
@@ -57,8 +69,8 @@ function SplitResizeHandle({
       aria-label="페인 크기 조절"
       className={
         isRow
-          ? 'group relative z-10 w-2 shrink-0 cursor-col-resize bg-transparent hover:bg-blue-500/35 dark:hover:bg-blue-400/30'
-          : 'group relative z-10 h-2 shrink-0 cursor-row-resize bg-transparent hover:bg-blue-500/35 dark:hover:bg-blue-400/30'
+          ? 'group relative z-10 w-2 shrink-0 cursor-col-resize touch-none select-none bg-transparent hover:bg-blue-500/35 dark:hover:bg-blue-400/30'
+          : 'group relative z-10 h-2 shrink-0 cursor-row-resize touch-none select-none bg-transparent hover:bg-blue-500/35 dark:hover:bg-blue-400/30'
       }
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -72,10 +84,12 @@ function SplitNode({
   node,
   onResizeSplit,
   renderLeaf,
+  freshPaneIds,
 }: {
   node: PaneSplit;
   onResizeSplit: (splitId: string, ratio: number) => void;
   renderLeaf: (leafId: string) => ReactNode;
+  freshPaneIds?: ReadonlySet<string>;
 }) {
   const ratioRef = useRef(node.ratio);
   ratioRef.current = node.ratio;
@@ -103,6 +117,7 @@ function SplitNode({
           layout={node.children[0]}
           onResizeSplit={onResizeSplit}
           renderLeaf={renderLeaf}
+          {...(freshPaneIds ? { freshPaneIds } : {})}
         />
       </div>
       <SplitResizeHandle direction={node.direction} onRatioDelta={handleDelta} />
@@ -114,6 +129,7 @@ function SplitNode({
           layout={node.children[1]}
           onResizeSplit={onResizeSplit}
           renderLeaf={renderLeaf}
+          {...(freshPaneIds ? { freshPaneIds } : {})}
         />
       </div>
     </div>
@@ -127,11 +143,15 @@ export default function WorkspaceSplitLayout({
   layout,
   onResizeSplit,
   renderLeaf,
+  freshPaneIds,
 }: WorkspaceSplitLayoutProps) {
   if (isPaneLeaf(layout)) {
+    const isFresh = Boolean(freshPaneIds?.has(layout.id));
     return (
       <div
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white shadow-sm ring-1 ring-black/8 dark:bg-odp-bgSofter dark:ring-white/10"
+        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white shadow-sm ring-1 ring-black/8 dark:bg-odp-bgSofter dark:ring-white/10 ${
+          isFresh ? 'workspace-pane-appear-glow' : ''
+        }`}
         data-pane-leaf={layout.id}
       >
         {renderLeaf(layout.id)}
@@ -139,7 +159,12 @@ export default function WorkspaceSplitLayout({
     );
   }
   return (
-    <SplitNode node={layout} onResizeSplit={onResizeSplit} renderLeaf={renderLeaf} />
+    <SplitNode
+      node={layout}
+      onResizeSplit={onResizeSplit}
+      renderLeaf={renderLeaf}
+      {...(freshPaneIds ? { freshPaneIds } : {})}
+    />
   );
 }
 

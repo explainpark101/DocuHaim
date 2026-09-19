@@ -14,9 +14,11 @@ import {
   DragOverlay,
   PointerSensor,
   TouchSensor,
+  useDraggable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
@@ -46,6 +48,19 @@ import {
   parseDroppableId,
   toTreeSelectKey,
 } from '@/utils/treeMove';
+import {
+  CHAT_WITH_MYSELF_DRAG_ID,
+  isChatWithMyselfDragId,
+  isPointInsideSidebarRoot,
+  type SidebarPaneDropHandler,
+} from '@/utils/workspaceTabs/sidebarPaneDrop';
+import {
+  getWorkspaceTabDrag,
+  hitTestPaneDropAt,
+  setWorkspaceTabDrag,
+  updateWorkspaceTabDragPoint,
+} from '@/utils/workspaceTabs/workspaceTabDragBridge';
+import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import { findApplicableTransferBusy } from '@/utils/treeTransferBusy';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
 import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
@@ -252,6 +267,8 @@ export type SidebarProps = {
   quizSourceDropActive?: boolean;
   quizSourceDropHost?: HTMLElement | null;
   onDropToQuizSource?: (items: TreeMoveItem[]) => void;
+  /** Drop tree file / chat row onto a workspace pane (split / join). */
+  onDropToWorkspacePane?: SidebarPaneDropHandler;
   onBrandClick?: () => void;
   onStorageModeChange?: (mode: string) => void;
   sessionWorkspaces?: SessionWorkspace[];
@@ -322,12 +339,21 @@ type ChatWithMyselfEntryProps = {
 };
 
 function ChatWithMyselfEntry({ isActive, onOpen }: ChatWithMyselfEntryProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: CHAT_WITH_MYSELF_DRAG_ID,
+    data: { kind: 'chat-with-myself' },
+  });
+
   return (
     <button
+      ref={setNodeRef}
       type="button"
       data-chat-with-myself-entry
+      {...listeners}
+      {...attributes}
       onClick={(e) => {
         e.stopPropagation();
+        if (isDragging) return;
         onOpen?.();
       }}
       className={`flex w-full items-center gap-1.5 py-1.5 pr-2 px-2 transition-colors text-sm cursor-pointer text-left ${
@@ -336,7 +362,7 @@ function ChatWithMyselfEntry({ isActive, onOpen }: ChatWithMyselfEntryProps) {
         isActive
           ? 'ring-2 ring-blue-400 dark:ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-odp-bgSofter'
           : ''
-      }`}
+      } ${isDragging ? 'opacity-50' : ''}`}
       style={{ paddingLeft: '8px' }}
     >
       <span className="text-violet-400 dark:text-violet-500 w-4 flex justify-center shrink-0">
@@ -486,6 +512,7 @@ export default function Sidebar({
   quizSourceDropActive = false,
   quizSourceDropHost = null,
   onDropToQuizSource,
+  onDropToWorkspacePane,
   onBrandClick,
   onStorageModeChange,
   sessionWorkspaces = [],
@@ -702,16 +729,48 @@ export default function Sidebar({
   const handleDndDragStart = useCallback(
     (event: DragStartEvent) => {
       const activeId = String(event.active.id);
-      const items = resolveDragItems(activeId, selectedIds, findTreeNode);
+      let items: TreeMoveItem[];
+      if (isChatWithMyselfDragId(activeId)) {
+        items = [
+          {
+            storageType: 'chat',
+            path: '',
+            nodeType: 'chat',
+            name: '나와의 채팅',
+          },
+        ];
+      } else {
+        items = resolveDragItems(activeId, selectedIds, findTreeNode);
+      }
       activeDragItemsRef.current = items;
       setActiveDragItems(items);
       syncCopyModifierFromEvent(
         event.activatorEvent as { ctrlKey?: boolean; altKey?: boolean } | null | undefined,
       );
       handleDragStartNode();
+      const canOpenInPane = items.some(
+        (item) => item.nodeType === 'file' || item.nodeType === 'chat',
+      );
+      if (canOpenInPane) {
+        const rect = event.active.rect.current.initial;
+        setWorkspaceTabDrag({
+          tabId: activeId,
+          clientX: rect ? rect.left + rect.width / 2 : 0,
+          clientY: rect ? rect.top + rect.height / 2 : 0,
+        });
+      }
     },
     [selectedIds, findTreeNode, handleDragStartNode, syncCopyModifierFromEvent],
   );
+
+  const handleDndDragMove = useCallback((event: DragMoveEvent) => {
+    const translated = event.active.rect.current.translated;
+    if (!translated) return;
+    updateWorkspaceTabDragPoint(
+      translated.left + translated.width / 2,
+      translated.top + translated.height / 2,
+    );
+  }, []);
 
   const handleDndDragOver = useCallback(
     (event: DragOverEvent) => {
@@ -771,20 +830,70 @@ export default function Sidebar({
       clearHoverExpandTimer();
       handleDragEndNode();
 
-      if (!over || !items?.length) {
+      // Prefer last pointer from drag-move bridge; fall back to overlay rect center.
+      const lastPointer = getWorkspaceTabDrag();
+      const translated = event.active.rect.current.translated;
+      const cx =
+        lastPointer?.clientX ??
+        (translated ? translated.left + translated.width / 2 : 0);
+      const cy =
+        lastPointer?.clientY ??
+        (translated ? translated.top + translated.height / 2 : 0);
+      setWorkspaceTabDrag(null);
+
+      if (!items?.length) {
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
       }
 
-      if (isChatTreeAttachDroppableId(over.id)) {
+      // Chat attach / quiz take priority when the pointer is over those hosts.
+      if (over && isChatTreeAttachDroppableId(over.id)) {
         onDropOnFolder?.(null, null, 'dragLeave');
         onDropToChatAttach?.(items);
         return;
       }
 
-      if (isQuizTreeSourceDroppableId(over.id)) {
+      if (over && isQuizTreeSourceDroppableId(over.id)) {
         onDropOnFolder?.(null, null, 'dragLeave');
         onDropToQuizSource?.(items);
+        return;
+      }
+
+      // Drop onto a workspace pane → open as split/join tab (never move files).
+      const paneHit = hitTestPaneDropAt(cx, cy);
+      if (paneHit && onDropToWorkspacePane) {
+        const zone = paneHit.zone as PaneSplitEdge | 'center';
+        if (
+          zone === 'left' ||
+          zone === 'right' ||
+          zone === 'top' ||
+          zone === 'bottom' ||
+          zone === 'center'
+        ) {
+          const openable = items.filter(
+            (item) => item.nodeType === 'file' || item.nodeType === 'chat',
+          );
+          if (openable.length > 0) {
+            onDropOnFolder?.(null, null, 'dragLeave');
+            void onDropToWorkspacePane(openable, paneHit.leafId, zone);
+            return;
+          }
+        }
+      }
+
+      // File move only when the pointer is released over the left sidebar.
+      if (!isPointInsideSidebarRoot(cx, cy)) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+
+      if (items.some((item) => item.nodeType === 'chat')) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
+
+      if (!over) {
+        onDropOnFolder?.(null, null, 'dragLeave');
         return;
       }
 
@@ -809,6 +918,7 @@ export default function Sidebar({
       onDropOnFolder,
       onDropToChatAttach,
       onDropToQuizSource,
+      onDropToWorkspacePane,
       resolveDropTargetNode,
     ],
   );
@@ -818,6 +928,7 @@ export default function Sidebar({
     setActiveDragItems(null);
     clearHoverExpandTimer();
     handleDragEndNode();
+    setWorkspaceTabDrag(null);
     onDropOnFolder?.(null, null, 'dragLeave');
   }, [clearHoverExpandTimer, handleDragEndNode, onDropOnFolder]);
 
@@ -1591,6 +1702,7 @@ export default function Sidebar({
         sensors={sensors}
         collisionDetection={treeCollisionDetection}
         onDragStart={handleDndDragStart}
+        onDragMove={handleDndDragMove}
         onDragOver={handleDndDragOver}
         onDragEnd={handleDndDragEnd}
         onDragCancel={handleDndDragCancel}

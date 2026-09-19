@@ -1,6 +1,8 @@
 import {
   collectLeaves,
+  collapseEmptyLeaves,
   createPaneId,
+  findLeaf,
   isPaneLeaf,
   type PaneLeaf,
   type PaneNode,
@@ -63,6 +65,125 @@ export function swapLeafContents(
   return remapLeafContentsByOrder(layout, next);
 }
 
+function cloneLeaf(leaf: PaneLeaf): PaneLeaf {
+  return {
+    type: 'leaf',
+    id: leaf.id,
+    tabIds: [...leaf.tabIds],
+    activeId: leaf.activeId,
+    exportPdfForTabId: leaf.exportPdfForTabId ?? null,
+  };
+}
+
+function edgeToSplit(
+  edge: PaneSplitEdge,
+): { direction: 'horizontal' | 'vertical'; placeNewFirst: boolean } {
+  switch (edge) {
+    case 'left':
+      return { direction: 'horizontal', placeNewFirst: true };
+    case 'right':
+      return { direction: 'horizontal', placeNewFirst: false };
+    case 'top':
+      return { direction: 'vertical', placeNewFirst: true };
+    case 'bottom':
+      return { direction: 'vertical', placeNewFirst: false };
+  }
+}
+
+/**
+ * Remove a leaf from the tree and promote its sibling as-is (tabs stay on the
+ * detached leaf — unlike collapseLeafIntoSibling which merges them).
+ */
+export function detachLeaf(
+  layout: PaneNode,
+  leafId: string,
+): { layout: PaneNode; leaf: PaneLeaf } | null {
+  if (layout.type === 'leaf') return null;
+  const leaf = findLeaf(layout, leafId);
+  if (!leaf) return null;
+
+  const detach = (node: PaneNode): PaneNode | null => {
+    if (node.type === 'leaf') return null;
+    const [left, right] = node.children;
+    if (left.type === 'leaf' && left.id === leafId) return right;
+    if (right.type === 'leaf' && right.id === leafId) return left;
+    const nextLeft = detach(left);
+    if (nextLeft) return { ...node, children: [nextLeft, right] };
+    const nextRight = detach(right);
+    if (nextRight) return { ...node, children: [left, nextRight] };
+    return null;
+  };
+
+  const next = detach(layout);
+  if (!next) return null;
+  return { layout: collapseEmptyLeaves(next), leaf: cloneLeaf(leaf) };
+}
+
+/** Insert `leaf` as a new split neighbor of `targetLeafId` toward `edge`. */
+export function insertLeafAtEdge(
+  layout: PaneNode,
+  targetLeafId: string,
+  edge: PaneSplitEdge,
+  leaf: PaneLeaf,
+): { layout: PaneNode; focusedPaneId: string } | null {
+  if (!findLeaf(layout, targetLeafId)) return null;
+  if (findLeaf(layout, leaf.id)) return null;
+  const { direction, placeNewFirst } = edgeToSplit(edge);
+  const moving = cloneLeaf(leaf);
+
+  const replace = (node: PaneNode): PaneNode => {
+    if (node.type === 'leaf') {
+      if (node.id !== targetLeafId) return node;
+      const children: [PaneNode, PaneNode] = placeNewFirst
+        ? [moving, node]
+        : [node, moving];
+      return {
+        type: 'split',
+        id: createPaneId('split'),
+        direction,
+        ratio: 0.5,
+        children,
+      };
+    }
+    return {
+      ...node,
+      children: [replace(node.children[0]), replace(node.children[1])],
+    };
+  };
+
+  return {
+    layout: collapseEmptyLeaves(replace(layout)),
+    focusedPaneId: moving.id,
+  };
+}
+
+/**
+ * Relocate a whole pane via header drag.
+ * - center → swap leaf contents with the target
+ * - edge → detach source leaf and insert beside the target toward that edge
+ */
+export function relocateLeaf(
+  layout: PaneNode,
+  sourceLeafId: string,
+  targetLeafId: string,
+  zone: PaneSplitEdge | 'center',
+): { layout: PaneNode; focusedPaneId: string } | null {
+  if (sourceLeafId === targetLeafId) return null;
+  if (!findLeaf(layout, sourceLeafId) || !findLeaf(layout, targetLeafId)) return null;
+
+  if (zone === 'center') {
+    const swapped = swapLeafContents(layout, sourceLeafId, targetLeafId);
+    if (swapped === layout) return null;
+    return { layout: swapped, focusedPaneId: targetLeafId };
+  }
+
+  const detached = detachLeaf(layout, sourceLeafId);
+  if (!detached) return null;
+  // Target may have been the sibling that was promoted; id is preserved.
+  if (!findLeaf(detached.layout, targetLeafId)) return null;
+  return insertLeafAtEdge(detached.layout, targetLeafId, zone, detached.leaf);
+}
+
 export function flipSplitDirection(layout: PaneNode, splitId: string): PaneNode {
   if (layout.type === 'leaf') return layout;
   if (layout.id === splitId) {
@@ -99,8 +220,14 @@ export function buildBalancedLayoutFromLeaves(
     return { ...only };
   }
   const mid = Math.ceil(leaves.length / 2);
-  const left = buildBalancedLayoutFromLeaves(leaves.slice(0, mid), direction === 'horizontal' ? 'vertical' : 'horizontal');
-  const right = buildBalancedLayoutFromLeaves(leaves.slice(mid), direction === 'horizontal' ? 'vertical' : 'horizontal');
+  const left = buildBalancedLayoutFromLeaves(
+    leaves.slice(0, mid),
+    direction === 'horizontal' ? 'vertical' : 'horizontal',
+  );
+  const right = buildBalancedLayoutFromLeaves(
+    leaves.slice(mid),
+    direction === 'horizontal' ? 'vertical' : 'horizontal',
+  );
   return {
     type: 'split',
     id: createPaneId('split'),

@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   collectLeaves,
   createSingleLeafLayout,
+  flattenTabIdsFromLayout,
   splitLeaf,
 } from '@/utils/workspaceTabs/paneLayout';
 import {
   applyFlipToDraft,
   applyLeafOrderToDraft,
+  detachLeaf,
   draftFromLayout,
   remapLeafContentsByOrder,
+  relocateLeaf,
   swapLeafContents,
 } from '@/utils/workspaceTabs/paneLayoutEdit';
 
@@ -36,6 +39,46 @@ describe('paneLayoutEdit', () => {
     const next = collectLeaves(swapped);
     expect(next[0]?.tabIds).toEqual(['b']);
     expect(next[1]?.tabIds).toEqual(['a']);
+  });
+
+  it('relocateLeaf center swaps pane contents', () => {
+    const base = createSingleLeafLayout(['a', 'b'], 'a');
+    const split = splitLeaf(base, base.id, 'right', 'b')!;
+    const [left, right] = collectLeaves(split.layout);
+    const moved = relocateLeaf(split.layout, left!.id, right!.id, 'center')!;
+    const next = collectLeaves(moved.layout);
+    expect(next[0]?.tabIds).toEqual(['b']);
+    expect(next[1]?.tabIds).toEqual(['a']);
+    expect(moved.focusedPaneId).toBe(right!.id);
+  });
+
+  it('relocateLeaf edge detaches and inserts beside target', () => {
+    const base = createSingleLeafLayout(['a', 'b', 'c'], 'a');
+    const s1 = splitLeaf(base, base.id, 'right', 'c')!;
+    const left = collectLeaves(s1.layout)[0]!;
+    const s2 = splitLeaf(s1.layout, left.id, 'bottom', 'b')!;
+    const leaves = collectLeaves(s2.layout);
+    expect(leaves).toHaveLength(3);
+    const source = leaves.find((l) => l.tabIds.includes('c'))!;
+    const target = leaves.find((l) => l.tabIds.includes('a'))!;
+    const moved = relocateLeaf(s2.layout, source.id, target.id, 'left')!;
+    const next = collectLeaves(moved.layout);
+    expect(next).toHaveLength(3);
+    expect(moved.focusedPaneId).toBe(source.id);
+    const focused = next.find((l) => l.id === source.id);
+    expect(focused?.tabIds).toEqual(['c']);
+    // Source is now a left neighbor of the target branch.
+    expect(flattenTabIdsFromLayout(moved.layout).includes('c')).toBe(true);
+  });
+
+  it('detachLeaf promotes sibling without merging tabs', () => {
+    const base = createSingleLeafLayout(['a', 'b'], 'a');
+    const split = splitLeaf(base, base.id, 'right', 'b')!;
+    const [left, right] = collectLeaves(split.layout);
+    const detached = detachLeaf(split.layout, left!.id)!;
+    expect(detached.leaf.tabIds).toEqual(left!.tabIds);
+    expect(collectLeaves(detached.layout)).toHaveLength(1);
+    expect(collectLeaves(detached.layout)[0]?.tabIds).toEqual(right!.tabIds);
   });
 
   it('flips split direction in a draft', () => {
