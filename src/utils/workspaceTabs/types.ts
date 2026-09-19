@@ -1,3 +1,6 @@
+import type { PaneNode, PersistedPaneNode } from '@/utils/workspaceTabs/paneLayout';
+import { createSingleLeafLayout } from '@/utils/workspaceTabs/paneLayout';
+
 /** Fixed id for the singleton 「나와의 채팅」 tab. */
 export const CHAT_TAB_ID = 'chat' as const;
 
@@ -16,6 +19,9 @@ export const WORKSPACE_TABS_STORAGE_KEY = 's3haim_workspaceTabs';
 export const LAST_FILE_KEY = 's3haim_lastFile';
 
 export type FileStorageType = 's3' | 'local' | 'webdav' | 'session';
+
+/** Quiz vs markdown editor for `.quiz.md` file tabs (per-tab, not pathname-only). */
+export type FileNoteSurface = 'edit' | 'quiz';
 
 export type ChatWorkspaceTab = {
   id: typeof CHAT_TAB_ID;
@@ -51,6 +57,8 @@ export type FileWorkspaceTab = {
   baselineContent: string;
   editedFileName: string;
   lastActivatedAt: number;
+  /** For `.quiz.md`: quiz runner vs markdown editor. Default inferred when activating. */
+  noteSurface?: FileNoteSurface;
 };
 
 export type WorkspaceTab =
@@ -61,7 +69,10 @@ export type WorkspaceTab =
 
 export type WorkspaceTabsState = {
   tabs: WorkspaceTab[];
+  /** Focused leaf's active tab (mirrors layout). */
   activeId: string | null;
+  layout: PaneNode;
+  focusedPaneId: string;
 };
 
 export type PersistedWorkspaceTab =
@@ -70,14 +81,33 @@ export type PersistedWorkspaceTab =
   | { kind: 'content-search' }
   | { kind: 'file'; type: FileStorageType; path: string };
 
-export type PersistedWorkspaceTabs = {
+export type PersistedWorkspaceTabsV1 = {
   version: 1;
   tabs: PersistedWorkspaceTab[];
   activeId: string | null;
 };
 
+export type PersistedWorkspaceTabs = {
+  version: 2;
+  tabs: PersistedWorkspaceTab[];
+  activeId: string | null;
+  layout: PersistedPaneNode;
+  focusedPaneId: string;
+};
+
+/** @deprecated Use PersistedWorkspaceTabs (v2). Kept for callers that only need tabs/activeId. */
+export type PersistedWorkspaceTabsCompat = PersistedWorkspaceTabsV1 | PersistedWorkspaceTabs;
+
 export const EDITABLE_VIEWERS = ['markdown', 'json', 'raw', 'html', 'svg'] as const;
 
 export function isEditableViewer(viewer: string | undefined): boolean {
   return EDITABLE_VIEWERS.includes((viewer || 'markdown') as (typeof EDITABLE_VIEWERS)[number]);
+}
+
+export function defaultWorkspaceLayout(
+  tabIds: string[] = [],
+  activeId: string | null = null,
+): { layout: PaneNode; focusedPaneId: string } {
+  const layout = createSingleLeafLayout(tabIds, activeId);
+  return { layout, focusedPaneId: layout.id };
 }

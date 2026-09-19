@@ -5,6 +5,7 @@ import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
 import AppUiFontSettings from '@/components/settings/AppUiFontSettings';
+import StatusBarClockSettings from '@/components/settings/StatusBarClockSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
@@ -25,12 +26,6 @@ import {
   WIKI_IMAGE_CACHE_MODE_URL,
 } from '@/utils/wikiImageSettings';
 import {
-  EDITOR_TYPE_MD_EDITOR_RT,
-  EDITOR_TYPE_NOVEL,
-  loadEditorType,
-  saveEditorType,
-} from '@/utils/editorTypeSettings';
-import {
   FOOTNOTE_DISPLAY_MODE_OPTIONS,
   loadFootnoteDisplayMode,
   setFootnoteDisplayMode,
@@ -45,10 +40,15 @@ import {
   saveWorkspaceTabsAutoSaveMode,
   WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
   WORKSPACE_TABS_AUTO_SAVE_OPTIONS,
+  requestFocusWorkspacePaneSoftCapSetting,
 } from '@/utils/workspaceTabsSettings';
+import WorkspacePaneSoftCapSettings from '@/components/settings/WorkspacePaneSoftCapSettings';
 import {
   getComposerHelperTextVisible,
 } from '@/utils/chatWithMyself';
+import {
+  loadChatComposerAutocompleteEnabled,
+} from '@/utils/chatWithMyself/composerAutocompleteSettings';
 import {
   setSettingsToggle,
   subscribeSettingsToggles,
@@ -135,8 +135,8 @@ export default function SettingsPage({
   onSaveSnippetConfig,
   isSavingSnippets = false,
   snippetConfigLoaded = false,
-  editorType: editorTypeProp,
-  onEditorTypeChange,
+  editorType: _editorTypeProp,
+  onEditorTypeChange: _onEditorTypeChange,
   storageMode = STORAGE_MODE_S3,
   onStorageModeChange,
   localFolderName = '',
@@ -169,7 +169,6 @@ export default function SettingsPage({
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported);
   const [wikiImageCacheMode, setWikiImageCacheMode] = useState(() => loadWikiImageCacheMode());
-  const [editorType, setEditorType] = useState(() => editorTypeProp ?? loadEditorType());
   const [altVimNavigationEnabled, setAltVimNavigationEnabled] = useState(() =>
     loadAltVimNavigationEnabled(),
   );
@@ -181,6 +180,9 @@ export default function SettingsPage({
   );
   const [composerHelperTextVisible, setComposerHelperTextVisible] = useState(() =>
     getComposerHelperTextVisible(),
+  );
+  const [composerAutocompleteEnabled, setComposerAutocompleteEnabled] = useState(() =>
+    loadChatComposerAutocompleteEnabled(),
   );
   const advancedSearchStatus = useAdvancedSearchEngineStatus();
   const [advancedSearchUiAnimation, setAdvancedSearchUiAnimation] = useState(() =>
@@ -222,6 +224,7 @@ export default function SettingsPage({
       if (id === 'settings-alt-vim') setAltVimNavigationEnabled(enabled);
       else if (id === 'settings-workspace-tabs') setWorkspaceTabsEnabled(enabled);
       else if (id === 'settings-composer-helper') setComposerHelperTextVisible(enabled);
+      else if (id === 'settings-composer-autocomplete') setComposerAutocompleteEnabled(enabled);
       else if (id === 'settings-as-animation') setAdvancedSearchUiAnimation(enabled);
     });
   }, []);
@@ -256,6 +259,9 @@ export default function SettingsPage({
     if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-imgbb') setImgbbConnOpen(true);
     if (hash === 'settings-mlx-vlm' || hash === 'settings-llama-cpp') dispatchSettingsSectionOpen(hash);
+    if (hash === 'settings-workspace-pane-soft-cap') {
+      window.setTimeout(() => requestFocusWorkspacePaneSoftCapSetting(), 100);
+    }
     const groupId = findSettingsGroupIdForSection(hash);
     if (groupId) setGroupOpen((prev) => ({ ...prev, [groupId]: true }));
     const scrollId = resolveSettingsScrollTarget(hash);
@@ -318,10 +324,6 @@ export default function SettingsPage({
       basePath: '',
     });
   }, [webdavConfig]);
-
-  useEffect(() => {
-    if (editorTypeProp !== undefined) setEditorType(editorTypeProp);
-  }, [editorTypeProp]);
 
   useEffect(() => {
     let cancelled = false;
@@ -965,46 +967,12 @@ export default function SettingsPage({
         >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">마크다운 에디터</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
-            .md 파일을 편집할 때 사용할 에디터를 고릅니다.
+            .md 파일은 <span className="font-semibold text-gray-700 dark:text-odp-fg">md-editor-rt</span>로
+            편집합니다. 미리보기, 위키 이미지{' '}
+            <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code> /{' '}
+            <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path|w=50%]]</code>,
+            스니펫 단축키가 이 구성에 맞춰져 있습니다.
           </p>
-          <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="editorType"
-                value={EDITOR_TYPE_MD_EDITOR_RT}
-                checked={editorType === EDITOR_TYPE_MD_EDITOR_RT}
-                onChange={() => {
-                  setEditorType(EDITOR_TYPE_MD_EDITOR_RT);
-                  saveEditorType(EDITOR_TYPE_MD_EDITOR_RT);
-                  onEditorTypeChange?.(EDITOR_TYPE_MD_EDITOR_RT);
-                }}
-                className="mt-0.5 shrink-0"
-              />
-              <span>
-                <span className="font-semibold">md-editor-rt</span>
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  기본 에디터. 미리보기, 위키 이미지 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code> / <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path|w=50%]]</code>, 스니펫 단축키 등이 이 구성에 맞춰져 있습니다.
-                </span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 cursor-not-allowed opacity-60">
-              <input
-                type="radio"
-                name="editorType"
-                value={EDITOR_TYPE_NOVEL}
-                checked={false}
-                disabled
-                className="mt-0.5 shrink-0"
-              />
-              <span>
-                <span className="font-semibold">novel</span>
-                <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-                  준비중입니다.
-                </span>
-              </span>
-            </label>
-          </div>
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
               문서 상단 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<!-- footnotes {"v":1,"enabled":true} -->'}</code>
@@ -1037,7 +1005,6 @@ export default function SettingsPage({
             </div>
           </div>
         </div>
-
 
         <div id="settings-snippets" tabIndex={-1} className="scroll-mt-4">
           <SnippetSettings
@@ -1519,6 +1486,7 @@ export default function SettingsPage({
                     );
                   })}
                 </RadioGroup.Root>
+                <WorkspacePaneSoftCapSettings />
               </div>
             </SettingsCollapsibleContent>
           </div>
@@ -1659,6 +1627,7 @@ export default function SettingsPage({
               </span>
             </label>
           )}
+          <StatusBarClockSettings />
           {typeof onTreeHoverExpandSettingsChange === 'function' && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">
               <p className="text-xs font-semibold text-gray-700 dark:text-odp-fg mb-1">
@@ -1795,8 +1764,9 @@ export default function SettingsPage({
         >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">나와의 채팅</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
-            채팅 입력창 아래 단축키 안내 문구 표시 여부를 설정합니다.
+            나와의 채팅 입력창 표시·자동완성 옵션입니다.
           </p>
+          <div className="space-y-4">
           <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
             <button
               type="button"
@@ -1824,6 +1794,34 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
+          <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsToggle('settings-composer-autocomplete', !composerAutocompleteEnabled);
+              }}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
+                composerAutocompleteEnabled
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={composerAutocompleteEnabled}
+              aria-label="채팅 입력 자동완성"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  composerAutocompleteEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              채팅 입력 자동완성
+              <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                나와의 채팅 md-editor-rt 자동완성 추천입니다. 노트 편집기 자동완성과는 별도로 저장됩니다.
+              </span>
+            </span>
+          </label>
+          </div>
         </div>
             </SettingsPageGroup>
 

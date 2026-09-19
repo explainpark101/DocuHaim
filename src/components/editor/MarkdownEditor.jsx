@@ -41,8 +41,8 @@ import {
   insertExistingFootnoteRef,
   insertNewFootnote,
 } from '@/utils/footnoteInsertApply';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
-import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
+import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
@@ -198,18 +198,16 @@ import {
   toggleUnderlineForSelection,
   toggleUnorderedListForSelection,
   wrapSelectionWithInlineCode,
-  wrapLatexForSelection,
-  wrapBracketsForSelection,
-  wrapParenthesesForSelection,
-  wrapBracesForSelection,
-  wrapSingleQuoteForSelection,
-  wrapDoubleQuoteForSelection,
 } from '@/utils/editorMarkdownStyle';
+import {
+  handleMdEditorSelectionWrapKeydown,
+  wrapSelectionWithPairIfTriggerKey,
+} from '@/utils/mdEditorSelectionWrap';
 
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
 const MD_EDITOR_TOC_DEFAULT_WIDTH = 360;
 
-/** Windows: Ctrl, Mac: Cmd ? mod ? ??? ? ?? ??? ?? (keydown ???) */
+/** Windows: Ctrl, Mac: Cmd — build mod+… combo string (keydown path). */
 function getKeyComboFromEvent(e) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
   const parts = [];
@@ -225,7 +223,7 @@ function getKeyComboFromEvent(e) {
   return parts.join('+');
 }
 
-/** ??? shortcut ???? ctrl/meta ? mod ? ??? (???) */
+/** Normalize snippet shortcut so ctrl/meta both match as mod. */
 function normalizeShortcutForMatch(shortcut) {
   if (!shortcut || typeof shortcut !== 'string') return '';
   return shortcut
@@ -278,42 +276,6 @@ function insertLineAboveInEditorView(view) {
     changes: { from: line.from, to: line.from, insert: '\n' },
     selection: { anchor: line.from },
   });
-}
-
-/** Mac KO/US ??? `???\ ?? ?? ?? ?(Backquote/IntlBackslash)? ??? ?? ??? ?? */
-function isInlineCodeFenceTriggerKey(e) {
-  if (e.ctrlKey || e.metaKey || e.altKey) return false;
-  const { key, code } = e;
-  if (key === '`' || key === '?' || key === '\\') return true;
-  if (code === 'Backquote' || code === 'IntlBackslash') return true;
-  return false;
-}
-
-/** Wrap the current selection when typing $, [, (, {, ', or ". Empty selection: no-op. */
-function wrapSelectionWithPairIfTriggerKey(view, event) {
-  if (event.defaultPrevented) return false;
-  if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return false;
-  switch (event.key) {
-    case '$':
-      return wrapLatexForSelection(view);
-    case '[':
-      return wrapBracketsForSelection(view);
-    case '(':
-      return wrapParenthesesForSelection(view);
-    case '{':
-      return wrapBracesForSelection(view);
-    case "'":
-      return wrapSingleQuoteForSelection(view);
-    case '"':
-      return wrapDoubleQuoteForSelection(view);
-    default:
-      if (event.code === 'Quote') {
-        return event.shiftKey
-          ? wrapDoubleQuoteForSelection(view)
-          : wrapSingleQuoteForSelection(view);
-      }
-      return false;
-  }
 }
 
 function runAltVimNavigation(view, command) {
@@ -614,9 +576,12 @@ export default function MarkdownEditor({
   onRequestConvertAllImagesToWiki,
   onRegisterConvertAllImagesToWiki,
   isActiveFile = true,
+  /** Focused / interactive surface. Visible but unfocused panes stay mounted and pause heavy work. */
+  isSurfaceLive = true,
 }) {
   const llmAssist = useLlmAssistSessionOptional();
   const navigate = useNavigate();
+  const tabsCtx = useWorkspaceTabsCtxOptional();
   const { showAlert } = useAlertModal();
   // Unique per keep-alive mount so catalog getElementById / preview-wrapper
   // selectors do not hit a hidden sibling tab (default id is shared).
@@ -660,16 +625,16 @@ export default function MarkdownEditor({
   const navigateToExportPdf = useCallback((options = {}) => {
     const content = valueRef.current ?? '';
     const file = currentFileRef.current;
-    setPendingPrintReturnState({ currentFile: file, editorContent: content });
-    navigate(exportPdfPathnameForStoragePath(file?.id), {
-      state: {
-        value: content,
-        theme: themeRef.current === 'dark' ? 'dark' : 'light',
-        currentFile: file,
-        ...(options.openCoverEdit ? { openCoverEdit: true } : {}),
-      },
+    openExportPdfSurface({
+      currentFile: file,
+      editorContent: content,
+      theme: themeRef.current === 'dark' ? 'dark' : 'light',
+      navigate,
+      openCoverEdit: Boolean(options.openCoverEdit),
+      openInFocusedPane: (tabId) =>
+        Boolean(tabsCtx?.workspaceTabsEnabled && tabsCtx.openExportPdfInFocusedPane?.(tabId)),
     });
-  }, [navigate]);
+  }, [navigate, tabsCtx]);
   const { onChange: onChangeWithUndoHistory } = usePerFileEditorUndoHistory({
     currentFile,
     value,
@@ -748,9 +713,9 @@ export default function MarkdownEditor({
     };
   }, [previewOnly]);
 
-  // Expose toolbar actions to Advanced Search (Cmd/Ctrl+K) while this editor is mounted.
+  // Expose toolbar actions to Advanced Search (Cmd/Ctrl+K) while this editor is live.
   useEffect(() => {
-    if (previewOnly) return undefined;
+    if (previewOnly || !isSurfaceLive) return undefined;
 
     const getApi = () => editorRef.current?.value ?? editorRef.current;
 
@@ -901,12 +866,12 @@ export default function MarkdownEditor({
     };
 
     return registerEditorActions(handlers);
-  }, [previewOnly, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki, llmAssist]);
+  }, [previewOnly, isSurfaceLive, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki, llmAssist]);
 
   // Register active markdown editor with the global LLM Assist host.
   const registerBridge = llmAssist?.registerEditorBridge;
   useEffect(() => {
-    if (previewOnly || !isActiveFile || !registerBridge) return undefined;
+    if (previewOnly || !isActiveFile || !isSurfaceLive || !registerBridge) return undefined;
     const getEditorApi = () => {
       const current = editorRef.current;
       if (!current) return null;
@@ -932,10 +897,10 @@ export default function MarkdownEditor({
         return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
       },
     });
-  }, [previewOnly, isActiveFile, registerBridge, onChangeWithUndoHistory]);
+  }, [previewOnly, isActiveFile, isSurfaceLive, registerBridge, onChangeWithUndoHistory]);
 
   useEffect(() => {
-    if (previewOnly) return undefined;
+    if (previewOnly || !isSurfaceLive) return undefined;
 
     const getView = () => {
       const api = editorRef.current?.value ?? editorRef.current;
@@ -988,7 +953,7 @@ export default function MarkdownEditor({
         setFootnoteComposeOpen(true);
       },
     });
-  }, [previewOnly]);
+  }, [previewOnly, isSurfaceLive]);
 
   const {
     width: catalogWidth,
@@ -1053,6 +1018,10 @@ export default function MarkdownEditor({
   }, [foldBase64Images]);
 
   useEffect(() => {
+    if (!isSurfaceLive) {
+      setCatalogEl(null);
+      return undefined;
+    }
     const root = containerRef.current;
     if (!root) return undefined;
 
@@ -1067,7 +1036,7 @@ export default function MarkdownEditor({
     const mo = new MutationObserver(syncCatalog);
     mo.observe(root, { childList: true, subtree: true });
     return () => mo.disconnect();
-  }, []);
+  }, [isSurfaceLive]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -1077,7 +1046,7 @@ export default function MarkdownEditor({
 
   // MdEditor reconcile wipes foreign catalog children, so overlay the handle on document.body.
   useLayoutEffect(() => {
-    if (!catalogEl) {
+    if (!isSurfaceLive || !catalogEl) {
       setCatalogHandleBox(null);
       return undefined;
     }
@@ -1107,28 +1076,30 @@ export default function MarkdownEditor({
       window.removeEventListener('resize', updateBox);
       window.removeEventListener('scroll', updateBox, true);
     };
-  }, [catalogEl, catalogWidth]);
+  }, [catalogEl, catalogWidth, isSurfaceLive]);
 
   // Replace md-editor-rt catalog offsetTop scroll (breaks with keep-alive id
   // collisions and preview containment/transforms) with getBoundingClientRect.
   useEffect(() => {
-    if (!catalogEl) return undefined;
+    if (!isSurfaceLive || !catalogEl) return undefined;
     return bindCatalogClickScrollFix(catalogEl, {
       getEditorRoot: () => containerRef.current,
       mdHeadingId: (args) => buildPreviewHeadingId(args),
     });
-  }, [catalogEl, buildPreviewHeadingId]);
+  }, [catalogEl, buildPreviewHeadingId, isSurfaceLive]);
 
   useWikiImageHydration(
     containerRef,
     value,
     onResolveWikiImageUrl,
     currentFile?.id ?? null,
+    { enabled: isSurfaceLive },
   );
-  useLazyMermaidRender(containerRef, { layoutKey: theme });
+  useLazyMermaidRender(containerRef, { layoutKey: theme, enabled: isSurfaceLive });
 
   // Auto-mount note-cover CoverSlide in preview; re-run when preview DOM settles/recreates.
   useEffect(() => {
+    if (!isSurfaceLive) return undefined;
     const root = containerRef.current;
     if (!root || !value) return undefined;
 
@@ -1170,7 +1141,7 @@ export default function MarkdownEditor({
       timers.forEach((t) => clearTimeout(t));
       mutationObserver?.disconnect();
     };
-  }, [value, onResolveWikiImageUrl, currentFile?.id]);
+  }, [value, onResolveWikiImageUrl, currentFile?.id, isSurfaceLive]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -1237,6 +1208,7 @@ export default function MarkdownEditor({
   // Preview heading fold chevrons (persist collapsed ids per document).
   // Do not depend on `value` ? tearing down on every keystroke flashes chevrons.
   useEffect(() => {
+    if (!isSurfaceLive) return undefined;
     const container = containerRef.current;
     if (!container) return undefined;
 
@@ -1315,7 +1287,7 @@ export default function MarkdownEditor({
       cleanupEnhance?.();
       cleanupEnhance = null;
     };
-  }, [currentFile?.id, currentFile?.type]);
+  }, [currentFile?.id, currentFile?.type, isSurfaceLive]);
 
   useEffect(() => {
     if (!previewOnly) return;
@@ -1344,7 +1316,7 @@ export default function MarkdownEditor({
 
   // Preview selection ? CodeMirror selection + mirrored highlight/caret on both panes.
   useEffect(() => {
-    if (previewOnly || safariMdEditor) return undefined;
+    if (previewOnly || safariMdEditor || !isSurfaceLive) return undefined;
     const root = containerRef.current;
     if (!root) return undefined;
 
@@ -1570,13 +1542,13 @@ export default function MarkdownEditor({
       root.removeEventListener('touchend', onTouchEnd);
       root.removeEventListener('keydown', onKeyDownCapture, true);
     };
-  }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
+  }, [previewOnly, mirrorEditEnabled, safariMdEditor, isSurfaceLive]);
 
   // Dual-pane: bidirectional scroll sync + preview follow for editor caret.
   // Mirror Edit: also remirror caret/selection overlays onto the preview.
   // Safari: keep data-line scroll sync; skip Mirror Edit remirror only.
   useEffect(() => {
-    if (previewOnly) {
+    if (previewOnly || !isSurfaceLive) {
       previewScrollFollowRef.current?.stop();
       previewScrollFollowRef.current = null;
       mirrorEditRemirrorRef.current?.stop();
@@ -1624,11 +1596,11 @@ export default function MarkdownEditor({
       previewScrollFollowRef.current?.stop();
       previewScrollFollowRef.current = null;
     };
-  }, [previewOnly, mirrorEditEnabled]);
+  }, [previewOnly, mirrorEditEnabled, isSurfaceLive]);
 
   // Mirror Edit: double-click preview block ? contentEditable in place.
   useEffect(() => {
-    if (previewOnly || safariMdEditor || !mirrorEditEnabled) {
+    if (previewOnly || safariMdEditor || !mirrorEditEnabled || !isSurfaceLive) {
       cancelPreviewMirrorEdit();
       return undefined;
     }
@@ -1641,9 +1613,9 @@ export default function MarkdownEditor({
         const api = editorRef.current?.value ?? editorRef.current;
         return api?.getEditorView?.();
       },
-      isEnabled: () => mirrorEditEnabled,
+      isEnabled: () => mirrorEditEnabled && isSurfaceLive,
     });
-  }, [previewOnly, mirrorEditEnabled, safariMdEditor]);
+  }, [previewOnly, mirrorEditEnabled, safariMdEditor, isSurfaceLive]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -1703,19 +1675,10 @@ export default function MarkdownEditor({
         keydown: (e, view) => {
           if (!view) return;
 
-          if (!view.composing && isInlineCodeFenceTriggerKey(e)) {
-            const wrapped = wrapSelectionWithInlineCode(view);
-            if (wrapped) {
-              e.preventDefault();
-              e.stopPropagation();
-              // CodeMirror: handled event must return true so later handlers / default are skipped
-              return true;
-            }
-          }
-
-          if (!view.composing && wrapSelectionWithPairIfTriggerKey(view, e)) {
+          if (handleMdEditorSelectionWrapKeydown(e, view)) {
             e.preventDefault();
             e.stopPropagation();
+            // CodeMirror: handled event must return true so later handlers / default are skipped
             return true;
           }
 
@@ -2550,8 +2513,12 @@ export default function MarkdownEditor({
   return (
     <div
       ref={containerRef}
-      className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}`}
+      className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}${
+        isSurfaceLive ? '' : ' pointer-events-none'
+      }`}
       style={{ '--md-catalog-width': `${catalogWidth}px`, ...documentFontStyleVars }}
+      {...(!isSurfaceLive ? { inert: true } : {})}
+      aria-hidden={!isSurfaceLive ? true : undefined}
     >
       {documentSettings?.webfontCss ? (
         <style data-s3haim-document-webfonts="1">{documentSettings.webfontCss}</style>

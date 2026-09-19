@@ -64,6 +64,7 @@ import {
   shareChatMessage,
 } from '@/utils/chatWithMyself';
 import { IconLock } from '@/components/icons';
+import ChatJumpToBottomButton from '@/components/chatWithMyself/ChatJumpToBottomButton';
 import {
   CHAT_MESSAGE_SCROLL_MARGIN,
 } from '@/utils/chatWithMyself/scrollToMessage';
@@ -1170,6 +1171,9 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     loadingNewer = false,
     hasMore = false,
     hasMoreNewer = false,
+    /** Jump to absolute latest (may reload day window). Falls back to scrollToBottom. */
+    onJumpToBottom = null,
+    jumpToBottomBusy = false,
     onReply,
     onDelete,
     onEdit,
@@ -1230,6 +1234,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   const [overlayDate, setOverlayDate] = useState(
     /** @type {{ label: string, dateStr: string } | null} */ (null),
   );
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const coarse = useIsCoarsePointer();
   const mobileContextMenu = useMobileContextMenuMode();
   const shiftHeldRef = useShiftHeldRef();
@@ -1405,13 +1410,35 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     [dateStrToIndex],
   );
 
+  const scrollToBottom = useCallback(() => {
+    const list = listRef.current;
+    if (!list || rows.length === 0) return;
+    stickBottomRef.current = true;
+    setShowJumpToBottom(Boolean(hasMoreNewer));
+    list.scrollToIndex(Math.max(0, rows.length - 1), { align: 'end' });
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex(Math.max(0, rows.length - 1), {
+        align: 'end',
+      });
+    });
+  }, [rows.length, hasMoreNewer]);
+
+  const handleJumpToBottomClick = useCallback(() => {
+    if (typeof onJumpToBottom === 'function') {
+      void onJumpToBottom();
+      return;
+    }
+    scrollToBottom();
+  }, [onJumpToBottom, scrollToBottom]);
+
   useImperativeHandle(
     ref,
     () => ({
       scrollToMessageId,
       scrollToDateStr,
+      scrollToBottom,
     }),
-    [scrollToMessageId, scrollToDateStr],
+    [scrollToMessageId, scrollToDateStr, scrollToBottom],
   );
 
   // Detect prepend vs append for virtua `shift` (compare against prior render refs).
@@ -1504,6 +1531,19 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     };
   }, [highlightId, scrollToMessageId, messages]);
 
+  // Keep jump FAB in sync when the day window changes without a scroll event.
+  useEffect(() => {
+    if (messages.length === 0) {
+      setShowJumpToBottom(false);
+      return;
+    }
+    if (hasMoreNewer) {
+      setShowJumpToBottom(true);
+      return;
+    }
+    if (stickBottomRef.current) setShowJumpToBottom(false);
+  }, [hasMoreNewer, messages.length]);
+
   const updateOverlayFromOffset = useCallback(
     (offset) => {
       const list = listRef.current;
@@ -1541,7 +1581,11 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       if (!list) return;
 
       const distBottom = list.scrollSize - offset - list.viewportSize;
-      stickBottomRef.current = distBottom < STICK_BOTTOM_PX;
+      const nearBottom = distBottom < STICK_BOTTOM_PX;
+      stickBottomRef.current = nearBottom;
+      setShowJumpToBottom(
+        messages.length > 0 && (!nearBottom || Boolean(hasMoreNewer)),
+      );
       updateOverlayFromOffset(offset);
 
       if (
@@ -1576,6 +1620,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       hasMoreNewer,
       loadingOlder,
       loadingNewer,
+      messages.length,
       onReachTop,
       onReachBottom,
       updateOverlayFromOffset,
@@ -1837,6 +1882,11 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             <Loader2 size={16} className="animate-spin text-gray-400" />
           </div>
         ) : null}
+        <ChatJumpToBottomButton
+          visible={showJumpToBottom}
+          busy={Boolean(loadingNewer || jumpToBottomBusy)}
+          onClick={handleJumpToBottomClick}
+        />
       </div>
       <ChatMessageContextMenu
         open={Boolean(sheetMessage)}

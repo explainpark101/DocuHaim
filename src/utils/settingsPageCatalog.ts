@@ -75,6 +75,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     title: 'UI 및 네비게이션',
     sections: [
       { id: 'settings-navigation', label: '네비게이션' },
+      { id: 'settings-workspace-pane-soft-cap', label: '분할 페인 개수 상한' },
       { id: 'settings-display', label: '표시 옵션' },
       { id: 'settings-wiki-image', label: '위키 이미지 캐싱' },
     ],

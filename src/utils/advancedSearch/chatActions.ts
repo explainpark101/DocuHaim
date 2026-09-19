@@ -2,7 +2,7 @@
  * Bridge: ChatWithMyself composer registers focus actions for Advanced Search.
  */
 
-export type ChatActionId = 'chat-focus-composer';
+export type ChatActionId = 'chat-focus-composer' | 'chat-jump-to-bottom';
 
 export type ChatActionHandler = () => void | Promise<void>;
 
@@ -88,6 +88,22 @@ export const CHAT_ACTION_COMMANDS: readonly ChatActionCommandDef[] = [
       'input focus',
       'focus composer',
       'focus input',
+    ],
+  },
+  {
+    id: 'chat-jump-to-bottom',
+    title: '가장 밑으로',
+    description: '최신 메시지(목록 맨 아래)로 이동합니다',
+    keywords: [
+      '가장 밑으로',
+      '맨 아래',
+      '최신',
+      '스크롤',
+      'jump to bottom',
+      'scroll to bottom',
+      'latest',
+      'bottom',
+      '채팅 맨아래',
     ],
   },
 ];

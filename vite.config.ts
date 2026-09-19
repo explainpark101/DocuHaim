@@ -449,13 +449,6 @@ function manualChunks(id: string): string | undefined {
     return 'vendor-monaco';
   }
   if (
-    normalizedId.includes('/node_modules/novel/') ||
-    normalizedId.includes('/node_modules/@tiptap/') ||
-    normalizedId.includes('/node_modules/prosemirror-')
-  ) {
-    return 'vendor-novel';
-  }
-  if (
     normalizedId.includes('/node_modules/@git-diff-view/')
   ) {
     return 'vendor-git-diff-view';
@@ -552,7 +545,7 @@ export default defineConfig({
     // Gzipping every chunk for the size report spikes RAM on constrained
     // hosts (Render ~2GB Node heap) right after generateBundle.
     reportCompressedSize: false,
-    // Heavy editors (md-editor, novel, monaco) still exceed 500 kB alone.
+    // Heavy editors (md-editor, monaco) still exceed 500 kB alone.
     chunkSizeWarningLimit: 1200,
   },
   server: {

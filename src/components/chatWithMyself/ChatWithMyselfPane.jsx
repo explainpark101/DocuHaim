@@ -90,6 +90,7 @@ import {
   writePerfReduceBubblePressFxPref,
   getComposerLightweightEnabled,
   writeComposerLightweightPref,
+  loadChatComposerAutocompleteEnabled,
   getChatRailOpen,
   writeChatRailOpenPref,
   flushPendingMessages,
@@ -113,6 +114,11 @@ import {
 } from '@/utils/chatWithMyself/chatDb.js';
 import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
 import { getStorageScopeId } from '@/utils/storageScope';
+import {
+  setSettingsToggle,
+  subscribeSettingsToggles,
+} from '@/utils/advancedSearch/settingsToggles';
+import { registerChatActions } from '@/utils/advancedSearch/chatActions';
 
 async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
   if (!filters) return { ok: true, ogSearchText: '' };
@@ -416,6 +422,9 @@ export default function ChatWithMyselfPane({
   const [composerLightweight, setComposerLightweight] = useState(
     getComposerLightweightEnabled,
   );
+  const [composerAutocompleteEnabled, setComposerAutocompleteEnabled] = useState(
+    loadChatComposerAutocompleteEnabled,
+  );
   const [composerSettingsOpen, setComposerSettingsOpen] = useState(false);
   const [activeJumpDate, setActiveJumpDate] = useState(null);
   const [searchFilters, setSearchFilters] = useState(null);
@@ -590,6 +599,19 @@ export default function ChatWithMyselfPane({
     setComposerLightweight(value);
     writeComposerLightweightPref(value);
   }, [composerLightweight]);
+
+  const toggleComposerAutocomplete = useCallback((next) => {
+    const value = typeof next === 'boolean' ? next : !composerAutocompleteEnabled;
+    setSettingsToggle('settings-composer-autocomplete', value);
+  }, [composerAutocompleteEnabled]);
+
+  useEffect(() => {
+    return subscribeSettingsToggles((id, enabled) => {
+      if (id === 'settings-composer-autocomplete') {
+        setComposerAutocompleteEnabled(enabled);
+      }
+    });
+  }, []);
 
   const hasMore = loadedDayIndex < dayKeys.length;
   const hasMoreNewer = windowNewestIndex > 0;
@@ -981,6 +1003,43 @@ export default function ChatWithMyselfPane({
       setLoadingNewer(false);
     }
   }, [storageReady, ctx]);
+
+  const jumpToLatest = useCallback(async () => {
+    if (!storageReady) return;
+    if (windowNewestIndexRef.current === 0) {
+      messageListRef.current?.scrollToBottom?.();
+      return;
+    }
+    setJumping(true);
+    setError('');
+    try {
+      const keys = dayKeysRef.current;
+      const { messages: msgs, loadedDayIndex: end } =
+        await readMessagesForInitialWindow(ctx, keys, { startIndex: 0 });
+      setMessages(msgs);
+      setWindowNewestIndex(0);
+      setLoadedDayIndex(end);
+      setActiveJumpDate(keys[0] || null);
+      requestAnimationFrame(() => {
+        messageListRef.current?.scrollToBottom?.();
+        requestAnimationFrame(() => {
+          messageListRef.current?.scrollToBottom?.();
+        });
+      });
+    } catch (e) {
+      setError(e?.message || '최신 대화로 이동 실패');
+    } finally {
+      setJumping(false);
+    }
+  }, [storageReady, ctx]);
+
+  useEffect(() => {
+    return registerChatActions({
+      'chat-jump-to-bottom': () => {
+        void jumpToLatest();
+      },
+    });
+  }, [jumpToLatest]);
 
   const scrollToDayFirstMessage = useCallback((dateStr, messageId = null) => {
     const id =
@@ -2463,7 +2522,7 @@ export default function ChatWithMyselfPane({
     <ChatImageLightboxProvider>
     <ChatUiPrefsProvider openLinksInNewWindow={openLinksInNewWindow}>
     <ChatFileDropOverlay
-      className="flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg"
+      className="@container relative flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg"
       disabled={!storageReady}
       onFilesDrop={handleComposerFilesDrop}
       rootRef={setAttachDropHostNode}
@@ -2616,6 +2675,8 @@ export default function ChatWithMyselfPane({
               loadingNewer={loadingNewer}
               hasMore={hasMore}
               hasMoreNewer={hasMoreNewer}
+              onJumpToBottom={jumpToLatest}
+              jumpToBottomBusy={jumping}
               onReply={handleReply}
               onDelete={handleDelete}
               onEdit={handleEdit}
@@ -2649,15 +2710,15 @@ export default function ChatWithMyselfPane({
               <div
                 className={
                   editTarget
-                    ? 'mx-auto flex w-full max-w-full px-2 md:max-w-[min(100%,50vw)] md:px-3'
-                    : 'mx-auto flex h-full min-h-0 w-full max-w-full px-2 md:max-w-[min(100%,50vw)] md:px-3'
+                    ? 'mx-auto flex w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3'
+                    : 'mx-auto flex h-full min-h-0 w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3'
                 }
               >
                 <div
                   className={
                     editTarget
-                      ? 'flex w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:px-3 md:py-1.5'
-                      : 'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none md:px-3 md:py-1.5'
+                      ? 'flex w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5'
+                      : 'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5'
                   }
                 >
                   <ChatComposer
@@ -2764,7 +2825,6 @@ export default function ChatWithMyselfPane({
               <ChatMobileDrawer
                 open={groupOpen}
                 onClose={() => setGroupOpen(false)}
-                width="80vw"
                 zClass="z-[70]"
                 label="그룹"
               >
@@ -2776,7 +2836,6 @@ export default function ChatWithMyselfPane({
               <ChatMobileDrawer
                 open={dateOpen}
                 onClose={() => setDateOpen(false)}
-                width="80vw"
                 zClass="z-[72]"
                 label="날짜"
               >
@@ -2896,6 +2955,8 @@ export default function ChatWithMyselfPane({
         onShowLineNumbersChange={toggleComposerLineNumbers}
         openLinksInNewWindow={openLinksInNewWindow}
         onOpenLinksInNewWindowChange={toggleOpenLinksInNewWindow}
+        autocompleteEnabled={composerAutocompleteEnabled}
+        onAutocompleteEnabledChange={toggleComposerAutocomplete}
         perfReduceLayoutAnim={perfReduceLayoutAnim}
         onPerfReduceLayoutAnimChange={togglePerfReduceLayoutAnim}
         perfReduceBubblePressFx={perfReduceBubblePressFx}

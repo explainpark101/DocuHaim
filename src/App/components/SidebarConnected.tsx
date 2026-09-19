@@ -33,6 +33,7 @@ export type ChromeProps = Pick<
   quizSourceDropActive?: SidebarProps['quizSourceDropActive'];
   quizSourceDropHost?: SidebarProps['quizSourceDropHost'];
   onDropToQuizSource?: SidebarProps['onDropToQuizSource'];
+  onDropToWorkspacePane?: SidebarProps['onDropToWorkspacePane'];
   onCloseSessionWorkspace?: SidebarProps['onCloseSessionWorkspace'];
 };
 

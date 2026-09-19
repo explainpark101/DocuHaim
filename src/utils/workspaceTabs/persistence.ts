@@ -6,9 +6,18 @@ import {
   WORKSPACE_TABS_STORAGE_KEY,
   type FileStorageType,
   type PersistedWorkspaceTabs,
+  type PersistedWorkspaceTabsV1,
   type PersistedWorkspaceTab,
 } from '@/utils/workspaceTabs/types';
 import { fileTabId } from '@/utils/workspaceTabs/helpers';
+import {
+  createSingleLeafLayout,
+  fromPersistedPaneNode,
+  isPersistedPaneNode,
+  syncLayoutPreservingOrphansWhenSplit,
+  toPersistedPaneNode,
+  type PersistedPaneNode,
+} from '@/utils/workspaceTabs/paneLayout';
 
 function readJson(storage: Storage, key: string): unknown {
   try {
@@ -58,20 +67,54 @@ function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
   return false;
 }
 
-function normalizePersisted(raw: unknown): PersistedWorkspaceTabs | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const o = raw as Record<string, unknown>;
-  if (o.version !== 1 || !Array.isArray(o.tabs)) return null;
-  const tabs = o.tabs.filter(isPersistedTab);
-  const activeId = typeof o.activeId === 'string' || o.activeId === null ? o.activeId : null;
-  return { version: 1, tabs, activeId };
-}
-
-function persistedId(tab: PersistedWorkspaceTab): string {
+export function persistedId(tab: PersistedWorkspaceTab): string {
   if (tab.kind === 'chat') return CHAT_TAB_ID;
   if (tab.kind === 'settings') return SETTINGS_TAB_ID;
   if (tab.kind === 'content-search') return CONTENT_SEARCH_TAB_ID;
   return fileTabId(tab.type, tab.path);
+}
+
+function layoutFromTabList(
+  tabs: PersistedWorkspaceTab[],
+  activeId: string | null,
+): { layout: PersistedPaneNode; focusedPaneId: string } {
+  const tabIds = tabs.map(persistedId);
+  const leaf = createSingleLeafLayout(tabIds, activeId);
+  return { layout: toPersistedPaneNode(leaf), focusedPaneId: leaf.id };
+}
+
+function normalizePersisted(raw: unknown): PersistedWorkspaceTabs | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (!Array.isArray(o.tabs)) return null;
+  const tabs = o.tabs.filter(isPersistedTab);
+  const activeId = typeof o.activeId === 'string' || o.activeId === null ? o.activeId : null;
+
+  // Prefer a valid layout tree even when focusedPaneId is missing (derive focus).
+  if ((o.version === 1 || o.version === 2) && isPersistedPaneNode(o.layout)) {
+    const tabIds = tabs.map(persistedId);
+    const focusHint = typeof o.focusedPaneId === 'string' ? o.focusedPaneId : null;
+    const synced = syncLayoutPreservingOrphansWhenSplit(
+      fromPersistedPaneNode(o.layout),
+      tabIds,
+      focusHint,
+    );
+    return {
+      version: 2,
+      tabs,
+      activeId,
+      layout: toPersistedPaneNode(synced.layout),
+      focusedPaneId: synced.focusedPaneId,
+    };
+  }
+
+  if (o.version === 1 || o.version === 2) {
+    // v1 or v2 missing layout — synthesize a single leaf.
+    const { layout, focusedPaneId } = layoutFromTabList(tabs, activeId);
+    return { version: 2, tabs, activeId, layout, focusedPaneId };
+  }
+
+  return null;
 }
 
 /** Hydrate from workspace schema or legacy `s3haim_lastFile`. */
@@ -90,10 +133,18 @@ export function loadPersistedWorkspaceTabs(): PersistedWorkspaceTabs | null {
   if (!legacy || typeof legacy !== 'object') return null;
   const l = legacy as Record<string, unknown>;
   if (l.type === 'chat') {
-    return { version: 1, tabs: [{ kind: 'chat' }], activeId: CHAT_TAB_ID };
+    const { layout, focusedPaneId } = layoutFromTabList([{ kind: 'chat' }], CHAT_TAB_ID);
+    return { version: 2, tabs: [{ kind: 'chat' }], activeId: CHAT_TAB_ID, layout, focusedPaneId };
   }
   if (l.type === 'settings') {
-    return { version: 1, tabs: [{ kind: 'settings' }], activeId: SETTINGS_TAB_ID };
+    const { layout, focusedPaneId } = layoutFromTabList([{ kind: 'settings' }], SETTINGS_TAB_ID);
+    return {
+      version: 2,
+      tabs: [{ kind: 'settings' }],
+      activeId: SETTINGS_TAB_ID,
+      layout,
+      focusedPaneId,
+    };
   }
   if (
     (l.type === 's3' || l.type === 'local' || l.type === 'webdav') &&
@@ -102,21 +153,33 @@ export function loadPersistedWorkspaceTabs(): PersistedWorkspaceTabs | null {
   ) {
     const type = l.type as FileStorageType;
     const path = l.path;
-    return {
-      version: 1,
-      tabs: [{ kind: 'file', type, path }],
-      activeId: fileTabId(type, path),
-    };
+    const id = fileTabId(type, path);
+    const tabs: PersistedWorkspaceTab[] = [{ kind: 'file', type, path }];
+    const { layout, focusedPaneId } = layoutFromTabList(tabs, id);
+    return { version: 2, tabs, activeId: id, layout, focusedPaneId };
   }
   return null;
 }
 
-export function savePersistedWorkspaceTabs(payload: PersistedWorkspaceTabs): void {
+export function savePersistedWorkspaceTabs(payload: PersistedWorkspaceTabs | PersistedWorkspaceTabsV1): void {
   if (typeof window === 'undefined') return;
-  writeBoth(WORKSPACE_TABS_STORAGE_KEY, payload);
+  const normalized =
+    payload.version === 2
+      ? payload
+      : (() => {
+          const { layout, focusedPaneId } = layoutFromTabList(payload.tabs, payload.activeId);
+          return {
+            version: 2 as const,
+            tabs: payload.tabs,
+            activeId: payload.activeId,
+            layout,
+            focusedPaneId,
+          };
+        })();
+  writeBoth(WORKSPACE_TABS_STORAGE_KEY, normalized);
 
   // Keep legacy key in sync for older clients / partial restores.
-  const active = payload.tabs.find((t) => payload.activeId === persistedId(t));
+  const active = normalized.tabs.find((t) => normalized.activeId === persistedId(t));
   if (!active) {
     clearBoth(LAST_FILE_KEY);
     return;
@@ -150,6 +213,8 @@ export function toPersistedWorkspaceTabs(
     | { kind: 'file'; storageType: FileStorageType; path: string }
   >,
   activeId: string | null,
+  layout?: PersistedPaneNode | null,
+  focusedPaneId?: string | null,
 ): PersistedWorkspaceTabs {
   const persisted: PersistedWorkspaceTab[] = [];
   for (const t of tabs) {
@@ -172,5 +237,30 @@ export function toPersistedWorkspaceTabs(
       nextActive = first ? persistedId(first) : null;
     }
   }
-  return { version: 1, tabs: persisted, activeId: nextActive };
+
+  const tabIds = persisted.map(persistedId);
+  if (layout) {
+    const focusHint = focusedPaneId || null;
+    const synced = syncLayoutPreservingOrphansWhenSplit(
+      fromPersistedPaneNode(layout),
+      tabIds,
+      focusHint,
+    );
+    return {
+      version: 2,
+      tabs: persisted,
+      activeId: nextActive,
+      layout: toPersistedPaneNode(synced.layout),
+      focusedPaneId: synced.focusedPaneId,
+    };
+  }
+
+  const synthesized = layoutFromTabList(persisted, nextActive);
+  return {
+    version: 2,
+    tabs: persisted,
+    activeId: nextActive,
+    layout: synthesized.layout,
+    focusedPaneId: synthesized.focusedPaneId,
+  };
 }

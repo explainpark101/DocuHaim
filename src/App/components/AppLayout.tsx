@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ReactNode } from 'react';
+import { useCallback } from 'react';
 import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight, Cloud, MessagesSquare } from 'lucide-react';
@@ -14,6 +15,7 @@ import UserWebfontStyles from '@/components/UserWebfontStyles';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import FileUploadQueueStatusBar from '@/components/FileUploadQueueStatusBar';
 import FileUploadQueueFloatingPanel from '@/components/FileUploadQueueFloatingPanel';
+import StatusBarClock from '@/components/shell/StatusBarClock';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { isStoredWithWebAuthn, getStoredWebAuthn } from '@/utils/webauthn';
 import { refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
@@ -22,10 +24,23 @@ import { treeHoverExpandSettingsToMs } from '@/utils/treeHoverExpandSettings';
 import { isEncMdPath } from '@/utils/encMd';
 import { STORAGE_MODE_WEBDAV, clearPlaintextWebdavConfig, hasEncryptedWebdavConfig, requiresEncryptedWebdavStorage, saveWebdavConfig } from '@/utils/storageSettings';
 import { basenameFromVaultPath } from '@/utils/localVaultReady';
-import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
+import {
+  SESSION_STORAGE_TYPE,
+  buildSessionTree,
+  listSessionWorkspaces,
+  parseSessionFileKey,
+} from '@/utils/sessionWorkspace';
 import { getDesktopAppEntryLockModeSync, saveDesktopWebdavConfig } from '@/utils/desktopStrongholdSecrets';
 import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
+import {
+  CHAT_TAB_ID,
+  fileTabId,
+  findLeafContainingTab,
+} from '@/utils/workspaceTabs';
+import type { SidebarPaneDropItem } from '@/utils/workspaceTabs/sidebarPaneDrop';
+import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
+import { findNodeByPath } from '@/utils/s3Tree';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { useAppChrome } from '@/App/hooks/useAppChrome';
 import { useAppModals } from '@/App/hooks/useAppModals';
@@ -37,6 +52,7 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { useAutoSave } from '@/App/hooks/useAutoSave';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { useExportPdfPaneDeepLink } from '@/App/hooks/useExportPdfPaneDeepLink';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
 import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
@@ -68,6 +84,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const autoSave = useAutoSave();
   const bootstrap = useAppBootstrap();
   const tabsCtx = useWorkspaceTabsCtx();
+  useExportPdfPaneDeepLink();
   const treeOps = useTreeOps();
   const recording = useRecordingOwned();
   const pwaSnippets = usePwaSnippetsOwned();
@@ -202,6 +219,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     isSaving,
     isRefreshingFromDisk,
     isPullingFromRemote,
+    selectFileRaw,
   } = file;
 
   const {
@@ -238,7 +256,97 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const openChatWorkspaceTab = tabsCtx.openChatWorkspaceTab;
   const openContentSearchWorkspaceTab = tabsCtx.openContentSearchWorkspaceTab;
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
+  const focusWorkspacePane = tabsCtx.focusWorkspacePane;
+  const resizeWorkspaceSplit = tabsCtx.resizeWorkspaceSplit;
+  const finishResizeWorkspaceSplit = tabsCtx.finishResizeWorkspaceSplit;
+  const handleWorkspacePaneDrop = tabsCtx.handleWorkspacePaneDrop;
+  const splitWorkspaceTabToEdge = tabsCtx.splitWorkspaceTabToEdge;
+  const applyWorkspacePaneLayout = tabsCtx.applyWorkspacePaneLayout;
+  const collapseWorkspacePane = tabsCtx.collapseWorkspacePane;
+  const clearExportPdfInFocusedPane = tabsCtx.clearExportPdfInFocusedPane;
   const setWorkspaceTabs = tabsCtx.setState;
+
+  const resolveSidebarFileNode = useCallback(
+    (storageType: string, path: string) => {
+      if (storageType === SESSION_STORAGE_TYPE || storageType === 'session') {
+        const parsed = parseSessionFileKey(path);
+        if (!parsed) return null;
+        const workspace = listSessionWorkspaces(sessionWorkspaces).find(
+          (ws) => ws.id === parsed.sessionId,
+        );
+        if (!workspace) return null;
+        return findNodeByPath(buildSessionTree(workspace), parsed.path);
+      }
+      const tree =
+        storageType === 's3'
+          ? s3Tree
+          : storageType === 'webdav'
+            ? webdavTree
+            : localTree;
+      return findNodeByPath(tree, path);
+    },
+    [s3Tree, localTree, webdavTree, sessionWorkspaces],
+  );
+
+  const handleDropToWorkspacePane = useCallback(
+    async (
+      items: SidebarPaneDropItem[],
+      leafId: string,
+      zone: PaneSplitEdge | 'center',
+      opts?: { workspaceEdge?: boolean },
+    ) => {
+      if (!workspaceTabsEnabled || isMobile) return;
+      const openable = items.filter(
+        (item) => item.nodeType === 'file' || item.nodeType === 'chat',
+      );
+      if (openable.length === 0) return;
+
+      const openedTabIds: string[] = [];
+      for (const item of openable) {
+        if (item.nodeType === 'chat') {
+          openChatWorkspaceTab({ navigateUrl: false, activate: false });
+          openedTabIds.push(CHAT_TAB_ID);
+          continue;
+        }
+        const node =
+          resolveSidebarFileNode(item.storageType, item.path) ??
+          ({
+            path: item.path,
+            name: item.name || basenameFromVaultPath(item.path) || item.path,
+            type: 'file',
+          } as { path: string; name: string; type: string });
+        await selectFileRaw(item.storageType, node, { background: true });
+        openedTabIds.push(fileTabId(item.storageType, item.path));
+      }
+
+      const firstId = openedTabIds[0];
+      if (!firstId) return;
+      if (!workspaceTabsRef.current.tabs.some((t) => t.id === firstId)) return;
+
+      // Sidebar "open here": center joins into the leaf (never swaps panes).
+      handleWorkspacePaneDrop(firstId, leafId, zone, {
+        centerBehavior: 'join',
+        ...(opts?.workspaceEdge ? { workspaceEdge: true } : {}),
+      });
+      const host = findLeafContainingTab(workspaceTabsRef.current.layout, firstId);
+      const joinLeafId = host?.id ?? leafId;
+      for (let i = 1; i < openedTabIds.length; i++) {
+        const id = openedTabIds[i];
+        if (!id) continue;
+        if (!workspaceTabsRef.current.tabs.some((t) => t.id === id)) continue;
+        handleWorkspacePaneDrop(id, joinLeafId, 'center', { centerBehavior: 'join' });
+      }
+    },
+    [
+      workspaceTabsEnabled,
+      isMobile,
+      openChatWorkspaceTab,
+      resolveSidebarFileNode,
+      selectFileRaw,
+      workspaceTabsRef,
+      handleWorkspacePaneDrop,
+    ],
+  );
 
   const {
     setDeleteTarget,
@@ -361,6 +469,16 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           tabsEnabled={workspaceTabsEnabled}
           appName={appName}
           isMobileLayout={isMobile}
+          layout={workspaceTabs.layout}
+          focusedPaneId={workspaceTabs.focusedPaneId}
+          splitDragEnabled={workspaceTabsEnabled && !isMobile}
+          onPaneDrop={handleWorkspacePaneDrop}
+          {...(workspaceTabsEnabled && !isMobile
+            ? {
+                onSplitTab: splitWorkspaceTabToEdge,
+                onApplyPaneLayout: applyWorkspacePaneLayout,
+              }
+            : {})}
           onActivateTab={(id) => activateWorkspaceTab(id)}
           onCloseTab={(id) => {
             closeWorkspaceTabById(id);
@@ -556,6 +674,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               quizSourceDropActive={quizSourceDropActive}
               quizSourceDropHost={quizSourceDropHost}
               onDropToQuizSource={handleDropToQuizSource}
+              onDropToWorkspacePane={
+                workspaceTabsEnabled && !isMobile ? handleDropToWorkspacePane : undefined
+              }
               onCloseSessionWorkspace={closeSessionWorkspace}
             />
           </ResizableSidebarPanel>
@@ -594,6 +715,21 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                   savingTabIds={savingTabIds}
                   tabsEnabled={workspaceTabsEnabled}
                   tabBarPlacement={isTauriDesktopPlatform() ? 'titlebar' : 'inline'}
+                  layout={workspaceTabs.layout}
+                  focusedPaneId={workspaceTabs.focusedPaneId}
+                  splitDragEnabled={workspaceTabsEnabled && !isMobile}
+                  onFocusPane={focusWorkspacePane}
+                  onResizeSplit={resizeWorkspaceSplit}
+                  onResizeSplitEnd={finishResizeWorkspaceSplit}
+                  onPaneDrop={handleWorkspacePaneDrop}
+                  {...(workspaceTabsEnabled && !isMobile
+                    ? {
+                        onSplitTab: splitWorkspaceTabToEdge,
+                        onApplyPaneLayout: applyWorkspacePaneLayout,
+                        onCollapsePane: collapseWorkspacePane,
+                      }
+                    : {})}
+                  onClearExportPdf={clearExportPdfInFocusedPane}
                   isChatRoute={isChatRoute}
                   isSettingsRoute={isSettingsRoute}
                   isContentSearchRoute={isContentSearchRoute}
@@ -907,7 +1043,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           </div>
         </div>
 
-        {/* Status Bar — z above editor chrome (z-10100) so novel/md layers do not cover it on mobile */}
+        {/* Status Bar — z above editor chrome (z-10100) so md layers do not cover it on mobile */}
         <div
           data-app-status-bar=""
           className="relative z-10200 flex h-6 shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-white/90 px-2 pb-[max(0px,env(safe-area-inset-bottom))] text-[10px] dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 md:h-7 md:gap-3 md:px-3 md:text-[11px]"
@@ -1093,6 +1229,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                 </span>
               </>
             )}
+            <StatusBarClock />
           </div>
         </div>
       </div>

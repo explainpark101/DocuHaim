@@ -2,11 +2,18 @@ import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
 
 const COPY_SUFFIX = ' (복사본)';
 
+export type TreeCopyModifierEvent = {
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+};
+
+/** Ctrl / Cmd (meta) / Alt held → tree drag copies instead of moving. */
 export function isTreeCopyModifierHeld(
-  event?: { ctrlKey?: boolean; altKey?: boolean } | null,
+  event?: TreeCopyModifierEvent | null,
 ): boolean {
   if (!event) return false;
-  return Boolean(event.ctrlKey || event.altKey);
+  return Boolean(event.ctrlKey || event.metaKey || event.altKey);
 }
 
 export function splitCopyBaseName(

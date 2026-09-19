@@ -3,11 +3,15 @@ import { closedTabEntryFromWorkspaceTab, pushClosedTab } from '@/utils/workspace
 import { tabDisplayTitle } from '@/utils/workspaceTabs/helpers';
 import {
   activateTab,
+  clearExportPdfInLeaf,
   closeTab,
+  collapsePaneLeaf,
   evictForSoftCap,
   findFileTab,
   getActiveFileTab,
   moveTab,
+  moveTabIntoLeaf,
+  openExportPdfInLeaf,
   openOrActivateChat,
   openOrActivateContentSearch,
   openOrActivateSettings,
@@ -15,7 +19,13 @@ import {
   patchFileTab,
   retargetFileTab,
   retargetFileTabsByPathPrefix,
+  replaceWorkspaceLayout,
+  setFocusedPane,
+  splitTabToEdge,
+  splitTabToWorkspaceEdge,
+  swapPanesOrMoveTabToCenter,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
+import { removeTabFromLayout, syncLayoutPreservingOrphansWhenSplit } from '@/utils/workspaceTabs/paneLayout';
 
 export function flushEditorIntoActiveFileTab(
   state: WorkspaceTabsState,
@@ -84,8 +94,22 @@ export function applyOpenedFileReducer(
     for (const tab of evicted.closed) {
       pushClosedTab(closedTabEntryFromWorkspaceTab(tab));
     }
+    let layout = state.layout;
+    for (const tab of evicted.closed) {
+      layout = removeTabFromLayout(layout, tab.id);
+    }
+    const synced = syncLayoutPreservingOrphansWhenSplit(
+      layout,
+      evicted.tabs.map((t) => t.id),
+      state.focusedPaneId,
+    );
     return openOrReplaceFileTab(
-      { ...state, tabs: evicted.tabs },
+      {
+        ...state,
+        tabs: evicted.tabs,
+        layout: synced.layout,
+        focusedPaneId: synced.focusedPaneId,
+      },
       {
         storageType,
         path,
@@ -130,14 +154,23 @@ export function softCapPrompt(tab: FileWorkspaceTab): boolean {
 
 export {
   activateTab,
+  clearExportPdfInLeaf,
   closeTab,
+  collapsePaneLeaf,
   findFileTab,
   getActiveFileTab,
+  moveTab,
+  moveTabIntoLeaf,
+  openExportPdfInLeaf,
   openOrActivateChat,
   openOrActivateContentSearch,
   openOrActivateSettings,
   patchFileTab,
-  moveTab,
+  replaceWorkspaceLayout,
   retargetFileTab,
   retargetFileTabsByPathPrefix,
+  setFocusedPane,
+  splitTabToEdge,
+  splitTabToWorkspaceEdge,
+  swapPanesOrMoveTabToCenter,
 };

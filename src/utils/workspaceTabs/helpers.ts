@@ -33,6 +33,7 @@ export function createFileTab(params: {
   currentFile: FileWorkspaceTab['currentFile'];
   editorContent: string;
   editedFileName?: string;
+  noteSurface?: FileWorkspaceTab['noteSurface'];
   now?: number;
 }): FileWorkspaceTab {
   const { storageType, path, currentFile, editorContent } = params;
@@ -49,6 +50,7 @@ export function createFileTab(params: {
     baselineContent: baseline,
     editedFileName: params.editedFileName ?? String(currentFile.name ?? path.split('/').pop() ?? ''),
     lastActivatedAt: now,
+    ...(params.noteSurface ? { noteSurface: params.noteSurface } : {}),
   };
 }
 
@@ -72,6 +74,9 @@ export function isFileTab(tab: WorkspaceTab | null | undefined): tab is FileWork
 
 export function isFileTabDirty(tab: FileWorkspaceTab): boolean {
   const viewer = typeof tab.currentFile.viewer === 'string' ? tab.currentFile.viewer : 'markdown';
+  // Restore shells use viewer "loading" — never treat placeholder edits as dirty
+  // or resolveOpenText will keep a wrong body instead of the fetched file.
+  if (viewer === 'loading') return false;
   if (!isEditableViewer(viewer)) return false;
   return tab.baselineContent !== tab.editorContent;
 }

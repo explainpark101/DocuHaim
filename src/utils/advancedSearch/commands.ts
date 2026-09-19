@@ -30,6 +30,8 @@ import {
   type SettingsToggleId,
   type WorkspaceTabsAutoSaveCommandId,
   type FootnoteDisplayModeCommandId,
+  type StatusBarClockFormatCommandId,
+  getStatusBarClockFormatCommands,
 } from '@/utils/advancedSearch/settingsToggles';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import {
@@ -84,6 +86,7 @@ export type AppCommandId =
   | 'settings-webfonts'
   | 'settings-cover'
   | 'settings-table-styles'
+  | 'settings-workspace-pane-soft-cap'
   | 'settings-app-update'
   | 'chat'
   | 'content-search'
@@ -113,6 +116,7 @@ export type AppCommandId =
   | SettingsToggleId
   | WorkspaceTabsAutoSaveCommandId
   | FootnoteDisplayModeCommandId
+  | StatusBarClockFormatCommandId
   | FootnoteInsertCommandId
   | CircleNumberInsertCommandId
   | SnippetActionId
@@ -352,9 +356,9 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'settings-editor',
     title: '설정 · 마크다운 에디터',
-    description: '마크다운 에디터 종류 (Novel 준비중)',
+    description: 'md-editor-rt 및 각주 표기 설정',
     path: '/settings#settings-editor',
-    keywords: ['에디터', 'editor', 'novel', 'markdown', '마크다운', 'tiptap'],
+    keywords: ['에디터', 'editor', 'markdown', '마크다운', '각주', 'footnote'],
   },
   {
     id: 'settings-navigation',
@@ -362,6 +366,23 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     description: 'Alt+Vim·파일 전환 키보드 옵션',
     path: '/settings#settings-navigation',
     keywords: ['네비게이션', 'navigation', 'vim', 'alt+vim', '키보드'],
+  },
+  {
+    id: 'settings-workspace-pane-soft-cap',
+    title: '설정 · 분할 페인 개수 상한',
+    description: '한 워크스페이스에서 동시에 열 수 있는 분할 페인 최대 개수',
+    path: '/settings#settings-workspace-pane-soft-cap',
+    keywords: [
+      'split',
+      'pane',
+      'soft cap',
+      '분할',
+      '페인',
+      '상한',
+      '탭',
+      'tabs',
+      'workspace',
+    ],
   },
   {
     id: 'settings-display',
@@ -1105,6 +1126,16 @@ function getFootnoteDisplayModeAppCommands(): AppCommand[] {
   }));
 }
 
+function getStatusBarClockFormatAppCommands(): AppCommand[] {
+  return getStatusBarClockFormatCommands().map((cmd) => ({
+    id: cmd.id,
+    title: cmd.title,
+    description: cmd.description,
+    path: '',
+    keywords: cmd.keywords,
+  }));
+}
+
 /**
  * Relevance of a command to query. 0 = no useful match.
  * Uses chat-style fuzzy / partial matching (subsequence + substring).
@@ -1227,10 +1258,18 @@ export function matchAppCommandsRanked(
   const settingsToggles = getSettingsToggleCommands();
   const tabsAutoSave = getWorkspaceTabsAutoSaveAppCommands();
   const footnoteDisplay = getFootnoteDisplayModeAppCommands();
+  const statusBarClockFormat = getStatusBarClockFormatAppCommands();
   const seen = new Set<string>();
   const ranked: RankedAppCommand[] = [];
 
-  for (const command of [...core, ...page, ...settingsToggles, ...tabsAutoSave, ...footnoteDisplay]) {
+  for (const command of [
+    ...core,
+    ...page,
+    ...settingsToggles,
+    ...tabsAutoSave,
+    ...footnoteDisplay,
+    ...statusBarClockFormat,
+  ]) {
     if (seen.has(command.id)) continue;
     if (!isCoreCommandVisible(command, query, context)) continue;
     seen.add(command.id);

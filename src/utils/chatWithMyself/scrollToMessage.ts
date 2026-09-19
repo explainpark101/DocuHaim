@@ -34,4 +34,6 @@ export type ChatMessageListHandle = {
     opts?: { align?: ChatListScrollAlign },
   ) => boolean;
   scrollToDateStr: (dateStr: string) => boolean;
+  /** Stick to and scroll to the end of the currently loaded window. */
+  scrollToBottom: () => void;
 };

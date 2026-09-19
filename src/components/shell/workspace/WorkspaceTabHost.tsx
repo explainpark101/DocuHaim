@@ -6,8 +6,8 @@ type WorkspaceTabHostProps = {
 };
 
 /**
- * Keep-alive stack: inactive panels should be `hidden` + `inert` from the parent.
- * This host is a flex column that fills the workspace content area.
+ * Keep-alive stack host (flex fill). Prefer mounting only the active tab;
+ * inactive tabs should unmount rather than stay hidden here.
  */
 export default function WorkspaceTabHost({ children }: WorkspaceTabHostProps) {
   return (

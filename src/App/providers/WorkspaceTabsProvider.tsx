@@ -3,6 +3,7 @@ import { WorkspaceTabsContext } from '@/App/context/WorkspaceTabsContext';
 import { useWorkspaceTabs } from '@/utils/workspaceTabs/useWorkspaceTabs';
 import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
 import { useWorkspaceTabsDomain } from '@/App/hooks/useWorkspaceTabsDomain';
+import WorkspacePaneSoftCapModal from '@/components/shell/workspace/WorkspacePaneSoftCapModal';
 
 type Props = { children: ReactNode };
 
@@ -45,11 +46,27 @@ export function WorkspaceTabsProvider({ children }: Props) {
       reorderWorkspaceTabs: domain.reorderWorkspaceTabs,
       collapseToLegacyWorkspace: domain.collapseToLegacyWorkspace,
       cycleWorkspaceTab: domain.cycleWorkspaceTab,
+      focusWorkspacePane: domain.focusWorkspacePane,
+      resizeWorkspaceSplit: domain.resizeWorkspaceSplit,
+      finishResizeWorkspaceSplit: domain.finishResizeWorkspaceSplit,
+      handleWorkspacePaneDrop: domain.handleWorkspacePaneDrop,
+      splitWorkspaceTabToEdge: domain.splitWorkspaceTabToEdge,
+      applyWorkspacePaneLayout: domain.applyWorkspacePaneLayout,
+      collapseWorkspacePane: domain.collapseWorkspacePane,
+      openExportPdfInFocusedPane: domain.openExportPdfInFocusedPane,
+      clearExportPdfInFocusedPane: domain.clearExportPdfInFocusedPane,
     }),
     [tabsApi, domain],
   );
 
   return (
-    <WorkspaceTabsContext.Provider value={value}>{children}</WorkspaceTabsContext.Provider>
+    <WorkspaceTabsContext.Provider value={value}>
+      {children}
+      <WorkspacePaneSoftCapModal
+        prompt={domain.paneSoftCapPrompt}
+        onCancel={domain.cancelPaneSoftCapPrompt}
+        onConfirm={domain.confirmPaneSoftCapPrompt}
+      />
+    </WorkspaceTabsContext.Provider>
   );
 }

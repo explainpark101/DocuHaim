@@ -42,5 +42,13 @@ describe('workspaceTabs helpers', () => {
     expect(isFileTabDirty(dirty)).toBe(true);
     expect(anyFileTabDirty([createChatTab(), dirty])).toBe(true);
     expect(anyFileTabDirty([createChatTab(), clean])).toBe(false);
+
+    const loading = createFileTab({
+      storageType: 's3',
+      path: 'b.md',
+      currentFile: { name: 'b.md', viewer: 'loading' },
+      editorContent: '',
+    });
+    expect(isFileTabDirty({ ...loading, editorContent: 'stale' })).toBe(false);
   });
 });

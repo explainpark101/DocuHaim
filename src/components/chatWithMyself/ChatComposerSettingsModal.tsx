@@ -10,11 +10,29 @@ const switchRootClass =
 const switchThumbClass =
   'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
 
-function SettingsSwitchRow({ id, label, description, checked, onCheckedChange }) {
+type SettingsSwitchRowProps = {
+  id: string;
+  label: string;
+  description?: string | undefined;
+  checked: boolean;
+  onCheckedChange?: ((next: boolean) => void) | undefined;
+  disabled?: boolean | undefined;
+};
+
+function SettingsSwitchRow({
+  id,
+  label,
+  description,
+  checked,
+  onCheckedChange,
+  disabled = false,
+}: SettingsSwitchRowProps) {
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-odp-borderSoft dark:bg-odp-bg/40"
+      className={`flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-odp-borderSoft dark:bg-odp-bg/40 ${
+        disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+      }`}
     >
       <span className="min-w-0">
         <span className="block text-sm font-medium text-gray-800 dark:text-odp-fgStrong">
@@ -30,6 +48,7 @@ function SettingsSwitchRow({ id, label, description, checked, onCheckedChange })
         id={id}
         className={switchRootClass}
         checked={Boolean(checked)}
+        disabled={disabled}
         onCheckedChange={(next) => onCheckedChange?.(Boolean(next))}
         aria-label={label}
       >
@@ -38,6 +57,25 @@ function SettingsSwitchRow({ id, label, description, checked, onCheckedChange })
     </label>
   );
 }
+
+export type ChatComposerSettingsModalProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showToolbar?: boolean;
+  onShowToolbarChange?: (next: boolean) => void;
+  showLineNumbers?: boolean;
+  onShowLineNumbersChange?: (next: boolean) => void;
+  openLinksInNewWindow?: boolean;
+  onOpenLinksInNewWindowChange?: (next: boolean) => void;
+  autocompleteEnabled?: boolean;
+  onAutocompleteEnabledChange?: (next: boolean) => void;
+  perfReduceLayoutAnim?: boolean;
+  onPerfReduceLayoutAnimChange?: (next: boolean) => void;
+  perfReduceBubblePressFx?: boolean;
+  onPerfReduceBubblePressFxChange?: (next: boolean) => void;
+  composerLightweight?: boolean;
+  onComposerLightweightChange?: (next: boolean) => void;
+};
 
 /**
  * Chat settings dialog (composer display + link behavior + motion performance).
@@ -51,13 +89,15 @@ export default function ChatComposerSettingsModal({
   onShowLineNumbersChange,
   openLinksInNewWindow = false,
   onOpenLinksInNewWindowChange,
+  autocompleteEnabled = true,
+  onAutocompleteEnabledChange,
   perfReduceLayoutAnim = false,
   onPerfReduceLayoutAnimChange,
   perfReduceBubblePressFx = false,
   onPerfReduceBubblePressFxChange,
   composerLightweight = false,
   onComposerLightweightChange,
-}) {
+}: ChatComposerSettingsModalProps) {
   return (
     <Dialog.Root open={Boolean(open)} onOpenChange={(next) => onOpenChange?.(next)}>
       <Dialog.Portal>
@@ -86,6 +126,7 @@ export default function ChatComposerSettingsModal({
               }
               checked={showToolbar}
               onCheckedChange={onShowToolbarChange}
+              disabled={composerLightweight}
             />
             <SettingsSwitchRow
               id="chat-composer-settings-line-numbers"
@@ -97,6 +138,19 @@ export default function ChatComposerSettingsModal({
               }
               checked={showLineNumbers}
               onCheckedChange={onShowLineNumbersChange}
+              disabled={composerLightweight}
+            />
+            <SettingsSwitchRow
+              id="chat-composer-settings-autocomplete"
+              label="자동완성"
+              description={
+                composerLightweight
+                  ? '경량 입력창에서는 사용할 수 없습니다'
+                  : 'md-editor-rt 입력 자동완성 추천'
+              }
+              checked={autocompleteEnabled}
+              onCheckedChange={onAutocompleteEnabledChange}
+              disabled={composerLightweight}
             />
             <SettingsSwitchRow
               id="chat-settings-open-links-new-window"

@@ -3,14 +3,12 @@ import type { MarkdownIt as MarkdownItInstance } from 'markdown-it';
 import {
   applyAppMarkdownItConfig,
   applyAppMarkdownItPlugins,
-  applyNovelMarkdownItPlugins,
   applyPrintHeadingMarkdownItPlugins,
   applySearchMarkdownItPlugins,
 } from '@/utils/appMarkdownItPlugins';
 
 export type AppMarkdownItPreset =
   | 'preview'
-  | 'novel'
   | 'search'
   | 'print-heading';
 
@@ -19,7 +17,6 @@ export type CreateAppMarkdownItOptions = {
 };
 
 let previewMarkdownIt: MarkdownItInstance | null = null;
-let novelMarkdownIt: MarkdownItInstance | null = null;
 let searchMarkdownIt: MarkdownItInstance | null = null;
 let printHeadingMarkdownIt: MarkdownItInstance | null = null;
 
@@ -30,11 +27,6 @@ function buildMarkdownIt(preset: AppMarkdownItPreset): MarkdownItInstance {
     case 'preview': {
       applyAppMarkdownItConfig(md);
       applyAppMarkdownItPlugins(md);
-      return md;
-    }
-    case 'novel': {
-      md.set({ html: true, breaks: true, linkify: false });
-      applyNovelMarkdownItPlugins(md);
       return md;
     }
     case 'search': {
@@ -69,9 +61,6 @@ export function getAppMarkdownIt(preset: AppMarkdownItPreset = 'preview'): Markd
     case 'preview':
       previewMarkdownIt ??= buildMarkdownIt('preview');
       return previewMarkdownIt;
-    case 'novel':
-      novelMarkdownIt ??= buildMarkdownIt('novel');
-      return novelMarkdownIt;
     case 'search':
       searchMarkdownIt ??= buildMarkdownIt('search');
       return searchMarkdownIt;

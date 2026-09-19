@@ -241,6 +241,13 @@ export {
   getChatRailOpen,
 } from '@/utils/chatWithMyself/composerPrefs.js';
 export {
+  CHAT_COMPOSER_MD_EDITOR_ID,
+  loadChatComposerAutocompleteEnabled,
+  saveChatComposerAutocompleteEnabled,
+  setChatComposerAutocompleteEnabled,
+  subscribeChatComposerAutocomplete,
+} from '@/utils/chatWithMyself/composerAutocompleteSettings';
+export {
   createPretextMeasurer,
   decideTabDensity,
   splitLabelChars,

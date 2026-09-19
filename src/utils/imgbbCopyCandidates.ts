@@ -8,7 +8,6 @@ import {
 import type { RemoteImageKind } from '@/utils/remoteImageComment';
 
 const COPY_ROOT_SELECTORS = [
-  '.novel-editor-surface',
   '.md-editor-preview',
 ];
 
