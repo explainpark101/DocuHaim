@@ -816,9 +816,13 @@ export default function WorkspaceMainPanels({
 
                     // Mount only the leaf's active tab (invisible tabs unmount).
                     // Visible but unfocused panes stay mounted with isSurfaceLive=false.
+                    // Include file path so remount clears CM/undo when the leaf
+                    // active tab identity would otherwise reuse the wrong body.
+                    const fileKey =
+                      isFileTab(tab) ? `${tab.storageType}:${tab.path}` : tab.id;
                     return (
                       <div
-                        key={`${leafId}:${leafActiveId}`}
+                        key={`${leafId}:${fileKey}`}
                         className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden"
                       >
                         {renderTabContent(tab, true, {

@@ -30,7 +30,12 @@ export async function resolveOpenTextContent(params: {
 }): Promise<ResolveOpenTextResult> {
   const { serverText, serverLastModTs, existingTab, draft, confirmMessage, deleteDraft } = params;
 
-  if (existingTab && isFileTabDirty(existingTab)) {
+  const existingViewer =
+    typeof existingTab?.currentFile?.viewer === 'string'
+      ? existingTab.currentFile.viewer
+      : null;
+  // Loading shells / unfinished opens must not win over server/disk text.
+  if (existingTab && existingViewer !== 'loading' && isFileTabDirty(existingTab)) {
     const tabLm = lastModToTs(existingTab.currentFile.lastModified);
     if (serverLastModTs > tabLm) {
       const useServer = window.confirm(confirmMessage);

@@ -234,19 +234,25 @@ export function useFileSessionDomain() {
     if (!file?.type || !file?.id) return false;
     const activate = options.activate !== false;
     const tabId = `${file.type}:${file.id}`;
-    const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-      editorContent: editorContentRef.current ?? '',
-      currentFile: currentFileRef.current,
-      editedFileName: editedFileNameRef.current ?? '',
-    });
-    const existing = findFileTab(flushed, file.type, file.id);
+    // Background opens (split-pane restore, inactive tabs) must not flush the
+    // live editor mirrors into the active tab — concurrent finishes can copy
+    // one file's body onto another tab's slot.
+    let baseState = workspaceTabsRef.current;
+    if (activate) {
+      baseState = flushEditorIntoActiveFileTab(baseState, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+    }
+    const existing = findFileTab(baseState, file.type, file.id);
     // Background finish after close: do not reopen the tab.
     if (!existing && !activate) return false;
-    let next = applyOpenedFileReducer(flushed, file, content, {
+    let next = applyOpenedFileReducer(baseState, file, content, {
       promptCloseDirty: softCapPrompt,
       activate,
     });
-    if (next === flushed && !findFileTab(flushed, file.type, file.id)) {
+    if (next === baseState && !findFileTab(baseState, file.type, file.id)) {
       return false;
     }
     if (options.baselineContent != null && typeof options.baselineContent === 'string') {
@@ -368,20 +374,17 @@ export function useFileSessionDomain() {
       };
 
       if (background) {
-        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
-          editorContent: editorContentRef.current ?? '',
-          currentFile: currentFileRef.current,
-          editedFileName: editedFileNameRef.current ?? '',
-        });
+        // Do not flush mirrors here — concurrent restore must not rewrite the
+        // active tab while opening another file into a background shell.
         const evictOpts = { promptCloseDirty: softCapPrompt };
-        const evicted = evictForSoftCap(flushed.tabs, evictOpts);
+        const evicted = evictForSoftCap(workspaceTabsRef.current.tabs, evictOpts);
         if (!evicted) return false;
         for (const tab of evicted.closed) {
           pushClosedTab(closedTabEntryFromWorkspaceTab(tab));
         }
         const tabId = `${type}:${node.path}`;
         const next = openOrReplaceFileTab(
-          { ...flushed, tabs: evicted.tabs },
+          { ...workspaceTabsRef.current, tabs: evicted.tabs },
           {
             storageType: type,
             path: node.path,
