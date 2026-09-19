@@ -4,6 +4,7 @@ import {
   createSingleLeafLayout,
   flattenTabIdsFromLayout,
   splitLeaf,
+  type SplitLeafResult,
 } from '@/utils/workspaceTabs/paneLayout';
 import {
   applyFlipToDraft,
@@ -15,10 +16,18 @@ import {
   swapLeafContents,
 } from '@/utils/workspaceTabs/paneLayoutEdit';
 
+
+function expectSplitOk(result: SplitLeafResult) {
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.reason);
+  return result;
+}
+
+
 describe('paneLayoutEdit', () => {
   it('remaps leaf contents by ordered source ids while keeping structure ids', () => {
     const base = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(base, base.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(base, base.id, 'right', 'b'));
     const leaves = collectLeaves(split.layout);
     const leftId = leaves[0]!.id;
     const rightId = leaves[1]!.id;
@@ -33,7 +42,7 @@ describe('paneLayoutEdit', () => {
 
   it('swaps two leaf contents', () => {
     const base = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(base, base.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(base, base.id, 'right', 'b'));
     const [left, right] = collectLeaves(split.layout);
     const swapped = swapLeafContents(split.layout, left!.id, right!.id);
     const next = collectLeaves(swapped);
@@ -43,7 +52,7 @@ describe('paneLayoutEdit', () => {
 
   it('relocateLeaf center swaps pane contents', () => {
     const base = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(base, base.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(base, base.id, 'right', 'b'));
     const [left, right] = collectLeaves(split.layout);
     const moved = relocateLeaf(split.layout, left!.id, right!.id, 'center')!;
     const next = collectLeaves(moved.layout);
@@ -54,9 +63,9 @@ describe('paneLayoutEdit', () => {
 
   it('relocateLeaf edge detaches and inserts beside target', () => {
     const base = createSingleLeafLayout(['a', 'b', 'c'], 'a');
-    const s1 = splitLeaf(base, base.id, 'right', 'c')!;
+    const s1 = expectSplitOk(splitLeaf(base, base.id, 'right', 'c'));
     const left = collectLeaves(s1.layout)[0]!;
-    const s2 = splitLeaf(s1.layout, left.id, 'bottom', 'b')!;
+    const s2 = expectSplitOk(splitLeaf(s1.layout, left.id, 'bottom', 'b'));
     const leaves = collectLeaves(s2.layout);
     expect(leaves).toHaveLength(3);
     const source = leaves.find((l) => l.tabIds.includes('c'))!;
@@ -73,7 +82,7 @@ describe('paneLayoutEdit', () => {
 
   it('detachLeaf promotes sibling without merging tabs', () => {
     const base = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(base, base.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(base, base.id, 'right', 'b'));
     const [left, right] = collectLeaves(split.layout);
     const detached = detachLeaf(split.layout, left!.id)!;
     expect(detached.leaf.tabIds).toEqual(left!.tabIds);
@@ -83,7 +92,7 @@ describe('paneLayoutEdit', () => {
 
   it('flips split direction in a draft', () => {
     const base = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(base, base.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(base, base.id, 'right', 'b'));
     const draft = draftFromLayout(split.layout);
     const rootId = draft.layout.type === 'split' ? draft.layout.id : '';
     expect(draft.layout.type).toBe('split');
@@ -97,9 +106,9 @@ describe('paneLayoutEdit', () => {
 
   it('applyLeafOrderToDraft remaps preview labels via content swap', () => {
     const base = createSingleLeafLayout(['a', 'b', 'c'], 'a');
-    const s1 = splitLeaf(base, base.id, 'right', 'c')!;
+    const s1 = expectSplitOk(splitLeaf(base, base.id, 'right', 'c'));
     const left = collectLeaves(s1.layout)[0]!;
-    const s2 = splitLeaf(s1.layout, left.id, 'right', 'b')!;
+    const s2 = expectSplitOk(splitLeaf(s1.layout, left.id, 'right', 'b'));
     const draft = draftFromLayout(s2.layout);
     const order = draft.leafOrder.slice().reverse();
     const next = applyLeafOrderToDraft(draft, order);

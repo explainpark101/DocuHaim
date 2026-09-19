@@ -1,7 +1,7 @@
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 
-/** Edge zone thickness as a percent of the pane. */
-export const PANE_DROP_EDGE_PCT = 40;
+/** Edge zone thickness as a percent of the pane (thirds: L/C/R or T/C/B). */
+export const PANE_DROP_EDGE_PCT = 33;
 
 /** Empty strip between edge and center (legacy hit-target layout). */
 export const PANE_DROP_GUTTER_PCT = 0;
@@ -10,10 +10,9 @@ export const PANE_DROP_GUTTER_PCT = 0;
 export const PANE_DROP_INNER_PCT = PANE_DROP_EDGE_PCT + PANE_DROP_GUTTER_PCT;
 
 /**
- * Visual preview size for the pane that will be created by an edge split
- * (matches default split ratio of 0.5).
+ * Visual preview size for the pane created by an edge drop (matches thirds).
  */
-export const PANE_SPLIT_PREVIEW_PCT = 50;
+export const PANE_SPLIT_PREVIEW_PCT = 33;
 
 /** Mark leaf roots so pointer→zone can be resolved geometrically (no DOM gap flicker). */
 export const PANE_LEAF_ATTR = 'data-pane-leaf';
@@ -21,6 +20,7 @@ export const PANE_LEAF_ATTR = 'data-pane-leaf';
 /**
  * Map a point inside a pane rect to a drop zone.
  * Covers the full pane (no empty corners) so previews stay stable while dragging.
+ * Zones are thirds: outer 33% → edge, middle → center.
  */
 export function zoneFromPanePoint(
   clientX: number,

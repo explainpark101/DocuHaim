@@ -34,6 +34,7 @@ import {
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
 import { PANE_LEAF_ATTR } from '@/utils/workspaceTabs/paneDropGeometry';
 import { relocateLeaf } from '@/utils/workspaceTabs/paneLayoutEdit';
+import { lockPaneDragSelection } from '@/utils/workspaceTabs/paneDragSelectLock';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import type { ExportPdfDocumentFile } from '@/pages/exportPdf/exportPdfTypes';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
@@ -510,19 +511,14 @@ export default function WorkspaceMainPanels({
     let started = false;
     const sourceLeafId = leafId;
     const layoutAtStart = layout;
-    let prevUserSelect: string | null = null;
-
-    const unlockUserSelect = () => {
-      if (prevUserSelect == null) return;
-      document.body.style.userSelect = prevUserSelect;
-      prevUserSelect = null;
-    };
+    let unlockSelection: (() => void) | null = null;
 
     const finish = (clientX: number, clientY: number) => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
-      unlockUserSelect();
+      unlockSelection?.();
+      unlockSelection = null;
       const snap = getWorkspaceTabDrag();
       setWorkspaceTabDrag(null);
       if (!started || !snap?.paneLeafId) return;
@@ -549,8 +545,7 @@ export default function WorkspaceMainPanels({
       if (!started) {
         if (Math.hypot(dx, dy) < PANE_HEADER_DRAG_SLOP_PX) return;
         started = true;
-        prevUserSelect = document.body.style.userSelect;
-        document.body.style.userSelect = 'none';
+        unlockSelection = lockPaneDragSelection();
         setWorkspaceTabDrag({
           tabId: '',
           paneLeafId: sourceLeafId,
@@ -558,6 +553,11 @@ export default function WorkspaceMainPanels({
           clientY: ev.clientY,
         });
         return;
+      }
+      try {
+        window.getSelection()?.removeAllRanges();
+      } catch {
+        // ignore
       }
       updateWorkspaceTabDragPoint(ev.clientX, ev.clientY);
     };
@@ -570,7 +570,8 @@ export default function WorkspaceMainPanels({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
-      unlockUserSelect();
+      unlockSelection?.();
+      unlockSelection = null;
       setWorkspaceTabDrag(null);
     };
 

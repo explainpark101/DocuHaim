@@ -1,6 +1,7 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type { PaneNode, PaneSplit } from '@/utils/workspaceTabs/paneLayout';
 import { isPaneLeaf, resizeSplit } from '@/utils/workspaceTabs/paneLayout';
+import { lockPaneDragSelection } from '@/utils/workspaceTabs/paneDragSelectLock';
 
 type WorkspaceSplitLayoutProps = {
   layout: PaneNode;
@@ -17,15 +18,6 @@ function SplitResizeHandle({
   direction: 'horizontal' | 'vertical';
   onRatioDelta: (deltaFraction: number, containerSize: number) => void;
 }) {
-  const startRef = useRef<{ pos: number; size: number } | null>(null);
-  const prevUserSelectRef = useRef<string | null>(null);
-
-  const unlockUserSelect = () => {
-    if (prevUserSelectRef.current == null) return;
-    document.body.style.userSelect = prevUserSelectRef.current;
-    prevUserSelectRef.current = null;
-  };
-
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -33,32 +25,37 @@ function SplitResizeHandle({
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
     const size = direction === 'horizontal' ? rect.width : rect.height;
-    startRef.current = {
-      pos: direction === 'horizontal' ? e.clientX : e.clientY,
-      size,
+    if (size <= 0) return;
+
+    let pos = direction === 'horizontal' ? e.clientX : e.clientY;
+    const unlockSelection = lockPaneDragSelection();
+    const prevCursor = document.body.style.cursor;
+    document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
+
+    const onMove = (ev: PointerEvent) => {
+      ev.preventDefault();
+      try {
+        window.getSelection()?.removeAllRanges();
+      } catch {
+        // ignore
+      }
+      const nextPos = direction === 'horizontal' ? ev.clientX : ev.clientY;
+      const deltaPx = nextPos - pos;
+      pos = nextPos;
+      onRatioDelta(deltaPx / size, size);
     };
-    prevUserSelectRef.current = document.body.style.userSelect;
-    document.body.style.userSelect = 'none';
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
 
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!startRef.current) return;
-    const pos = direction === 'horizontal' ? e.clientX : e.clientY;
-    const deltaPx = pos - startRef.current.pos;
-    startRef.current = { ...startRef.current, pos };
-    if (startRef.current.size <= 0) return;
-    onRatioDelta(deltaPx / startRef.current.size, startRef.current.size);
-  };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      unlockSelection();
+      document.body.style.cursor = prevCursor;
+    };
 
-  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
-    startRef.current = null;
-    unlockUserSelect();
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
   };
 
   const isRow = direction === 'horizontal';
@@ -73,9 +70,6 @@ function SplitResizeHandle({
           : 'group relative z-10 h-2 shrink-0 cursor-row-resize touch-none select-none bg-transparent hover:bg-blue-500/35 dark:hover:bg-blue-400/30'
       }
       onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
     />
   );
 }

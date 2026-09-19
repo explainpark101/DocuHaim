@@ -5,6 +5,7 @@ import {
   createSingleLeafLayout,
   flattenTabIdsFromLayout,
   splitLeaf,
+  type SplitLeafResult,
   WORKSPACE_TAB_GROUP_ZONE_ID,
   WORKSPACE_TAB_ORPHAN_ZONE_ID,
 } from '@/utils/workspaceTabs/paneLayout';
@@ -17,6 +18,14 @@ import {
   openOrReplaceFileTab,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
 import type { WorkspaceTabsState } from '@/utils/workspaceTabs/types';
+
+
+function expectSplitOk(result: SplitLeafResult) {
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.reason);
+  return result;
+}
+
 
 function fileInput(path: string) {
   return {
@@ -39,17 +48,22 @@ function findOrphan(state: WorkspaceTabsState, id: string): boolean {
   return !flattenTabIdsFromLayout(state.layout).includes(id) && state.tabs.some((t) => t.id === id);
 }
 
-/** Three tabs peeled into three leaves so extracting one keeps a split. */
+/** Three leaves via nested splits so extracting one keeps a remaining split. */
 function threeLeafSplit(): WorkspaceTabsState {
   let state = openFiles(['a.md', 'b.md', 'c.md']);
   const ids = state.tabs.map((t) => t.id);
-  const leaf = createSingleLeafLayout(ids, ids[1]!);
-  const split = splitLeaf(leaf, leaf.id, 'right', ids[2]!)!;
+  const a = ids[0]!;
+  const b = ids[1]!;
+  const c = ids[2]!;
+  const leaf = createSingleLeafLayout(ids, a);
+  const s1 = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', b));
+  const hostA = collectLeaves(s1.layout).find((l) => l.tabIds.includes(a))!;
+  const s2 = expectSplitOk(splitLeaf(s1.layout, hostA.id, 'bottom', c));
   return {
     ...state,
-    layout: split.layout,
-    focusedPaneId: split.focusedPaneId,
-    activeId: ids[2]!,
+    layout: s2.layout,
+    focusedPaneId: s2.focusedPaneId,
+    activeId: c,
   };
 }
 

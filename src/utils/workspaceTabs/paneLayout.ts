@@ -1,5 +1,21 @@
-/** Soft max leaf panes in a workspace split layout. */
-export const WORKSPACE_PANE_SOFT_CAP = 4;
+import {
+  clampWorkspacePaneSoftCap,
+  loadWorkspacePaneSoftCap,
+  WORKSPACE_PANE_SOFT_CAP_DEFAULT,
+} from '@/utils/workspaceTabsSettings';
+
+/** @deprecated Prefer `loadWorkspacePaneSoftCap()` — kept as default alias. */
+export const WORKSPACE_PANE_SOFT_CAP = WORKSPACE_PANE_SOFT_CAP_DEFAULT;
+
+function resolveSoftCap(softCap?: number): number {
+  return softCap != null ? clampWorkspacePaneSoftCap(softCap) : loadWorkspacePaneSoftCap();
+}
+
+/**
+ * Size of the new leaf when splitting toward an edge (matches 33% drop zones).
+ * Left/top: first child = this ratio. Right/bottom: first child = 1 - this ratio.
+ */
+export const PANE_EDGE_SPLIT_RATIO = 1 / 3;
 
 /** Tab-strip droppable: leave the split group (become orphan / full window). */
 export const WORKSPACE_TAB_ORPHAN_ZONE_ID = '__workspace_tab_orphan_zone__';
@@ -443,12 +459,13 @@ export function addTabAsStandaloneLeaf(
   layout: PaneNode,
   focusedPaneId: string,
   tabId: string,
-  opts?: { activate?: boolean; side?: 'before' | 'after' },
+  opts?: { activate?: boolean; side?: 'before' | 'after'; softCap?: number },
 ): { layout: PaneNode; focusedPaneId: string } {
   const activate = opts?.activate !== false;
   const side = opts?.side ?? 'before';
+  const softCap = resolveSoftCap(opts?.softCap);
   let next = removeTabFromLayout(layout, tabId);
-  if (countLeaves(next) >= WORKSPACE_PANE_SOFT_CAP) {
+  if (countLeaves(next) >= softCap) {
     return addTabToFocusedLeaf(next, focusedPaneId, tabId, { activate });
   }
   const leaf = createSingleLeafLayout([tabId], activate ? tabId : null);
@@ -462,12 +479,15 @@ export function addTabAsStandaloneLeaf(
 /**
  * Peel extra tabs out of a leaf, keeping only `keepTabId`.
  * Extras become standalone leaves ahead of the tree (tab-strip order).
+ * Kept for optional callers; splitLeaf no longer uses this (soft-cap friendly).
  */
 export function peelExtrasAsStandaloneLeaves(
   layout: PaneNode,
   leafId: string,
   keepTabId: string,
+  softCap?: number,
 ): PaneNode {
+  const cap = resolveSoftCap(softCap);
   const host = findLeaf(layout, leafId);
   if (!host) return layout;
   const extras = host.tabIds.filter((id) => id !== keepTabId);
@@ -487,7 +507,7 @@ export function peelExtrasAsStandaloneLeaves(
   for (let i = extras.length - 1; i >= 0; i -= 1) {
     const extraId = extras[i];
     if (!extraId) continue;
-    if (countLeaves(next) >= WORKSPACE_PANE_SOFT_CAP) {
+    if (countLeaves(next) >= cap) {
       // Soft cap: put remaining extras back into the host leaf.
       const rest = extras.slice(0, i + 1);
       next = mapLeaf(next, leafId, (leaf) => ({
@@ -565,22 +585,26 @@ function edgeToSplit(
   }
 }
 
+export type SplitLeafResult =
+  | { ok: true; layout: PaneNode; focusedPaneId: string }
+  | { ok: false; reason: 'soft-cap' | 'missing' };
+
 /**
  * Split `leafId` toward `edge`, placing `tabId` in the new leaf.
- * Other tabs that shared the host leaf (except the host's active tab) are peeled
- * into standalone leaves so they stay outside the split pair in the tab strip.
- * Returns null if soft cap would be exceeded.
+ * Other tabs remain in the host leaf (VS Code-style group split).
  */
 export function splitLeaf(
   layout: PaneNode,
   leafId: string,
   edge: PaneSplitEdge,
   tabId: string,
-): { layout: PaneNode; focusedPaneId: string } | null {
-  if (countLeaves(layout) >= WORKSPACE_PANE_SOFT_CAP) return null;
+  softCap?: number,
+): SplitLeafResult {
+  const cap = resolveSoftCap(softCap);
+  if (countLeaves(layout) >= cap) return { ok: false, reason: 'soft-cap' };
 
   const target = findLeaf(layout, leafId);
-  if (!target) return null;
+  if (!target) return { ok: false, reason: 'missing' };
 
   // Remove tab from wherever it is first.
   let base = removeTabFromLayout(layout, tabId);
@@ -591,27 +615,11 @@ export function splitLeaf(
     const leaves = collectLeaves(base);
     const host = leaves[0] ?? createEmptyLeaf();
     if (!leaves[0]) base = host;
-    return splitLeaf(base, host.id, edge, tabId);
-  }
-
-  // Keep only the host active (or first) tab in the split remnant; peel the rest.
-  const keepId =
-    (leafAfter.activeId && leafAfter.tabIds.includes(leafAfter.activeId)
-      ? leafAfter.activeId
-      : leafAfter.tabIds[0]) ?? null;
-  if (keepId && leafAfter.tabIds.length > 1) {
-    base = peelExtrasAsStandaloneLeaves(base, leafId, keepId);
-    leafAfter = findLeaf(base, leafId);
-    if (!leafAfter) {
-      const leaves = collectLeaves(base);
-      const host = leaves[0];
-      if (!host) return null;
-      return splitLeaf(base, host.id, edge, tabId);
-    }
+    return splitLeaf(base, host.id, edge, tabId, cap);
   }
 
   // Need room for the new leaf created by this split.
-  if (countLeaves(base) >= WORKSPACE_PANE_SOFT_CAP) return null;
+  if (countLeaves(base) >= cap) return { ok: false, reason: 'soft-cap' };
 
   const { direction, placeNewFirst } = edgeToSplit(edge);
   const newLeaf: PaneLeaf = {
@@ -639,7 +647,7 @@ export function splitLeaf(
         type: 'split',
         id: createPaneId('split'),
         direction,
-        ratio: 0.5,
+        ratio: placeNewFirst ? PANE_EDGE_SPLIT_RATIO : 1 - PANE_EDGE_SPLIT_RATIO,
         children,
       };
     }
@@ -650,7 +658,7 @@ export function splitLeaf(
   };
 
   const next = collapseEmptyLeaves(replaceLeafWithSplit(base));
-  return { layout: next, focusedPaneId: newLeaf.id };
+  return { ok: true, layout: next, focusedPaneId: newLeaf.id };
 }
 
 export function retargetTabIdInLayout(

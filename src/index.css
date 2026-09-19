@@ -472,6 +472,13 @@ button {
   animation: workspace-pane-appear-glow 2s ease-out forwards;
 }
 
+/* While dragging a pane resize handle / header — kill selection in editors */
+html.workspace-pane-dragging,
+html.workspace-pane-dragging * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
 .dark .workspace-pane-appear-glow {
   animation-name: workspace-pane-appear-glow-dark;
 }

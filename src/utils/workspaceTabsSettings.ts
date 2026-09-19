@@ -2,9 +2,16 @@
 
 const TABS_ENABLED_KEY = 's3haim_workspace_tabs';
 const AUTO_SAVE_KEY = 's3haim_workspace_tabs_auto_save';
+const PANE_SOFT_CAP_KEY = 's3haim_workspace_pane_soft_cap';
 
 /** Fired on `window` when auto-save mode changes. */
 export const WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT = 's3haim-workspace-tabs-auto-save';
+
+/** Fired on `window` when pane soft-cap changes. */
+export const WORKSPACE_PANE_SOFT_CAP_CHANGED_EVENT = 's3haim-workspace-pane-soft-cap';
+
+/** Ask Settings UI to scroll/focus the soft-cap field. */
+export const WORKSPACE_PANE_SOFT_CAP_FOCUS_EVENT = 's3haim-focus-workspace-pane-soft-cap';
 
 /**
  * VS Code Auto Save subset (no afterDelay):
@@ -22,6 +29,11 @@ export const WORKSPACE_TABS_AUTO_SAVE_MODES = [
 
 /** Tab mode default auto-save (VS Code–like onFocusChange). */
 export const WORKSPACE_TABS_AUTO_SAVE_DEFAULT: WorkspaceTabsAutoSaveMode = 'onFocusChange';
+
+/** Default / minimum / maximum leaf panes in a split layout. */
+export const WORKSPACE_PANE_SOFT_CAP_DEFAULT = 4;
+export const WORKSPACE_PANE_SOFT_CAP_MIN = 2;
+export const WORKSPACE_PANE_SOFT_CAP_MAX = 16;
 
 export type WorkspaceTabsAutoSaveModeOption = {
   value: WorkspaceTabsAutoSaveMode;
@@ -50,6 +62,15 @@ export const WORKSPACE_TABS_AUTO_SAVE_OPTIONS: readonly WorkspaceTabsAutoSaveMod
 function isAutoSaveMode(value: unknown): value is WorkspaceTabsAutoSaveMode {
   return (
     value === 'off' || value === 'onFocusChange' || value === 'onWindowChange'
+  );
+}
+
+export function clampWorkspacePaneSoftCap(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return WORKSPACE_PANE_SOFT_CAP_DEFAULT;
+  return Math.min(
+    WORKSPACE_PANE_SOFT_CAP_MAX,
+    Math.max(WORKSPACE_PANE_SOFT_CAP_MIN, Math.round(n)),
   );
 }
 
@@ -95,6 +116,44 @@ export function saveWorkspaceTabsAutoSaveMode(mode: WorkspaceTabsAutoSaveMode): 
     window.dispatchEvent(
       new CustomEvent(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, { detail: { mode: next } }),
     );
+  } catch {
+    // ignore
+  }
+}
+
+export function loadWorkspacePaneSoftCap(): number {
+  if (typeof window === 'undefined') return WORKSPACE_PANE_SOFT_CAP_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(PANE_SOFT_CAP_KEY);
+    if (raw == null || raw === '') return WORKSPACE_PANE_SOFT_CAP_DEFAULT;
+    return clampWorkspacePaneSoftCap(Number(raw));
+  } catch {
+    return WORKSPACE_PANE_SOFT_CAP_DEFAULT;
+  }
+}
+
+export function saveWorkspacePaneSoftCap(value: number): number {
+  const next = clampWorkspacePaneSoftCap(value);
+  if (typeof window === 'undefined') return next;
+  try {
+    window.localStorage.setItem(PANE_SOFT_CAP_KEY, String(next));
+  } catch {
+    // ignore
+  }
+  try {
+    window.dispatchEvent(
+      new CustomEvent(WORKSPACE_PANE_SOFT_CAP_CHANGED_EVENT, { detail: { softCap: next } }),
+    );
+  } catch {
+    // ignore
+  }
+  return next;
+}
+
+export function requestFocusWorkspacePaneSoftCapSetting(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent(WORKSPACE_PANE_SOFT_CAP_FOCUS_EVENT));
   } catch {
     // ignore
   }
