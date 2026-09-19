@@ -86,6 +86,7 @@ export type AppCommandId =
   | 'settings-webfonts'
   | 'settings-cover'
   | 'settings-table-styles'
+  | 'settings-workspace-pane-soft-cap'
   | 'settings-app-update'
   | 'chat'
   | 'content-search'
