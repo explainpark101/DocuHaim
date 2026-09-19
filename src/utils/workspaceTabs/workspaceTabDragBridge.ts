@@ -1,6 +1,7 @@
 import {
   resetPaneDropZoneHistory,
   resolvePaneDropAt,
+  type PaneDropHit,
   type PaneDropZone,
 } from '@/utils/workspaceTabs/paneDropGeometry';
 
@@ -16,6 +17,7 @@ type WorkspaceTabDragSnapshot = {
 export type PaneDropOverlayHit = {
   leafId: string;
   zone: PaneDropZone;
+  workspaceEdge: boolean;
 };
 
 type Listener = (snap: WorkspaceTabDragSnapshot | null) => void;
@@ -26,6 +28,15 @@ const listeners = new Set<Listener>();
 
 function emit() {
   for (const listener of listeners) listener(current);
+}
+
+function toOverlayHit(hit: PaneDropHit | null): PaneDropOverlayHit | null {
+  if (!hit) return null;
+  return {
+    leafId: hit.leafId,
+    zone: hit.zone,
+    workspaceEdge: hit.workspaceEdge,
+  };
 }
 
 export function setWorkspaceTabDrag(snap: WorkspaceTabDragSnapshot | null): void {
@@ -72,10 +83,7 @@ export function subscribeWorkspaceTabDrag(listener: Listener): () => void {
 }
 
 /** Resolve pane drop under the pointer via leaf geometry (stable; no overlay gaps). */
-export function hitTestPaneDropAt(
-  clientX: number,
-  clientY: number,
-): { leafId: string; zone: string } | null {
+export function hitTestPaneDropAt(clientX: number, clientY: number): PaneDropHit | null {
   return resolvePaneDropAt(clientX, clientY);
 }
 
@@ -88,16 +96,5 @@ export function resolvePaneDropForCommit(
   clientY: number,
 ): PaneDropOverlayHit | null {
   if (overlayHit) return overlayHit;
-  const hit = resolvePaneDropAt(clientX, clientY);
-  if (!hit) return null;
-  if (
-    hit.zone !== 'left' &&
-    hit.zone !== 'right' &&
-    hit.zone !== 'top' &&
-    hit.zone !== 'bottom' &&
-    hit.zone !== 'center'
-  ) {
-    return null;
-  }
-  return { leafId: hit.leafId, zone: hit.zone };
+  return toOverlayHit(resolvePaneDropAt(clientX, clientY));
 }

@@ -112,6 +112,7 @@ type WorkspaceTabBarProps = {
     tabId: string,
     leafId: string,
     zone: 'left' | 'right' | 'top' | 'bottom' | 'center',
+    opts?: { workspaceEdge?: boolean },
   ) => boolean;
   /** Allow vertical drag / pane drop (desktop split). */
   splitDragEnabled?: boolean;
@@ -911,7 +912,16 @@ export default function WorkspaceTabBar({
         hit.zone === 'bottom' ||
         hit.zone === 'center'
       ) {
-        if (onPaneDrop(from, hit.leafId, hit.zone)) return;
+        if (
+          onPaneDrop(
+            from,
+            hit.leafId,
+            hit.zone,
+            hit.workspaceEdge ? { workspaceEdge: true } : undefined,
+          )
+        ) {
+          return;
+        }
       }
     }
 

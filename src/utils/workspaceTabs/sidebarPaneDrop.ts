@@ -32,4 +32,5 @@ export type SidebarPaneDropHandler = (
   items: SidebarPaneDropItem[],
   leafId: string,
   zone: PaneSplitEdge | 'center',
+  opts?: { workspaceEdge?: boolean },
 ) => void | Promise<void>;

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion as Motion } from 'motion/react';
+import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import {
   PANE_CENTER_PREVIEW_INSET_PCT,
@@ -14,6 +15,8 @@ type WorkspacePaneDropOverlayProps = {
   leafId: string | null;
   visible: boolean;
   activeZone: PaneSplitEdge | 'center' | null;
+  /** Preview against the whole workspace root (full-height / full-width strip). */
+  workspaceEdge?: boolean;
 };
 
 const PREVIEW_TRANSITION = {
@@ -54,6 +57,21 @@ function escapeAttrValue(value: string): string {
     return CSS.escape(value);
   }
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/** Resolve the on-screen box for the workspace split root. */
+export function measurePaneSplitRootBox(): PaneBox | null {
+  if (typeof document === 'undefined') return null;
+  const node = document.querySelector<HTMLElement>(`[${PANE_SPLIT_ROOT_ATTR}]`);
+  if (!node) return null;
+  const rect = node.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  };
 }
 
 /** Resolve the on-screen box for a leaf (smallest matching node if duplicates exist). */
@@ -174,6 +192,7 @@ export default function WorkspacePaneDropOverlay({
   leafId,
   visible,
   activeZone,
+  workspaceEdge = false,
 }: WorkspacePaneDropOverlayProps) {
   const [box, setBox] = useState<PaneBox | null>(null);
   /** Keep last zone so Motion stays mounted across brief nulls / leaf switches. */
@@ -182,13 +201,13 @@ export default function WorkspacePaneDropOverlay({
   const zone = activeZone ?? lastZoneRef.current;
 
   useLayoutEffect(() => {
-    if (!visible || !leafId) {
+    if (!visible || (!leafId && !workspaceEdge)) {
       setBox(null);
       return undefined;
     }
 
     const sync = () => {
-      const next = measurePaneLeafBox(leafId);
+      const next = workspaceEdge ? measurePaneSplitRootBox() : leafId ? measurePaneLeafBox(leafId) : null;
       setBox((prev) => (sameBox(prev, next) ? prev : next));
     };
     sync();
@@ -201,13 +220,14 @@ export default function WorkspacePaneDropOverlay({
       window.removeEventListener('scroll', sync, true);
       window.removeEventListener('resize', sync);
     };
-  }, [visible, leafId]);
+  }, [visible, leafId, workspaceEdge]);
 
   useLayoutEffect(() => {
     if (!visible) lastZoneRef.current = null;
   }, [visible]);
 
-  if (!visible || !leafId || !zone || !box) return null;
+  if (!visible || !zone || !box) return null;
+  if (!workspaceEdge && !leafId) return null;
   if (typeof document === 'undefined') return null;
 
   return createPortal(
@@ -222,8 +242,9 @@ export default function WorkspacePaneDropOverlay({
       }}
       transition={PREVIEW_TRANSITION}
       aria-hidden
-      data-pane-drop-overlay={leafId}
+      data-pane-drop-overlay={workspaceEdge ? 'workspace' : leafId}
       data-pane-drop-zone={zone}
+      data-pane-drop-workspace-edge={workspaceEdge ? '1' : undefined}
     >
       <PreviewLayers zone={zone} box={box} />
     </Motion.div>,

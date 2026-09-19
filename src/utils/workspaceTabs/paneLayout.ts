@@ -664,6 +664,53 @@ export function splitLeaf(
   return { ok: true, layout: next, focusedPaneId: newLeaf.id };
 }
 
+/**
+ * Wrap the entire workspace in a new split so `tabId` occupies a full-height
+ * (left/right) or full-width (top/bottom) strip — e.g. 2×2 + 1.
+ */
+export function splitAtWorkspaceEdge(
+  layout: PaneNode,
+  edge: PaneSplitEdge,
+  tabId: string,
+  softCap?: number,
+): SplitLeafResult {
+  const cap = resolveSoftCap(softCap);
+  let base = collapseEmptyLeaves(removeTabFromLayout(layout, tabId));
+  // Remaining tree must leave room for the new full-span leaf.
+  if (countLeaves(base) + 1 > cap) return { ok: false, reason: 'soft-cap' };
+
+  if (countLeaves(base) === 0) {
+    base = {
+      type: 'leaf',
+      id: createPaneId('leaf'),
+      tabIds: [],
+      activeId: null,
+      exportPdfForTabId: null,
+    };
+  }
+
+  const { direction, placeNewFirst } = edgeToSplit(edge);
+  const newLeaf: PaneLeaf = {
+    type: 'leaf',
+    id: createPaneId('leaf'),
+    tabIds: [tabId],
+    activeId: tabId,
+    exportPdfForTabId: null,
+  };
+  const children: [PaneNode, PaneNode] = placeNewFirst ? [newLeaf, base] : [base, newLeaf];
+  return {
+    ok: true,
+    layout: {
+      type: 'split',
+      id: createPaneId('split'),
+      direction,
+      ratio: placeNewFirst ? PANE_EDGE_SPLIT_RATIO : 1 - PANE_EDGE_SPLIT_RATIO,
+      children,
+    },
+    focusedPaneId: newLeaf.id,
+  };
+}
+
 export function retargetTabIdInLayout(
   layout: PaneNode,
   oldId: string,

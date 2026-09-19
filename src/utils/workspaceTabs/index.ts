@@ -54,6 +54,7 @@ export {
   toPersistedPaneNode,
   collapseLeafIntoSibling,
   splitLeaf,
+  splitAtWorkspaceEdge,
 } from '@/utils/workspaceTabs/paneLayout';
 export {
   PANE_ALIGN_RATIO_EPSILON,
@@ -112,6 +113,7 @@ export {
   retargetFileTabsByPathPrefix,
   setFocusedPane,
   splitTabToEdge,
+  splitTabToWorkspaceEdge,
   swapPanesOrMoveTabToCenter,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
 export type { RetargetFileTabInput, OpenFileTabInput, SplitTabToEdgeResult } from '@/utils/workspaceTabs/workspaceTabsStore';

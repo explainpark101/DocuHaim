@@ -43,39 +43,47 @@ export default function WorkspacePanePlaceholder({
   );
 }
 
+type RevealPhase = 'placeholder' | 'loading' | 'done';
+
 type WorkspacePaneContentRevealProps = {
-  /** When true, show placeholder until the first paint of children completes. */
+  /**
+   * When true: paint an empty placeholder first (no heavy children), then mount
+   * content on the next frames and swap the placeholder out.
+   */
   pending: boolean;
   onReady?: () => void;
   children: ReactNode;
 };
 
 /**
- * Keeps a placeholder filling the leaf, then swaps to `children` after mount/paint.
+ * Split appear sequence:
+ * 1) placeholder only (reserves flex space, no EditorPane mount)
+ * 2) mount children while placeholder still covers
+ * 3) hide placeholder once content is in the tree
  */
 export function WorkspacePaneContentReveal({
   pending,
   onReady,
   children,
 }: WorkspacePaneContentRevealProps) {
-  const [ready, setReady] = useState(!pending);
+  const [phase, setPhase] = useState<RevealPhase>(pending ? 'placeholder' : 'done');
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
-  const pendingGen = useRef(0);
+  const genRef = useRef(0);
 
   useLayoutEffect(() => {
     if (!pending) {
-      setReady(true);
+      setPhase('done');
       return;
     }
-    setReady(false);
-    const gen = ++pendingGen.current;
+    setPhase('placeholder');
+    const gen = ++genRef.current;
     let raf2 = 0;
+    // Wait until the empty split + placeholder have painted, then mount content.
     const raf1 = window.requestAnimationFrame(() => {
       raf2 = window.requestAnimationFrame(() => {
-        if (pendingGen.current !== gen) return;
-        setReady(true);
-        onReadyRef.current?.();
+        if (genRef.current !== gen) return;
+        setPhase('loading');
       });
     });
     return () => {
@@ -84,17 +92,34 @@ export function WorkspacePaneContentReveal({
     };
   }, [pending]);
 
+  useLayoutEffect(() => {
+    if (phase !== 'loading') return;
+    const gen = genRef.current;
+    const raf = window.requestAnimationFrame(() => {
+      if (genRef.current !== gen) return;
+      setPhase('done');
+      onReadyRef.current?.();
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [phase]);
+
+  const showPlaceholder = phase === 'placeholder' || phase === 'loading';
+  const mountContent = phase === 'loading' || phase === 'done';
+  const contentVisible = phase === 'done';
+
   return (
     <>
-      {!ready ? <WorkspacePanePlaceholder variant="body" /> : null}
-      <div
-        className={`absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden ${
-          ready ? '' : 'invisible'
-        }`}
-        aria-hidden={!ready}
-      >
-        {children}
-      </div>
+      {showPlaceholder ? <WorkspacePanePlaceholder variant="body" /> : null}
+      {mountContent ? (
+        <div
+          className={`absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden ${
+            contentVisible ? '' : 'invisible'
+          }`}
+          aria-hidden={!contentVisible}
+        >
+          {children}
+        </div>
+      ) : null}
     </>
   );
 }

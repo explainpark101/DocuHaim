@@ -1,4 +1,5 @@
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
+import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 
 export type PaneDropZone = PaneSplitEdge | 'center';
 
@@ -48,6 +49,19 @@ export const PANE_CENTER_PREVIEW_INSET_PCT = ((1 - PANE_CENTER_PREVIEW_SCALE) / 
 /** Mark leaf roots so pointer→zone can be resolved geometrically (no DOM gap flicker). */
 export const PANE_LEAF_ATTR = 'data-pane-leaf';
 
+/**
+ * Pixel band along the workspace split root for full-height / full-width drops.
+ * Takes priority over leaf-local edge zones so 2×2+1 style layouts stay natural.
+ */
+export const PANE_WORKSPACE_OUTER_EDGE_PX = 28;
+
+export type PaneDropHit = {
+  leafId: string;
+  zone: PaneDropZone;
+  /** Split wraps the entire workspace (full-height left/right or full-width top/bottom). */
+  workspaceEdge: boolean;
+};
+
 export type PaneDropZoneBias = 'edge' | 'center' | 'neutral';
 
 /** Per-side edge band thickness (% of pane width/height). */
@@ -72,6 +86,7 @@ type DropZoneHistory = {
   clientY: number;
   /** Last direction we expanded (sticky when movement is tiny). */
   favor: PaneDropZone | null;
+  workspaceEdge: boolean;
 };
 
 let dropZoneHistory: DropZoneHistory = {
@@ -80,6 +95,7 @@ let dropZoneHistory: DropZoneHistory = {
   clientX: Number.NaN,
   clientY: Number.NaN,
   favor: null,
+  workspaceEdge: false,
 };
 
 /** Clear movement hysteresis (call when a tab/pane drag ends). */
@@ -90,6 +106,7 @@ export function resetPaneDropZoneHistory(): void {
     clientX: Number.NaN,
     clientY: Number.NaN,
     favor: null,
+    workspaceEdge: false,
   };
 }
 
@@ -263,13 +280,47 @@ export function zoneFromPanePoint(
 }
 
 /**
- * Find which split leaf contains the pointer and which zone it maps to.
- * Hit bands grow in the pointer's travel direction (and toward center when applicable).
+ * Map a point near the workspace root frame to a full-span edge, or null.
+ * Pointer may sit slightly outside the root (tab drag overshoot).
  */
-export function resolvePaneDropAt(
+export function workspaceOuterEdgeFromPoint(
   clientX: number,
   clientY: number,
-): { leafId: string; zone: PaneDropZone } | null {
+  rootRect: DOMRectReadOnly,
+  bandPx: number = PANE_WORKSPACE_OUTER_EDGE_PX,
+): PaneSplitEdge | null {
+  if (rootRect.width <= 0 || rootRect.height <= 0 || bandPx <= 0) return null;
+  const slack = 4;
+  if (
+    clientX < rootRect.left - slack ||
+    clientX > rootRect.right + slack ||
+    clientY < rootRect.top - slack ||
+    clientY > rootRect.bottom + slack
+  ) {
+    return null;
+  }
+
+  const dLeft = clientX - rootRect.left;
+  const dRight = rootRect.right - clientX;
+  const dTop = clientY - rootRect.top;
+  const dBottom = rootRect.bottom - clientY;
+
+  type Cand = { edge: PaneSplitEdge; dist: number };
+  const cands: Cand[] = [];
+  if (dLeft <= bandPx) cands.push({ edge: 'left', dist: Math.max(0, dLeft) });
+  if (dRight <= bandPx) cands.push({ edge: 'right', dist: Math.max(0, dRight) });
+  if (dTop <= bandPx) cands.push({ edge: 'top', dist: Math.max(0, dTop) });
+  if (dBottom <= bandPx) cands.push({ edge: 'bottom', dist: Math.max(0, dBottom) });
+  if (cands.length === 0) return null;
+
+  cands.sort((a, b) => a.dist - b.dist || a.edge.localeCompare(b.edge));
+  return cands[0]!.edge;
+}
+
+function findLeafUnderPointer(
+  clientX: number,
+  clientY: number,
+): { leafId: string; rect: DOMRect; area: number } | null {
   if (typeof document === 'undefined') return null;
   const nodes = document.querySelectorAll<HTMLElement>(`[${PANE_LEAF_ATTR}]`);
   let best: { leafId: string; rect: DOMRect; area: number } | null = null;
@@ -289,7 +340,39 @@ export function resolvePaneDropAt(
     if (best && best.area <= area) continue;
     best = { leafId, rect, area };
   }
+  return best;
+}
 
+/**
+ * Find which split leaf contains the pointer and which zone it maps to.
+ * Workspace outer edges win over leaf-local edges (full-height / full-width).
+ */
+export function resolvePaneDropAt(
+  clientX: number,
+  clientY: number,
+): PaneDropHit | null {
+  if (typeof document === 'undefined') return null;
+
+  const root = document.querySelector<HTMLElement>(`[${PANE_SPLIT_ROOT_ATTR}]`);
+  if (root) {
+    const rootRect = root.getBoundingClientRect();
+    const outer = workspaceOuterEdgeFromPoint(clientX, clientY, rootRect);
+    if (outer) {
+      const under = findLeafUnderPointer(clientX, clientY);
+      const leafId = under?.leafId ?? '';
+      dropZoneHistory = {
+        leafId,
+        zone: outer,
+        clientX,
+        clientY,
+        favor: outer,
+        workspaceEdge: true,
+      };
+      return { leafId, zone: outer, workspaceEdge: true };
+    }
+  }
+
+  const best = findLeafUnderPointer(clientX, clientY);
   if (!best) {
     dropZoneHistory = {
       leafId: null,
@@ -297,11 +380,12 @@ export function resolvePaneDropAt(
       clientX,
       clientY,
       favor: null,
+      workspaceEdge: false,
     };
     return null;
   }
 
-  const sameLeaf = dropZoneHistory.leafId === best.leafId;
+  const sameLeaf = dropZoneHistory.leafId === best.leafId && !dropZoneHistory.workspaceEdge;
   const enteringLeaf = !sameLeaf || dropZoneHistory.leafId == null;
   const { bands, favor } = bandsFromPointerMotion({
     clientX,
@@ -320,7 +404,8 @@ export function resolvePaneDropAt(
     clientX,
     clientY,
     favor,
+    workspaceEdge: false,
   };
 
-  return { leafId: best.leafId, zone };
+  return { leafId: best.leafId, zone, workspaceEdge: false };
 }

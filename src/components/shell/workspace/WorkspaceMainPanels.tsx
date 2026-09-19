@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import EditorPane from '@/components/EditorPane';
@@ -112,6 +112,7 @@ export type WorkspaceMainPanelsProps = {
     tabId: string,
     leafId: string,
     zone: PaneSplitEdge | 'center',
+    opts?: { centerBehavior?: 'swap' | 'join'; workspaceEdge?: boolean },
   ) => boolean;
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
   onApplyPaneLayout?: (layout: PaneNode, focusedPaneId?: string | null) => void;
@@ -170,11 +171,8 @@ function applyExportPdfHandoffToTab({
 function resolveDropHighlight(
   clientX: number,
   clientY: number,
-): { leafId: string; zone: PaneSplitEdge | 'center' } | null {
-  return hitTestPaneDropAt(clientX, clientY) as {
-    leafId: string;
-    zone: PaneSplitEdge | 'center';
-  } | null;
+): { leafId: string; zone: PaneSplitEdge | 'center'; workspaceEdge: boolean } | null {
+  return hitTestPaneDropAt(clientX, clientY);
 }
 
 /**
@@ -244,14 +242,19 @@ export default function WorkspaceMainPanels({
   const [dropHighlight, setDropHighlight] = useState<{
     leafId: string;
     zone: PaneSplitEdge | 'center';
+    workspaceEdge: boolean;
   } | null>(null);
   const dropHighlightRef = useRef(dropHighlight);
   dropHighlightRef.current = dropHighlight;
 
   const publishDropHighlight = useCallback(
-    (next: { leafId: string; zone: PaneSplitEdge | 'center' } | null) => {
+    (next: { leafId: string; zone: PaneSplitEdge | 'center'; workspaceEdge: boolean } | null) => {
       setDropHighlight((prev) =>
-        prev?.leafId === next?.leafId && prev?.zone === next?.zone ? prev : next,
+        prev?.leafId === next?.leafId &&
+        prev?.zone === next?.zone &&
+        prev?.workspaceEdge === next?.workspaceEdge
+          ? prev
+          : next,
       );
       setPaneDropOverlayHit(next);
     },
@@ -259,11 +262,11 @@ export default function WorkspaceMainPanels({
   );
   /** Leaf ids that just appeared via split — amber border flash (~2s). */
   const [freshPaneIds, setFreshPaneIds] = useState<ReadonlySet<string>>(() => new Set());
-  /** Leaves that still show a body placeholder until content paints. */
+  /** Leaves that still show a body placeholder until content mounts. */
   const [pendingPlaceholderLeafIds, setPendingPlaceholderLeafIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const [trackedLeafIds, setTrackedLeafIds] = useState<ReadonlySet<string> | null>(null);
+  const prevLeafIdsRef = useRef<Set<string> | null>(null);
   const freshPaneTimersRef = useRef(new Map<string, number>());
 
   const clearPlaceholderLeaf = useCallback((leafId: string) => {
@@ -275,57 +278,55 @@ export default function WorkspaceMainPanels({
     });
   }, []);
 
-  // Sync during render so the first paint of a new leaf already shows a placeholder.
   const nextLeafIdSet = useMemo(() => new Set(leaves.map((leaf) => leaf.id)), [leaves]);
-  if (!isSplit) {
-    if (trackedLeafIds != null) {
-      setTrackedLeafIds(null);
-      setPendingPlaceholderLeafIds(new Set());
-      setFreshPaneIds(new Set());
-    }
-  } else if (trackedLeafIds == null) {
-    // First split observation (incl. restore): remember ids, no placeholder flash.
-    setTrackedLeafIds(nextLeafIdSet);
-  } else {
-    let added: string[] | null = null;
+
+  // Adjust pending ids during render (before paint) so the new leaf's first
+  // paint already uses the placeholder path — including the first 1→2 split.
+  const prevLeafIds = prevLeafIdsRef.current;
+  if (prevLeafIds) {
+    const added: string[] = [];
     for (const id of nextLeafIdSet) {
-      if (!trackedLeafIds.has(id)) {
-        (added ??= []).push(id);
-      }
+      if (!prevLeafIds.has(id)) added.push(id);
     }
-    let removed = false;
-    for (const id of trackedLeafIds) {
-      if (!nextLeafIdSet.has(id)) {
-        removed = true;
-        break;
+    if (isSplit && added.length > 0) {
+      let missing = false;
+      for (const id of added) {
+        if (!pendingPlaceholderLeafIds.has(id)) {
+          missing = true;
+          break;
+        }
       }
-    }
-    if (added || removed || nextLeafIdSet.size !== trackedLeafIds.size) {
-      setTrackedLeafIds(nextLeafIdSet);
-      if (added && added.length > 0) {
+      if (missing) {
         setPendingPlaceholderLeafIds((cur) => {
           const merged = new Set(cur);
-          for (const id of added!) merged.add(id);
+          for (const id of added) merged.add(id);
           return merged;
         });
         setFreshPaneIds((cur) => {
           const merged = new Set(cur);
-          for (const id of added!) merged.add(id);
+          for (const id of added) merged.add(id);
           return merged;
-        });
-      }
-      if (removed) {
-        setPendingPlaceholderLeafIds((cur) => {
-          const next = new Set([...cur].filter((id) => nextLeafIdSet.has(id)));
-          return next.size === cur.size ? cur : next;
-        });
-        setFreshPaneIds((cur) => {
-          const next = new Set([...cur].filter((id) => nextLeafIdSet.has(id)));
-          return next.size === cur.size ? cur : next;
         });
       }
     }
   }
+
+  useLayoutEffect(() => {
+    prevLeafIdsRef.current = nextLeafIdSet;
+    if (!isSplit) {
+      setPendingPlaceholderLeafIds((cur) => (cur.size === 0 ? cur : new Set()));
+      setFreshPaneIds((cur) => (cur.size === 0 ? cur : new Set()));
+      return;
+    }
+    setPendingPlaceholderLeafIds((cur) => {
+      const next = new Set([...cur].filter((id) => nextLeafIdSet.has(id)));
+      return next.size === cur.size ? cur : next;
+    });
+    setFreshPaneIds((cur) => {
+      const next = new Set([...cur].filter((id) => nextLeafIdSet.has(id)));
+      return next.size === cur.size ? cur : next;
+    });
+  }, [nextLeafIdSet, isSplit]);
 
   useEffect(() => {
     if (!isSplit) {
@@ -593,7 +594,8 @@ export default function WorkspaceMainPanels({
       const hit = dropHighlightRef.current ?? resolveDropHighlight(clientX, clientY);
       setWorkspaceTabDrag(null);
       if (!started || !snap?.paneLeafId) return;
-      if (!hit || hit.leafId === sourceLeafId) return;
+      if (!hit) return;
+      if (!hit.workspaceEdge && hit.leafId === sourceLeafId) return;
       if (
         hit.zone !== 'left' &&
         hit.zone !== 'right' &&
@@ -603,7 +605,13 @@ export default function WorkspaceMainPanels({
       ) {
         return;
       }
-      const next = relocateLeaf(layoutAtStart, sourceLeafId, hit.leafId, hit.zone);
+      const next = relocateLeaf(
+        layoutAtStart,
+        sourceLeafId,
+        hit.leafId || sourceLeafId,
+        hit.zone,
+        hit.workspaceEdge ? { workspaceEdge: true } : undefined,
+      );
       if (!next) return;
       onApplyPaneLayout(next.layout, next.focusedPaneId);
     };
@@ -738,6 +746,7 @@ export default function WorkspaceMainPanels({
         ) : null}
         <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
           <WorkspacePaneContentReveal
+            key={leafId}
             pending={pendingPlaceholderLeafIds.has(leafId)}
             onReady={() => clearPlaceholderLeaf(leafId)}
           >
@@ -813,20 +822,26 @@ export default function WorkspaceMainPanels({
             />
             <WorkspacePaneDropOverlay
               leafId={
-                dropHighlight && dropHighlight.leafId !== draggingPaneLeafId
-                  ? dropHighlight.leafId
-                  : null
+                dropHighlight?.workspaceEdge
+                  ? dropHighlight.leafId || null
+                  : dropHighlight && dropHighlight.leafId !== draggingPaneLeafId
+                    ? dropHighlight.leafId
+                    : null
               }
+              workspaceEdge={Boolean(dropHighlight?.workspaceEdge)}
               visible={Boolean(
                 !activeIsOrphan &&
                   draggingTab &&
                   splitDragEnabled &&
                   !isMobileLayout &&
                   dropHighlight &&
-                  dropHighlight.leafId !== draggingPaneLeafId,
+                  (dropHighlight.workspaceEdge ||
+                    dropHighlight.leafId !== draggingPaneLeafId),
               )}
               activeZone={
-                dropHighlight && dropHighlight.leafId !== draggingPaneLeafId
+                dropHighlight &&
+                (dropHighlight.workspaceEdge ||
+                  dropHighlight.leafId !== draggingPaneLeafId)
                   ? dropHighlight.zone
                   : null
               }

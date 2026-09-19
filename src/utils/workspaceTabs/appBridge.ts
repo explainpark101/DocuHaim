@@ -22,6 +22,7 @@ import {
   replaceWorkspaceLayout,
   setFocusedPane,
   splitTabToEdge,
+  splitTabToWorkspaceEdge,
   swapPanesOrMoveTabToCenter,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
 import { removeTabFromLayout, syncLayoutPreservingOrphansWhenSplit } from '@/utils/workspaceTabs/paneLayout';
@@ -170,5 +171,6 @@ export {
   retargetFileTabsByPathPrefix,
   setFocusedPane,
   splitTabToEdge,
+  splitTabToWorkspaceEdge,
   swapPanesOrMoveTabToCenter,
 };

@@ -878,7 +878,9 @@ export default function Sidebar({
           );
           if (openable.length > 0) {
             onDropOnFolder?.(null, null, 'dragLeave');
-            void onDropToWorkspacePane(openable, paneHit.leafId, zone);
+            void onDropToWorkspacePane(openable, paneHit.leafId, zone, {
+              ...(paneHit.workspaceEdge ? { workspaceEdge: true } : {}),
+            });
             return;
           }
         }

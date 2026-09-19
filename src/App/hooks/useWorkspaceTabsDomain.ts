@@ -30,6 +30,7 @@ import {
   splitTabToEdge,
   collapsePaneLeaf,
   swapPanesOrMoveTabToCenter,
+  splitTabToWorkspaceEdge,
 } from '@/utils/workspaceTabs/appBridge';
 import {
   countLeaves,
@@ -62,7 +63,14 @@ import {
 import type { WorkspacePaneSoftCapPrompt } from '@/components/shell/workspace/WorkspacePaneSoftCapModal';
 
 type SoftCapPendingAction =
-  | { kind: 'drop'; tabId: string; leafId: string; zone: PaneSplitEdge | 'center'; centerBehavior?: 'swap' | 'join' }
+  | {
+      kind: 'drop';
+      tabId: string;
+      leafId: string;
+      zone: PaneSplitEdge | 'center';
+      centerBehavior?: 'swap' | 'join';
+      workspaceEdge?: boolean;
+    }
   | { kind: 'split'; tabId: string; edge: PaneSplitEdge };
 
 /**
@@ -616,7 +624,7 @@ export function useWorkspaceTabsDomain({
       tabId: string,
       leafId: string,
       zone: PaneSplitEdge | 'center',
-      opts?: { centerBehavior?: 'swap' | 'join' },
+      opts?: { centerBehavior?: 'swap' | 'join'; workspaceEdge?: boolean },
     ): boolean => {
       const prev = workspaceTabsRef.current;
       let next = prev;
@@ -627,6 +635,25 @@ export function useWorkspaceTabsDomain({
           centerBehavior === 'join'
             ? moveTabIntoLeaf(prev, tabId, leafId)
             : swapPanesOrMoveTabToCenter(prev, tabId, leafId);
+      } else if (opts?.workspaceEdge) {
+        const split = splitTabToWorkspaceEdge(prev, zone, tabId);
+        if (!split.ok) {
+          if (split.reason === 'soft-cap') {
+            openPaneSoftCapPrompt(
+              {
+                kind: 'drop',
+                tabId,
+                leafId,
+                zone,
+                workspaceEdge: true,
+                ...(opts.centerBehavior ? { centerBehavior: opts.centerBehavior } : {}),
+              },
+              countLeaves(prev.layout),
+            );
+          }
+          return false;
+        }
+        next = split.state;
       } else {
         const split = splitTabToEdge(prev, leafId, zone, tabId);
         if (!split.ok) {
@@ -684,12 +711,10 @@ export function useWorkspaceTabsDomain({
       setPaneSoftCapPrompt(null);
       if (!pending) return;
       if (pending.kind === 'drop') {
-        handleWorkspacePaneDrop(
-          pending.tabId,
-          pending.leafId,
-          pending.zone,
-          pending.centerBehavior ? { centerBehavior: pending.centerBehavior } : undefined,
-        );
+        handleWorkspacePaneDrop(pending.tabId, pending.leafId, pending.zone, {
+          ...(pending.centerBehavior ? { centerBehavior: pending.centerBehavior } : {}),
+          ...(pending.workspaceEdge ? { workspaceEdge: true } : {}),
+        });
         return;
       }
       splitWorkspaceTabToEdge(pending.tabId, pending.edge);

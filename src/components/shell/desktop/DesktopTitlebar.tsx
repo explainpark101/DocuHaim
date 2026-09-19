@@ -27,6 +27,7 @@ type DesktopTitlebarProps = {
     tabId: string,
     leafId: string,
     zone: PaneSplitEdge | 'center',
+    opts?: { workspaceEdge?: boolean },
   ) => boolean;
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
   onApplyPaneLayout?: (layout: PaneNode, focusedPaneId?: string | null) => void;
