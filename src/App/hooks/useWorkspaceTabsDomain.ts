@@ -594,12 +594,13 @@ export function useWorkspaceTabsDomain({
   );
 
   /**
-   * After sash drag ends: when snapped (or Alt-linked so siblings match),
-   * flip aligned 2×2 nests so the shared boundary becomes the outer split.
+   * After sash drag ends with Alt (linked spanning resize): promote aligned 2×2
+   * nests so the shared boundary becomes the outer split.
+   * Without Alt, boundaries stay independent even if a snap magnet engaged.
    */
   const finishResizeWorkspaceSplit = useCallback(
-    (splitId: string, snapped: boolean, opts?: { linkAligned?: boolean }) => {
-      if (!snapped && !opts?.linkAligned) return;
+    (splitId: string, _snapped: boolean, opts?: { linkAligned?: boolean }) => {
+      if (!opts?.linkAligned) return;
       const prev = workspaceTabsRef.current;
       const layout = normalizeAfterSnappedResize(prev.layout, splitId);
       if (layout === prev.layout) return;
