@@ -43,15 +43,15 @@ export const STATUS_BAR_CLOCK_PATTERN_TOKEN_HELP =
 
 /** Token reference rows for settings helper UI. */
 export const STATUS_BAR_CLOCK_PATTERN_TOKEN_ROWS = [
-  { token: 'yyyy', meaning: '4-digit year', example: '2026' },
-  { token: 'MM', meaning: 'Month (01-12)', example: '01' },
-  { token: 'dd', meaning: 'Day of month (01-31)', example: '15' },
-  { token: 'HH', meaning: 'Hour 24h (00-23)', example: '15' },
-  { token: 'hh', meaning: 'Hour 12h (01-12)', example: '03' },
-  { token: 'mm', meaning: 'Minute (00-59)', example: '04' },
-  { token: 'ss', meaning: 'Second (00-59)', example: '05' },
-  { token: 'A', meaning: 'AM/PM (uppercase)', example: 'PM' },
-  { token: 'a', meaning: 'am/pm (lowercase)', example: 'pm' },
+  { token: 'yyyy', meaning: '4자리 연도', example: '2026' },
+  { token: 'MM', meaning: '월 (01-12)', example: '01' },
+  { token: 'dd', meaning: '일 (01-31)', example: '15' },
+  { token: 'HH', meaning: '시 24시간제 (00-23)', example: '15' },
+  { token: 'hh', meaning: '시 12시간제 (01-12)', example: '03' },
+  { token: 'mm', meaning: '분 (00-59)', example: '04' },
+  { token: 'ss', meaning: '초 (00-59)', example: '05' },
+  { token: 'A', meaning: 'AM/PM (대문자)', example: 'PM' },
+  { token: 'a', meaning: 'am/pm (소문자)', example: 'pm' },
 ] as const;
 
 export const STATUS_BAR_CLOCK_PATTERN_EXAMPLES = [
