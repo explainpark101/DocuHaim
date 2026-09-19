@@ -29,15 +29,16 @@ import {
   setFocusedPane,
   splitTabToEdge,
   collapsePaneLeaf,
+  swapPanesOrMoveTabToCenter,
 } from '@/utils/workspaceTabs/appBridge';
 import {
   countLeaves,
   findLeafContainingTab,
   flattenTabIdsFromLayout,
-  resizeSplit,
   type PaneNode,
   type PaneSplitEdge,
 } from '@/utils/workspaceTabs/paneLayout';
+import { normalizeAfterSnappedResize, resizeSplitLinked } from '@/utils/workspaceTabs/paneLayoutNormalize';
 import { isQuizMdPath } from '@/utils/quiz/quizPath';
 import { isQuizAppPathname, openNotePathnameForStoragePath, contentSearchPathname, isSettingsAppPathname } from '@/utils/appHref';
 import { patchFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
@@ -61,7 +62,7 @@ import {
 import type { WorkspacePaneSoftCapPrompt } from '@/components/shell/workspace/WorkspacePaneSoftCapModal';
 
 type SoftCapPendingAction =
-  | { kind: 'drop'; tabId: string; leafId: string; zone: PaneSplitEdge | 'center' }
+  | { kind: 'drop'; tabId: string; leafId: string; zone: PaneSplitEdge | 'center'; centerBehavior?: 'swap' | 'join' }
   | { kind: 'split'; tabId: string; edge: PaneSplitEdge };
 
 /**
@@ -577,9 +578,31 @@ export function useWorkspaceTabsDomain({
   );
 
   const resizeWorkspaceSplit = useCallback(
-    (splitId: string, ratio: number) => {
+    (splitId: string, ratio: number, opts?: { linkAligned?: boolean }) => {
       const prev = workspaceTabsRef.current;
-      const layout = resizeSplit(prev.layout, splitId, ratio);
+      const layout = resizeSplitLinked(
+        prev.layout,
+        splitId,
+        ratio,
+        Boolean(opts?.linkAligned),
+      );
+      const next = { ...prev, layout };
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+    },
+    [setWorkspaceTabs, workspaceTabsRef],
+  );
+
+  /**
+   * After sash drag ends: when snapped (or Alt-linked so siblings match),
+   * flip aligned 2×2 nests so the shared boundary becomes the outer split.
+   */
+  const finishResizeWorkspaceSplit = useCallback(
+    (splitId: string, snapped: boolean, opts?: { linkAligned?: boolean }) => {
+      if (!snapped && !opts?.linkAligned) return;
+      const prev = workspaceTabsRef.current;
+      const layout = normalizeAfterSnappedResize(prev.layout, splitId);
+      if (layout === prev.layout) return;
       const next = { ...prev, layout };
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
@@ -588,17 +611,33 @@ export function useWorkspaceTabsDomain({
   );
 
   const handleWorkspacePaneDrop = useCallback(
-    (tabId: string, leafId: string, zone: PaneSplitEdge | 'center'): boolean => {
+    (
+      tabId: string,
+      leafId: string,
+      zone: PaneSplitEdge | 'center',
+      opts?: { centerBehavior?: 'swap' | 'join' },
+    ): boolean => {
       const prev = workspaceTabsRef.current;
       let next = prev;
       if (zone === 'center') {
-        next = moveTabIntoLeaf(prev, tabId, leafId);
+        // Default: swap the two panes. Sidebar "open here" passes join.
+        const centerBehavior = opts?.centerBehavior ?? 'swap';
+        next =
+          centerBehavior === 'join'
+            ? moveTabIntoLeaf(prev, tabId, leafId)
+            : swapPanesOrMoveTabToCenter(prev, tabId, leafId);
       } else {
         const split = splitTabToEdge(prev, leafId, zone, tabId);
         if (!split.ok) {
           if (split.reason === 'soft-cap') {
             openPaneSoftCapPrompt(
-              { kind: 'drop', tabId, leafId, zone },
+              {
+                kind: 'drop',
+                tabId,
+                leafId,
+                zone,
+                ...(opts?.centerBehavior ? { centerBehavior: opts.centerBehavior } : {}),
+              },
               countLeaves(prev.layout),
             );
           }
@@ -644,7 +683,12 @@ export function useWorkspaceTabsDomain({
       setPaneSoftCapPrompt(null);
       if (!pending) return;
       if (pending.kind === 'drop') {
-        handleWorkspacePaneDrop(pending.tabId, pending.leafId, pending.zone);
+        handleWorkspacePaneDrop(
+          pending.tabId,
+          pending.leafId,
+          pending.zone,
+          pending.centerBehavior ? { centerBehavior: pending.centerBehavior } : undefined,
+        );
         return;
       }
       splitWorkspaceTabToEdge(pending.tabId, pending.edge);
@@ -761,6 +805,7 @@ export function useWorkspaceTabsDomain({
     cycleWorkspaceTab,
     focusWorkspacePane,
     resizeWorkspaceSplit,
+    finishResizeWorkspaceSplit,
     handleWorkspacePaneDrop,
     splitWorkspaceTabToEdge,
     applyWorkspacePaneLayout,

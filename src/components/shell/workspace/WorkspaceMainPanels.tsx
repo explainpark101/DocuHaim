@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import EditorPane from '@/components/EditorPane';
@@ -29,6 +29,7 @@ import {
 import {
   getWorkspaceTabDrag,
   hitTestPaneDropAt,
+  setPaneDropOverlayHit,
   setWorkspaceTabDrag,
   subscribeWorkspaceTabDrag,
   updateWorkspaceTabDragPoint,
@@ -97,7 +98,17 @@ export type WorkspaceMainPanelsProps = {
   focusedPaneId?: string | null;
   splitDragEnabled?: boolean;
   onFocusPane?: (leafId: string) => void;
-  onResizeSplit?: (splitId: string, ratio: number) => void;
+  onResizeSplit?: (
+    splitId: string,
+    ratio: number,
+    opts?: { linkAligned?: boolean },
+  ) => void;
+  /** After sash drag; when snapped, domain may transpose aligned 2×2 nests. */
+  onResizeSplitEnd?: (
+    splitId: string,
+    snapped: boolean,
+    opts?: { linkAligned?: boolean },
+  ) => void;
   onPaneDrop?: (
     tabId: string,
     leafId: string,
@@ -195,6 +206,7 @@ export default function WorkspaceMainPanels({
   splitDragEnabled = false,
   onFocusPane,
   onResizeSplit,
+  onResizeSplitEnd,
   onPaneDrop,
   onSplitTab,
   onApplyPaneLayout,
@@ -234,6 +246,18 @@ export default function WorkspaceMainPanels({
     leafId: string;
     zone: PaneSplitEdge | 'center';
   } | null>(null);
+  const dropHighlightRef = useRef(dropHighlight);
+  dropHighlightRef.current = dropHighlight;
+
+  const publishDropHighlight = useCallback(
+    (next: { leafId: string; zone: PaneSplitEdge | 'center' } | null) => {
+      setDropHighlight((prev) =>
+        prev?.leafId === next?.leafId && prev?.zone === next?.zone ? prev : next,
+      );
+      setPaneDropOverlayHit(next);
+    },
+    [],
+  );
   /** Leaf ids that just appeared via split — amber border flash (~2s). */
   const [freshPaneIds, setFreshPaneIds] = useState<ReadonlySet<string>>(() => new Set());
   const prevLeafIdsRef = useRef<Set<string> | null>(null);
@@ -299,28 +323,26 @@ export default function WorkspaceMainPanels({
       setDraggingTab(Boolean(snap));
       setDraggingPaneLeafId(snap?.paneLeafId ?? null);
       if (!snap) {
-        setDropHighlight(null);
+        publishDropHighlight(null);
         return;
       }
       const next = resolveDropHighlight(snap.clientX, snap.clientY);
-      setDropHighlight((prev) =>
-        prev?.leafId === next?.leafId && prev?.zone === next?.zone ? prev : next,
-      );
+      publishDropHighlight(next);
     });
-  }, [splitDragEnabled]);
+  }, [publishDropHighlight, splitDragEnabled]);
 
   useEffect(() => {
     if (!draggingTab || !splitDragEnabled) return undefined;
     const onMove = (e: PointerEvent) => {
       if (!getWorkspaceTabDrag()) return;
+      // Keep bridge point on the real pointer so overlay and commit stay aligned.
+      updateWorkspaceTabDragPoint(e.clientX, e.clientY);
       const next = resolveDropHighlight(e.clientX, e.clientY);
-      setDropHighlight((prev) =>
-        prev?.leafId === next?.leafId && prev?.zone === next?.zone ? prev : next,
-      );
+      publishDropHighlight(next);
     };
     window.addEventListener('pointermove', onMove);
     return () => window.removeEventListener('pointermove', onMove);
-  }, [draggingTab, splitDragEnabled]);
+  }, [draggingTab, publishDropHighlight, splitDragEnabled]);
 
   const chatActive = tabsEnabled ? activeId === CHAT_TAB_ID : isChatRoute;
   const settingsActive = tabsEnabled ? activeId === SETTINGS_TAB_ID : isSettingsRoute;
@@ -522,10 +544,10 @@ export default function WorkspaceMainPanels({
       unlockSelection?.();
       unlockSelection = null;
       const snap = getWorkspaceTabDrag();
+      // Prefer the overlay hit the user last saw (before tearing down the drag).
+      const hit = dropHighlightRef.current ?? resolveDropHighlight(clientX, clientY);
       setWorkspaceTabDrag(null);
       if (!started || !snap?.paneLeafId) return;
-
-      const hit = resolveDropHighlight(clientX, clientY);
       if (!hit || hit.leafId === sourceLeafId) return;
       if (
         hit.zone !== 'left' &&
@@ -734,6 +756,7 @@ export default function WorkspaceMainPanels({
             <WorkspaceSplitLayout
               layout={layout}
               onResizeSplit={onResizeSplit}
+              {...(onResizeSplitEnd ? { onResizeSplitEnd } : {})}
               renderLeaf={renderLeafContent}
             />
             <WorkspacePaneDropOverlay

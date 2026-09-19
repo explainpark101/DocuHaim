@@ -1,12 +1,15 @@
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion as Motion } from 'motion/react';
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import {
   PANE_CENTER_PREVIEW_INSET_PCT,
+  PANE_CENTER_PREVIEW_SCALE,
   PANE_LEAF_ATTR,
   PANE_SPLIT_PREVIEW_PCT,
+  type PaneDropZone,
 } from '@/utils/workspaceTabs/paneDropGeometry';
+
 type WorkspacePaneDropOverlayProps = {
   leafId: string | null;
   visible: boolean;
@@ -15,15 +18,8 @@ type WorkspacePaneDropOverlayProps = {
 
 const PREVIEW_TRANSITION = {
   type: 'spring' as const,
-  bounce: 0.1,
-  duration: 0.28,
-};
-
-type RectAnim = {
-  left: string;
-  top: string;
-  width: string;
-  height: string;
+  bounce: 0.12,
+  duration: 0.32,
 };
 
 type PaneBox = {
@@ -33,31 +29,14 @@ type PaneBox = {
   height: number;
 };
 
-function splitRects(zone: PaneSplitEdge): { incoming: RectAnim; remaining: RectAnim } {
-  const half = `${PANE_SPLIT_PREVIEW_PCT}%`;
-  switch (zone) {
-    case 'left':
-      return {
-        incoming: { left: '0%', top: '0%', width: half, height: '100%' },
-        remaining: { left: half, top: '0%', width: half, height: '100%' },
-      };
-    case 'right':
-      return {
-        remaining: { left: '0%', top: '0%', width: half, height: '100%' },
-        incoming: { left: half, top: '0%', width: half, height: '100%' },
-      };
-    case 'top':
-      return {
-        incoming: { left: '0%', top: '0%', width: '100%', height: half },
-        remaining: { left: '0%', top: half, width: '100%', height: half },
-      };
-    case 'bottom':
-      return {
-        remaining: { left: '0%', top: '0%', width: '100%', height: half },
-        incoming: { left: '0%', top: half, width: '100%', height: half },
-      };
-  }
-}
+/** Pixel rect relative to the pane box (Motion interpolates numbers reliably). */
+type PxRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  opacity: number;
+};
 
 function sameBox(a: PaneBox | null, b: PaneBox | null): boolean {
   if (a === b) return true;
@@ -101,14 +80,74 @@ export function measurePaneLeafBox(leafId: string): PaneBox | null {
   return best;
 }
 
+function halfSize(box: PaneBox, axis: 'x' | 'y'): number {
+  const full = axis === 'x' ? box.width : box.height;
+  return (PANE_SPLIT_PREVIEW_PCT / 100) * full;
+}
+
 /**
- * Motion preview of how the current pane shrinks when an edge split is created.
- * Uses absolute rect animation (no remount) so the preview stays solid while dragging.
+ * Target rects for the preview layers. One component tree for all zones so
+ * Motion can spring between center ↔ edges without remounting.
  */
-function EdgeSplitPreview({ zone }: { zone: PaneSplitEdge }) {
-  const { incoming, remaining } = splitRects(zone);
+function previewRects(
+  zone: PaneDropZone,
+  box: PaneBox,
+): { incoming: PxRect; remaining: PxRect } {
+  const w = box.width;
+  const h = box.height;
+  const halfW = halfSize(box, 'x');
+  const halfH = halfSize(box, 'y');
+  const insetX = (PANE_CENTER_PREVIEW_INSET_PCT / 100) * w;
+  const insetY = (PANE_CENTER_PREVIEW_INSET_PCT / 100) * h;
+  const centerW = PANE_CENTER_PREVIEW_SCALE * w;
+  const centerH = PANE_CENTER_PREVIEW_SCALE * h;
+
+  switch (zone) {
+    case 'left':
+      return {
+        incoming: { left: 0, top: 0, width: halfW, height: h, opacity: 1 },
+        remaining: { left: halfW, top: 0, width: halfW, height: h, opacity: 1 },
+      };
+    case 'right':
+      return {
+        remaining: { left: 0, top: 0, width: halfW, height: h, opacity: 1 },
+        incoming: { left: halfW, top: 0, width: halfW, height: h, opacity: 1 },
+      };
+    case 'top':
+      return {
+        incoming: { left: 0, top: 0, width: w, height: halfH, opacity: 1 },
+        remaining: { left: 0, top: halfH, width: w, height: halfH, opacity: 1 },
+      };
+    case 'bottom':
+      return {
+        remaining: { left: 0, top: 0, width: w, height: halfH, opacity: 1 },
+        incoming: { left: 0, top: halfH, width: w, height: halfH, opacity: 1 },
+      };
+    case 'center':
+      return {
+        incoming: {
+          left: insetX,
+          top: insetY,
+          width: centerW,
+          height: centerH,
+          opacity: 1,
+        },
+        // Hide the "remaining" layer while swapping panes (center).
+        remaining: {
+          left: insetX,
+          top: insetY,
+          width: centerW,
+          height: centerH,
+          opacity: 0,
+        },
+      };
+  }
+}
+
+function PreviewLayers({ zone, box }: { zone: PaneDropZone; box: PaneBox }) {
+  const { incoming, remaining } = previewRects(zone, box);
   return (
-    <div className="pointer-events-none absolute inset-0">
+    <>
       <Motion.div
         className="pointer-events-none absolute bg-blue-500/55 ring-2 ring-inset ring-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.85)]"
         initial={false}
@@ -123,24 +162,13 @@ function EdgeSplitPreview({ zone }: { zone: PaneSplitEdge }) {
       >
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,rgba(59,130,246,0.14)_100%)]" />
       </Motion.div>
-    </div>
-  );
-}
-
-function CenterJoinPreview() {
-  const inset = `${PANE_CENTER_PREVIEW_INSET_PCT}%`;
-  return (
-    <div
-      className="pointer-events-none absolute bg-blue-500/55 ring-2 ring-inset ring-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.85)]"
-      style={{ left: inset, top: inset, right: inset, bottom: inset }}
-    />
+    </>
   );
 }
 
 /**
  * Visual-only drop preview anchored to the highlighted leaf's live screen box.
- * Portaled + `position: fixed` so vertical/horizontal splits never inherit the
- * first pane's containing block (percentage overlays inside nested flex leaves).
+ * Portaled + fixed; inner rects use pixel springs so zone changes animate inside splits.
  */
 export default function WorkspacePaneDropOverlay({
   leafId,
@@ -148,9 +176,13 @@ export default function WorkspacePaneDropOverlay({
   activeZone,
 }: WorkspacePaneDropOverlayProps) {
   const [box, setBox] = useState<PaneBox | null>(null);
+  /** Keep last zone so Motion stays mounted across brief nulls / leaf switches. */
+  const lastZoneRef = useRef<PaneDropZone | null>(null);
+  if (activeZone) lastZoneRef.current = activeZone;
+  const zone = activeZone ?? lastZoneRef.current;
 
   useLayoutEffect(() => {
-    if (!visible || !leafId || !activeZone) {
+    if (!visible || !leafId) {
       setBox(null);
       return undefined;
     }
@@ -169,29 +201,32 @@ export default function WorkspacePaneDropOverlay({
       window.removeEventListener('scroll', sync, true);
       window.removeEventListener('resize', sync);
     };
-  }, [visible, leafId, activeZone]);
+  }, [visible, leafId]);
 
-  if (!visible || !activeZone || !leafId || !box) return null;
+  useLayoutEffect(() => {
+    if (!visible) lastZoneRef.current = null;
+  }, [visible]);
+
+  if (!visible || !leafId || !zone || !box) return null;
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
+    <Motion.div
       className="pointer-events-none fixed z-100020"
-      style={{
+      initial={false}
+      animate={{
         left: box.left,
         top: box.top,
         width: box.width,
         height: box.height,
       }}
+      transition={PREVIEW_TRANSITION}
       aria-hidden
       data-pane-drop-overlay={leafId}
+      data-pane-drop-zone={zone}
     >
-      {activeZone === 'center' ? (
-        <CenterJoinPreview />
-      ) : (
-        <EdgeSplitPreview key={leafId} zone={activeZone} />
-      )}
-    </div>,
+      <PreviewLayers zone={zone} box={box} />
+    </Motion.div>,
     document.body,
   );
 }

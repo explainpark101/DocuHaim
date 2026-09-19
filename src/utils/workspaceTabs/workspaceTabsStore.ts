@@ -39,6 +39,7 @@ import {
   WORKSPACE_TAB_ORPHAN_ZONE_ID,
   type PaneSplitEdge,
 } from '@/utils/workspaceTabs/paneLayout';
+import { swapLeafContents } from '@/utils/workspaceTabs/paneLayoutEdit';
 
 export { WORKSPACE_TAB_GROUP_ZONE_ID, WORKSPACE_TAB_ORPHAN_ZONE_ID };
 
@@ -767,6 +768,31 @@ export function moveTabIntoLeaf(
     tabs,
     layout: moved.layout,
     focusedPaneId: moved.focusedPaneId,
+    activeId: tabId,
+  });
+}
+
+/**
+ * Center drop onto another pane: swap both leaves' contents (pane positions).
+ * Same leaf or orphan tab → join via moveTabIntoLeaf.
+ */
+export function swapPanesOrMoveTabToCenter(
+  state: WorkspaceTabsState,
+  tabId: string,
+  targetLeafId: string,
+): WorkspaceTabsState {
+  if (!state.tabs.some((t) => t.id === tabId)) return state;
+  if (!findLeaf(state.layout, targetLeafId)) return state;
+  const source = findLeafContainingTab(state.layout, tabId);
+  if (!source || source.id === targetLeafId) {
+    return moveTabIntoLeaf(state, tabId, targetLeafId);
+  }
+  const layout = swapLeafContents(state.layout, source.id, targetLeafId);
+  if (layout === state.layout) return state;
+  return ensureLayout({
+    tabs: state.tabs,
+    layout,
+    focusedPaneId: targetLeafId,
     activeId: tabId,
   });
 }

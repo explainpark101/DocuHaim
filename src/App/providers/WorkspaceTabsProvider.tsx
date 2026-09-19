@@ -48,6 +48,7 @@ export function WorkspaceTabsProvider({ children }: Props) {
       cycleWorkspaceTab: domain.cycleWorkspaceTab,
       focusWorkspacePane: domain.focusWorkspacePane,
       resizeWorkspaceSplit: domain.resizeWorkspaceSplit,
+      finishResizeWorkspaceSplit: domain.finishResizeWorkspaceSplit,
       handleWorkspacePaneDrop: domain.handleWorkspacePaneDrop,
       splitWorkspaceTabToEdge: domain.splitWorkspaceTabToEdge,
       applyWorkspacePaneLayout: domain.applyWorkspacePaneLayout,

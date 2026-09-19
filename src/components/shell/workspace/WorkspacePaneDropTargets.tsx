@@ -63,7 +63,7 @@ export function paneDropZoneStyle(zone: PaneSplitEdge | 'center'): CSSProperties
 
 /**
  * Blue preview covering only the space the new split pane will occupy.
- * `center` is join-into-leaf (no new pane); returns null.
+ * `center` is pane swap (no new split); returns null.
  */
 export function paneSplitPreviewStyle(zone: PaneSplitEdge | 'center'): CSSProperties | null {
   if (zone === 'center') return null;
