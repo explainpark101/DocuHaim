@@ -131,7 +131,7 @@ export default function WorkspaceSplitLayout({
   if (isPaneLeaf(layout)) {
     return (
       <div
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-black/8 dark:bg-odp-bgSofter dark:ring-white/10"
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white shadow-sm ring-1 ring-black/8 dark:bg-odp-bgSofter dark:ring-white/10"
         data-pane-leaf={layout.id}
       >
         {renderLeaf(layout.id)}

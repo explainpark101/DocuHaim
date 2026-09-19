@@ -216,6 +216,73 @@ export function collapseEmptyLeaves(node: PaneNode): PaneNode {
   return { ...node, children: [left, right] };
 }
 
+/** Append tab ids into the first DFS leaf of `node`. */
+function appendTabsToFirstLeaf(
+  node: PaneNode,
+  tabIds: string[],
+  activeId: string | null,
+): PaneNode {
+  if (node.type === 'leaf') {
+    const merged = [...node.tabIds];
+    for (const id of tabIds) {
+      if (!merged.includes(id)) merged.push(id);
+    }
+    return {
+      ...node,
+      tabIds: merged,
+      activeId:
+        activeId && merged.includes(activeId)
+          ? activeId
+          : (node.activeId ?? merged[0] ?? null),
+    };
+  }
+  return {
+    ...node,
+    children: [appendTabsToFirstLeaf(node.children[0], tabIds, activeId), node.children[1]],
+  };
+}
+
+/**
+ * Remove a leaf pane from the split: move its tabs into the sibling side and
+ * collapse the empty branch. Returns null when the layout is already a single leaf
+ * or `leafId` is missing.
+ */
+export function collapseLeafIntoSibling(
+  layout: PaneNode,
+  leafId: string,
+): { layout: PaneNode; focusedPaneId: string } | null {
+  if (layout.type === 'leaf') return null;
+  const target = findLeaf(layout, leafId);
+  if (!target) return null;
+
+  const collapse = (node: PaneNode): PaneNode | null => {
+    if (node.type === 'leaf') return null;
+    const [left, right] = node.children;
+    if (left.type === 'leaf' && left.id === leafId) {
+      return appendTabsToFirstLeaf(right, left.tabIds, left.activeId);
+    }
+    if (right.type === 'leaf' && right.id === leafId) {
+      return appendTabsToFirstLeaf(left, right.tabIds, right.activeId);
+    }
+    const nextLeft = collapse(left);
+    if (nextLeft) return { ...node, children: [nextLeft, right] };
+    const nextRight = collapse(right);
+    if (nextRight) return { ...node, children: [left, nextRight] };
+    return null;
+  };
+
+  const next = collapse(layout);
+  if (!next) return null;
+  const collapsed = collapseEmptyLeaves(next);
+  const keepActive = target.activeId;
+  const focusLeaf =
+    (keepActive && findLeafContainingTab(collapsed, keepActive)) ||
+    collectLeaves(collapsed)[0] ||
+    null;
+  const focusedPaneId = focusLeaf?.id ?? createEmptyLeaf().id;
+  return { layout: collapsed, focusedPaneId };
+}
+
 /** Ensure every tab id appears in exactly one leaf; orphans go to focused (or first) leaf. */
 export function syncLayoutWithTabs(
   layout: PaneNode,
@@ -296,6 +363,94 @@ export function addTabToFocusedLeaf(
   return { layout: next, focusedPaneId: target.id };
 }
 
+/**
+ * Attach `leaf` as a sibling of the entire current tree (new top-level split).
+ * `before` places it first in tab-strip / DFS order (standalone tab ahead of split groups).
+ */
+export function attachLeafBesideRoot(
+  layout: PaneNode,
+  leaf: PaneLeaf,
+  side: 'before' | 'after' = 'before',
+): PaneNode {
+  const children: [PaneNode, PaneNode] =
+    side === 'before' ? [leaf, layout] : [layout, leaf];
+  return {
+    type: 'split',
+    id: createPaneId('split'),
+    direction: 'horizontal',
+    ratio: side === 'before' ? 0.35 : 0.65,
+    children,
+  };
+}
+
+/**
+ * Place a tab in its own leaf beside the current layout (not into a focused split group).
+ * Falls back to the focused leaf when the pane soft cap would be exceeded.
+ */
+export function addTabAsStandaloneLeaf(
+  layout: PaneNode,
+  focusedPaneId: string,
+  tabId: string,
+  opts?: { activate?: boolean; side?: 'before' | 'after' },
+): { layout: PaneNode; focusedPaneId: string } {
+  const activate = opts?.activate !== false;
+  const side = opts?.side ?? 'before';
+  let next = removeTabFromLayout(layout, tabId);
+  if (countLeaves(next) >= WORKSPACE_PANE_SOFT_CAP) {
+    return addTabToFocusedLeaf(next, focusedPaneId, tabId, { activate });
+  }
+  const leaf = createSingleLeafLayout([tabId], activate ? tabId : null);
+  next = attachLeafBesideRoot(next, leaf, side);
+  return {
+    layout: next,
+    focusedPaneId: activate ? leaf.id : focusedPaneId,
+  };
+}
+
+/**
+ * Peel extra tabs out of a leaf, keeping only `keepTabId`.
+ * Extras become standalone leaves ahead of the tree (tab-strip order).
+ */
+export function peelExtrasAsStandaloneLeaves(
+  layout: PaneNode,
+  leafId: string,
+  keepTabId: string,
+): PaneNode {
+  const host = findLeaf(layout, leafId);
+  if (!host) return layout;
+  const extras = host.tabIds.filter((id) => id !== keepTabId);
+  if (extras.length === 0) return layout;
+
+  let next = mapLeaf(layout, leafId, (leaf) => ({
+    ...leaf,
+    tabIds: leaf.tabIds.includes(keepTabId) ? [keepTabId] : leaf.tabIds.slice(0, 1),
+    activeId: leaf.tabIds.includes(keepTabId)
+      ? keepTabId
+      : (leaf.tabIds[0] ?? null),
+    exportPdfForTabId:
+      leaf.exportPdfForTabId === keepTabId ? keepTabId : null,
+  }));
+
+  // Preserve prior strip order: earliest extras first (leftmost).
+  for (let i = extras.length - 1; i >= 0; i -= 1) {
+    const extraId = extras[i];
+    if (!extraId) continue;
+    if (countLeaves(next) >= WORKSPACE_PANE_SOFT_CAP) {
+      // Soft cap: put remaining extras back into the host leaf.
+      const rest = extras.slice(0, i + 1);
+      next = mapLeaf(next, leafId, (leaf) => ({
+        ...leaf,
+        tabIds: [...rest, ...leaf.tabIds],
+        activeId: leaf.activeId ?? keepTabId,
+      }));
+      break;
+    }
+    const leaf = createSingleLeafLayout([extraId], extraId);
+    next = attachLeafBesideRoot(next, leaf, 'before');
+  }
+  return next;
+}
+
 export function reorderInLeaf(
   layout: PaneNode,
   leafId: string,
@@ -360,6 +515,8 @@ function edgeToSplit(
 
 /**
  * Split `leafId` toward `edge`, placing `tabId` in the new leaf.
+ * Other tabs that shared the host leaf (except the host's active tab) are peeled
+ * into standalone leaves so they stay outside the split pair in the tab strip.
  * Returns null if soft cap would be exceeded.
  */
 export function splitLeaf(
@@ -375,7 +532,7 @@ export function splitLeaf(
 
   // Remove tab from wherever it is first.
   let base = removeTabFromLayout(layout, tabId);
-  const leafAfter = findLeaf(base, leafId);
+  let leafAfter = findLeaf(base, leafId);
   // If the leaf was collapsed away (it only had this tab), find a place to split
   // from a remaining leaf or recreate.
   if (!leafAfter) {
@@ -384,6 +541,25 @@ export function splitLeaf(
     if (!leaves[0]) base = host;
     return splitLeaf(base, host.id, edge, tabId);
   }
+
+  // Keep only the host active (or first) tab in the split remnant; peel the rest.
+  const keepId =
+    (leafAfter.activeId && leafAfter.tabIds.includes(leafAfter.activeId)
+      ? leafAfter.activeId
+      : leafAfter.tabIds[0]) ?? null;
+  if (keepId && leafAfter.tabIds.length > 1) {
+    base = peelExtrasAsStandaloneLeaves(base, leafId, keepId);
+    leafAfter = findLeaf(base, leafId);
+    if (!leafAfter) {
+      const leaves = collectLeaves(base);
+      const host = leaves[0];
+      if (!host) return null;
+      return splitLeaf(base, host.id, edge, tabId);
+    }
+  }
+
+  // Need room for the new leaf created by this split.
+  if (countLeaves(base) >= WORKSPACE_PANE_SOFT_CAP) return null;
 
   const { direction, placeNewFirst } = edgeToSplit(edge);
   const newLeaf: PaneLeaf = {
@@ -399,7 +575,6 @@ export function splitLeaf(
       if (node.id !== leafId) return node;
       const remaining: PaneLeaf = {
         ...node,
-        // If leaf became empty after remove, keep empty host — caller may collapse later.
         activeId:
           node.activeId && node.tabIds.includes(node.activeId)
             ? node.activeId

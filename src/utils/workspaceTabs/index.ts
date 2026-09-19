@@ -43,6 +43,7 @@ export {
   isPaneLeaf,
   isPaneSplit,
   toPersistedPaneNode,
+  collapseLeafIntoSibling,
 } from '@/utils/workspaceTabs/paneLayout';
 export {
   anyFileTabDirty,
@@ -70,6 +71,7 @@ export {
   activateTab,
   clearExportPdfInLeaf,
   closeTab,
+  collapsePaneLeaf,
   emptyWorkspaceTabsState,
   evictForSoftCap,
   findFileTab,

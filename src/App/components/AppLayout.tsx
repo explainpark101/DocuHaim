@@ -245,6 +245,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const handleWorkspacePaneDrop = tabsCtx.handleWorkspacePaneDrop;
   const splitWorkspaceTabToEdge = tabsCtx.splitWorkspaceTabToEdge;
   const applyWorkspacePaneLayout = tabsCtx.applyWorkspacePaneLayout;
+  const collapseWorkspacePane = tabsCtx.collapseWorkspacePane;
   const clearExportPdfInFocusedPane = tabsCtx.clearExportPdfInFocusedPane;
   const setWorkspaceTabs = tabsCtx.setState;
 
@@ -377,6 +378,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             ? {
                 onSplitTab: splitWorkspaceTabToEdge,
                 onApplyPaneLayout: applyWorkspacePaneLayout,
+                onCollapsePane: collapseWorkspacePane,
               }
             : {})}
           onActivateTab={(id) => activateWorkspaceTab(id)}
@@ -622,6 +624,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     ? {
                         onSplitTab: splitWorkspaceTabToEdge,
                         onApplyPaneLayout: applyWorkspacePaneLayout,
+                        onCollapsePane: collapseWorkspacePane,
                       }
                     : {})}
                   onClearExportPdf={clearExportPdfInFocusedPane}

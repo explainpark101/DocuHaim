@@ -21,6 +21,7 @@ export type WorkspaceTabsCtxValue = ReturnType<typeof useWorkspaceTabs> & {
   handleWorkspacePaneDrop: (...args: any[]) => any;
   splitWorkspaceTabToEdge: (...args: any[]) => any;
   applyWorkspacePaneLayout: (...args: any[]) => any;
+  collapseWorkspacePane: (...args: any[]) => any;
   openExportPdfInFocusedPane: (...args: any[]) => any;
   clearExportPdfInFocusedPane: (...args: any[]) => any;
 };

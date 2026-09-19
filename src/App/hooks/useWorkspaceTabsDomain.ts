@@ -28,6 +28,7 @@ import {
   replaceWorkspaceLayout,
   setFocusedPane,
   splitTabToEdge,
+  collapsePaneLeaf,
 } from '@/utils/workspaceTabs/appBridge';
 import {
   findLeafContainingTab,
@@ -610,6 +611,19 @@ export function useWorkspaceTabsDomain({
     [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
   );
 
+  const collapseWorkspacePane = useCallback(
+    (leafId: string) => {
+      const prev = workspaceTabsRef.current;
+      const next = collapsePaneLeaf(prev, leafId);
+      if (next === prev) return;
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      const active = getActiveTab(next);
+      if (active) activateWorkspaceTab(active.id, { navigateUrl: true });
+    },
+    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+  );
+
   const openExportPdfInFocusedPane = useCallback(
     (tabId?: string | null) => {
       const state = workspaceTabsRef.current;
@@ -682,6 +696,7 @@ export function useWorkspaceTabsDomain({
     handleWorkspacePaneDrop,
     splitWorkspaceTabToEdge,
     applyWorkspacePaneLayout,
+    collapseWorkspacePane,
     openExportPdfInFocusedPane,
     clearExportPdfInFocusedPane,
   };
