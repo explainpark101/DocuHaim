@@ -26,6 +26,7 @@ import { isSettingsAppPathname, isContentSearchAppPathname } from '@/utils/appHr
 import { getActiveTab, isChatTab } from '@/utils/workspaceTabs';
 import { useLocation } from 'react-router';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { MOBILE_LAYOUT_MAX_WIDTH_PX } from '@/utils/layoutBreakpoints';
 
 export type ChromeOwnedApi = {
   operationStatus: string;
@@ -95,7 +96,9 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
 
   const [operationStatus, setOperationStatus] = useState('');
   const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false,
+    typeof window !== 'undefined'
+      ? window.matchMedia(`(max-width: ${MOBILE_LAYOUT_MAX_WIDTH_PX}px)`).matches
+      : false,
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
@@ -144,7 +147,7 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
   useHistoryOverlayBack(sidebarOpen, closeSidebar, isMobile, 'main-sidebar');
 
   useEffect(() => {
-    const mql = window.matchMedia('(max-width: 768px)');
+    const mql = window.matchMedia(`(max-width: ${MOBILE_LAYOUT_MAX_WIDTH_PX}px)`);
     const handler = () => setIsMobile(mql.matches);
     handler();
     mql.addEventListener('change', handler);

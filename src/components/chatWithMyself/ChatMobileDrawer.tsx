@@ -1,25 +1,36 @@
 import { AnimatePresence, motion as Motion } from 'motion/react';
+import type { ReactNode } from 'react';
 
-const SPRING = { type: 'spring', stiffness: 380, damping: 36 };
+const SPRING = { type: 'spring', stiffness: 380, damping: 36 } as const;
+
+type ChatMobileDrawerProps = {
+  open: boolean;
+  onClose: () => void;
+  /** Width of the sliding panel; capped by the containing chat surface. */
+  width?: string;
+  zClass?: string;
+  label?: string;
+  children?: ReactNode;
+};
 
 /**
- * Mobile right-edge drawer with backdrop + slide animation (Motion).
- * @param {'80vw'|'100%'} [width='80vw']
+ * Compact-layout drawer (backdrop + slide). Positioned absolute inside the chat
+ * surface so split panes do not cover the rest of the workspace.
  */
 export default function ChatMobileDrawer({
   open,
   onClose,
-  width = '80vw',
+  width = 'min(80%, 22rem)',
   zClass = 'z-70',
   label = '패널',
   children,
-}) {
+}: ChatMobileDrawerProps) {
   return (
     <AnimatePresence>
       {open ? (
         <Motion.div
           key={`chat-drawer-${label}`}
-          className={`fixed inset-0 ${zClass}`}
+          className={`absolute inset-0 ${zClass}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

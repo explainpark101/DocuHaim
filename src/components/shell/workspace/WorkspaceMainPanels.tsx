@@ -12,6 +12,7 @@ import WorkspacePaneDropOverlay from '@/components/shell/workspace/WorkspacePane
 import WorkspacePanePlaceholder, {
   WorkspacePaneContentReveal,
 } from '@/components/shell/workspace/WorkspacePanePlaceholder';
+import WorkspacePaneCompactHost from '@/components/shell/workspace/WorkspacePaneCompactHost';
 import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 import {
   CHAT_TAB_ID,
@@ -417,13 +418,21 @@ export default function WorkspaceMainPanels({
         editorContent: string;
         currentFile: ExportPdfDocumentFile;
       }) => void;
+      /** Pane-local compact layout (window mobile OR narrow split pane). */
+      contentIsMobileLayout?: boolean;
     },
   ): ReactNode => {
+    const contentIsMobileLayout = opts?.contentIsMobileLayout ?? isMobileLayout;
+
     if (tab.kind === 'chat') {
       return (
         <Suspense fallback={<RouteSuspenseFallback />}>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <ChatWithMyselfPane {...(chatPaneProps as any)} isActive={active} />
+          <ChatWithMyselfPane
+            {...(chatPaneProps as any)}
+            isMobileLayout={contentIsMobileLayout}
+            isActive={active}
+          />
         </Suspense>
       );
     }
@@ -433,7 +442,10 @@ export default function WorkspaceMainPanels({
         <SettingsVaultDropHost enabled={active} {...(vaultDropProps as any)}>
           <Suspense fallback={<RouteSuspenseFallback />}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <SettingsPage {...(settingsPaneProps as any)} />
+            <SettingsPage
+              {...(settingsPaneProps as any)}
+              isMobileLayout={contentIsMobileLayout}
+            />
           </Suspense>
         </SettingsVaultDropHost>
       );
@@ -492,6 +504,7 @@ export default function WorkspaceMainPanels({
           ...(noteSurface ? { noteSurface } : {}),
           forceQuizMode: noteSurface === 'quiz',
         })}
+        isMobileLayout={contentIsMobileLayout}
       />
     );
   };
@@ -676,7 +689,8 @@ export default function WorkspaceMainPanels({
       Boolean(onApplyPaneLayout) && splitDragEnabled && !isMobileLayout && isSplit;
 
     return (
-      <div
+      <WorkspacePaneCompactHost
+        shellIsMobile={isMobileLayout}
         {...{ [PANE_LEAF_ATTR]: leafId }}
         className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white dark:bg-odp-surface ${
           focused
@@ -685,122 +699,127 @@ export default function WorkspaceMainPanels({
         } ${freshPaneIds.has(leafId) ? 'workspace-pane-appear-glow' : ''}`}
         onPointerDownCapture={() => onFocusPane?.(leafId)}
       >
-        {onCollapsePane && isSplit ? (
-          <div
-            data-pane-chrome={leafId}
-            className={`flex h-8 shrink-0 items-center gap-1 border-b border-gray-200 bg-gray-50 px-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${
-              headerDragEnabled
-                ? 'cursor-grab touch-none active:cursor-grabbing select-none'
-                : ''
-            } ${draggingPaneLeafId === leafId ? 'opacity-60' : ''}`}
-            onPointerDown={(e) => {
-              if (!headerDragEnabled) return;
-              handlePaneHeaderPointerDown(leafId, e);
-            }}
-          >
-            <p className="min-w-0 flex-1 truncate px-1 text-xs font-medium text-gray-700 dark:text-odp-fg">
-              {paneTitle}
-            </p>
-            <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <button
-                    type="button"
-                    aria-label="분할 끄기"
-                    data-pane-dismiss={leafId}
-                    className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-200/80 hover:text-gray-800 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-odp-fgStrong"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onCollapsePane(leafId);
-                    }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    <X size={15} strokeWidth={2} aria-hidden />
-                  </button>
-                </Tooltip.Trigger>
-                <Tooltip.Portal>
-                  <Tooltip.Content
-                    side="bottom"
-                    sideOffset={6}
-                    className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong"
-                  >
-                    분할 끄기
-                    <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
-                  </Tooltip.Content>
-                </Tooltip.Portal>
-              </Tooltip.Root>
-            </Tooltip.Provider>
-          </div>
-        ) : null}
-        {exportPdfForTabId ? (
-          <LeafExportPdfBack
-            leafId={leafId}
-            open
-            onClose={() => onClearExportPdf?.(leafId)}
-            onApplyPendingReturn={() => {
-              const exportTab = tabs.find((t) => t.id === exportPdfForTabId);
-              applyExportPdfHandoffToTab({
-                tab: exportTab,
-                activeId,
-                ...(mirrors ? { mirrors } : {}),
-              });
-            }}
-          />
-        ) : null}
-        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
-          <WorkspacePaneContentReveal
-            key={leafId}
-            pending={pendingPlaceholderLeafIds.has(leafId)}
-            onReady={() => clearPlaceholderLeaf(leafId)}
-          >
-            <Suspense fallback={<WorkspacePanePlaceholder variant="body" />}>
-              {leaf.tabIds.map((tabId) => {
-                const tab = tabs.find((t) => t.id === tabId);
-                if (!tab) return null;
-                const active = tabId === leafActiveId;
-                const showExport = Boolean(exportPdfForTabId && exportPdfForTabId === tabId);
-                // Pane-local active: each visible leaf must load its editor (not only the focused pane).
-                const paneActive = active;
-                const handleExportClose = (result?: {
-                  editorContent: string;
-                  currentFile: ExportPdfDocumentFile;
-                }) => {
-                  if (result && isFileTab(tab)) {
-                    const nextContent =
-                      typeof result.editorContent === 'string' ? result.editorContent : '';
-                    if (tab.id === activeId && mirrors?.onChangeEditor) {
-                      mirrors.onChangeEditor(nextContent);
-                    } else {
-                      mirrors?.onInactiveEditorChange?.(tab.id, nextContent);
-                    }
-                  }
-                  onClearExportPdf?.(leafId);
-                };
+        {(contentIsMobileLayout) => (
+          <>
+            {onCollapsePane && isSplit ? (
+              <div
+                data-pane-chrome={leafId}
+                className={`flex h-8 shrink-0 items-center gap-1 border-b border-gray-200 bg-gray-50 px-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${
+                  headerDragEnabled
+                    ? 'cursor-grab touch-none active:cursor-grabbing select-none'
+                    : ''
+                } ${draggingPaneLeafId === leafId ? 'opacity-60' : ''}`}
+                onPointerDown={(e) => {
+                  if (!headerDragEnabled) return;
+                  handlePaneHeaderPointerDown(leafId, e);
+                }}
+              >
+                <p className="min-w-0 flex-1 truncate px-1 text-xs font-medium text-gray-700 dark:text-odp-fg">
+                  {paneTitle}
+                </p>
+                <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+                  <Tooltip.Root>
+                    <Tooltip.Trigger asChild>
+                      <button
+                        type="button"
+                        aria-label="분할 끄기"
+                        data-pane-dismiss={leafId}
+                        className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-200/80 hover:text-gray-800 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-odp-fgStrong"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onCollapsePane(leafId);
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <X size={15} strokeWidth={2} aria-hidden />
+                      </button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        side="bottom"
+                        sideOffset={6}
+                        className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong"
+                      >
+                        분할 끄기
+                        <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+                </Tooltip.Provider>
+              </div>
+            ) : null}
+            {exportPdfForTabId ? (
+              <LeafExportPdfBack
+                leafId={leafId}
+                open
+                onClose={() => onClearExportPdf?.(leafId)}
+                onApplyPendingReturn={() => {
+                  const exportTab = tabs.find((t) => t.id === exportPdfForTabId);
+                  applyExportPdfHandoffToTab({
+                    tab: exportTab,
+                    activeId,
+                    ...(mirrors ? { mirrors } : {}),
+                  });
+                }}
+              />
+            ) : null}
+            <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+              <WorkspacePaneContentReveal
+                key={leafId}
+                pending={pendingPlaceholderLeafIds.has(leafId)}
+                onReady={() => clearPlaceholderLeaf(leafId)}
+              >
+                <Suspense fallback={<WorkspacePanePlaceholder variant="body" />}>
+                  {leaf.tabIds.map((tabId) => {
+                    const tab = tabs.find((t) => t.id === tabId);
+                    if (!tab) return null;
+                    const active = tabId === leafActiveId;
+                    const showExport = Boolean(exportPdfForTabId && exportPdfForTabId === tabId);
+                    // Pane-local active: each visible leaf must load its editor (not only the focused pane).
+                    const paneActive = active;
+                    const handleExportClose = (result?: {
+                      editorContent: string;
+                      currentFile: ExportPdfDocumentFile;
+                    }) => {
+                      if (result && isFileTab(tab)) {
+                        const nextContent =
+                          typeof result.editorContent === 'string' ? result.editorContent : '';
+                        if (tab.id === activeId && mirrors?.onChangeEditor) {
+                          mirrors.onChangeEditor(nextContent);
+                        } else {
+                          mirrors?.onInactiveEditorChange?.(tab.id, nextContent);
+                        }
+                      }
+                      onClearExportPdf?.(leafId);
+                    };
 
-                return (
-                  <WorkspaceKeepAlivePanel key={`${leafId}:${tabId}`} active={paneActive}>
-                    {/* Always keep the editor mounted; visibility is KeepAlivePanel's job.
-                        Avoids wiping CM/state when switching tabs or hiding the split for orphans. */}
-                    {renderTabContent(tab, true, {
-                      ...(isFileTab(tab) && tab.noteSurface
-                        ? { noteSurface: tab.noteSurface }
-                        : {}),
-                      exportPdf: showExport,
-                      ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
-                    })}
-                  </WorkspaceKeepAlivePanel>
-                );
-              })}
-              {leaf.tabIds.length === 0 ? (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-odp-muted">
-                  빈 페인
-                </div>
-              ) : null}
-            </Suspense>
-          </WorkspacePaneContentReveal>
-        </div>
-      </div>
+                    return (
+                      <WorkspaceKeepAlivePanel key={`${leafId}:${tabId}`} active={paneActive}>
+                        {/* Always keep the editor mounted; visibility is KeepAlivePanel's job.
+                            Avoids wiping CM/state when switching tabs or hiding the split for orphans. */}
+                        {renderTabContent(tab, true, {
+                          ...(isFileTab(tab) && tab.noteSurface
+                            ? { noteSurface: tab.noteSurface }
+                            : {}),
+                          exportPdf: showExport,
+                          ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
+                          contentIsMobileLayout,
+                        })}
+                      </WorkspaceKeepAlivePanel>
+                    );
+                  })}
+                  {leaf.tabIds.length === 0 ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-odp-muted">
+                      빈 페인
+                    </div>
+                  ) : null}
+                </Suspense>
+              </WorkspacePaneContentReveal>
+            </div>
+          </>
+        )}
+      </WorkspacePaneCompactHost>
     );
   };
 
@@ -855,153 +874,161 @@ export default function WorkspaceMainPanels({
 
         {!splitLayoutMounted || activeIsOrphan ? (
           <WorkspaceTabHost>
-            <div
+            <WorkspacePaneCompactHost
+              shellIsMobile={isMobileLayout}
               className="absolute inset-0"
               {...(singleLeafId && !activeIsOrphan
                 ? { [PANE_LEAF_ATTR]: singleLeafId }
                 : {})}
             >
-              {activeIsOrphan
-                ? (() => {
-                    const orphanTab = tabs.find((t) => t.id === activeId);
-                    if (!orphanTab) return null;
-                    return (
-                      <WorkspaceKeepAlivePanel key={orphanTab.id} active>
-                        {renderTabContent(orphanTab, true, {
-                          ...(isFileTab(orphanTab) && orphanTab.noteSurface
-                            ? { noteSurface: orphanTab.noteSurface }
-                            : {}),
-                        })}
-                      </WorkspaceKeepAlivePanel>
-                    );
-                  })()
-                : (
-                  <>
-                    {fileTabs.map((tab) => {
-                      const active = tab.id === activeId;
-                      const exportLeaf = leaves.find(
-                        (l) => l.exportPdfForTabId === tab.id && l.activeId === tab.id,
-                      );
-                      const handleExportClose = (result?: {
-                        editorContent: string;
-                        currentFile: ExportPdfDocumentFile;
-                      }) => {
-                        if (result) {
-                          const nextContent =
-                            typeof result.editorContent === 'string'
-                              ? result.editorContent
-                              : '';
-                          if (active && mirrors?.onChangeEditor) {
-                            mirrors.onChangeEditor(nextContent);
-                          } else {
-                            mirrors?.onInactiveEditorChange?.(tab.id, nextContent);
-                          }
-                        }
-                        if (exportLeaf) onClearExportPdf?.(exportLeaf.id);
-                      };
+              {(contentIsMobileLayout) =>
+                activeIsOrphan
+                  ? (() => {
+                      const orphanTab = tabs.find((t) => t.id === activeId);
+                      if (!orphanTab) return null;
                       return (
-                        <WorkspaceKeepAlivePanel key={tab.id} active={active}>
-                          {exportLeaf ? (
-                            <>
-                              <LeafExportPdfBack
-                                leafId={exportLeaf.id}
-                                open
-                                onClose={() => onClearExportPdf?.(exportLeaf.id)}
-                                onApplyPendingReturn={() => {
-                                  applyExportPdfHandoffToTab({
-                                    tab,
-                                    activeId,
-                                    ...(mirrors ? { mirrors } : {}),
-                                  });
-                                }}
-                              />
-                              {renderTabContent(tab, active, {
-                                exportPdf: true,
-                                onExportPdfClose: handleExportClose,
+                        <WorkspaceKeepAlivePanel key={orphanTab.id} active>
+                          {renderTabContent(orphanTab, true, {
+                            ...(isFileTab(orphanTab) && orphanTab.noteSurface
+                              ? { noteSurface: orphanTab.noteSurface }
+                              : {}),
+                            contentIsMobileLayout,
+                          })}
+                        </WorkspaceKeepAlivePanel>
+                      );
+                    })()
+                  : (
+                    <>
+                      {fileTabs.map((tab) => {
+                        const active = tab.id === activeId;
+                        const exportLeaf = leaves.find(
+                          (l) => l.exportPdfForTabId === tab.id && l.activeId === tab.id,
+                        );
+                        const handleExportClose = (result?: {
+                          editorContent: string;
+                          currentFile: ExportPdfDocumentFile;
+                        }) => {
+                          if (result) {
+                            const nextContent =
+                              typeof result.editorContent === 'string'
+                                ? result.editorContent
+                                : '';
+                            if (active && mirrors?.onChangeEditor) {
+                              mirrors.onChangeEditor(nextContent);
+                            } else {
+                              mirrors?.onInactiveEditorChange?.(tab.id, nextContent);
+                            }
+                          }
+                          if (exportLeaf) onClearExportPdf?.(exportLeaf.id);
+                        };
+                        return (
+                          <WorkspaceKeepAlivePanel key={tab.id} active={active}>
+                            {exportLeaf ? (
+                              <>
+                                <LeafExportPdfBack
+                                  leafId={exportLeaf.id}
+                                  open
+                                  onClose={() => onClearExportPdf?.(exportLeaf.id)}
+                                  onApplyPendingReturn={() => {
+                                    applyExportPdfHandoffToTab({
+                                      tab,
+                                      activeId,
+                                      ...(mirrors ? { mirrors } : {}),
+                                    });
+                                  }}
+                                />
+                                {renderTabContent(tab, active, {
+                                  exportPdf: true,
+                                  onExportPdfClose: handleExportClose,
+                                  ...(tab.noteSurface
+                                    ? { noteSurface: tab.noteSurface }
+                                    : {}),
+                                  contentIsMobileLayout,
+                                })}
+                              </>
+                            ) : (
+                              renderTabContent(tab, active, {
                                 ...(tab.noteSurface
                                   ? { noteSurface: tab.noteSurface }
                                   : {}),
-                              })}
-                            </>
-                          ) : (
-                            renderTabContent(
-                              tab,
-                              active,
-                              tab.noteSurface
-                                ? { noteSurface: tab.noteSurface }
-                                : undefined,
-                            )
+                                contentIsMobileLayout,
+                              })
+                            )}
+                          </WorkspaceKeepAlivePanel>
+                        );
+                      })}
+
+                      {showChat ? (
+                        <WorkspaceKeepAlivePanel active={chatActive}>
+                          {renderTabContent(
+                            tabs.find((t) => t.kind === 'chat')!,
+                            chatActive,
+                            { contentIsMobileLayout },
                           )}
                         </WorkspaceKeepAlivePanel>
-                      );
-                    })}
+                      ) : null}
 
-                    {showChat ? (
-                      <WorkspaceKeepAlivePanel active={chatActive}>
-                        {renderTabContent(
-                          tabs.find((t) => t.kind === 'chat')!,
-                          chatActive,
-                        )}
-                      </WorkspaceKeepAlivePanel>
-                    ) : null}
+                      {showSettings ? (
+                        <WorkspaceKeepAlivePanel active={settingsActive}>
+                          {renderTabContent(
+                            tabs.find((t) => t.kind === 'settings')!,
+                            settingsActive,
+                            { contentIsMobileLayout },
+                          )}
+                        </WorkspaceKeepAlivePanel>
+                      ) : null}
 
-                    {showSettings ? (
-                      <WorkspaceKeepAlivePanel active={settingsActive}>
-                        {renderTabContent(
-                          tabs.find((t) => t.kind === 'settings')!,
-                          settingsActive,
-                        )}
-                      </WorkspaceKeepAlivePanel>
-                    ) : null}
+                      {showContentSearch ? (
+                        <WorkspaceKeepAlivePanel active={contentSearchActive}>
+                          {renderTabContent(
+                            tabs.find((t) => t.kind === 'content-search')!,
+                            contentSearchActive,
+                            { contentIsMobileLayout },
+                          )}
+                        </WorkspaceKeepAlivePanel>
+                      ) : null}
 
-                    {showContentSearch ? (
-                      <WorkspaceKeepAlivePanel active={contentSearchActive}>
-                        {renderTabContent(
-                          tabs.find((t) => t.kind === 'content-search')!,
-                          contentSearchActive,
-                        )}
-                      </WorkspaceKeepAlivePanel>
-                    ) : null}
+                      {showEmpty ? (
+                        <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+                          <EditorPane
+                            {...editorPaneProps({
+                              currentFile: null,
+                              editorContent: '',
+                              editedFileName: '',
+                              ...(mirrors?.setEditedFileName
+                                ? { setEditedFileName: mirrors.setEditedFileName }
+                                : {}),
+                              ...(mirrors?.onChangeEditor
+                                ? { onChangeEditor: mirrors.onChangeEditor }
+                                : {}),
+                              isActiveFile: true,
+                            })}
+                            isMobileLayout={contentIsMobileLayout}
+                          />
+                        </div>
+                      ) : null}
 
-                    {showEmpty ? (
-                      <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
-                        <EditorPane
-                          {...editorPaneProps({
-                            currentFile: null,
-                            editorContent: '',
-                            editedFileName: '',
-                            ...(mirrors?.setEditedFileName
-                              ? { setEditedFileName: mirrors.setEditedFileName }
-                              : {}),
-                            ...(mirrors?.onChangeEditor
-                              ? { onChangeEditor: mirrors.onChangeEditor }
-                              : {}),
-                            isActiveFile: true,
-                          })}
+                      {singleLeafId && splitDragEnabled && !isMobileLayout ? (
+                        <WorkspacePaneDropOverlay
+                          leafId={
+                            dropHighlight?.leafId === singleLeafId
+                              ? dropHighlight.leafId
+                              : null
+                          }
+                          visible={Boolean(
+                            draggingTab && dropHighlight?.leafId === singleLeafId,
+                          )}
+                          activeZone={
+                            dropHighlight?.leafId === singleLeafId
+                              ? dropHighlight.zone
+                              : null
+                          }
                         />
-                      </div>
-                    ) : null}
-
-                    {singleLeafId && splitDragEnabled && !isMobileLayout ? (
-                      <WorkspacePaneDropOverlay
-                        leafId={
-                          dropHighlight?.leafId === singleLeafId
-                            ? dropHighlight.leafId
-                            : null
-                        }
-                        visible={Boolean(
-                          draggingTab && dropHighlight?.leafId === singleLeafId,
-                        )}
-                        activeZone={
-                          dropHighlight?.leafId === singleLeafId
-                            ? dropHighlight.zone
-                            : null
-                        }
-                      />
-                    ) : null}
-                  </>
-                )}
-            </div>
+                      ) : null}
+                    </>
+                  )
+              }
+            </WorkspacePaneCompactHost>
           </WorkspaceTabHost>
         ) : null}
       </div>

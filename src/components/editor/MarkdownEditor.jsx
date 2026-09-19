@@ -198,18 +198,16 @@ import {
   toggleUnderlineForSelection,
   toggleUnorderedListForSelection,
   wrapSelectionWithInlineCode,
-  wrapLatexForSelection,
-  wrapBracketsForSelection,
-  wrapParenthesesForSelection,
-  wrapBracesForSelection,
-  wrapSingleQuoteForSelection,
-  wrapDoubleQuoteForSelection,
 } from '@/utils/editorMarkdownStyle';
+import {
+  handleMdEditorSelectionWrapKeydown,
+  wrapSelectionWithPairIfTriggerKey,
+} from '@/utils/mdEditorSelectionWrap';
 
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
 const MD_EDITOR_TOC_DEFAULT_WIDTH = 360;
 
-/** Windows: Ctrl, Mac: Cmd ? mod ? ??? ? ?? ??? ?? (keydown ???) */
+/** Windows: Ctrl, Mac: Cmd — build mod+… combo string (keydown path). */
 function getKeyComboFromEvent(e) {
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
   const parts = [];
@@ -225,7 +223,7 @@ function getKeyComboFromEvent(e) {
   return parts.join('+');
 }
 
-/** ??? shortcut ???? ctrl/meta ? mod ? ??? (???) */
+/** Normalize snippet shortcut so ctrl/meta both match as mod. */
 function normalizeShortcutForMatch(shortcut) {
   if (!shortcut || typeof shortcut !== 'string') return '';
   return shortcut
@@ -278,42 +276,6 @@ function insertLineAboveInEditorView(view) {
     changes: { from: line.from, to: line.from, insert: '\n' },
     selection: { anchor: line.from },
   });
-}
-
-/** Mac KO/US ??? `???\ ?? ?? ?? ?(Backquote/IntlBackslash)? ??? ?? ??? ?? */
-function isInlineCodeFenceTriggerKey(e) {
-  if (e.ctrlKey || e.metaKey || e.altKey) return false;
-  const { key, code } = e;
-  if (key === '`' || key === '?' || key === '\\') return true;
-  if (code === 'Backquote' || code === 'IntlBackslash') return true;
-  return false;
-}
-
-/** Wrap the current selection when typing $, [, (, {, ', or ". Empty selection: no-op. */
-function wrapSelectionWithPairIfTriggerKey(view, event) {
-  if (event.defaultPrevented) return false;
-  if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return false;
-  switch (event.key) {
-    case '$':
-      return wrapLatexForSelection(view);
-    case '[':
-      return wrapBracketsForSelection(view);
-    case '(':
-      return wrapParenthesesForSelection(view);
-    case '{':
-      return wrapBracesForSelection(view);
-    case "'":
-      return wrapSingleQuoteForSelection(view);
-    case '"':
-      return wrapDoubleQuoteForSelection(view);
-    default:
-      if (event.code === 'Quote') {
-        return event.shiftKey
-          ? wrapDoubleQuoteForSelection(view)
-          : wrapSingleQuoteForSelection(view);
-      }
-      return false;
-  }
 }
 
 function runAltVimNavigation(view, command) {
@@ -1704,19 +1666,10 @@ export default function MarkdownEditor({
         keydown: (e, view) => {
           if (!view) return;
 
-          if (!view.composing && isInlineCodeFenceTriggerKey(e)) {
-            const wrapped = wrapSelectionWithInlineCode(view);
-            if (wrapped) {
-              e.preventDefault();
-              e.stopPropagation();
-              // CodeMirror: handled event must return true so later handlers / default are skipped
-              return true;
-            }
-          }
-
-          if (!view.composing && wrapSelectionWithPairIfTriggerKey(view, e)) {
+          if (handleMdEditorSelectionWrapKeydown(e, view)) {
             e.preventDefault();
             e.stopPropagation();
+            // CodeMirror: handled event must return true so later handlers / default are skipped
             return true;
           }
 

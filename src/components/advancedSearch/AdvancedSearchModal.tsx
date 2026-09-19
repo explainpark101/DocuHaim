@@ -129,7 +129,9 @@ function reasonLabel(hit: AdvancedSearchHit): string {
     ) {
       return '원숫자';
     }
-    if (hit.commandId === 'chat-focus-composer') return '채팅';
+    if (hit.commandId === 'chat-focus-composer' || hit.commandId === 'chat-jump-to-bottom') {
+      return '채팅';
+    }
     if (hit.commandId?.startsWith('chat')) return '채팅';
     if (
       hit.commandId?.startsWith('settings-alt-') ||
