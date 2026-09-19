@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-09-13T15:56:26.451Z
+Generated: 2026-09-19T14:30:08.475Z
 
 ============================================================
 Advanced Search
@@ -1466,8 +1466,6 @@ Hosts that build TOC or remap headings should use **logical** level 1–10 (from
 |------|------|
 | 상수·리맵 | `src/utils/markdownHeadings.ts` |
 | markdown-it | `src/utils/markdownItHeadingLevels.ts` |
-| markdown-it | `src/utils/markdownItHeadingLevels.ts` |
-| TipTap | `src/extensions/novelHeading.ts` |
 | 툴바 | `src/components/MarkdownHeadingRemapToolbar.tsx` |
 
 ============================================================
@@ -3034,7 +3032,6 @@ Public ImgBB cache without replacing the vault path: [remote-image.md](./remote-
 | markdown-it | `src/utils/wikiImageMarkdownIt.js` |
 | URL / 캐시 | `src/utils/wikiImageResolver.js`, `wikiImageCacheDb.js`, `wikiImageSettings.js` |
 | Hydration | `src/utils/storageImageHydration.ts`, `src/hooks/useWikiImageHydration.js` |
-| TipTap (Novel) | `src/extensions/wikiImageTiptap.js`, `src/utils/wikiImageHtmlInject.js` |
 | Hex helper | `src/utils/cssColor.ts` |
 | Bulk MD→wiki convert | `src/utils/convertMarkdownImagesToWiki.ts`, `EditorPane` file menu |
 
