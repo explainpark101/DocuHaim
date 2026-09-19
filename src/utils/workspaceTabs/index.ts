@@ -28,6 +28,7 @@ export type {
   PaneSplit,
   PaneSplitEdge,
   PersistedPaneNode,
+  SplitLeafResult,
 } from '@/utils/workspaceTabs/paneLayout';
 export {
   WORKSPACE_PANE_SOFT_CAP,
@@ -50,6 +51,7 @@ export {
   syncLayoutWithTabs,
   toPersistedPaneNode,
   collapseLeafIntoSibling,
+  splitLeaf,
 } from '@/utils/workspaceTabs/paneLayout';
 export {
   anyFileTabDirty,
@@ -98,7 +100,7 @@ export {
   setFocusedPane,
   splitTabToEdge,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
-export type { RetargetFileTabInput, OpenFileTabInput } from '@/utils/workspaceTabs/workspaceTabsStore';
+export type { RetargetFileTabInput, OpenFileTabInput, SplitTabToEdgeResult } from '@/utils/workspaceTabs/workspaceTabsStore';
 export {
   CLOSED_TAB_HISTORY_KEY,
   CLOSED_TAB_HISTORY_MAX,

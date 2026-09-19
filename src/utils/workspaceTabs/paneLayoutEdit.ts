@@ -4,6 +4,7 @@ import {
   createPaneId,
   findLeaf,
   isPaneLeaf,
+  PANE_EDGE_SPLIT_RATIO,
   type PaneLeaf,
   type PaneNode,
   type PaneSplitEdge,
@@ -141,7 +142,7 @@ export function insertLeafAtEdge(
         type: 'split',
         id: createPaneId('split'),
         direction,
-        ratio: 0.5,
+        ratio: placeNewFirst ? PANE_EDGE_SPLIT_RATIO : 1 - PANE_EDGE_SPLIT_RATIO,
         children,
       };
     }

@@ -720,26 +720,34 @@ export function moveTab(
   });
 }
 
+export type SplitTabToEdgeResult =
+  | { ok: true; state: WorkspaceTabsState }
+  | { ok: false; reason: 'soft-cap' | 'missing' };
+
 export function splitTabToEdge(
   state: WorkspaceTabsState,
   leafId: string,
   edge: PaneSplitEdge,
   tabId: string,
-): WorkspaceTabsState | null {
-  if (!state.tabs.some((t) => t.id === tabId)) return null;
-  const result = splitLeaf(state.layout, leafId, edge, tabId);
-  if (!result) return null;
+  softCap?: number,
+): SplitTabToEdgeResult {
+  if (!state.tabs.some((t) => t.id === tabId)) return { ok: false, reason: 'missing' };
+  const result = splitLeaf(state.layout, leafId, edge, tabId, softCap);
+  if (!result.ok) return { ok: false, reason: result.reason };
   const order = flattenTabIdsFromLayout(result.layout);
   const byId = new Map(state.tabs.map((t) => [t.id, t]));
   const tabs = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
   for (const t of state.tabs) {
     if (!order.includes(t.id)) tabs.push(t);
   }
-  return ensureLayout({
-    tabs,
-    layout: result.layout,
-    focusedPaneId: result.focusedPaneId,
-  });
+  return {
+    ok: true,
+    state: ensureLayout({
+      tabs,
+      layout: result.layout,
+      focusedPaneId: result.focusedPaneId,
+    }),
+  };
 }
 
 export function moveTabIntoLeaf(

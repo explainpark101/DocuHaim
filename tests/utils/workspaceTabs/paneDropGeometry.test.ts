@@ -27,6 +27,16 @@ describe('zoneFromPanePoint', () => {
 
   it('maps the center region', () => {
     expect(zoneFromPanePoint(500, 500, box)).toBe('center');
+    // Outside the outer thirds (33%) → center
+    expect(zoneFromPanePoint(400, 500, box)).toBe('center');
+    expect(zoneFromPanePoint(500, 400, box)).toBe('center');
+  });
+
+  it('uses 33% thirds for edge bands', () => {
+    expect(zoneFromPanePoint(320, 500, box)).toBe('left');
+    expect(zoneFromPanePoint(340, 500, box)).toBe('center');
+    expect(zoneFromPanePoint(660, 500, box)).toBe('center');
+    expect(zoneFromPanePoint(700, 500, box)).toBe('right');
   });
 
   it('snaps corners to the nearest edge (no empty zone)', () => {

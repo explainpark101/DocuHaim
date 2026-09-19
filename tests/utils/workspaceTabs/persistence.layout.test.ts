@@ -6,12 +6,21 @@ import {
   fromPersistedPaneNode,
   splitLeaf,
   toPersistedPaneNode,
+  type SplitLeafResult,
 } from '@/utils/workspaceTabs/paneLayout';
 import { toPersistedWorkspaceTabs } from '@/utils/workspaceTabs/persistence';
 import {
   LAST_OPEN_TABS_RESTORE_KEY,
   loadLastOpenTabsSnapshot,
 } from '@/utils/workspaceTabs/lastOpenTabsRestore';
+
+
+function expectSplitOk(result: SplitLeafResult) {
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.reason);
+  return result;
+}
+
 
 function stubLocalStorage() {
   const map = new Map<string, string>();
@@ -43,7 +52,7 @@ describe('workspace tabs split layout persistence', () => {
 
   it('round-trips a horizontal split through toPersistedWorkspaceTabs', () => {
     const leaf = createSingleLeafLayout(['s3:a.md', 's3:b.md'], 's3:a.md');
-    const split = splitLeaf(leaf, leaf.id, 'right', 's3:b.md')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 's3:b.md'));
     expect(countLeaves(split.layout)).toBe(2);
 
     const persisted = toPersistedWorkspaceTabs(
@@ -60,7 +69,7 @@ describe('workspace tabs split layout persistence', () => {
     expect(persisted.layout.type).toBe('split');
     if (persisted.layout.type !== 'split') return;
     expect(persisted.layout.direction).toBe('horizontal');
-    expect(persisted.layout.ratio).toBe(0.5);
+    expect(persisted.layout.ratio).toBeCloseTo(2 / 3);
 
     const left = persisted.layout.children[0];
     const right = persisted.layout.children[1];
@@ -78,7 +87,7 @@ describe('workspace tabs split layout persistence', () => {
 
   it('keeps split layout when focusedPaneId is omitted from stored JSON', () => {
     const leaf = createSingleLeafLayout(['s3:a.md', 's3:b.md'], 's3:a.md');
-    const split = splitLeaf(leaf, leaf.id, 'right', 's3:b.md')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 's3:b.md'));
     const payload = toPersistedWorkspaceTabs(
       [
         { kind: 'file', storageType: 's3', path: 'a.md' },
@@ -116,7 +125,7 @@ describe('workspace tabs split layout persistence', () => {
 
   it('preserves layout when toPersistedWorkspaceTabs is called without focusedPaneId', () => {
     const leaf = createSingleLeafLayout(['s3:a.md', 's3:b.md'], 's3:a.md');
-    const split = splitLeaf(leaf, leaf.id, 'bottom', 's3:b.md')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'bottom', 's3:b.md'));
     const persisted = toPersistedWorkspaceTabs(
       [
         { kind: 'file', storageType: 's3', path: 'a.md' },

@@ -27,11 +27,12 @@ import {
   IconSettings,
   IconVideo,
 } from '@/components/icons';
-import { MessageSquare, Search, X, Loader2, ClipboardList } from 'lucide-react';
+import { MessageSquare, Search, X, Loader2, ClipboardList, Columns2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { useHorizontalOverflowScroll } from '@/hooks/useHorizontalOverflowScroll';
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -71,15 +72,19 @@ import {
   updateWorkspaceTabDragPoint,
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
 import {
-  WORKSPACE_PANE_SOFT_CAP,
   WORKSPACE_TAB_GROUP_ZONE_ID,
   WORKSPACE_TAB_ORPHAN_ZONE_ID,
   countLeaves,
+  findLeaf,
   findLeafContainingTab,
   listOrphanTabIds,
   type PaneNode,
   type PaneSplitEdge,
 } from '@/utils/workspaceTabs/paneLayout';
+import {
+  loadWorkspacePaneSoftCap,
+  WORKSPACE_PANE_SOFT_CAP_CHANGED_EVENT,
+} from '@/utils/workspaceTabsSettings';
 
 /** Horizontal-only translate; never scale tabs during sortable shifts. */
 function horizontalSortableTransform(transform: Transform | null): Transform | null {
@@ -550,6 +555,11 @@ type ActiveDragState = {
 type TabGroupChromeProps = {
   children: ReactNode;
   focused: boolean;
+  /** When true, hide individual tabs and show a compact chip. */
+  collapsed: boolean;
+  summaryLabel: string;
+  tabCount: number;
+  onExpand: () => void;
   isMobileLayout: boolean;
   mobileContextMenu: boolean;
   onOpenLayoutEditor: () => void;
@@ -594,6 +604,10 @@ function OrphanLeaveDroppable({
 function WorkspaceTabGroupChrome({
   children,
   focused,
+  collapsed,
+  summaryLabel,
+  tabCount,
+  onExpand,
   isMobileLayout,
   mobileContextMenu,
   onOpenLayoutEditor,
@@ -648,16 +662,26 @@ function WorkspaceTabGroupChrome({
     />
   );
 
-  return (
-    <div
-      role="group"
-      aria-label="스플릿 탭 그룹"
-      data-tab-group=""
-      className={`flex h-full shrink-0 items-stretch gap-0.5 self-stretch rounded-t-lg px-1 ${
+  const shellClass = collapsed
+    ? `flex h-full max-w-[9.5rem] shrink-0 items-stretch gap-0.5 self-stretch rounded-t-lg px-0.5 ${
+        focused
+          ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
+          : 'bg-gray-300/80 ring-1 ring-gray-400/40 dark:bg-odp-bg dark:ring-odp-borderSoft'
+      }`
+    : `flex h-full shrink-0 items-stretch gap-0.5 self-stretch rounded-t-lg px-1 ${
         focused
           ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
           : 'bg-gray-300/90 ring-1 ring-gray-400/50 dark:bg-odp-bg dark:ring-odp-borderStrong'
-      }`}
+      }`;
+
+  return (
+    <div
+      role="group"
+      aria-label={collapsed ? `스플릿 탭 그룹 (접힘, ${tabCount}개)` : '스플릿 탭 그룹'}
+      aria-expanded={!collapsed}
+      data-tab-group=""
+      data-tab-group-collapsed={collapsed ? '' : undefined}
+      className={shellClass}
       onContextMenu={(e) => {
         const target = e.target as HTMLElement | null;
         if (target?.closest?.('[role="tab"]')) return;
@@ -685,7 +709,43 @@ function WorkspaceTabGroupChrome({
           레이아웃 조절…
         </AdaptiveMenuItem>
       </AdaptiveContextMenu>
-      {children}
+      {collapsed ? (
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <button
+              type="button"
+              data-tab-group-collapsed-trigger=""
+              aria-label={`스플릿 탭 펼치기: ${summaryLabel}`}
+              className="flex min-w-0 max-w-[8.5rem] flex-1 items-center gap-1 self-stretch rounded-md px-1.5 text-left text-[11px] font-medium text-gray-700 hover:bg-white/50 dark:text-odp-fg dark:hover:bg-odp-focusBg/60"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onExpand();
+              }}
+            >
+              <Columns2 size={12} className="shrink-0 opacity-70" aria-hidden />
+              <span className="min-w-0 flex-1 truncate">{summaryLabel}</span>
+              {tabCount > 1 ? (
+                <span className="shrink-0 tabular-nums text-[10px] text-gray-500 dark:text-odp-muted">
+                  {tabCount}
+                </span>
+              ) : null}
+            </button>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content
+              side="bottom"
+              sideOffset={6}
+              className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong"
+            >
+              스플릿 탭 {tabCount}개 · 클릭하여 펼치기
+              <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      ) : (
+        children
+      )}
     </div>
   );
 }
@@ -742,7 +802,18 @@ export default function WorkspaceTabBar({
   const [layoutModalOpen, setLayoutModalOpen] = useState(false);
   const showGroups = Boolean(tabGroups && tabGroups.length > 1);
   const leafCount = paneLayout ? countLeaves(paneLayout) : 1;
-  const canAddPane = splitDragEnabled && leafCount < WORKSPACE_PANE_SOFT_CAP;
+  const [paneSoftCap, setPaneSoftCap] = useState(() => loadWorkspacePaneSoftCap());
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const detail = (event as CustomEvent<{ softCap?: number }>).detail;
+      setPaneSoftCap(detail?.softCap ?? loadWorkspacePaneSoftCap());
+    };
+    window.addEventListener(WORKSPACE_PANE_SOFT_CAP_CHANGED_EVENT, sync);
+    return () => {
+      window.removeEventListener(WORKSPACE_PANE_SOFT_CAP_CHANGED_EVENT, sync);
+    };
+  }, []);
+  const canAddPane = splitDragEnabled && leafCount < paneSoftCap;
   const orphanTabs = useMemo(() => {
     if (!showGroups || !paneLayout) return [] as WorkspaceTab[];
     const orphanIds = new Set(listOrphanTabIds(tabs.map((t) => t.id), paneLayout));
@@ -759,6 +830,31 @@ export default function WorkspaceTabBar({
     }
     return out;
   }, [showGroups, tabGroups, byId]);
+
+  const splitGroupFocused = Boolean(
+    showGroups &&
+      paneLayout &&
+      typeof activeId === 'string' &&
+      findLeafContainingTab(paneLayout, activeId),
+  );
+
+  const splitGroupSummary = useMemo(() => {
+    if (!showGroups || !tabGroups?.length || !paneLayout) {
+      return { label: '스플릿', expandId: null as string | null };
+    }
+    const focusedGroup = tabGroups.find((g) => g.focused) ?? tabGroups[0];
+    if (!focusedGroup) return { label: '스플릿', expandId: null as string | null };
+    const leaf = findLeaf(paneLayout, focusedGroup.leafId);
+    const expandId =
+      (leaf?.activeId && focusedGroup.tabIds.includes(leaf.activeId)
+        ? leaf.activeId
+        : focusedGroup.tabIds[0]) ?? null;
+    const summaryTab = expandId ? byId.get(expandId) : null;
+    return {
+      label: summaryTab ? tabDisplayTitle(summaryTab) : '스플릿',
+      expandId,
+    };
+  }, [showGroups, tabGroups, paneLayout, byId]);
 
   useHorizontalOverflowScroll(tabListEl, orderedTabs.length > 0);
 
@@ -852,6 +948,13 @@ export default function WorkspaceTabBar({
     return Boolean(host && host.tabIds.length > 1);
   };
 
+  // Collapse the split strip when focus is outside it (orphan / other); expand while dragging.
+  const splitGroupCollapsed = showGroups && !splitGroupFocused && !activeDrag;
+
+  const expandSplitGroup = () => {
+    if (splitGroupSummary.expandId) onActivate(splitGroupSummary.expandId);
+  };
+
   const renderTab = (tab: WorkspaceTab) => (
     <WorkspaceTabWithMenu
       key={tab.id}
@@ -874,7 +977,11 @@ export default function WorkspaceTabBar({
       {paneLayout && onApplyPaneLayout ? (
         <GroupJoinDroppable>
           <WorkspaceTabGroupChrome
-            focused={tabGroups.some((g) => g.focused)}
+            focused={splitGroupFocused}
+            collapsed={splitGroupCollapsed}
+            summaryLabel={splitGroupSummary.label}
+            tabCount={groupedTabs.length}
+            onExpand={expandSplitGroup}
             isMobileLayout={isMobileLayout}
             mobileContextMenu={mobileContextMenu}
             onOpenLayoutEditor={() => setLayoutModalOpen(true)}
@@ -886,14 +993,51 @@ export default function WorkspaceTabBar({
         <GroupJoinDroppable>
           <div
             role="group"
-            aria-label="스플릿 탭 그룹"
-            className={`flex h-full shrink-0 items-stretch gap-0.5 self-stretch rounded-t-lg px-1 ${
-              tabGroups.some((g) => g.focused)
-                ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
-                : 'bg-gray-300/90 ring-1 ring-gray-400/50 dark:bg-odp-bg dark:ring-odp-borderStrong'
-            }`}
+            aria-label={
+              splitGroupCollapsed
+                ? `스플릿 탭 그룹 (접힘, ${groupedTabs.length}개)`
+                : '스플릿 탭 그룹'
+            }
+            aria-expanded={!splitGroupCollapsed}
+            data-tab-group=""
+            data-tab-group-collapsed={splitGroupCollapsed ? '' : undefined}
+            className={
+              splitGroupCollapsed
+                ? `flex h-full max-w-[9.5rem] shrink-0 items-stretch self-stretch rounded-t-lg px-0.5 ${
+                    splitGroupFocused
+                      ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
+                      : 'bg-gray-300/80 ring-1 ring-gray-400/40 dark:bg-odp-bg dark:ring-odp-borderSoft'
+                  }`
+                : `flex h-full shrink-0 items-stretch gap-0.5 self-stretch rounded-t-lg px-1 ${
+                    splitGroupFocused
+                      ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
+                      : 'bg-gray-300/90 ring-1 ring-gray-400/50 dark:bg-odp-bg dark:ring-odp-borderStrong'
+                  }`
+            }
           >
-            {groupedTabs.map(renderTab)}
+            {splitGroupCollapsed ? (
+              <button
+                type="button"
+                data-tab-group-collapsed-trigger=""
+                aria-label={`스플릿 탭 펼치기: ${splitGroupSummary.label}`}
+                className="flex min-w-0 max-w-[8.5rem] flex-1 items-center gap-1 self-stretch rounded-md px-1.5 text-left text-[11px] font-medium text-gray-700 hover:bg-white/50 dark:text-odp-fg dark:hover:bg-odp-focusBg/60"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  expandSplitGroup();
+                }}
+              >
+                <Columns2 size={12} className="shrink-0 opacity-70" aria-hidden />
+                <span className="min-w-0 flex-1 truncate">{splitGroupSummary.label}</span>
+                {groupedTabs.length > 1 ? (
+                  <span className="shrink-0 tabular-nums text-[10px] text-gray-500 dark:text-odp-muted">
+                    {groupedTabs.length}
+                  </span>
+                ) : null}
+              </button>
+            ) : (
+              groupedTabs.map(renderTab)
+            )}
           </div>
         </GroupJoinDroppable>
       )}

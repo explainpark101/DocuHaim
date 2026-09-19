@@ -364,6 +364,23 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     keywords: ['네비게이션', 'navigation', 'vim', 'alt+vim', '키보드'],
   },
   {
+    id: 'settings-workspace-pane-soft-cap',
+    title: '설정 · 분할 페인 개수 상한',
+    description: '한 워크스페이스에서 동시에 열 수 있는 분할 페인 최대 개수',
+    path: '/settings#settings-workspace-pane-soft-cap',
+    keywords: [
+      'split',
+      'pane',
+      'soft cap',
+      '분할',
+      '페인',
+      '상한',
+      '탭',
+      'tabs',
+      'workspace',
+    ],
+  },
+  {
     id: 'settings-display',
     title: '설정 · 표시 옵션',
     description: '숨김 폴더·트리 호버 펼침 등',

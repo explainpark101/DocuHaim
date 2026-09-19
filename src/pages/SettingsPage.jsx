@@ -39,7 +39,9 @@ import {
   saveWorkspaceTabsAutoSaveMode,
   WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
   WORKSPACE_TABS_AUTO_SAVE_OPTIONS,
+  requestFocusWorkspacePaneSoftCapSetting,
 } from '@/utils/workspaceTabsSettings';
+import WorkspacePaneSoftCapSettings from '@/components/settings/WorkspacePaneSoftCapSettings';
 import {
   getComposerHelperTextVisible,
 } from '@/utils/chatWithMyself';
@@ -249,6 +251,9 @@ export default function SettingsPage({
     if (hash === 'settings-local') setLocalConnOpen(true);
     if (hash === 'settings-imgbb') setImgbbConnOpen(true);
     if (hash === 'settings-mlx-vlm' || hash === 'settings-llama-cpp') dispatchSettingsSectionOpen(hash);
+    if (hash === 'settings-workspace-pane-soft-cap') {
+      window.setTimeout(() => requestFocusWorkspacePaneSoftCapSetting(), 100);
+    }
     const groupId = findSettingsGroupIdForSection(hash);
     if (groupId) setGroupOpen((prev) => ({ ...prev, [groupId]: true }));
     const scrollId = resolveSettingsScrollTarget(hash);
@@ -1473,6 +1478,7 @@ export default function SettingsPage({
                     );
                   })}
                 </RadioGroup.Root>
+                <WorkspacePaneSoftCapSettings />
               </div>
             </SettingsCollapsibleContent>
           </div>

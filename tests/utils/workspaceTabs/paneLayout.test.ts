@@ -13,29 +13,35 @@ import {
   splitLeaf,
   syncLayoutPreservingOrphansWhenSplit,
   syncLayoutWithTabs,
+  type SplitLeafResult,
 } from '@/utils/workspaceTabs/paneLayout';
+
+function expectSplitOk(result: SplitLeafResult) {
+  expect(result.ok).toBe(true);
+  if (!result.ok) throw new Error(result.reason);
+  return result;
+}
 
 describe('paneLayout', () => {
   it('splits a leaf to the right and places the tab in the new leaf', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
-    const result = splitLeaf(leaf, leaf.id, 'right', 'b');
-    expect(result).not.toBeNull();
-    expect(countLeaves(result!.layout)).toBe(2);
-    const leaves = collectLeaves(result!.layout);
+    const result = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'b'));
+    expect(countLeaves(result.layout)).toBe(2);
+    const leaves = collectLeaves(result.layout);
     expect(leaves[0]?.tabIds).toEqual(['a']);
     expect(leaves[1]?.tabIds).toEqual(['b']);
-    expect(result!.focusedPaneId).toBe(leaves[1]?.id);
+    expect(result.focusedPaneId).toBe(leaves[1]?.id);
   });
 
   it('groups tab ids by leaf order when flattened', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'b'));
     expect(flattenTabIdsFromLayout(split.layout)).toEqual(['a', 'b']);
   });
 
   it('collapses empty leaf after remove', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'b'));
     const after = removeTabFromLayout(split.layout, 'b');
     expect(countLeaves(after)).toBe(1);
     expect(flattenTabIdsFromLayout(after)).toEqual(['a']);
@@ -43,7 +49,7 @@ describe('paneLayout', () => {
 
   it('moves a tab between leaves', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'b'));
     const leftId = collectLeaves(split.layout)[0]!.id;
     const rightId = collectLeaves(split.layout)[1]!.id;
     const withC = addTabToFocusedLeaf(split.layout, leftId, 'c', { activate: false });
@@ -66,19 +72,40 @@ describe('paneLayout', () => {
     expect(collectLeaves(next.layout)[0]?.activeId).toBe('b');
   });
 
-  it('peels non-active tabs into standalone leaves when splitting', () => {
+  it('keeps sibling tabs in the host leaf when splitting', () => {
     const leaf = createSingleLeafLayout(['a', 'b', 'c'], 'b');
-    const result = splitLeaf(leaf, leaf.id, 'right', 'c');
-    expect(result).not.toBeNull();
-    const leaves = collectLeaves(result!.layout);
-    expect(leaves).toHaveLength(3);
-    expect(leaves.map((l) => l.tabIds)).toEqual([['a'], ['b'], ['c']]);
-    expect(flattenTabIdsFromLayout(result!.layout)).toEqual(['a', 'b', 'c']);
+    const result = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'c'));
+    const leaves = collectLeaves(result.layout);
+    expect(leaves).toHaveLength(2);
+    expect(leaves[0]?.tabIds).toEqual(['a', 'b']);
+    expect(leaves[1]?.tabIds).toEqual(['c']);
+    expect(flattenTabIdsFromLayout(result.layout)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('allows nested splits up to the soft cap', () => {
+    const cap = 4;
+    const leaf = createSingleLeafLayout(['a', 'b', 'c', 'd'], 'a');
+    const s1 = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'b', cap));
+    expect(countLeaves(s1.layout)).toBe(2);
+    const hostA = collectLeaves(s1.layout).find((l) => l.tabIds.includes('a'))!;
+    const s2 = expectSplitOk(splitLeaf(s1.layout, hostA.id, 'bottom', 'c', cap));
+    expect(countLeaves(s2.layout)).toBe(3);
+    const hostStillA = collectLeaves(s2.layout).find((l) => l.tabIds.includes('a'))!;
+    const s3 = expectSplitOk(splitLeaf(s2.layout, hostStillA.id, 'left', 'd', cap));
+    expect(countLeaves(s3.layout)).toBe(4);
+    const blocked = splitLeaf(
+      s3.layout,
+      collectLeaves(s3.layout)[0]!.id,
+      'right',
+      'a',
+      cap,
+    );
+    expect(blocked).toEqual({ ok: false, reason: 'soft-cap' });
   });
 
   it('prunes closed tabs without absorbing orphans while split', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'b'));
     const pruned = pruneLayoutToTabs(split.layout, ['a', 'b', 'orphan'], split.focusedPaneId);
     expect(countLeaves(pruned.layout)).toBe(2);
     expect(flattenTabIdsFromLayout(pruned.layout)).toEqual(['a', 'b']);
@@ -87,7 +114,7 @@ describe('paneLayout', () => {
 
   it('preserves orphans when syncing a split layout', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'b'));
     const synced = syncLayoutPreservingOrphansWhenSplit(
       split.layout,
       ['a', 'b', 'c'],
@@ -106,7 +133,7 @@ describe('paneLayout', () => {
 
   it('collapses a leaf into its sibling and keeps tabs', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
-    const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
+    const split = expectSplitOk(splitLeaf(leaf, leaf.id, 'right', 'b'));
     const rightId = collectLeaves(split.layout)[1]!.id;
     const collapsed = collapseLeafIntoSibling(split.layout, rightId);
     expect(collapsed).not.toBeNull();

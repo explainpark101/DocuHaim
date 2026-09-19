@@ -3,6 +3,7 @@ import { WorkspaceTabsContext } from '@/App/context/WorkspaceTabsContext';
 import { useWorkspaceTabs } from '@/utils/workspaceTabs/useWorkspaceTabs';
 import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
 import { useWorkspaceTabsDomain } from '@/App/hooks/useWorkspaceTabsDomain';
+import WorkspacePaneSoftCapModal from '@/components/shell/workspace/WorkspacePaneSoftCapModal';
 
 type Props = { children: ReactNode };
 
@@ -58,6 +59,13 @@ export function WorkspaceTabsProvider({ children }: Props) {
   );
 
   return (
-    <WorkspaceTabsContext.Provider value={value}>{children}</WorkspaceTabsContext.Provider>
+    <WorkspaceTabsContext.Provider value={value}>
+      {children}
+      <WorkspacePaneSoftCapModal
+        prompt={domain.paneSoftCapPrompt}
+        onCancel={domain.cancelPaneSoftCapPrompt}
+        onConfirm={domain.confirmPaneSoftCapPrompt}
+      />
+    </WorkspaceTabsContext.Provider>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
@@ -31,6 +31,7 @@ import {
   collapsePaneLeaf,
 } from '@/utils/workspaceTabs/appBridge';
 import {
+  countLeaves,
   findLeafContainingTab,
   flattenTabIdsFromLayout,
   resizeSplit,
@@ -52,11 +53,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { findFileTab } from '@/utils/workspaceTabs/appBridge';
 import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
 import {
+  loadWorkspacePaneSoftCap,
   loadWorkspaceTabsAutoSaveMode,
   WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
   type WorkspaceTabsAutoSaveMode,
 } from '@/utils/workspaceTabsSettings';
-import { useEffect } from 'react';
+import type { WorkspacePaneSoftCapPrompt } from '@/components/shell/workspace/WorkspacePaneSoftCapModal';
+
+type SoftCapPendingAction =
+  | { kind: 'drop'; tabId: string; leafId: string; zone: PaneSplitEdge | 'center' }
+  | { kind: 'split'; tabId: string; edge: PaneSplitEdge };
 
 /**
  * Owns workspace tab activate/close/open/reorder bodies.
@@ -99,6 +105,10 @@ export function useWorkspaceTabsDomain({
   editedFileNameRef.current = editedFileName;
   const setWorkspaceTabs = tabsApi.setState;
   const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
+  const [paneSoftCapPrompt, setPaneSoftCapPrompt] = useState<WorkspacePaneSoftCapPrompt | null>(
+    null,
+  );
+  const softCapPendingRef = useRef<SoftCapPendingAction | null>(null);
 
   useEffect(() => {
     const onAutoSaveMode = (event: Event) => {
@@ -110,6 +120,19 @@ export function useWorkspaceTabsDomain({
     return () => {
       window.removeEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
     };
+  }, []);
+
+  const openPaneSoftCapPrompt = useCallback((pending: SoftCapPendingAction, leafCount: number) => {
+    softCapPendingRef.current = pending;
+    setPaneSoftCapPrompt({
+      leafCount,
+      currentCap: loadWorkspacePaneSoftCap(),
+    });
+  }, []);
+
+  const cancelPaneSoftCapPrompt = useCallback(() => {
+    softCapPendingRef.current = null;
+    setPaneSoftCapPrompt(null);
   }, []);
 
   const isChatRoute =
@@ -572,15 +595,23 @@ export function useWorkspaceTabsDomain({
         next = moveTabIntoLeaf(prev, tabId, leafId);
       } else {
         const split = splitTabToEdge(prev, leafId, zone, tabId);
-        if (!split) return false;
-        next = split;
+        if (!split.ok) {
+          if (split.reason === 'soft-cap') {
+            openPaneSoftCapPrompt(
+              { kind: 'drop', tabId, leafId, zone },
+              countLeaves(prev.layout),
+            );
+          }
+          return false;
+        }
+        next = split.state;
       }
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
       activateWorkspaceTab(tabId, { navigateUrl: true });
       return true;
     },
-    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+    [activateWorkspaceTab, openPaneSoftCapPrompt, setWorkspaceTabs, workspaceTabsRef],
   );
 
   const splitWorkspaceTabToEdge = useCallback(
@@ -592,13 +623,33 @@ export function useWorkspaceTabsDomain({
       // Need another tab in the host leaf or the empty remnant collapses back.
       if (!host || host.tabIds.length <= 1) return false;
       const split = splitTabToEdge(prev, leafId, edge, tabId);
-      if (!split) return false;
-      workspaceTabsRef.current = split;
-      setWorkspaceTabs(split);
+      if (!split.ok) {
+        if (split.reason === 'soft-cap') {
+          openPaneSoftCapPrompt({ kind: 'split', tabId, edge }, countLeaves(prev.layout));
+        }
+        return false;
+      }
+      workspaceTabsRef.current = split.state;
+      setWorkspaceTabs(split.state);
       activateWorkspaceTab(tabId, { navigateUrl: true });
       return true;
     },
-    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+    [activateWorkspaceTab, openPaneSoftCapPrompt, setWorkspaceTabs, workspaceTabsRef],
+  );
+
+  const confirmPaneSoftCapPrompt = useCallback(
+    (_nextCap: number) => {
+      const pending = softCapPendingRef.current;
+      softCapPendingRef.current = null;
+      setPaneSoftCapPrompt(null);
+      if (!pending) return;
+      if (pending.kind === 'drop') {
+        handleWorkspacePaneDrop(pending.tabId, pending.leafId, pending.zone);
+        return;
+      }
+      splitWorkspaceTabToEdge(pending.tabId, pending.edge);
+    },
+    [handleWorkspacePaneDrop, splitWorkspaceTabToEdge],
   );
 
   const applyWorkspacePaneLayout = useCallback(
@@ -705,5 +756,8 @@ export function useWorkspaceTabsDomain({
     collapseWorkspacePane,
     openExportPdfInFocusedPane,
     clearExportPdfInFocusedPane,
+    paneSoftCapPrompt,
+    cancelPaneSoftCapPrompt,
+    confirmPaneSoftCapPrompt,
   };
 }
