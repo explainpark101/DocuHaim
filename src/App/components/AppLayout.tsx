@@ -258,6 +258,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
   const focusWorkspacePane = tabsCtx.focusWorkspacePane;
   const resizeWorkspaceSplit = tabsCtx.resizeWorkspaceSplit;
+  const finishResizeWorkspaceSplit = tabsCtx.finishResizeWorkspaceSplit;
   const handleWorkspacePaneDrop = tabsCtx.handleWorkspacePaneDrop;
   const splitWorkspaceTabToEdge = tabsCtx.splitWorkspaceTabToEdge;
   const applyWorkspacePaneLayout = tabsCtx.applyWorkspacePaneLayout;
@@ -321,14 +322,15 @@ export function AppLayout({ children }: { children?: ReactNode }) {
       if (!firstId) return;
       if (!workspaceTabsRef.current.tabs.some((t) => t.id === firstId)) return;
 
-      handleWorkspacePaneDrop(firstId, leafId, zone);
+      // Sidebar "open here": center joins into the leaf (never swaps panes).
+      handleWorkspacePaneDrop(firstId, leafId, zone, { centerBehavior: 'join' });
       const host = findLeafContainingTab(workspaceTabsRef.current.layout, firstId);
       const joinLeafId = host?.id ?? leafId;
       for (let i = 1; i < openedTabIds.length; i++) {
         const id = openedTabIds[i];
         if (!id) continue;
         if (!workspaceTabsRef.current.tabs.some((t) => t.id === id)) continue;
-        handleWorkspacePaneDrop(id, joinLeafId, 'center');
+        handleWorkspacePaneDrop(id, joinLeafId, 'center', { centerBehavior: 'join' });
       }
     },
     [
@@ -714,6 +716,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                   splitDragEnabled={workspaceTabsEnabled && !isMobile}
                   onFocusPane={focusWorkspacePane}
                   onResizeSplit={resizeWorkspaceSplit}
+                  onResizeSplitEnd={finishResizeWorkspaceSplit}
                   onPaneDrop={handleWorkspacePaneDrop}
                   {...(workspaceTabsEnabled && !isMobile
                     ? {

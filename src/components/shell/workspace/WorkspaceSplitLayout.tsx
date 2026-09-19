@@ -1,10 +1,18 @@
-import { useCallback, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import type { PaneNode, PaneSplit } from '@/utils/workspaceTabs/paneLayout';
 import {
   isPaneLeaf,
-  resizeSplit,
   PANE_SPLIT_RATIO_MAX,
   PANE_SPLIT_RATIO_MIN,
+  resizeSplit,
 } from '@/utils/workspaceTabs/paneLayout';
 import { lockPaneDragSelection } from '@/utils/workspaceTabs/paneDragSelectLock';
 import {
@@ -16,17 +24,36 @@ import {
   snapToNearest,
 } from '@/utils/workspaceTabs/paneBoundarySnap';
 import { PANE_LEAF_ATTR } from '@/utils/workspaceTabs/paneDropGeometry';
+import { collectLinkedAlignedSplitIds } from '@/utils/workspaceTabs/paneLayoutNormalize';
+
+export type PaneResizeOpts = {
+  /** Alt held — move linked spanning sibling sashes together. */
+  linkAligned?: boolean;
+};
 
 type WorkspaceSplitLayoutProps = {
   layout: PaneNode;
-  onResizeSplit: (splitId: string, ratio: number) => void;
+  onResizeSplit: (splitId: string, ratio: number, opts?: PaneResizeOpts) => void;
+  /** Called when a resize gesture ends; `snapped` means the sash hit a magnet. */
+  onResizeSplitEnd?: (
+    splitId: string,
+    snapped: boolean,
+    opts?: PaneResizeOpts,
+  ) => void;
   renderLeaf: (leafId: string) => ReactNode;
 };
 
+type DragVisual = {
+  activeId: string;
+  snapped: boolean;
+  linkedIds: readonly string[];
+};
+
+const PaneResizeDragContext = createContext<DragVisual | null>(null);
+
 /**
  * Map pointer to first-child flex ratio so the separator stays under the cursor.
- * Each split handle only updates its own split id (boundaries stay independent).
- * Nearby same-axis boundaries (other handles / outside leaf edges) magnetically snap.
+ * Nearby same-axis boundaries magnetically snap.
  */
 function ratioFromPointer(
   parent: HTMLElement,
@@ -72,19 +99,58 @@ function ratioFromPointer(
   return { ratio, snapped: snapped.snapped };
 }
 
+function handleClassName(
+  isRow: boolean,
+  visual: 'idle' | 'active' | 'snapped' | 'linked',
+): string {
+  const base = isRow
+    ? 'group relative z-10 w-2 shrink-0 cursor-col-resize touch-none select-none'
+    : 'group relative z-10 h-2 shrink-0 cursor-row-resize touch-none select-none';
+  switch (visual) {
+    case 'snapped':
+      // Snap magnet: brief yellow feedback (while held in snap range).
+      return `${base} bg-amber-400/70 dark:bg-amber-300/60`;
+    case 'linked':
+      return `${base} bg-blue-500/40 dark:bg-blue-400/35`;
+    case 'active':
+      return `${base} bg-blue-500/55 dark:bg-blue-400/50`;
+    default:
+      return `${base} bg-transparent hover:bg-blue-500/35 dark:hover:bg-blue-400/30`;
+  }
+}
+
 function SplitResizeHandle({
   splitId,
   direction,
   onRatioAtPointer,
   onDragEnd,
-  snapped,
 }: {
   splitId: string;
   direction: 'horizontal' | 'vertical';
-  onRatioAtPointer: (clientX: number, clientY: number, handle: HTMLElement) => void;
-  onDragEnd: () => void;
-  snapped: boolean;
+  onRatioAtPointer: (
+    clientX: number,
+    clientY: number,
+    handle: HTMLElement,
+    linkAligned: boolean,
+  ) => void;
+  onDragEnd: (linkAligned: boolean) => void;
 }) {
+  const dragVisual = useContext(PaneResizeDragContext);
+  const isActive = dragVisual?.activeId === splitId;
+  const isLinked =
+    Boolean(dragVisual) &&
+    !isActive &&
+    (dragVisual?.linkedIds.includes(splitId) ?? false);
+  const visual: 'idle' | 'active' | 'snapped' | 'linked' = isActive
+    ? dragVisual?.snapped
+      ? 'snapped'
+      : 'active'
+    : isLinked
+      ? dragVisual?.snapped
+        ? 'snapped'
+        : 'linked'
+      : 'idle';
+
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -95,7 +161,8 @@ function SplitResizeHandle({
     const prevCursor = document.body.style.cursor;
     document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
 
-    onRatioAtPointer(e.clientX, e.clientY, handle);
+    let lastLinkAligned = e.altKey;
+    onRatioAtPointer(e.clientX, e.clientY, handle, lastLinkAligned);
 
     const onMove = (ev: PointerEvent) => {
       ev.preventDefault();
@@ -104,7 +171,8 @@ function SplitResizeHandle({
       } catch {
         // ignore
       }
-      onRatioAtPointer(ev.clientX, ev.clientY, handle);
+      lastLinkAligned = ev.altKey;
+      onRatioAtPointer(ev.clientX, ev.clientY, handle, lastLinkAligned);
     };
 
     const onUp = () => {
@@ -113,7 +181,7 @@ function SplitResizeHandle({
       window.removeEventListener('pointercancel', onUp);
       unlockSelection();
       document.body.style.cursor = prevCursor;
-      onDragEnd();
+      onDragEnd(lastLinkAligned);
     };
 
     window.addEventListener('pointermove', onMove);
@@ -131,20 +199,9 @@ function SplitResizeHandle({
         [PANE_SPLIT_HANDLE_ATTR]: splitId,
         [PANE_SPLIT_DIR_ATTR]: direction,
       }}
-      data-pane-split-snapped={snapped ? '1' : undefined}
-      className={
-        isRow
-          ? `group relative z-10 w-2 shrink-0 cursor-col-resize touch-none select-none ${
-              snapped
-                ? 'bg-blue-500/55 dark:bg-blue-400/50'
-                : 'bg-transparent hover:bg-blue-500/35 dark:hover:bg-blue-400/30'
-            }`
-          : `group relative z-10 h-2 shrink-0 cursor-row-resize touch-none select-none ${
-              snapped
-                ? 'bg-blue-500/55 dark:bg-blue-400/50'
-                : 'bg-transparent hover:bg-blue-500/35 dark:hover:bg-blue-400/30'
-            }`
-      }
+      data-pane-split-snapped={visual === 'snapped' ? '1' : undefined}
+      data-pane-split-linked={isLinked || (isActive && (dragVisual?.linkedIds.length ?? 0) > 1) ? '1' : undefined}
+      className={handleClassName(isRow, visual)}
       onPointerDown={onPointerDown}
     />
   );
@@ -152,17 +209,28 @@ function SplitResizeHandle({
 
 function SplitNode({
   node,
+  layoutRoot,
   onResizeSplit,
+  onResizeSplitEnd,
+  onDragVisual,
   renderLeaf,
 }: {
   node: PaneSplit;
-  onResizeSplit: (splitId: string, ratio: number) => void;
+  layoutRoot: PaneNode;
+  onResizeSplit: (splitId: string, ratio: number, opts?: PaneResizeOpts) => void;
+  onResizeSplitEnd?: (
+    splitId: string,
+    snapped: boolean,
+    opts?: PaneResizeOpts,
+  ) => void;
+  onDragVisual: (visual: DragVisual | null) => void;
   renderLeaf: (leafId: string) => ReactNode;
 }) {
-  const [snapped, setSnapped] = useState(false);
+  const snappedRef = useRef(false);
+  const linkAlignedRef = useRef(false);
 
   const handleRatioAtPointer = useCallback(
-    (clientX: number, clientY: number, handle: HTMLElement) => {
+    (clientX: number, clientY: number, handle: HTMLElement, linkAligned: boolean) => {
       const parent = handle.parentElement;
       if (!parent) return;
       const { ratio, snapped: isSnapped } = ratioFromPointer(
@@ -172,16 +240,31 @@ function SplitNode({
         clientX,
         clientY,
       );
-      setSnapped(isSnapped);
-      // Only this split's ratio changes — other boundaries stay independent.
-      onResizeSplit(node.id, ratio);
+      snappedRef.current = isSnapped;
+      linkAlignedRef.current = linkAligned;
+      const linkedIds = linkAligned
+        ? collectLinkedAlignedSplitIds(layoutRoot, node.id)
+        : [node.id];
+      onDragVisual({
+        activeId: node.id,
+        snapped: isSnapped,
+        linkedIds,
+      });
+      onResizeSplit(node.id, ratio, { linkAligned });
     },
-    [node.direction, node.id, onResizeSplit],
+    [layoutRoot, node.direction, node.id, onDragVisual, onResizeSplit],
   );
 
-  const clearSnapped = useCallback(() => {
-    setSnapped(false);
-  }, []);
+  const handleDragEnd = useCallback(
+    (linkAligned: boolean) => {
+      const wasSnapped = snappedRef.current;
+      snappedRef.current = false;
+      linkAlignedRef.current = false;
+      onDragVisual(null);
+      onResizeSplitEnd?.(node.id, wasSnapped, { linkAligned });
+    },
+    [node.id, onDragVisual, onResizeSplitEnd],
+  );
 
   const isRow = node.direction === 'horizontal';
   const firstFlex = Math.max(PANE_SPLIT_RATIO_MIN, Math.min(PANE_SPLIT_RATIO_MAX, node.ratio));
@@ -197,9 +280,12 @@ function SplitNode({
         className="flex min-h-0 min-w-0 flex-col overflow-hidden"
         style={{ flex: `${firstFlex} 1 0%` }}
       >
-        <WorkspaceSplitLayout
+        <SplitLayoutBranch
           layout={node.children[0]}
+          layoutRoot={layoutRoot}
           onResizeSplit={onResizeSplit}
+          {...(onResizeSplitEnd ? { onResizeSplitEnd } : {})}
+          onDragVisual={onDragVisual}
           renderLeaf={renderLeaf}
         />
       </div>
@@ -207,16 +293,18 @@ function SplitNode({
         splitId={node.id}
         direction={node.direction}
         onRatioAtPointer={handleRatioAtPointer}
-        onDragEnd={clearSnapped}
-        snapped={snapped}
+        onDragEnd={handleDragEnd}
       />
       <div
         className="flex min-h-0 min-w-0 flex-col overflow-hidden"
         style={{ flex: `${secondFlex} 1 0%` }}
       >
-        <WorkspaceSplitLayout
+        <SplitLayoutBranch
           layout={node.children[1]}
+          layoutRoot={layoutRoot}
           onResizeSplit={onResizeSplit}
+          {...(onResizeSplitEnd ? { onResizeSplitEnd } : {})}
+          onDragVisual={onDragVisual}
           renderLeaf={renderLeaf}
         />
       </div>
@@ -224,16 +312,25 @@ function SplitNode({
   );
 }
 
-/**
- * Recursive split content tree. Tab strip stays outside — only pane bodies here.
- * Each split node owns one independent resize boundary; nearby boundaries snap
- * when the pointer approaches (leaf-agnostic, whole workspace).
- */
-export default function WorkspaceSplitLayout({
+function SplitLayoutBranch({
   layout,
+  layoutRoot,
   onResizeSplit,
+  onResizeSplitEnd,
+  onDragVisual,
   renderLeaf,
-}: WorkspaceSplitLayoutProps) {
+}: {
+  layout: PaneNode;
+  layoutRoot: PaneNode;
+  onResizeSplit: (splitId: string, ratio: number, opts?: PaneResizeOpts) => void;
+  onResizeSplitEnd?: (
+    splitId: string,
+    snapped: boolean,
+    opts?: PaneResizeOpts,
+  ) => void;
+  onDragVisual: (visual: DragVisual | null) => void;
+  renderLeaf: (leafId: string) => ReactNode;
+}) {
   if (isPaneLeaf(layout)) {
     return (
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -242,7 +339,41 @@ export default function WorkspaceSplitLayout({
     );
   }
   return (
-    <SplitNode node={layout} onResizeSplit={onResizeSplit} renderLeaf={renderLeaf} />
+    <SplitNode
+      node={layout}
+      layoutRoot={layoutRoot}
+      onResizeSplit={onResizeSplit}
+      {...(onResizeSplitEnd ? { onResizeSplitEnd } : {})}
+      onDragVisual={onDragVisual}
+      renderLeaf={renderLeaf}
+    />
+  );
+}
+
+/**
+ * Recursive split content tree. Tab strip stays outside — only pane bodies here.
+ * Each split node owns one independent resize boundary; Alt links spanning
+ * siblings; nearby boundaries snap (yellow while magnetized).
+ */
+export default function WorkspaceSplitLayout({
+  layout,
+  onResizeSplit,
+  onResizeSplitEnd,
+  renderLeaf,
+}: WorkspaceSplitLayoutProps) {
+  const [dragVisual, setDragVisual] = useState<DragVisual | null>(null);
+
+  return (
+    <PaneResizeDragContext.Provider value={dragVisual}>
+      <SplitLayoutBranch
+        layout={layout}
+        layoutRoot={layout}
+        onResizeSplit={onResizeSplit}
+        {...(onResizeSplitEnd ? { onResizeSplitEnd } : {})}
+        onDragVisual={setDragVisual}
+        renderLeaf={renderLeaf}
+      />
+    </PaneResizeDragContext.Provider>
   );
 }
 

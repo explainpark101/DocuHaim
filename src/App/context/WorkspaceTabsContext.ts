@@ -18,6 +18,7 @@ export type WorkspaceTabsCtxValue = ReturnType<typeof useWorkspaceTabs> & {
   cycleWorkspaceTab: (...args: any[]) => any;
   focusWorkspacePane: (...args: any[]) => any;
   resizeWorkspaceSplit: (...args: any[]) => any;
+  finishResizeWorkspaceSplit: (...args: any[]) => any;
   handleWorkspacePaneDrop: (...args: any[]) => any;
   splitWorkspaceTabToEdge: (...args: any[]) => any;
   applyWorkspacePaneLayout: (...args: any[]) => any;

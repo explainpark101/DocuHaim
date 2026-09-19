@@ -67,7 +67,8 @@ import { vibrateLongPressAction } from '@/utils/hapticFeedback';
 import { PRESSABLE_CARD_MENU_MS } from '@/components/chatWithMyself/usePressableCardMenu';
 import { restrictToHorizontalAxis } from '@/utils/workspace/restrictToHorizontalAxis';
 import {
-  hitTestPaneDropAt,
+  getWorkspaceTabDrag,
+  resolvePaneDropForCommit,
   setWorkspaceTabDrag,
   updateWorkspaceTabDragPoint,
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
@@ -895,19 +896,20 @@ export default function WorkspaceTabBar({
     const { active, over } = event;
     const from = String(active.id);
     const translated = event.active.rect.current.translated;
-    const cx = translated ? translated.left + translated.width / 2 : 0;
-    const cy = translated ? translated.top + translated.height / 2 : 0;
+    const snap = getWorkspaceTabDrag();
+    const cx = snap?.clientX ?? (translated ? translated.left + translated.width / 2 : 0);
+    const cy = snap?.clientY ?? (translated ? translated.top + translated.height / 2 : 0);
+    // Commit the zone the overlay last showed — before tear-down resets hysteresis.
+    const hit = resolvePaneDropForCommit(cx, cy);
     clearActiveDrag();
 
-    if (splitDragEnabled && onPaneDrop) {
-      const hit = hitTestPaneDropAt(cx, cy);
+    if (splitDragEnabled && onPaneDrop && hit) {
       if (
-        hit &&
-        (hit.zone === 'left' ||
-          hit.zone === 'right' ||
-          hit.zone === 'top' ||
-          hit.zone === 'bottom' ||
-          hit.zone === 'center')
+        hit.zone === 'left' ||
+        hit.zone === 'right' ||
+        hit.zone === 'top' ||
+        hit.zone === 'bottom' ||
+        hit.zone === 'center'
       ) {
         if (onPaneDrop(from, hit.leafId, hit.zone)) return;
       }

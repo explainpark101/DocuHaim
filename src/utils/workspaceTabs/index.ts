@@ -56,6 +56,17 @@ export {
   splitLeaf,
 } from '@/utils/workspaceTabs/paneLayout';
 export {
+  PANE_ALIGN_RATIO_EPSILON,
+  collectLinkedAlignedSplitIds,
+  findOrthogonalSiblingSplit,
+  findSplit,
+  normalizeAfterSnappedResize,
+  normalizeAlignedTwoByTwo,
+  resizeSplitLinked,
+  syncSiblingSplitRatio,
+  tryTransposeAlignedTwoByTwo,
+} from '@/utils/workspaceTabs/paneLayoutNormalize';
+export {
   anyFileTabDirty,
   createChatTab,
   createContentSearchTab,
@@ -101,6 +112,7 @@ export {
   retargetFileTabsByPathPrefix,
   setFocusedPane,
   splitTabToEdge,
+  swapPanesOrMoveTabToCenter,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
 export type { RetargetFileTabInput, OpenFileTabInput, SplitTabToEdgeResult } from '@/utils/workspaceTabs/workspaceTabsStore';
 export {
