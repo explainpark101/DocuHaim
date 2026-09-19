@@ -6,10 +6,13 @@ todos:
     content: Add PaneNode types + pure layout ops (split/move/collapse/resize) and extend WorkspaceTabsState
     status: pending
   - id: split-ui
-    content: WorkspaceSplitLayout + per-leaf tab bars; convert WorkspaceMainPanels to tsx; titlebar single-leaf only
+    content: WorkspaceSplitLayout (content only) + single tab list with leaf groups; convert WorkspaceMainPanels to tsx
+    status: pending
+  - id: tab-groups
+    content: "Tab list: contiguous visual groups per leaf; reorder within group; drag between groups moves leaf membership"
     status: pending
   - id: dnd-edges
-    content: "Extend tab DnD: 4-edge drop zones, cross-leaf move, lift horizontal-only restriction while over panes"
+    content: "Extend tab DnD: 4-edge drop zones, cross-leaf move via group/list, lift horizontal-only restriction while over panes"
     status: pending
   - id: quiz-surface
     content: Per-tab/pane quiz vs edit surface so secondary panes work without global pathname
@@ -31,6 +34,7 @@ isProject: false
 - **Export PDF**: 새 탭 kind 아님. 노트 페인에서 Export PDF → **그 페인**에 `ExportPDFPage` 표시, **뒤로가기**면 같은 페인이 노트로 복귀 (`useHistoryOverlayBack`).
 - **대상 콘텐츠**: `.md` / `.quiz.md`(file 탭 + EditorPane/QuizPane), `chat`, 페인 내 export-pdf. settings/content-search 탭도 일반 탭으로 페인 이동은 허용.
 - **모바일/좁은 폭**: 스플릿 비활성 (단일 리프만).
+- **탭 리스트**: 스플릿되어도 **탭바는 하나**. 같은 리프(페인)에 속한 탭들은 리스트에서 **하나의 시각적 그룹**으로 묶인다 (리프별 개별 탭바 없음).
 
 ## Current constraints
 
@@ -50,12 +54,13 @@ flowchart TB
     focused[focusedPaneId]
   end
   subgraph ui [WorkspaceMainPanels]
-    split[WorkspaceSplitLayout]
-    leafA[PaneLeaf A tabbar plus content]
-    leafB[PaneLeaf B tabbar plus content]
+    tabList[Single WorkspaceTabBar with leaf groups]
+    split[WorkspaceSplitLayout content only]
+    leafA[PaneLeaf A content]
+    leafB[PaneLeaf B content]
   end
-  tabs --> leafA
-  tabs --> leafB
+  tabs --> tabList
+  layout --> tabList
   layout --> split
   split --> leafA
   split --> leafB
@@ -91,21 +96,22 @@ Extend `WorkspaceTabsState`:
 
 **Ops**: `splitLeaf(leafId, edge, tabId)`, `moveTabToLeaf`, `reorderInLeaf`, `setLeafActive`, `setFocusedPane`, `setLeafExportPdf`, `collapseEmptyLeaf`, `resizeSplit`.
 
-## UX / DnD
+## UX / DnD + tab groups
 
-1. Lift DnD: one `DndContext` wrapping tab bars + pane drop zones (or pointer drop detection outside horizontal-only sortable).
-2. While dragging a tab over a leaf content area, show **4 edge zones** (~20–25% edges). Center drop = move into that leaf’s tab list (activate). Edge drop = split that leaf in that direction and place the tab in the new leaf.
-3. Same-bar drop = existing reorder.
-4. Last tab leaving a leaf → collapse leaf into sibling (restore single pane when one leaf remains).
-5. Each leaf has its own `WorkspaceTabBar`. Tauri titlebar strip: **only when layout is a single leaf**; when split, tab bars render **inside each leaf** (inline).
+1. **Single tab strip** (inline or Tauri titlebar — same as today). When layout is one leaf, flat list (current look). When split, render **contiguous groups**: DFS/leaf order of the layout tree → each leaf’s `tabIds` as one cluster.
+2. **Group chrome**: wrap each multi-tab (or any leaf when split) cluster with a subtle shared background / border / gap so it reads as one unit; focused leaf’s group gets a stronger accent. Optional tiny split icon on the group — keep minimal.
+3. **Order**: `tabs[]` display order is derived from leaf membership (flatten leaf groups). Reorder **within a group** updates that leaf’s `tabIds`. Drop onto another group (or between groups) = `moveTabToLeaf`. Opening a new file adds to the **focused** leaf’s group.
+4. Lift DnD: one `DndContext` wrapping the single tab list + pane content drop zones.
+5. Drag over a leaf **content** area → **4 edge zones**. Edge drop = split that leaf and place the tab in the new leaf (new group appears in the strip). Center drop = move into that leaf’s group and activate.
+6. Last tab leaving a leaf → collapse leaf into sibling; groups merge back toward a flat list when only one leaf remains.
 
 ## Content per leaf
 
 Refactor [`WorkspaceMainPanels`](src/components/shell/workspace/WorkspaceMainPanels.jsx) → `.tsx`:
 
-- Render recursive `WorkspaceSplitLayout` (flex + drag handle; reuse patterns from [`useResizablePanelWidth.js`](src/hooks/useResizablePanelWidth.js) / sidebar resize).
-- Per leaf: tab bar + content host.
-- A tab’s panel is **visible if any leaf has it active** (same keep-alive instance shared — mount once under a portal/host keyed by tab id, or duplicate only for chat singleton carefully). Prefer **one keep-alive mount per tab id**, CSS-positioned into the focused/visible leaf slot via absolute fill of that leaf’s content box (or render into leaf when active there). Simplest robust approach: **render panel inside the leaf that currently owns/activates it**; when moving tabs between leaves, React remount risk — mitigate with stable keys + keep file buffer in tab state (already there). Chat/settings remain singletons: if shown in two leaves simultaneously, disallow second open (activate existing leaf) or only allow one leaf to hold the singleton id.
+- One `WorkspaceTabBar` above (or in titlebar) with **grouped** items; below it, recursive `WorkspaceSplitLayout` for **content only** (no per-leaf tab bars).
+- Resize handles between panes (reuse [`useResizablePanelWidth.js`](src/hooks/useResizablePanelWidth.js) patterns).
+- Render each tab’s panel inside the leaf that owns it (stable keys + tab-state buffers). Chat/settings singletons: only one leaf may hold the id; activating elsewhere focuses that leaf’s group.
 
 **File / quiz**: add per-tab `noteSurface: 'edit' | 'quiz'` (or derive from last focused URL for that tab) so QuizPane does not depend solely on global pathname. Focused leaf’s active file tab drives `navigate(/view|/quiz/...)`.
 
