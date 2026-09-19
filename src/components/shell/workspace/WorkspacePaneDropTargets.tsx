@@ -1,4 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
+import type { CSSProperties } from 'react';
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 
 export function paneDropId(leafId: string, zone: PaneSplitEdge | 'center'): string {
@@ -27,14 +28,32 @@ export function parsePaneDropId(
   return { leafId, zone };
 }
 
-/** Edge 30%, gutter 3% → inner start 33%. Corners stay empty (no overlap). */
-export const PANE_DROP_ZONE_POS: Record<PaneSplitEdge | 'center', string> = {
-  left: 'left-0 top-[33%] bottom-[33%] w-[30%]',
-  right: 'right-0 top-[33%] bottom-[33%] w-[30%]',
-  top: 'top-0 left-[33%] right-[33%] h-[30%]',
-  bottom: 'bottom-0 left-[33%] right-[33%] h-[30%]',
-  center: 'inset-[33%]',
-};
+/** Edge zone thickness as a percent of the pane. */
+export const PANE_DROP_EDGE_PCT = 40;
+
+/** Empty strip between edge and center zones (corners stay empty; no overlap). */
+export const PANE_DROP_GUTTER_PCT = 0;
+
+/** Distance from pane edge to center start / cross-axis inset for edge zones. */
+export const PANE_DROP_INNER_PCT = PANE_DROP_EDGE_PCT + PANE_DROP_GUTTER_PCT;
+
+/** Absolute layout for one drop zone, derived from the % constants above. */
+export function paneDropZoneStyle(zone: PaneSplitEdge | 'center'): CSSProperties {
+  const edge = `${PANE_DROP_EDGE_PCT}%`;
+  const inner = `${PANE_DROP_INNER_PCT}%`;
+  switch (zone) {
+    case 'left':
+      return { left: 0, top: inner, bottom: inner, width: edge };
+    case 'right':
+      return { right: 0, top: inner, bottom: inner, width: edge };
+    case 'top':
+      return { top: 0, left: inner, right: inner, height: edge };
+    case 'bottom':
+      return { bottom: 0, left: inner, right: inner, height: edge };
+    case 'center':
+      return { inset: inner };
+  }
+}
 
 function Zone({
   leafId,
@@ -47,7 +66,8 @@ function Zone({
   return (
     <div
       ref={setNodeRef}
-      className={`absolute ${PANE_DROP_ZONE_POS[zone]} ${
+      style={paneDropZoneStyle(zone)}
+      className={`absolute ${
         isOver ? 'bg-blue-500/60 ring-2 ring-inset ring-blue-400' : 'bg-blue-500/20'
       }`}
       data-pane-drop={paneDropId(leafId, zone)}

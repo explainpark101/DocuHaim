@@ -31,6 +31,8 @@ export type {
 } from '@/utils/workspaceTabs/paneLayout';
 export {
   WORKSPACE_PANE_SOFT_CAP,
+  WORKSPACE_TAB_GROUP_ZONE_ID,
+  WORKSPACE_TAB_ORPHAN_ZONE_ID,
   collectLeaves,
   countLeaves,
   createEmptyLeaf,
@@ -42,6 +44,10 @@ export {
   getFocusedLeafActiveId,
   isPaneLeaf,
   isPaneSplit,
+  listOrphanTabIds,
+  pruneLayoutToTabs,
+  syncLayoutPreservingOrphansWhenSplit,
+  syncLayoutWithTabs,
   toPersistedPaneNode,
   collapseLeafIntoSibling,
 } from '@/utils/workspaceTabs/paneLayout';
@@ -74,6 +80,7 @@ export {
   collapsePaneLeaf,
   emptyWorkspaceTabsState,
   evictForSoftCap,
+  extractTabToOrphan,
   findFileTab,
   getActiveFileTab,
   getActiveTab,

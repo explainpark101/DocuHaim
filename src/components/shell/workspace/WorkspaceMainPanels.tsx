@@ -1,4 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { X } from 'lucide-react';
+import { Tooltip } from 'radix-ui';
 import EditorPane from '@/components/EditorPane';
 import SettingsVaultDropHost from '@/components/shell/SettingsVaultDropHost';
 import WorkspaceTabBar, { type WorkspaceTabGroup } from '@/components/workspace/WorkspaceTabBar';
@@ -14,8 +16,10 @@ import {
   collectLeaves,
   countLeaves,
   findLeaf,
+  findLeafContainingTab,
   isFileTab,
   isPaneLeaf,
+  tabDisplayTitle,
   type FileWorkspaceTab,
   type PaneNode,
   type PaneSplitEdge,
@@ -210,6 +214,14 @@ export default function WorkspaceMainPanels({
 
   const leaves = useMemo(() => (layout ? collectLeaves(layout) : []), [layout]);
   const isSplit = layout != null && countLeaves(layout) > 1;
+  const activeIsOrphan =
+    Boolean(
+      isSplit &&
+        layout &&
+        typeof activeId === 'string' &&
+        !findLeafContainingTab(layout, activeId),
+    );
+  const showSplitPanes = Boolean(layout && isSplit && onResizeSplit && !activeIsOrphan);
   const singleLeafId = leaves[0]?.id ?? (layout && isPaneLeaf(layout) ? layout.id : null);
 
   const tabGroups: WorkspaceTabGroup[] | null = useMemo(() => {
@@ -419,7 +431,6 @@ export default function WorkspaceMainPanels({
       {...(onSplitTab ? { onSplitTab } : {})}
       paneLayout={layout}
       {...(onApplyPaneLayout ? { onApplyPaneLayout } : {})}
-      {...(onCollapsePane ? { onCollapsePane } : {})}
       {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
       isMobileLayout={isMobileLayout}
     />
@@ -431,16 +442,61 @@ export default function WorkspaceMainPanels({
     const leafActiveId = leaf.activeId;
     const exportPdfForTabId = leaf.exportPdfForTabId ?? null;
     const focused = leafId === focusedPaneId;
+    const leafActiveTab =
+      (leafActiveId && tabs.find((t) => t.id === leafActiveId)) ||
+      (leaf.tabIds[0] ? tabs.find((t) => t.id === leaf.tabIds[0]) : null) ||
+      null;
+    const paneTitle = leafActiveTab ? tabDisplayTitle(leafActiveTab) : '빈 페인';
 
     return (
       <div
-        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg ${
+        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white dark:bg-odp-surface ${
           focused
             ? 'ring-2 ring-inset ring-blue-500/45 dark:ring-blue-400/40'
             : ''
         }`}
         onPointerDownCapture={() => onFocusPane?.(leafId)}
       >
+        {onCollapsePane && isSplit ? (
+          <div
+            data-pane-chrome={leafId}
+            className="flex h-8 shrink-0 items-center gap-1 border-b border-gray-200 bg-gray-50 px-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+          >
+            <p className="min-w-0 flex-1 truncate px-1 text-xs font-medium text-gray-700 dark:text-odp-fg">
+              {paneTitle}
+            </p>
+            <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    type="button"
+                    aria-label="분할 끄기"
+                    data-pane-dismiss={leafId}
+                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-200/80 hover:text-gray-800 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-odp-fgStrong"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onCollapsePane(leafId);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <X size={15} strokeWidth={2} aria-hidden />
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="bottom"
+                    sideOffset={6}
+                    className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong"
+                  >
+                    분할 끄기
+                    <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+          </div>
+        ) : null}
         <WorkspacePaneDropOverlay
           leafId={leafId}
           visible={draggingTab && splitDragEnabled && !isMobileLayout}
@@ -510,7 +566,7 @@ export default function WorkspaceMainPanels({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {tabBarPlacement === 'inline' ? tabBar : null}
-      {layout && isSplit && onResizeSplit ? (
+      {showSplitPanes && layout && onResizeSplit ? (
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gray-300 p-1.5 dark:bg-black">
           <WorkspaceSplitLayout
             layout={layout}

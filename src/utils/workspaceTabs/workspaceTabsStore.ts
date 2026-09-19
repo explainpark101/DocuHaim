@@ -19,13 +19,14 @@ import {
   revokeFileTabObjectUrl,
 } from '@/utils/workspaceTabs/helpers';
 import {
-  addTabAsStandaloneLeaf,
   addTabToFocusedLeaf,
   collapseLeafIntoSibling,
+  findLeaf,
   findLeafContainingTab,
   flattenTabIdsFromLayout,
   getFocusedLeafActiveId,
   moveTabToLeaf,
+  pruneLayoutToTabs,
   removeTabFromLayout,
   reorderInLeaf,
   retargetTabIdInLayout,
@@ -34,8 +35,12 @@ import {
   splitLeaf,
   syncLayoutWithTabs,
   countLeaves,
+  WORKSPACE_TAB_GROUP_ZONE_ID,
+  WORKSPACE_TAB_ORPHAN_ZONE_ID,
   type PaneSplitEdge,
 } from '@/utils/workspaceTabs/paneLayout';
+
+export { WORKSPACE_TAB_GROUP_ZONE_ID, WORKSPACE_TAB_ORPHAN_ZONE_ID };
 
 export const emptyWorkspaceTabsState = (): WorkspaceTabsState => {
   const { layout, focusedPaneId } = defaultWorkspaceLayout();
@@ -47,9 +52,28 @@ export const emptyWorkspaceTabsState = (): WorkspaceTabsState => {
   };
 };
 
-function withSyncedActiveId(state: Omit<WorkspaceTabsState, 'activeId'> & { activeId?: string | null }): WorkspaceTabsState {
-  const activeId = getFocusedLeafActiveId(state.layout, state.focusedPaneId);
-  return { ...state, activeId };
+function withResolvedActiveId(state: {
+  tabs: WorkspaceTab[];
+  layout: PaneNode;
+  focusedPaneId: string;
+  activeId?: string | null;
+}): WorkspaceTabsState {
+  const tabIds = new Set(state.tabs.map((t) => t.id));
+  const preferred = state.activeId;
+  const preferredOk = typeof preferred === 'string' && tabIds.has(preferred);
+  const preferredInLayout =
+    preferredOk && Boolean(findLeafContainingTab(state.layout, preferred));
+  // Orphan (outside split group) keeps its own activeId; in-layout follows focused leaf.
+  const activeId =
+    preferredOk && !preferredInLayout
+      ? preferred
+      : getFocusedLeafActiveId(state.layout, state.focusedPaneId);
+  return {
+    tabs: state.tabs,
+    layout: state.layout,
+    focusedPaneId: state.focusedPaneId,
+    activeId,
+  };
 }
 
 function ensureLayout(state: {
@@ -59,11 +83,17 @@ function ensureLayout(state: {
   activeId?: string | null;
 }): WorkspaceTabsState {
   const tabIds = state.tabs.map((t) => t.id);
-  const synced = syncLayoutWithTabs(state.layout, tabIds, state.focusedPaneId);
-  return withSyncedActiveId({
+  // While split, allow tabs to live outside the pane tree (orphan / full-window).
+  // When unsplit, absorb everyone into the single leaf.
+  const synced =
+    countLeaves(state.layout) > 1
+      ? pruneLayoutToTabs(state.layout, tabIds, state.focusedPaneId)
+      : syncLayoutWithTabs(state.layout, tabIds, state.focusedPaneId);
+  return withResolvedActiveId({
     tabs: state.tabs,
     layout: synced.layout,
     focusedPaneId: synced.focusedPaneId,
+    ...(state.activeId !== undefined ? { activeId: state.activeId } : {}),
   });
 }
 
@@ -85,21 +115,29 @@ function touchActivate(tabs: WorkspaceTab[], id: string, now: number): Workspace
   });
 }
 
-/** Place a newly opened tab: into focused leaf when unsplit; own leaf when already split. */
+/** Place a newly opened tab. While split, leave it outside the pane tree (full window). */
 function placeNewTab(
   layout: PaneNode,
   focusedPaneId: string,
   tabId: string,
   opts?: { activate?: boolean },
-): { layout: PaneNode; focusedPaneId: string } {
+): { layout: PaneNode; focusedPaneId: string; activeId: string | null } {
   const activate = opts?.activate !== false;
   if (activate && countLeaves(layout) > 1) {
-    return addTabAsStandaloneLeaf(layout, focusedPaneId, tabId, {
-      activate: true,
-      side: 'before',
-    });
+    const stripped = removeTabFromLayout(layout, tabId);
+    const pruned = pruneLayoutToTabs(
+      stripped,
+      flattenTabIdsFromLayout(stripped).filter((id) => id !== tabId),
+      focusedPaneId,
+    );
+    return {
+      layout: pruned.layout,
+      focusedPaneId: pruned.focusedPaneId,
+      activeId: tabId,
+    };
   }
-  return addTabToFocusedLeaf(layout, focusedPaneId, tabId, { activate });
+  const placed = addTabToFocusedLeaf(layout, focusedPaneId, tabId, { activate });
+  return { ...placed, activeId: activate ? tabId : null };
 }
 
 function tabsOrderedByLayout(
@@ -108,9 +146,10 @@ function tabsOrderedByLayout(
 ): WorkspaceTab[] {
   const order = flattenTabIdsFromLayout(layout);
   const byId = new Map(tabs.map((t) => [t.id, t]));
+  const inLayout = new Set(order);
   const next = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
   for (const t of tabs) {
-    if (!order.includes(t.id)) next.push(t);
+    if (!inLayout.has(t.id)) next.push(t);
   }
   return next;
 }
@@ -158,30 +197,105 @@ export function evictForSoftCap(
   return { tabs: next, closed };
 }
 
-export function activateTab(state: WorkspaceTabsState, id: string, now = Date.now()): WorkspaceTabsState {
-  if (!state.tabs.some((t) => t.id === id)) return state;
-  const leaf = findLeafContainingTab(state.layout, id);
-  let layout = state.layout;
-  let focusedPaneId = state.focusedPaneId;
-  if (leaf) {
-    layout = setLeafActive(layout, leaf.id, id);
-    focusedPaneId = leaf.id;
-  } else {
-    const added = addTabToFocusedLeaf(layout, focusedPaneId, id, { activate: true });
-    layout = added.layout;
-    focusedPaneId = added.focusedPaneId;
+function reorderOrphanTabs(
+  tabs: WorkspaceTab[],
+  layout: PaneNode,
+  activeId: string,
+  overId: string,
+): WorkspaceTab[] {
+  const inLayout = new Set(flattenTabIdsFromLayout(layout));
+  const layoutOrdered = flattenTabIdsFromLayout(layout)
+    .map((id) => tabs.find((t) => t.id === id))
+    .filter(Boolean) as WorkspaceTab[];
+  const orphans = tabs.filter((t) => !inLayout.has(t.id));
+  const from = orphans.findIndex((t) => t.id === activeId);
+  const to = orphans.findIndex((t) => t.id === overId);
+  if (from < 0 || to < 0 || from === to) {
+    return tabsOrderedByLayout(tabs, layout);
   }
-  return ensureLayout({
-    tabs: touchActivate(state.tabs, id, now),
+  const nextOrphans = orphans.slice();
+  const [removed] = nextOrphans.splice(from, 1);
+  if (!removed) return tabsOrderedByLayout(tabs, layout);
+  nextOrphans.splice(to, 0, removed);
+  return [...layoutOrdered, ...nextOrphans];
+}
+
+/**
+ * Remove a tab from the split group so it becomes a full-window orphan.
+ * Keeps the remaining split layout intact when other leaves still have tabs.
+ */
+export function extractTabToOrphan(
+  state: WorkspaceTabsState,
+  id: string,
+  now = Date.now(),
+): WorkspaceTabsState {
+  if (!state.tabs.some((t) => t.id === id)) return state;
+  if (countLeaves(state.layout) <= 1) {
+    return activateTab(state, id, now);
+  }
+  const layout = removeTabFromLayout(state.layout, id);
+  const pruned = pruneLayoutToTabs(
     layout,
-    focusedPaneId,
+    flattenTabIdsFromLayout(layout),
+    state.focusedPaneId,
+  );
+  return ensureLayout({
+    tabs: touchActivate(tabsOrderedByLayout(state.tabs, pruned.layout), id, now),
+    layout: pruned.layout,
+    focusedPaneId: pruned.focusedPaneId,
+    activeId: id,
   });
 }
 
-export function setFocusedPane(state: WorkspaceTabsState, paneId: string): WorkspaceTabsState {
+export function activateTab(state: WorkspaceTabsState, id: string, now = Date.now()): WorkspaceTabsState {
+  if (!state.tabs.some((t) => t.id === id)) return state;
+  const leaf = findLeafContainingTab(state.layout, id);
+  if (leaf) {
+    return ensureLayout({
+      tabs: touchActivate(state.tabs, id, now),
+      layout: setLeafActive(state.layout, leaf.id, id),
+      focusedPaneId: leaf.id,
+      activeId: id,
+    });
+  }
+  // Outside the split group while split: keep as orphan full-window.
+  if (countLeaves(state.layout) > 1) {
+    return ensureLayout({
+      tabs: touchActivate(state.tabs, id, now),
+      layout: state.layout,
+      focusedPaneId: state.focusedPaneId,
+      activeId: id,
+    });
+  }
+  const added = addTabToFocusedLeaf(state.layout, state.focusedPaneId, id, { activate: true });
   return ensureLayout({
-    ...state,
+    tabs: touchActivate(state.tabs, id, now),
+    layout: added.layout,
+    focusedPaneId: added.focusedPaneId,
+    activeId: id,
+  });
+}
+
+/** Activate a tab as a full window (extract from split group when split). */
+function activateTabFullWindow(
+  state: WorkspaceTabsState,
+  id: string,
+  now = Date.now(),
+): WorkspaceTabsState {
+  if (!state.tabs.some((t) => t.id === id)) return state;
+  if (countLeaves(state.layout) <= 1) {
+    return activateTab(state, id, now);
+  }
+  return extractTabToOrphan(state, id, now);
+}
+
+export function setFocusedPane(state: WorkspaceTabsState, paneId: string): WorkspaceTabsState {
+  // Clear orphan preference so the focused leaf's active tab becomes workspace active.
+  return ensureLayout({
+    tabs: state.tabs,
+    layout: state.layout,
     focusedPaneId: paneId,
+    activeId: null,
   });
 }
 
@@ -193,7 +307,7 @@ export function openOrActivateChat(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'chat');
   if (existing) {
-    return activate ? activateTab(state, CHAT_TAB_ID, now) : state;
+    return activate ? activateTabFullWindow(state, CHAT_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createChatTab()];
   const placed = placeNewTab(state.layout, state.focusedPaneId, CHAT_TAB_ID, {
@@ -204,6 +318,7 @@ export function openOrActivateChat(
     tabs: activate ? touchActivate(ordered, CHAT_TAB_ID, now) : ordered,
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
+    activeId: placed.activeId,
   });
 }
 
@@ -215,16 +330,18 @@ export function openOrActivateSettings(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'settings');
   if (existing) {
-    return activate ? activateTab(state, SETTINGS_TAB_ID, now) : state;
+    return activate ? activateTabFullWindow(state, SETTINGS_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createSettingsTab()];
   const placed = placeNewTab(state.layout, state.focusedPaneId, SETTINGS_TAB_ID, {
     activate,
   });
+  const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
-    tabs: activate ? touchActivate(tabsOrderedByLayout(tabs, placed.layout), SETTINGS_TAB_ID, now) : tabsOrderedByLayout(tabs, placed.layout),
+    tabs: activate ? touchActivate(ordered, SETTINGS_TAB_ID, now) : ordered,
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
+    activeId: placed.activeId,
   });
 }
 
@@ -236,18 +353,18 @@ export function openOrActivateContentSearch(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'content-search');
   if (existing) {
-    return activate ? activateTab(state, CONTENT_SEARCH_TAB_ID, now) : state;
+    return activate ? activateTabFullWindow(state, CONTENT_SEARCH_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createContentSearchTab()];
   const placed = placeNewTab(state.layout, state.focusedPaneId, CONTENT_SEARCH_TAB_ID, {
     activate,
   });
+  const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
-    tabs: activate
-      ? touchActivate(tabsOrderedByLayout(tabs, placed.layout), CONTENT_SEARCH_TAB_ID, now)
-      : tabsOrderedByLayout(tabs, placed.layout),
+    tabs: activate ? touchActivate(ordered, CONTENT_SEARCH_TAB_ID, now) : ordered,
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
+    activeId: placed.activeId,
   });
 }
 
@@ -312,13 +429,14 @@ export function openOrReplaceFileTab(
         tabs: tabsOrderedByLayout(tabs, placed.layout),
         layout: placed.layout,
         focusedPaneId: placed.focusedPaneId,
+        activeId: placed.activeId,
       });
     }
     return ensureLayout({ ...state, tabs });
   }
 
   if (idx >= 0) {
-    return activateTab({ ...state, tabs }, tab.id, now);
+    return activateTabFullWindow({ ...state, tabs }, tab.id, now);
   }
   const placed = placeNewTab(state.layout, state.focusedPaneId, tab.id, {
     activate: true,
@@ -327,6 +445,7 @@ export function openOrReplaceFileTab(
     tabs: touchActivate(tabsOrderedByLayout(tabs, placed.layout), tab.id, now),
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
+    activeId: placed.activeId,
   });
 }
 
@@ -513,8 +632,8 @@ export function retargetFileTabsByPathPrefix(
 }
 
 /**
- * Reorder within the same leaf, or move across leaves when `overId` is in another leaf.
- * Also keeps `tabs[]` order aligned with flattened layout display order.
+ * Reorder within the same leaf, move across leaves, leave the split group
+ * (orphan zone / orphan tab), or join the group (group zone / in-group tab).
  */
 export function moveTab(
   state: WorkspaceTabsState,
@@ -522,8 +641,62 @@ export function moveTab(
   overId: string,
 ): WorkspaceTabsState {
   if (activeId === overId) return state;
+  if (!state.tabs.some((t) => t.id === activeId)) return state;
+
   const fromLeaf = findLeafContainingTab(state.layout, activeId);
+
+  if (overId === WORKSPACE_TAB_ORPHAN_ZONE_ID) {
+    return fromLeaf ? extractTabToOrphan(state, activeId) : state;
+  }
+
+  if (overId === WORKSPACE_TAB_GROUP_ZONE_ID) {
+    if (fromLeaf) return state;
+    if (countLeaves(state.layout) <= 1) {
+      return activateTab(state, activeId);
+    }
+    return moveTabIntoLeaf(state, activeId, state.focusedPaneId);
+  }
+
   const toLeaf = findLeafContainingTab(state.layout, overId);
+  const overIsTab = state.tabs.some((t) => t.id === overId);
+
+  if (!overIsTab) return state;
+
+  // Orphan → join leaf at over position.
+  if (!fromLeaf && toLeaf) {
+    const moved = moveTabToLeaf(state.layout, activeId, toLeaf.id, {
+      activate: true,
+      beforeTabId: overId,
+    });
+    return ensureLayout({
+      tabs: tabsOrderedByLayout(state.tabs, moved.layout),
+      layout: moved.layout,
+      focusedPaneId: moved.focusedPaneId,
+      activeId,
+    });
+  }
+
+  // In-group → drop onto orphan tab: leave split, then reorder orphans.
+  if (fromLeaf && !toLeaf) {
+    const extracted = extractTabToOrphan(state, activeId);
+    return ensureLayout({
+      tabs: reorderOrphanTabs(extracted.tabs, extracted.layout, activeId, overId),
+      layout: extracted.layout,
+      focusedPaneId: extracted.focusedPaneId,
+      activeId,
+    });
+  }
+
+  // Both orphans: reorder among outside-group tabs.
+  if (!fromLeaf && !toLeaf) {
+    return ensureLayout({
+      tabs: reorderOrphanTabs(state.tabs, state.layout, activeId, overId),
+      layout: state.layout,
+      focusedPaneId: state.focusedPaneId,
+      activeId: state.activeId,
+    });
+  }
+
   if (!fromLeaf || !toLeaf) return state;
 
   let layout = state.layout;
@@ -539,18 +712,11 @@ export function moveTab(
     focusedPaneId = moved.focusedPaneId;
   }
 
-  const order = flattenTabIdsFromLayout(layout);
-  const byId = new Map(state.tabs.map((t) => [t.id, t]));
-  const tabs = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
-  // Append any missing (should not happen).
-  for (const t of state.tabs) {
-    if (!order.includes(t.id)) tabs.push(t);
-  }
-
   return ensureLayout({
-    tabs,
+    tabs: tabsOrderedByLayout(state.tabs, layout),
     layout,
     focusedPaneId,
+    activeId,
   });
 }
 
@@ -593,6 +759,7 @@ export function moveTabIntoLeaf(
     tabs,
     layout: moved.layout,
     focusedPaneId: moved.focusedPaneId,
+    activeId: tabId,
   });
 }
 
@@ -641,16 +808,45 @@ export function replaceWorkspaceLayout(
   });
 }
 
-/** Dismiss a split pane: merge its tabs into the sibling and collapse the leaf. */
+/** Dismiss a split pane: move its tabs outside the group (orphans) and collapse the leaf.
+ * Tab strip updates — those tabs leave the split group chrome (or the chrome drops when unsplit). */
 export function collapsePaneLeaf(
   state: WorkspaceTabsState,
   leafId: string,
 ): WorkspaceTabsState {
-  const result = collapseLeafIntoSibling(state.layout, leafId);
-  if (!result) return state;
+  if (countLeaves(state.layout) <= 1) return state;
+  const leaf = findLeaf(state.layout, leafId);
+  if (!leaf) return state;
+
+  const leaveIds = leaf.tabIds.slice();
+  if (leaveIds.length === 0) {
+    const result = collapseLeafIntoSibling(state.layout, leafId);
+    if (!result) return state;
+    return ensureLayout({
+      tabs: tabsOrderedByLayout(state.tabs, result.layout),
+      layout: result.layout,
+      focusedPaneId: result.focusedPaneId,
+    });
+  }
+
+  const activateId = leaf.activeId && leaveIds.includes(leaf.activeId)
+    ? leaf.activeId
+    : (leaveIds[0] ?? null);
+
+  let layout = state.layout;
+  for (const id of leaveIds) {
+    layout = removeTabFromLayout(layout, id);
+  }
+  const pruned = pruneLayoutToTabs(
+    layout,
+    flattenTabIdsFromLayout(layout),
+    state.focusedPaneId,
+  );
+
   return ensureLayout({
-    tabs: tabsOrderedByLayout(state.tabs, result.layout),
-    layout: result.layout,
-    focusedPaneId: result.focusedPaneId,
+    tabs: tabsOrderedByLayout(state.tabs, pruned.layout),
+    layout: pruned.layout,
+    focusedPaneId: pruned.focusedPaneId,
+    ...(activateId ? { activeId: activateId } : {}),
   });
 }

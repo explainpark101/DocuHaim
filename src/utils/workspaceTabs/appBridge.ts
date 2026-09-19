@@ -23,7 +23,7 @@ import {
   setFocusedPane,
   splitTabToEdge,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
-import { removeTabFromLayout, syncLayoutWithTabs } from '@/utils/workspaceTabs/paneLayout';
+import { removeTabFromLayout, syncLayoutPreservingOrphansWhenSplit } from '@/utils/workspaceTabs/paneLayout';
 
 export function flushEditorIntoActiveFileTab(
   state: WorkspaceTabsState,
@@ -96,7 +96,7 @@ export function applyOpenedFileReducer(
     for (const tab of evicted.closed) {
       layout = removeTabFromLayout(layout, tab.id);
     }
-    const synced = syncLayoutWithTabs(
+    const synced = syncLayoutPreservingOrphansWhenSplit(
       layout,
       evicted.tabs.map((t) => t.id),
       state.focusedPaneId,

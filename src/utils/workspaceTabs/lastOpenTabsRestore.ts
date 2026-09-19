@@ -11,7 +11,7 @@ import {
   createSingleLeafLayout,
   fromPersistedPaneNode,
   isPersistedPaneNode,
-  syncLayoutWithTabs,
+  syncLayoutPreservingOrphansWhenSplit,
   toPersistedPaneNode,
 } from '@/utils/workspaceTabs/paneLayout';
 
@@ -80,7 +80,11 @@ function normalizeSnapshot(raw: unknown): PersistedWorkspaceTabs | null {
   // Keep split trees even when focusedPaneId is absent (derive focus).
   if (isPersistedPaneNode(o.layout)) {
     const focusHint = typeof o.focusedPaneId === 'string' ? o.focusedPaneId : null;
-    const synced = syncLayoutWithTabs(fromPersistedPaneNode(o.layout), tabIds, focusHint);
+    const synced = syncLayoutPreservingOrphansWhenSplit(
+      fromPersistedPaneNode(o.layout),
+      tabIds,
+      focusHint,
+    );
     return {
       version: 2,
       tabs,
