@@ -38,6 +38,7 @@ import {
   WORKSPACE_TAB_GROUP_ZONE_ID,
   WORKSPACE_TAB_ORPHAN_ZONE_ID,
   type PaneSplitEdge,
+  splitAtWorkspaceEdge,
 } from '@/utils/workspaceTabs/paneLayout';
 import { swapLeafContents } from '@/utils/workspaceTabs/paneLayoutEdit';
 
@@ -734,6 +735,32 @@ export function splitTabToEdge(
 ): SplitTabToEdgeResult {
   if (!state.tabs.some((t) => t.id === tabId)) return { ok: false, reason: 'missing' };
   const result = splitLeaf(state.layout, leafId, edge, tabId, softCap);
+  if (!result.ok) return { ok: false, reason: result.reason };
+  const order = flattenTabIdsFromLayout(result.layout);
+  const byId = new Map(state.tabs.map((t) => [t.id, t]));
+  const tabs = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
+  for (const t of state.tabs) {
+    if (!order.includes(t.id)) tabs.push(t);
+  }
+  return {
+    ok: true,
+    state: ensureLayout({
+      tabs,
+      layout: result.layout,
+      focusedPaneId: result.focusedPaneId,
+    }),
+  };
+}
+
+/** Full-height / full-width strip wrapping the entire workspace layout. */
+export function splitTabToWorkspaceEdge(
+  state: WorkspaceTabsState,
+  edge: PaneSplitEdge,
+  tabId: string,
+  softCap?: number,
+): SplitTabToEdgeResult {
+  if (!state.tabs.some((t) => t.id === tabId)) return { ok: false, reason: 'missing' };
+  const result = splitAtWorkspaceEdge(state.layout, edge, tabId, softCap);
   if (!result.ok) return { ok: false, reason: result.reason };
   const order = flattenTabIdsFromLayout(result.layout);
   const byId = new Map(state.tabs.map((t) => [t.id, t]));

@@ -159,20 +159,49 @@ export function insertLeafAtEdge(
 }
 
 /**
+ * Insert `leaf` as a full-height / full-width strip wrapping the whole workspace.
+ */
+export function insertAtWorkspaceEdge(
+  layout: PaneNode,
+  edge: PaneSplitEdge,
+  leaf: PaneLeaf,
+): { layout: PaneNode; focusedPaneId: string } | null {
+  if (findLeaf(layout, leaf.id)) return null;
+  const { direction, placeNewFirst } = edgeToSplit(edge);
+  const moving = cloneLeaf(leaf);
+  const children: [PaneNode, PaneNode] = placeNewFirst
+    ? [moving, layout]
+    : [layout, moving];
+  return {
+    layout: collapseEmptyLeaves({
+      type: 'split',
+      id: createPaneId('split'),
+      direction,
+      ratio: placeNewFirst ? PANE_EDGE_SPLIT_RATIO : 1 - PANE_EDGE_SPLIT_RATIO,
+      children,
+    }),
+    focusedPaneId: moving.id,
+  };
+}
+
+/**
  * Relocate a whole pane via header drag.
  * - center → swap leaf contents with the target
  * - edge → detach source leaf and insert beside the target toward that edge
+ * - workspaceEdge → detach and wrap the whole remaining tree (full-span strip)
  */
 export function relocateLeaf(
   layout: PaneNode,
   sourceLeafId: string,
   targetLeafId: string,
   zone: PaneSplitEdge | 'center',
+  opts?: { workspaceEdge?: boolean },
 ): { layout: PaneNode; focusedPaneId: string } | null {
-  if (sourceLeafId === targetLeafId) return null;
-  if (!findLeaf(layout, sourceLeafId) || !findLeaf(layout, targetLeafId)) return null;
+  if (sourceLeafId === targetLeafId && !opts?.workspaceEdge) return null;
+  if (!findLeaf(layout, sourceLeafId)) return null;
 
   if (zone === 'center') {
+    if (!findLeaf(layout, targetLeafId)) return null;
     const swapped = swapLeafContents(layout, sourceLeafId, targetLeafId);
     if (swapped === layout) return null;
     return { layout: swapped, focusedPaneId: targetLeafId };
@@ -180,6 +209,11 @@ export function relocateLeaf(
 
   const detached = detachLeaf(layout, sourceLeafId);
   if (!detached) return null;
+
+  if (opts?.workspaceEdge) {
+    return insertAtWorkspaceEdge(detached.layout, zone, detached.leaf);
+  }
+
   // Target may have been the sibling that was promoted; id is preserved.
   if (!findLeaf(detached.layout, targetLeafId)) return null;
   return insertLeafAtEdge(detached.layout, targetLeafId, zone, detached.leaf);

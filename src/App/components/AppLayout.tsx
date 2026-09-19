@@ -293,6 +293,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
       items: SidebarPaneDropItem[],
       leafId: string,
       zone: PaneSplitEdge | 'center',
+      opts?: { workspaceEdge?: boolean },
     ) => {
       if (!workspaceTabsEnabled || isMobile) return;
       const openable = items.filter(
@@ -323,7 +324,10 @@ export function AppLayout({ children }: { children?: ReactNode }) {
       if (!workspaceTabsRef.current.tabs.some((t) => t.id === firstId)) return;
 
       // Sidebar "open here": center joins into the leaf (never swaps panes).
-      handleWorkspacePaneDrop(firstId, leafId, zone, { centerBehavior: 'join' });
+      handleWorkspacePaneDrop(firstId, leafId, zone, {
+        centerBehavior: 'join',
+        ...(opts?.workspaceEdge ? { workspaceEdge: true } : {}),
+      });
       const host = findLeafContainingTab(workspaceTabsRef.current.layout, firstId);
       const joinLeafId = host?.id ?? leafId;
       for (let i = 1; i < openedTabIds.length; i++) {
