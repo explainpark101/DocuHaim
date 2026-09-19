@@ -616,12 +616,16 @@ export function useWorkspaceTabsDomain({
   const collapseWorkspacePane = useCallback(
     (leafId: string) => {
       const prev = workspaceTabsRef.current;
+      const prevActiveId = prev.activeId;
       const next = collapsePaneLeaf(prev, leafId);
       if (next === prev) return;
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
-      const active = getActiveTab(next);
-      if (active) activateWorkspaceTab(active.id, { navigateUrl: true });
+      // Extracted tabs open in the background — only navigate when focus moved
+      // to a remaining in-split tab (e.g. dismissed the focused pane).
+      if (next.activeId && next.activeId !== prevActiveId) {
+        activateWorkspaceTab(next.activeId, { navigateUrl: true });
+      }
     },
     [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
   );

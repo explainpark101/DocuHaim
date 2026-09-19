@@ -808,8 +808,8 @@ export function replaceWorkspaceLayout(
   });
 }
 
-/** Dismiss a split pane: move its tabs outside the group (orphans) and collapse the leaf.
- * Tab strip updates — those tabs leave the split group chrome (or the chrome drops when unsplit). */
+/** Dismiss a split pane: move its tabs outside the group as background orphans
+ * (do not steal focus) and collapse the empty leaf. */
 export function collapsePaneLeaf(
   state: WorkspaceTabsState,
   leafId: string,
@@ -819,6 +819,7 @@ export function collapsePaneLeaf(
   if (!leaf) return state;
 
   const leaveIds = leaf.tabIds.slice();
+  const leaveSet = new Set(leaveIds);
   if (leaveIds.length === 0) {
     const result = collapseLeafIntoSibling(state.layout, leafId);
     if (!result) return state;
@@ -826,12 +827,9 @@ export function collapsePaneLeaf(
       tabs: tabsOrderedByLayout(state.tabs, result.layout),
       layout: result.layout,
       focusedPaneId: result.focusedPaneId,
+      activeId: state.activeId,
     });
   }
-
-  const activateId = leaf.activeId && leaveIds.includes(leaf.activeId)
-    ? leaf.activeId
-    : (leaveIds[0] ?? null);
 
   let layout = state.layout;
   for (const id of leaveIds) {
@@ -843,10 +841,19 @@ export function collapsePaneLeaf(
     state.focusedPaneId,
   );
 
+  // Keep focus on the current tab when it was not in the dismissed pane.
+  // Otherwise stay on the remaining split leaf (never jump to the new orphans).
+  const keepActive =
+    typeof state.activeId === 'string' &&
+    state.tabs.some((t) => t.id === state.activeId) &&
+    !leaveSet.has(state.activeId)
+      ? state.activeId
+      : getFocusedLeafActiveId(pruned.layout, pruned.focusedPaneId);
+
   return ensureLayout({
     tabs: tabsOrderedByLayout(state.tabs, pruned.layout),
     layout: pruned.layout,
     focusedPaneId: pruned.focusedPaneId,
-    ...(activateId ? { activeId: activateId } : {}),
+    activeId: keepActive,
   });
 }
