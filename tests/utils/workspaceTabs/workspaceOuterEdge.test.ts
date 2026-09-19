@@ -5,6 +5,7 @@ import {
   createSingleLeafLayout,
   splitAtWorkspaceEdge,
   splitLeaf,
+  type PaneNode,
   type SplitLeafResult,
 } from '@/utils/workspaceTabs/paneLayout';
 import {
@@ -33,7 +34,7 @@ describe('workspaceOuterEdgeFromPoint', () => {
 
 describe('splitAtWorkspaceEdge', () => {
   it('wraps a 2x2 layout into a full-height 2x2+1 strip', () => {
-    let layout = createSingleLeafLayout(['a', 'b', 'c', 'd', 'e'], 'a');
+    let layout: PaneNode = createSingleLeafLayout(['a', 'b', 'c', 'd', 'e'], 'a');
     layout = expectSplitOk(splitLeaf(layout, layout.id, 'right', 'b')).layout;
     const left = collectLeaves(layout).find((l) => l.tabIds.includes('a'))!;
     layout = expectSplitOk(splitLeaf(layout, left.id, 'bottom', 'c')).layout;
@@ -58,7 +59,7 @@ describe('splitAtWorkspaceEdge', () => {
 
 describe('insertAtWorkspaceEdge / relocateLeaf workspaceEdge', () => {
   it('relocates a leaf to a full-width bottom strip', () => {
-    let layout = createSingleLeafLayout(['a', 'b', 'c'], 'a');
+    let layout: PaneNode = createSingleLeafLayout(['a', 'b', 'c'], 'a');
     layout = expectSplitOk(splitLeaf(layout, layout.id, 'right', 'b')).layout;
     const left = collectLeaves(layout).find((l) => l.tabIds.includes('a'))!;
     layout = expectSplitOk(splitLeaf(layout, left.id, 'bottom', 'c')).layout;
