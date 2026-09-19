@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion as Motion } from 'motion/react';
 import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
@@ -10,10 +10,6 @@ import {
   PANE_SPLIT_PREVIEW_PCT,
   type PaneDropZone,
 } from '@/utils/workspaceTabs/paneDropGeometry';
-import {
-  registerPaneDropOverlayFlush,
-  setPaneDropOverlayHit,
-} from '@/utils/workspaceTabs/workspaceTabDragBridge';
 
 type WorkspacePaneDropOverlayProps = {
   leafId: string | null;
@@ -23,13 +19,10 @@ type WorkspacePaneDropOverlayProps = {
   workspaceEdge?: boolean;
 };
 
-/** How often the overlay may retarget after the previous move finishes. */
-export const PANE_DROP_OVERLAY_MOVE_MS = 500;
-
 const PREVIEW_TRANSITION = {
-  type: 'tween' as const,
-  ease: [0.22, 1, 0.36, 1] as const,
-  duration: PANE_DROP_OVERLAY_MOVE_MS / 1000,
+  type: 'spring' as const,
+  bounce: 0.12,
+  duration: 0.28,
 };
 
 type PaneBox = {
@@ -48,13 +41,6 @@ type PxRect = {
   opacity: number;
 };
 
-type OverlayTarget = {
-  leafId: string | null;
-  zone: PaneDropZone;
-  workspaceEdge: boolean;
-  box: PaneBox;
-};
-
 function sameBox(a: PaneBox | null, b: PaneBox | null): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
@@ -63,17 +49,6 @@ function sameBox(a: PaneBox | null, b: PaneBox | null): boolean {
     a.top === b.top &&
     a.width === b.width &&
     a.height === b.height
-  );
-}
-
-function sameTarget(a: OverlayTarget | null, b: OverlayTarget | null): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return (
-    a.leafId === b.leafId &&
-    a.zone === b.zone &&
-    a.workspaceEdge === b.workspaceEdge &&
-    sameBox(a.box, b.box)
   );
 }
 
@@ -121,15 +96,6 @@ export function measurePaneLeafBox(leafId: string): PaneBox | null {
     };
   }
   return best;
-}
-
-function measureTargetBox(
-  leafId: string | null,
-  workspaceEdge: boolean,
-): PaneBox | null {
-  if (workspaceEdge) return measurePaneSplitRootBox();
-  if (!leafId) return null;
-  return measurePaneLeafBox(leafId);
 }
 
 function halfSize(box: PaneBox, axis: 'x' | 'y'): number {
@@ -184,7 +150,6 @@ function previewRects(
           height: centerH,
           opacity: 1,
         },
-        // Hide the "remaining" layer while swapping panes (center).
         remaining: {
           left: insetX,
           top: insetY,
@@ -219,9 +184,8 @@ function PreviewLayers({ zone, box }: { zone: PaneDropZone; box: PaneBox }) {
 }
 
 /**
- * Visual-only drop preview. Stays mounted while dragging; retargets at most
- * every {@link PANE_DROP_OVERLAY_MOVE_MS} once the previous move has finished
- * (no per-frame remount / reload).
+ * Visual-only drop preview. Updates immediately with the live hit; stays mounted
+ * across zone/leaf changes so Motion can interpolate without remounting.
  */
 export default function WorkspacePaneDropOverlay({
   leafId,
@@ -229,145 +193,45 @@ export default function WorkspacePaneDropOverlay({
   activeZone,
   workspaceEdge = false,
 }: WorkspacePaneDropOverlayProps) {
-  /** Committed visual target (throttled). */
-  const [display, setDisplay] = useState<OverlayTarget | null>(null);
-  const displayRef = useRef<OverlayTarget | null>(null);
-  displayRef.current = display;
-
-  const pendingRef = useRef<OverlayTarget | null>(null);
-  const movingRef = useRef(false);
-  const moveTimerRef = useRef<number | null>(null);
+  const [box, setBox] = useState<PaneBox | null>(null);
+  /** Keep last zone so Motion stays mounted across brief nulls / leaf switches. */
   const lastZoneRef = useRef<PaneDropZone | null>(null);
-
   if (activeZone) lastZoneRef.current = activeZone;
-  const liveZone = activeZone ?? lastZoneRef.current;
+  const zone = activeZone ?? lastZoneRef.current;
 
-  const clearMoveTimer = () => {
-    if (moveTimerRef.current != null) {
-      window.clearTimeout(moveTimerRef.current);
-      moveTimerRef.current = null;
-    }
-  };
-
-  const applyTarget = (next: OverlayTarget) => {
-    if (sameTarget(displayRef.current, next)) {
-      movingRef.current = false;
-      setPaneDropOverlayHit({
-        leafId: next.leafId ?? '',
-        zone: next.zone,
-        workspaceEdge: next.workspaceEdge,
-      });
-      return;
-    }
-    movingRef.current = true;
-    setDisplay(next);
-    setPaneDropOverlayHit({
-      leafId: next.leafId ?? '',
-      zone: next.zone,
-      workspaceEdge: next.workspaceEdge,
-    });
-    clearMoveTimer();
-    moveTimerRef.current = window.setTimeout(() => {
-      moveTimerRef.current = null;
-      movingRef.current = false;
-      const pending = pendingRef.current;
-      pendingRef.current = null;
-      if (pending) applyTarget(pending);
-    }, PANE_DROP_OVERLAY_MOVE_MS);
-  };
-
-  const queueTarget = (next: OverlayTarget | null) => {
-    if (!next) {
-      pendingRef.current = null;
-      clearMoveTimer();
-      movingRef.current = false;
-      setDisplay(null);
-      return;
-    }
-    if (!movingRef.current) {
-      applyTarget(next);
-      return;
-    }
-    // Wait until the current 500ms move finishes, then jump to latest intent.
-    pendingRef.current = next;
-  };
-
-  const flushPending = () => {
-    const pending = pendingRef.current;
-    if (!pending) return;
-    pendingRef.current = null;
-    clearMoveTimer();
-    movingRef.current = false;
-    applyTarget(pending);
-  };
-
-  useEffect(() => {
-    registerPaneDropOverlayFlush(() => {
-      const pending = pendingRef.current;
-      if (!pending) return;
-      pendingRef.current = null;
-      if (moveTimerRef.current != null) {
-        window.clearTimeout(moveTimerRef.current);
-        moveTimerRef.current = null;
-      }
-      movingRef.current = false;
-      // Apply via queue with moving cleared so it commits immediately.
-      setDisplay(pending);
-      displayRef.current = pending;
-      setPaneDropOverlayHit({
-        leafId: pending.leafId ?? '',
-        zone: pending.zone,
-        workspaceEdge: pending.workspaceEdge,
-      });
-    });
-    return () => registerPaneDropOverlayFlush(null);
-  }, []);
-
-  // Build the latest desired target from live props; schedule a throttled apply.
   useLayoutEffect(() => {
-    if (!visible || !liveZone || (!leafId && !workspaceEdge)) {
-      queueTarget(null);
+    if (!visible || (!leafId && !workspaceEdge)) {
+      setBox(null);
       return undefined;
     }
 
-    const push = () => {
-      const box = measureTargetBox(leafId, workspaceEdge);
-      if (!box || !liveZone) return;
-      queueTarget({
-        leafId,
-        zone: liveZone,
-        workspaceEdge,
-        box,
-      });
+    const sync = () => {
+      const next = workspaceEdge
+        ? measurePaneSplitRootBox()
+        : leafId
+          ? measurePaneLeafBox(leafId)
+          : null;
+      setBox((prev) => (sameBox(prev, next) ? prev : next));
     };
+    sync();
 
-    push();
-    // Re-measure only on scroll/resize — not every pointermove.
-    window.addEventListener('scroll', push, true);
-    window.addEventListener('resize', push);
+    window.addEventListener('pointermove', sync);
+    window.addEventListener('scroll', sync, true);
+    window.addEventListener('resize', sync);
     return () => {
-      window.removeEventListener('scroll', push, true);
-      window.removeEventListener('resize', push);
+      window.removeEventListener('pointermove', sync);
+      window.removeEventListener('scroll', sync, true);
+      window.removeEventListener('resize', sync);
     };
-  }, [visible, leafId, liveZone, workspaceEdge]);
+  }, [visible, leafId, workspaceEdge]);
 
-  useEffect(() => {
-    if (!visible) {
-      lastZoneRef.current = null;
-      pendingRef.current = null;
-      clearMoveTimer();
-      movingRef.current = false;
-      setDisplay(null);
-    }
-    return () => {
-      clearMoveTimer();
-    };
+  useLayoutEffect(() => {
+    if (!visible) lastZoneRef.current = null;
   }, [visible]);
 
-  if (!visible || !display) return null;
+  if (!visible || !zone || !box) return null;
+  if (!workspaceEdge && !leafId) return null;
   if (typeof document === 'undefined') return null;
-
-  const { box, zone, leafId: shownLeafId, workspaceEdge: shownWorkspace } = display;
 
   return createPortal(
     <Motion.div
@@ -381,9 +245,9 @@ export default function WorkspacePaneDropOverlay({
       }}
       transition={PREVIEW_TRANSITION}
       aria-hidden
-      data-pane-drop-overlay={shownWorkspace ? 'workspace' : shownLeafId}
+      data-pane-drop-overlay={workspaceEdge ? 'workspace' : leafId}
       data-pane-drop-zone={zone}
-      data-pane-drop-workspace-edge={shownWorkspace ? '1' : undefined}
+      data-pane-drop-workspace-edge={workspaceEdge ? '1' : undefined}
     >
       <PreviewLayers zone={zone} box={box} />
     </Motion.div>,

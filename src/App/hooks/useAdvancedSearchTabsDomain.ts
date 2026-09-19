@@ -74,10 +74,10 @@ function applyPersistedLayoutToState<T extends { tabs: { id: string }[]; focused
     focusHint,
   );
   return replaceWorkspaceLayout(
-    state as Parameters<typeof replaceWorkspaceLayout>[0],
+    state as unknown as Parameters<typeof replaceWorkspaceLayout>[0],
     synced.layout,
     synced.focusedPaneId,
-  ) as T;
+  ) as unknown as T;
 }
 
 /**
