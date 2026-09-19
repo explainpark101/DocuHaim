@@ -112,7 +112,7 @@ type WorkspaceTabBarProps = {
   /** Context-menu split (same edges as pane drop). */
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
   paneLayout?: PaneNode | null;
-  onApplyPaneLayout?: (layout: PaneNode) => void;
+  onApplyPaneLayout?: (layout: PaneNode, focusedPaneId?: string | null) => void;
   onFileTabContextMenu?: (
     tab: FileWorkspaceTab,
     point: { clientX: number; clientY: number },

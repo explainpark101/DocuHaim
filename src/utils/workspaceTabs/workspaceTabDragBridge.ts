@@ -2,6 +2,8 @@ import { resolvePaneDropAt } from '@/utils/workspaceTabs/paneDropGeometry';
 
 type WorkspaceTabDragSnapshot = {
   tabId: string;
+  /** When set, the drag relocates a whole pane via its header (not a single tab). */
+  paneLeafId?: string;
   clientX: number;
   clientY: number;
 };

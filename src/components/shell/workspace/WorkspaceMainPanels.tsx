@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import EditorPane from '@/components/EditorPane';
@@ -28,12 +28,17 @@ import {
 import {
   getWorkspaceTabDrag,
   hitTestPaneDropAt,
+  setWorkspaceTabDrag,
   subscribeWorkspaceTabDrag,
+  updateWorkspaceTabDragPoint,
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
 import { PANE_LEAF_ATTR } from '@/utils/workspaceTabs/paneDropGeometry';
+import { relocateLeaf } from '@/utils/workspaceTabs/paneLayoutEdit';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import type { ExportPdfDocumentFile } from '@/pages/exportPdf/exportPdfTypes';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
+
+const PANE_HEADER_DRAG_SLOP_PX = 8;
 
 const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
@@ -97,7 +102,7 @@ export type WorkspaceMainPanelsProps = {
     zone: PaneSplitEdge | 'center',
   ) => boolean;
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
-  onApplyPaneLayout?: (layout: PaneNode) => void;
+  onApplyPaneLayout?: (layout: PaneNode, focusedPaneId?: string | null) => void;
   onCollapsePane?: (leafId: string) => void;
   onClearExportPdf?: (leafId: string) => void;
 };
@@ -221,15 +226,75 @@ export default function WorkspaceMainPanels({
   }, [isSplit, leaves, focusedPaneId]);
 
   const [draggingTab, setDraggingTab] = useState(false);
+  const [draggingPaneLeafId, setDraggingPaneLeafId] = useState<string | null>(null);
   const [dropHighlight, setDropHighlight] = useState<{
     leafId: string;
     zone: PaneSplitEdge | 'center';
   } | null>(null);
+  /** Leaf ids that just appeared via split — amber border flash (~2s). */
+  const [freshPaneIds, setFreshPaneIds] = useState<ReadonlySet<string>>(() => new Set());
+  const prevLeafIdsRef = useRef<Set<string> | null>(null);
+  const freshPaneTimersRef = useRef(new Map<string, number>());
+
+  useEffect(() => {
+    const nextIds = new Set(leaves.map((leaf) => leaf.id));
+    const prev = prevLeafIdsRef.current;
+    prevLeafIdsRef.current = nextIds;
+
+    if (!isSplit) {
+      if (freshPaneTimersRef.current.size > 0) {
+        for (const timer of freshPaneTimersRef.current.values()) {
+          window.clearTimeout(timer);
+        }
+        freshPaneTimersRef.current.clear();
+        setFreshPaneIds(new Set());
+      }
+      return;
+    }
+
+    // Skip first observation (restore / initial mount) so persisted splits do not flash.
+    if (!prev || prev.size === 0) return;
+
+    const added = [...nextIds].filter((id) => !prev.has(id));
+    if (added.length === 0) return;
+
+    setFreshPaneIds((cur) => {
+      const merged = new Set(cur);
+      for (const id of added) merged.add(id);
+      return merged;
+    });
+
+    for (const id of added) {
+      const existing = freshPaneTimersRef.current.get(id);
+      if (existing != null) window.clearTimeout(existing);
+      const timer = window.setTimeout(() => {
+        freshPaneTimersRef.current.delete(id);
+        setFreshPaneIds((cur) => {
+          if (!cur.has(id)) return cur;
+          const next = new Set(cur);
+          next.delete(id);
+          return next;
+        });
+      }, 2000);
+      freshPaneTimersRef.current.set(id, timer);
+    }
+  }, [leaves, isSplit]);
+
+  useEffect(
+    () => () => {
+      for (const timer of freshPaneTimersRef.current.values()) {
+        window.clearTimeout(timer);
+      }
+      freshPaneTimersRef.current.clear();
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!splitDragEnabled) return undefined;
     return subscribeWorkspaceTabDrag((snap) => {
       setDraggingTab(Boolean(snap));
+      setDraggingPaneLeafId(snap?.paneLeafId ?? null);
       if (!snap) {
         setDropHighlight(null);
         return;
@@ -429,6 +494,91 @@ export default function WorkspaceMainPanels({
     />
   );
 
+  const handlePaneHeaderPointerDown = (
+    leafId: string,
+    e: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (!splitDragEnabled || isMobileLayout || !onApplyPaneLayout || !layout) return;
+    if (e.button !== 0) return;
+    const target = e.target;
+    if (target instanceof Element && target.closest('[data-pane-dismiss]')) return;
+
+    onFocusPane?.(leafId);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let started = false;
+    const sourceLeafId = leafId;
+    const layoutAtStart = layout;
+    let prevUserSelect: string | null = null;
+
+    const unlockUserSelect = () => {
+      if (prevUserSelect == null) return;
+      document.body.style.userSelect = prevUserSelect;
+      prevUserSelect = null;
+    };
+
+    const finish = (clientX: number, clientY: number) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      unlockUserSelect();
+      const snap = getWorkspaceTabDrag();
+      setWorkspaceTabDrag(null);
+      if (!started || !snap?.paneLeafId) return;
+
+      const hit = resolveDropHighlight(clientX, clientY);
+      if (!hit || hit.leafId === sourceLeafId) return;
+      if (
+        hit.zone !== 'left' &&
+        hit.zone !== 'right' &&
+        hit.zone !== 'top' &&
+        hit.zone !== 'bottom' &&
+        hit.zone !== 'center'
+      ) {
+        return;
+      }
+      const next = relocateLeaf(layoutAtStart, sourceLeafId, hit.leafId, hit.zone);
+      if (!next) return;
+      onApplyPaneLayout(next.layout, next.focusedPaneId);
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (!started) {
+        if (Math.hypot(dx, dy) < PANE_HEADER_DRAG_SLOP_PX) return;
+        started = true;
+        prevUserSelect = document.body.style.userSelect;
+        document.body.style.userSelect = 'none';
+        setWorkspaceTabDrag({
+          tabId: '',
+          paneLeafId: sourceLeafId,
+          clientX: ev.clientX,
+          clientY: ev.clientY,
+        });
+        return;
+      }
+      updateWorkspaceTabDragPoint(ev.clientX, ev.clientY);
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      finish(ev.clientX, ev.clientY);
+    };
+
+    const onCancel = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      unlockUserSelect();
+      setWorkspaceTabDrag(null);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+  };
+
   const renderLeafContent = (leafId: string) => {
     const leaf = layout ? findLeaf(layout, leafId) : null;
     if (!leaf) return null;
@@ -440,6 +590,8 @@ export default function WorkspaceMainPanels({
       (leaf.tabIds[0] ? tabs.find((t) => t.id === leaf.tabIds[0]) : null) ||
       null;
     const paneTitle = leafActiveTab ? tabDisplayTitle(leafActiveTab) : '빈 페인';
+    const headerDragEnabled =
+      Boolean(onApplyPaneLayout) && splitDragEnabled && !isMobileLayout && isSplit;
 
     return (
       <div
@@ -454,7 +606,15 @@ export default function WorkspaceMainPanels({
         {onCollapsePane && isSplit ? (
           <div
             data-pane-chrome={leafId}
-            className="flex h-8 shrink-0 items-center gap-1 border-b border-gray-200 bg-gray-50 px-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+            className={`flex h-8 shrink-0 items-center gap-1 border-b border-gray-200 bg-gray-50 px-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${
+              headerDragEnabled
+                ? 'cursor-grab touch-none active:cursor-grabbing select-none'
+                : ''
+            } ${draggingPaneLeafId === leafId ? 'opacity-60' : ''}`}
+            onPointerDown={(e) => {
+              if (!headerDragEnabled) return;
+              handlePaneHeaderPointerDown(leafId, e);
+            }}
           >
             <p className="min-w-0 flex-1 truncate px-1 text-xs font-medium text-gray-700 dark:text-odp-fg">
               {paneTitle}
@@ -466,7 +626,7 @@ export default function WorkspaceMainPanels({
                     type="button"
                     aria-label="분할 끄기"
                     data-pane-dismiss={leafId}
-                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-200/80 hover:text-gray-800 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-odp-fgStrong"
+                    className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-200/80 hover:text-gray-800 dark:text-odp-muted dark:hover:bg-odp-focusBg dark:hover:text-odp-fgStrong"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -497,7 +657,8 @@ export default function WorkspaceMainPanels({
             draggingTab &&
             splitDragEnabled &&
             !isMobileLayout &&
-            dropHighlight?.leafId === leafId
+            dropHighlight?.leafId === leafId &&
+            draggingPaneLeafId !== leafId
           }
           activeZone={dropHighlight?.leafId === leafId ? dropHighlight.zone : null}
         />
@@ -571,6 +732,7 @@ export default function WorkspaceMainPanels({
             layout={layout}
             onResizeSplit={onResizeSplit}
             renderLeaf={renderLeafContent}
+            freshPaneIds={freshPaneIds}
           />
         </div>
       ) : (

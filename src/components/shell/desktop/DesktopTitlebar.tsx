@@ -29,7 +29,7 @@ type DesktopTitlebarProps = {
     zone: PaneSplitEdge | 'center',
   ) => boolean;
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
-  onApplyPaneLayout?: (layout: PaneNode) => void;
+  onApplyPaneLayout?: (layout: PaneNode, focusedPaneId?: string | null) => void;
   onFileTabContextMenu?: (
     tab: FileWorkspaceTab,
     point: { clientX: number; clientY: number },
