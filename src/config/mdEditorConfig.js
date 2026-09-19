@@ -9,6 +9,10 @@ import {
   applyAppMarkdownItConfig,
   applyAppMarkdownItPluginsFromList,
 } from '@/utils/appMarkdownItPlugins';
+import {
+  CHAT_COMPOSER_MD_EDITOR_ID,
+  loadChatComposerAutocompleteEnabled,
+} from '@/utils/chatWithMyself/composerAutocompleteSettings';
 import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSettings';
 import { HLJS_ATOM_ONE_DARK_CSS, HLJS_ATOM_ONE_LIGHT_CSS } from '@/utils/mdEditorCodeTheme';
 import '@/styles/md-editor-rt/chat-saved-note.css';
@@ -20,6 +24,13 @@ import '@/styles/md-editor-rt/footnotes.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 import '@/styles/md-editor-rt/code-copy.css';
 import '@/styles/md-editor-rt/toolbar-scroll.css';
+
+function isAutocompleteEnabledForEditor(editorId) {
+  if (editorId === CHAT_COMPOSER_MD_EDITOR_ID) {
+    return loadChatComposerAutocompleteEnabled();
+  }
+  return loadEditorAutocompleteEnabled();
+}
 
 config({
   editorExtensions: {
@@ -52,7 +63,7 @@ config({
   markdownItPlugins(plugins) {
     return applyAppMarkdownItPluginsFromList(plugins);
   },
-  codeMirrorExtensions(extensions) {
+  codeMirrorExtensions(extensions, { editorId } = {}) {
     const next = (extensions || []).filter((item) => item?.type !== 'linkShortener');
     if (next.some((item) => item?.type === 'autocompleteGate')) return next;
     return [
@@ -60,7 +71,7 @@ config({
       {
         type: 'autocompleteGate',
         extension: EditorView.updateListener.of((update) => {
-          if (loadEditorAutocompleteEnabled()) return;
+          if (isAutocompleteEnabledForEditor(editorId)) return;
           if (completionStatus(update.state) === 'active') {
             closeCompletion(update.view);
           }

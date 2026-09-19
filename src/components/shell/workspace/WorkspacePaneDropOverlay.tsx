@@ -1,10 +1,14 @@
+import { useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion as Motion } from 'motion/react';
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
-import { PANE_SPLIT_PREVIEW_PCT } from '@/utils/workspaceTabs/paneDropGeometry';
-import { paneDropZoneStyle } from '@/components/shell/workspace/WorkspacePaneDropTargets';
-
+import {
+  PANE_CENTER_PREVIEW_INSET_PCT,
+  PANE_LEAF_ATTR,
+  PANE_SPLIT_PREVIEW_PCT,
+} from '@/utils/workspaceTabs/paneDropGeometry';
 type WorkspacePaneDropOverlayProps = {
-  leafId: string;
+  leafId: string | null;
   visible: boolean;
   activeZone: PaneSplitEdge | 'center' | null;
 };
@@ -20,6 +24,13 @@ type RectAnim = {
   top: string;
   width: string;
   height: string;
+};
+
+type PaneBox = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 };
 
 function splitRects(zone: PaneSplitEdge): { incoming: RectAnim; remaining: RectAnim } {
@@ -46,6 +57,48 @@ function splitRects(zone: PaneSplitEdge): { incoming: RectAnim; remaining: RectA
         incoming: { left: '0%', top: half, width: '100%', height: half },
       };
   }
+}
+
+function sameBox(a: PaneBox | null, b: PaneBox | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.left === b.left &&
+    a.top === b.top &&
+    a.width === b.width &&
+    a.height === b.height
+  );
+}
+
+function escapeAttrValue(value: string): string {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(value);
+  }
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/** Resolve the on-screen box for a leaf (smallest matching node if duplicates exist). */
+export function measurePaneLeafBox(leafId: string): PaneBox | null {
+  if (typeof document === 'undefined' || !leafId) return null;
+  const nodes = document.querySelectorAll<HTMLElement>(
+    `[${PANE_LEAF_ATTR}="${escapeAttrValue(leafId)}"]`,
+  );
+  let best: PaneBox | null = null;
+  let bestArea = Infinity;
+  for (const node of nodes) {
+    const rect = node.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) continue;
+    const area = rect.width * rect.height;
+    if (area >= bestArea) continue;
+    bestArea = area;
+    best = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+  return best;
 }
 
 /**
@@ -75,31 +128,70 @@ function EdgeSplitPreview({ zone }: { zone: PaneSplitEdge }) {
 }
 
 function CenterJoinPreview() {
+  const inset = `${PANE_CENTER_PREVIEW_INSET_PCT}%`;
   return (
     <div
-      className="pointer-events-none absolute bg-blue-500/45 ring-2 ring-inset ring-blue-400"
-      style={paneDropZoneStyle('center')}
+      className="pointer-events-none absolute bg-blue-500/55 ring-2 ring-inset ring-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.85)]"
+      style={{ left: inset, top: inset, right: inset, bottom: inset }}
     />
   );
 }
 
 /**
- * Visual-only drop preview. Zone resolution is geometric on `[data-pane-leaf]`
- * (see resolvePaneDropAt) — no fragile hit-target gaps.
+ * Visual-only drop preview anchored to the highlighted leaf's live screen box.
+ * Portaled + `position: fixed` so vertical/horizontal splits never inherit the
+ * first pane's containing block (percentage overlays inside nested flex leaves).
  */
 export default function WorkspacePaneDropOverlay({
+  leafId,
   visible,
   activeZone,
 }: WorkspacePaneDropOverlayProps) {
-  if (!visible || !activeZone) return null;
+  const [box, setBox] = useState<PaneBox | null>(null);
 
-  return (
-    <div className="pointer-events-none absolute inset-0 z-30" aria-hidden>
+  useLayoutEffect(() => {
+    if (!visible || !leafId || !activeZone) {
+      setBox(null);
+      return undefined;
+    }
+
+    const sync = () => {
+      const next = measurePaneLeafBox(leafId);
+      setBox((prev) => (sameBox(prev, next) ? prev : next));
+    };
+    sync();
+
+    window.addEventListener('pointermove', sync);
+    window.addEventListener('scroll', sync, true);
+    window.addEventListener('resize', sync);
+    return () => {
+      window.removeEventListener('pointermove', sync);
+      window.removeEventListener('scroll', sync, true);
+      window.removeEventListener('resize', sync);
+    };
+  }, [visible, leafId, activeZone]);
+
+  if (!visible || !activeZone || !leafId || !box) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-100020"
+      style={{
+        left: box.left,
+        top: box.top,
+        width: box.width,
+        height: box.height,
+      }}
+      aria-hidden
+      data-pane-drop-overlay={leafId}
+    >
       {activeZone === 'center' ? (
         <CenterJoinPreview />
       ) : (
-        <EdgeSplitPreview zone={activeZone} />
+        <EdgeSplitPreview key={leafId} zone={activeZone} />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -654,14 +654,25 @@ export function useWorkspaceTabsDomain({
 
   const applyWorkspacePaneLayout = useCallback(
     (layout: PaneNode, focusedPaneId?: string | null) => {
-      const prev = workspaceTabsRef.current;
-      const next = replaceWorkspaceLayout(prev, layout, focusedPaneId);
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const next = replaceWorkspaceLayout(flushed, layout, focusedPaneId);
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
       const active = getActiveTab(next);
       if (active) activateWorkspaceTab(active.id, { navigateUrl: true });
     },
-    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+    [
+      activateWorkspaceTab,
+      currentFileRef,
+      editedFileNameRef,
+      editorContentRef,
+      setWorkspaceTabs,
+      workspaceTabsRef,
+    ],
   );
 
   const collapseWorkspacePane = useCallback(

@@ -1,4 +1,7 @@
-import { resolvePaneDropAt } from '@/utils/workspaceTabs/paneDropGeometry';
+import {
+  resetPaneDropZoneHistory,
+  resolvePaneDropAt,
+} from '@/utils/workspaceTabs/paneDropGeometry';
 
 type WorkspaceTabDragSnapshot = {
   tabId: string;
@@ -18,6 +21,12 @@ function emit() {
 }
 
 export function setWorkspaceTabDrag(snap: WorkspaceTabDragSnapshot | null): void {
+  if (!snap) {
+    resetPaneDropZoneHistory();
+  } else if (!current) {
+    // New drag session — start without leftover hysteresis from a prior drag.
+    resetPaneDropZoneHistory();
+  }
   current = snap;
   emit();
 }

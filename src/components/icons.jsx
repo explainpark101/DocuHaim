@@ -37,6 +37,7 @@ import {
   Search,
   Check,
   CircleAlert,
+  Copy,
   Undo2,
   ClipboardList,
 } from 'lucide-react';
@@ -85,5 +86,6 @@ export const IconMessage = ({ size = 14, ...props }) => <MessageCircle size={siz
 export const IconSearch = ({ size = 14, ...props }) => <Search size={size} {...props} />;
 export const IconCheck = ({ size = 14, ...props }) => <Check size={size} {...props} />;
 export const IconAlert = ({ size = 14, ...props }) => <CircleAlert size={size} {...props} />;
+export const IconCopy = ({ size = 14, ...props }) => <Copy size={size} {...props} />;
 /** Back / cancel ("돌아가기") affordance for ConfirmModal and similar dialogs. */
 export const IconBack = ({ size = 14, ...props }) => <Undo2 size={size} {...props} />;

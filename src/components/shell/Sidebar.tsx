@@ -745,7 +745,10 @@ export default function Sidebar({
       activeDragItemsRef.current = items;
       setActiveDragItems(items);
       syncCopyModifierFromEvent(
-        event.activatorEvent as { ctrlKey?: boolean; altKey?: boolean } | null | undefined,
+        event.activatorEvent as
+          | { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean }
+          | null
+          | undefined,
       );
       handleDragStartNode();
       const canOpenInPane = items.some(
