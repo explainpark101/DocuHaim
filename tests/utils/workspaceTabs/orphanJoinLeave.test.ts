@@ -104,10 +104,12 @@ describe('workspaceTabsStore orphan join/leave', () => {
     expect(collectLeaves(state.layout).flatMap((l) => l.tabIds)).not.toContain(orphanId);
   });
 
-  it('collapsePaneLeaf extracts pane tabs outside the split group', () => {
+  it('collapsePaneLeaf extracts pane tabs in the background without stealing focus', () => {
     let state = threeLeafSplit();
     expect(countLeaves(state.layout)).toBe(3);
-    const leaveLeaf = collectLeaves(state.layout)[2]!;
+    const keepId = state.tabs[0]!.id;
+    state = activateTab(state, keepId);
+    const leaveLeaf = collectLeaves(state.layout).find((l) => !l.tabIds.includes(keepId))!;
     const leaveIds = leaveLeaf.tabIds.slice();
     state = collapsePaneLeaf(state, leaveLeaf.id);
     expect(countLeaves(state.layout)).toBe(2);
@@ -115,6 +117,7 @@ describe('workspaceTabsStore orphan join/leave', () => {
       expect(flattenTabIdsFromLayout(state.layout)).not.toContain(id);
       expect(state.tabs.some((t) => t.id === id)).toBe(true);
     }
-    expect(leaveIds).toContain(state.activeId);
+    expect(state.activeId).toBe(keepId);
+    expect(leaveIds).not.toContain(state.activeId);
   });
 });

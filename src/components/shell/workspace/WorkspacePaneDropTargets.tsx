@@ -28,7 +28,7 @@ export function parsePaneDropId(
   return { leafId, zone };
 }
 
-/** Edge zone thickness as a percent of the pane. */
+/** Edge zone thickness as a percent of the pane (hit-test target). */
 export const PANE_DROP_EDGE_PCT = 40;
 
 /** Empty strip between edge and center zones (corners stay empty; no overlap). */
@@ -36,6 +36,12 @@ export const PANE_DROP_GUTTER_PCT = 0;
 
 /** Distance from pane edge to center start / cross-axis inset for edge zones. */
 export const PANE_DROP_INNER_PCT = PANE_DROP_EDGE_PCT + PANE_DROP_GUTTER_PCT;
+
+/**
+ * Visual preview size for the pane that will be created by an edge split
+ * (matches default split ratio of 0.5).
+ */
+export const PANE_SPLIT_PREVIEW_PCT = 50;
 
 /** Absolute layout for one drop zone, derived from the % constants above. */
 export function paneDropZoneStyle(zone: PaneSplitEdge | 'center'): CSSProperties {
@@ -55,6 +61,25 @@ export function paneDropZoneStyle(zone: PaneSplitEdge | 'center'): CSSProperties
   }
 }
 
+/**
+ * Blue preview covering only the space the new split pane will occupy.
+ * `center` is join-into-leaf (no new pane); returns null.
+ */
+export function paneSplitPreviewStyle(zone: PaneSplitEdge | 'center'): CSSProperties | null {
+  if (zone === 'center') return null;
+  const half = `${PANE_SPLIT_PREVIEW_PCT}%`;
+  switch (zone) {
+    case 'left':
+      return { left: 0, top: 0, bottom: 0, width: half };
+    case 'right':
+      return { right: 0, top: 0, bottom: 0, width: half };
+    case 'top':
+      return { top: 0, left: 0, right: 0, height: half };
+    case 'bottom':
+      return { bottom: 0, left: 0, right: 0, height: half };
+  }
+}
+
 function Zone({
   leafId,
   zone,
@@ -63,15 +88,28 @@ function Zone({
   zone: PaneSplitEdge | 'center';
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: paneDropId(leafId, zone) });
+  const previewStyle = isOver ? paneSplitPreviewStyle(zone) : null;
   return (
-    <div
-      ref={setNodeRef}
-      style={paneDropZoneStyle(zone)}
-      className={`absolute ${
-        isOver ? 'bg-blue-500/60 ring-2 ring-inset ring-blue-400' : 'bg-blue-500/20'
-      }`}
-      data-pane-drop={paneDropId(leafId, zone)}
-    />
+    <>
+      <div
+        ref={setNodeRef}
+        style={paneDropZoneStyle(zone)}
+        className="absolute"
+        data-pane-drop={paneDropId(leafId, zone)}
+      />
+      {previewStyle ? (
+        <div
+          style={previewStyle}
+          className="pointer-events-none absolute bg-blue-500/55 ring-2 ring-inset ring-blue-400"
+        />
+      ) : null}
+      {isOver && zone === 'center' ? (
+        <div
+          style={paneDropZoneStyle('center')}
+          className="pointer-events-none absolute bg-blue-500/45 ring-2 ring-inset ring-blue-400"
+        />
+      ) : null}
+    </>
   );
 }
 
