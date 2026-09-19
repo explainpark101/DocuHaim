@@ -697,7 +697,7 @@ export default function AdvancedSearchHost({
           return;
         }
 
-        if (commandId?.startsWith('chat-focus-') || commandId === 'chat-focus-composer') {
+        if (commandId?.startsWith('chat-')) {
           window.setTimeout(() => {
             runChatAction(commandId);
           }, 0);
