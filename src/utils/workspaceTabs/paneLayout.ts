@@ -1,6 +1,12 @@
 /** Soft max leaf panes in a workspace split layout. */
 export const WORKSPACE_PANE_SOFT_CAP = 4;
 
+/** Tab-strip droppable: leave the split group (become orphan / full window). */
+export const WORKSPACE_TAB_ORPHAN_ZONE_ID = '__workspace_tab_orphan_zone__';
+
+/** Tab-strip droppable: join the focused split leaf group. */
+export const WORKSPACE_TAB_GROUP_ZONE_ID = '__workspace_tab_group_zone__';
+
 export type PaneSplitEdge = 'left' | 'right' | 'top' | 'bottom';
 
 export type PaneLeaf = {
@@ -289,6 +295,72 @@ export function syncLayoutWithTabs(
   tabIds: string[],
   focusedPaneId: string | null,
 ): { layout: PaneNode; focusedPaneId: string } {
+  const pruned = pruneLayoutToTabs(layout, tabIds, focusedPaneId);
+  let next = pruned.layout;
+  const present = new Set(flattenTabIdsFromLayout(next));
+  const orphans = tabIds.filter((id) => !present.has(id));
+  if (orphans.length > 0) {
+    const leaves = collectLeaves(next);
+    const target =
+      (pruned.focusedPaneId && leaves.find((l) => l.id === pruned.focusedPaneId)) || leaves[0];
+    if (target) {
+      next = mapLeaf(next, target.id, (leaf) => {
+        const tabIdsNext = [...leaf.tabIds, ...orphans];
+        return {
+          ...leaf,
+          tabIds: tabIdsNext,
+          activeId: leaf.activeId ?? orphans[0] ?? null,
+        };
+      });
+    } else {
+      next = createSingleLeafLayout(tabIds, tabIds[0] ?? null);
+    }
+  }
+
+  const leaves = collectLeaves(next);
+  let focus =
+    pruned.focusedPaneId && leaves.some((l) => l.id === pruned.focusedPaneId)
+      ? pruned.focusedPaneId
+      : null;
+  if (!focus) {
+    focus = leaves[0]?.id ?? createEmptyLeaf().id;
+    if (leaves.length === 0) {
+      next = createEmptyLeaf(focus);
+    }
+  }
+  return { layout: next, focusedPaneId: focus };
+}
+
+/**
+ * While split, keep orphans outside the pane tree; when unsplit, absorb everyone.
+ * Used by persistence and store sync so drag-out / full-window tabs survive restarts.
+ */
+export function syncLayoutPreservingOrphansWhenSplit(
+  layout: PaneNode,
+  tabIds: string[],
+  focusedPaneId: string | null,
+): { layout: PaneNode; focusedPaneId: string } {
+  if (countLeaves(layout) > 1) {
+    return pruneLayoutToTabs(layout, tabIds, focusedPaneId);
+  }
+  return syncLayoutWithTabs(layout, tabIds, focusedPaneId);
+}
+
+/** Tab ids present in `tabs` but not in any leaf (full-window / outside group). */
+export function listOrphanTabIds(tabIds: string[], layout: PaneNode): string[] {
+  const inLayout = new Set(flattenTabIdsFromLayout(layout));
+  return tabIds.filter((id) => !inLayout.has(id));
+}
+
+/**
+ * Drop tabs that no longer exist from the layout, but do NOT pull orphans in.
+ * Used while split so "outside group" tabs can stay out of the pane tree.
+ */
+export function pruneLayoutToTabs(
+  layout: PaneNode,
+  tabIds: string[],
+  focusedPaneId: string | null,
+): { layout: PaneNode; focusedPaneId: string } {
   const tabSet = new Set(tabIds);
   let next = mapAllLeaves(layout, (leaf) => {
     const kept = leaf.tabIds.filter((id) => tabSet.has(id));
@@ -303,26 +375,6 @@ export function syncLayoutWithTabs(
     return { ...leaf, tabIds: kept, activeId, exportPdfForTabId };
   });
   next = collapseEmptyLeaves(next);
-
-  const present = new Set(flattenTabIdsFromLayout(next));
-  const orphans = tabIds.filter((id) => !present.has(id));
-  if (orphans.length > 0) {
-    const leaves = collectLeaves(next);
-    const target =
-      (focusedPaneId && leaves.find((l) => l.id === focusedPaneId)) || leaves[0];
-    if (target) {
-      next = mapLeaf(next, target.id, (leaf) => {
-        const tabIdsNext = [...leaf.tabIds, ...orphans];
-        return {
-          ...leaf,
-          tabIds: tabIdsNext,
-          activeId: leaf.activeId ?? orphans[0] ?? null,
-        };
-      });
-    } else {
-      next = createSingleLeafLayout(tabIds, tabIds[0] ?? null);
-    }
-  }
 
   const leaves = collectLeaves(next);
   let focus = focusedPaneId && leaves.some((l) => l.id === focusedPaneId) ? focusedPaneId : null;

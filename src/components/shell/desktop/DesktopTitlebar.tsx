@@ -30,7 +30,6 @@ type DesktopTitlebarProps = {
   ) => boolean;
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
   onApplyPaneLayout?: (layout: PaneNode) => void;
-  onCollapsePane?: (leafId: string) => void;
   onFileTabContextMenu?: (
     tab: FileWorkspaceTab,
     point: { clientX: number; clientY: number },
@@ -58,7 +57,6 @@ export default function DesktopTitlebar({
   onPaneDrop,
   onSplitTab,
   onApplyPaneLayout,
-  onCollapsePane,
   onFileTabContextMenu,
   isMobileLayout = false,
   mobileSidebarClose,
@@ -117,7 +115,6 @@ export default function DesktopTitlebar({
             {...(onSplitTab ? { onSplitTab } : {})}
             paneLayout={layout}
             {...(onApplyPaneLayout ? { onApplyPaneLayout } : {})}
-            {...(onCollapsePane ? { onCollapsePane } : {})}
             {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
             isMobileLayout={isMobileLayout}
             variant="titlebar"

@@ -1,7 +1,7 @@
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import {
-  PANE_DROP_ZONE_POS,
   paneDropId,
+  paneDropZoneStyle,
 } from '@/components/shell/workspace/WorkspacePaneDropTargets';
 
 type WorkspacePaneDropOverlayProps = {
@@ -37,7 +37,8 @@ export default function WorkspacePaneDropOverlay({
         <div
           key={zone}
           data-pane-drop={paneDropId(leafId, zone)}
-          className={`${ZONE_BASE} pointer-events-auto ${PANE_DROP_ZONE_POS[zone]} ${hl(zone)}`}
+          style={paneDropZoneStyle(zone)}
+          className={`${ZONE_BASE} pointer-events-auto ${hl(zone)}`}
         />
       ))}
     </div>

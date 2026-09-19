@@ -14,7 +14,7 @@ import {
   createSingleLeafLayout,
   fromPersistedPaneNode,
   isPersistedPaneNode,
-  syncLayoutWithTabs,
+  syncLayoutPreservingOrphansWhenSplit,
   toPersistedPaneNode,
   type PersistedPaneNode,
 } from '@/utils/workspaceTabs/paneLayout';
@@ -94,7 +94,11 @@ function normalizePersisted(raw: unknown): PersistedWorkspaceTabs | null {
   if ((o.version === 1 || o.version === 2) && isPersistedPaneNode(o.layout)) {
     const tabIds = tabs.map(persistedId);
     const focusHint = typeof o.focusedPaneId === 'string' ? o.focusedPaneId : null;
-    const synced = syncLayoutWithTabs(fromPersistedPaneNode(o.layout), tabIds, focusHint);
+    const synced = syncLayoutPreservingOrphansWhenSplit(
+      fromPersistedPaneNode(o.layout),
+      tabIds,
+      focusHint,
+    );
     return {
       version: 2,
       tabs,
@@ -237,7 +241,11 @@ export function toPersistedWorkspaceTabs(
   const tabIds = persisted.map(persistedId);
   if (layout) {
     const focusHint = focusedPaneId || null;
-    const synced = syncLayoutWithTabs(fromPersistedPaneNode(layout), tabIds, focusHint);
+    const synced = syncLayoutPreservingOrphansWhenSplit(
+      fromPersistedPaneNode(layout),
+      tabIds,
+      focusHint,
+    );
     return {
       version: 2,
       tabs: persisted,

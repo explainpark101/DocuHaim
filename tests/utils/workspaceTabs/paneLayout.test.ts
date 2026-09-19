@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addTabAsStandaloneLeaf,
   addTabToFocusedLeaf,
   collapseLeafIntoSibling,
   collectLeaves,
   countLeaves,
   createSingleLeafLayout,
   flattenTabIdsFromLayout,
+  listOrphanTabIds,
   moveTabToLeaf,
+  pruneLayoutToTabs,
   removeTabFromLayout,
   splitLeaf,
+  syncLayoutPreservingOrphansWhenSplit,
   syncLayoutWithTabs,
 } from '@/utils/workspaceTabs/paneLayout';
 
@@ -42,7 +44,6 @@ describe('paneLayout', () => {
   it('moves a tab between leaves', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
     const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
-    // Add c into the left leaf (same group), then move to the right leaf.
     const leftId = collectLeaves(split.layout)[0]!.id;
     const rightId = collectLeaves(split.layout)[1]!.id;
     const withC = addTabToFocusedLeaf(split.layout, leftId, 'c', { activate: false });
@@ -75,15 +76,32 @@ describe('paneLayout', () => {
     expect(flattenTabIdsFromLayout(result!.layout)).toEqual(['a', 'b', 'c']);
   });
 
-  it('adds a standalone leaf ahead of an existing split', () => {
+  it('prunes closed tabs without absorbing orphans while split', () => {
     const leaf = createSingleLeafLayout(['a', 'b'], 'a');
     const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
-    const next = addTabAsStandaloneLeaf(split.layout, split.focusedPaneId, 'c', {
-      activate: true,
-      side: 'before',
-    });
-    expect(collectLeaves(next.layout).map((l) => l.tabIds)).toEqual([['c'], ['a'], ['b']]);
-    expect(next.focusedPaneId).toBe(collectLeaves(next.layout)[0]!.id);
+    const pruned = pruneLayoutToTabs(split.layout, ['a', 'b', 'orphan'], split.focusedPaneId);
+    expect(countLeaves(pruned.layout)).toBe(2);
+    expect(flattenTabIdsFromLayout(pruned.layout)).toEqual(['a', 'b']);
+    expect(listOrphanTabIds(['a', 'b', 'orphan'], pruned.layout)).toEqual(['orphan']);
+  });
+
+  it('preserves orphans when syncing a split layout', () => {
+    const leaf = createSingleLeafLayout(['a', 'b'], 'a');
+    const split = splitLeaf(leaf, leaf.id, 'right', 'b')!;
+    const synced = syncLayoutPreservingOrphansWhenSplit(
+      split.layout,
+      ['a', 'b', 'c'],
+      split.focusedPaneId,
+    );
+    expect(countLeaves(synced.layout)).toBe(2);
+    expect(flattenTabIdsFromLayout(synced.layout)).toEqual(['a', 'b']);
+    expect(listOrphanTabIds(['a', 'b', 'c'], synced.layout)).toEqual(['c']);
+  });
+
+  it('absorbs orphans when syncing a single-leaf layout', () => {
+    const leaf = createSingleLeafLayout(['a'], 'a');
+    const synced = syncLayoutPreservingOrphansWhenSplit(leaf, ['a', 'b'], leaf.id);
+    expect(flattenTabIdsFromLayout(synced.layout)).toEqual(['a', 'b']);
   });
 
   it('collapses a leaf into its sibling and keeps tabs', () => {

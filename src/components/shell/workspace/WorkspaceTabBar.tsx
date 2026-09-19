@@ -3,6 +3,7 @@ import {
   DragOverlay,
   PointerSensor,
   closestCenter,
+  useDroppable,
   useSensor,
   useSensors,
   type DragCancelEvent,
@@ -26,7 +27,7 @@ import {
   IconSettings,
   IconVideo,
 } from '@/components/icons';
-import { MessageSquare, Search, X, Loader2, ClipboardList, PanelRightClose } from 'lucide-react';
+import { MessageSquare, Search, X, Loader2, ClipboardList } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { useHorizontalOverflowScroll } from '@/hooks/useHorizontalOverflowScroll';
 import {
@@ -71,8 +72,11 @@ import {
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
 import {
   WORKSPACE_PANE_SOFT_CAP,
+  WORKSPACE_TAB_GROUP_ZONE_ID,
+  WORKSPACE_TAB_ORPHAN_ZONE_ID,
   countLeaves,
   findLeafContainingTab,
+  listOrphanTabIds,
   type PaneNode,
   type PaneSplitEdge,
 } from '@/utils/workspaceTabs/paneLayout';
@@ -109,8 +113,6 @@ type WorkspaceTabBarProps = {
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
   paneLayout?: PaneNode | null;
   onApplyPaneLayout?: (layout: PaneNode) => void;
-  /** Dismiss a split pane group (merge tabs into sibling). */
-  onCollapsePane?: (leafId: string) => void;
   onFileTabContextMenu?: (
     tab: FileWorkspaceTab,
     point: { clientX: number; clientY: number },
@@ -546,56 +548,55 @@ type ActiveDragState = {
 };
 
 type TabGroupChromeProps = {
-  group: WorkspaceTabGroup;
   children: ReactNode;
+  focused: boolean;
   isMobileLayout: boolean;
   mobileContextMenu: boolean;
   onOpenLayoutEditor: () => void;
-  onCollapsePane?: (leafId: string) => void;
 };
 
-function SplitPaneDismissButton({
-  leafId,
-  onCollapsePane,
-}: {
-  leafId: string;
-  onCollapsePane: (leafId: string) => void;
-}) {
+function GroupJoinDroppable({ children }: { children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: WORKSPACE_TAB_GROUP_ZONE_ID });
   return (
-    <Tooltip.Root>
-      <Tooltip.Trigger asChild>
-        <button
-          type="button"
-          aria-label="분할 끄기"
-          data-tab-group-dismiss={leafId}
-          className="inline-flex size-6 shrink-0 items-center justify-center self-center text-gray-500 transition-colors hover:text-gray-800 dark:text-odp-muted dark:hover:text-odp-fgStrong"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onCollapsePane(leafId);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <PanelRightClose size={14} strokeWidth={2} aria-hidden />
-        </button>
-      </Tooltip.Trigger>
-      <Tooltip.Portal>
-        <Tooltip.Content side="bottom" sideOffset={6} className={tooltipContentClass}>
-          분할 끄기
-          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
-        </Tooltip.Content>
-      </Tooltip.Portal>
-    </Tooltip.Root>
+    <div
+      ref={setNodeRef}
+      data-tab-group-drop=""
+      className={`flex h-full shrink-0 items-stretch self-stretch rounded-t-lg ${
+        isOver ? 'ring-2 ring-blue-500/70 dark:ring-blue-400/60' : ''
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function OrphanLeaveDroppable({
+  children,
+  className = '',
+}: {
+  children?: ReactNode;
+  className?: string;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: WORKSPACE_TAB_ORPHAN_ZONE_ID });
+  return (
+    <div
+      ref={setNodeRef}
+      data-tab-orphan-zone=""
+      className={`flex min-w-8 min-h-0 flex-1 items-stretch gap-0.5 self-stretch rounded-t-md ${
+        isOver ? 'bg-blue-500/10 ring-1 ring-inset ring-blue-500/40 dark:bg-blue-400/10' : ''
+      } ${className}`.trim()}
+    >
+      {children}
+    </div>
   );
 }
 
 function WorkspaceTabGroupChrome({
-  group,
   children,
+  focused,
   isMobileLayout,
   mobileContextMenu,
   onOpenLayoutEditor,
-  onCollapsePane,
 }: TabGroupChromeProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const itemClass = mobileContextMenu ? MOBILE_CONTEXT_MENU_ITEM_CLASS : tabMenuItemClass;
@@ -616,14 +617,13 @@ function WorkspaceTabGroupChrome({
 
   const grip = (
     <div
-      data-tab-group-chrome={group.leafId}
+      data-tab-group-chrome=""
       className="flex w-2.5 shrink-0 cursor-context-menu items-stretch self-stretch rounded-sm hover:bg-blue-500/20 dark:hover:bg-blue-400/25"
       aria-label="분할 탭 그룹 메뉴"
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
         if (mobileContextMenu) openGroupMenu();
-        // Desktop: Radix ContextMenu.Trigger handles open via AdaptiveContextMenu.
       }}
       onPointerDown={(e) => {
         if (!mobileContextMenu) return;
@@ -652,9 +652,9 @@ function WorkspaceTabGroupChrome({
     <div
       role="group"
       aria-label="스플릿 탭 그룹"
-      data-tab-group={group.leafId}
-      className={`flex h-[calc(100%-3px)] shrink-0 items-stretch gap-0 self-end rounded-t-lg px-1 pt-0.5 ${
-        group.focused
+      data-tab-group=""
+      className={`flex h-full shrink-0 items-stretch gap-0.5 self-stretch rounded-t-lg px-1 ${
+        focused
           ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
           : 'bg-gray-300/90 ring-1 ring-gray-400/50 dark:bg-odp-bg dark:ring-odp-borderStrong'
       }`}
@@ -686,9 +686,6 @@ function WorkspaceTabGroupChrome({
         </AdaptiveMenuItem>
       </AdaptiveContextMenu>
       {children}
-      {onCollapsePane ? (
-        <SplitPaneDismissButton leafId={group.leafId} onCollapsePane={onCollapsePane} />
-      ) : null}
     </div>
   );
 }
@@ -706,7 +703,6 @@ export default function WorkspaceTabBar({
   onSplitTab,
   paneLayout = null,
   onApplyPaneLayout,
-  onCollapsePane,
   onFileTabContextMenu,
   isMobileLayout = false,
   variant = 'inline',
@@ -747,6 +743,22 @@ export default function WorkspaceTabBar({
   const showGroups = Boolean(tabGroups && tabGroups.length > 1);
   const leafCount = paneLayout ? countLeaves(paneLayout) : 1;
   const canAddPane = splitDragEnabled && leafCount < WORKSPACE_PANE_SOFT_CAP;
+  const orphanTabs = useMemo(() => {
+    if (!showGroups || !paneLayout) return [] as WorkspaceTab[];
+    const orphanIds = new Set(listOrphanTabIds(tabs.map((t) => t.id), paneLayout));
+    return orderedTabs.filter((t) => orphanIds.has(t.id));
+  }, [showGroups, paneLayout, tabs, orderedTabs]);
+  const groupedTabs = useMemo(() => {
+    if (!showGroups || !tabGroups) return [] as WorkspaceTab[];
+    const out: WorkspaceTab[] = [];
+    for (const g of tabGroups) {
+      for (const id of g.tabIds) {
+        const t = byId.get(id);
+        if (t) out.push(t);
+      }
+    }
+    return out;
+  }, [showGroups, tabGroups, byId]);
 
   useHorizontalOverflowScroll(tabListEl, orderedTabs.length > 0);
 
@@ -816,14 +828,14 @@ export default function WorkspaceTabBar({
   };
 
   const titlebarTabListClass = showGroups
-    ? 'workspace-tab-bar__tablist flex h-full min-w-0 flex-1 items-end gap-2 overflow-x-auto overflow-y-hidden px-1.5 pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+    ? 'workspace-tab-bar__tablist flex h-full min-w-0 flex-1 items-stretch gap-2 overflow-x-auto overflow-y-hidden px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
     : 'workspace-tab-bar__tablist flex h-full min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto overflow-y-hidden px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
   const listClass =
     variant === 'titlebar'
       ? titlebarTabListClass
       : showGroups
-        ? `flex h-9 shrink-0 items-end gap-2 overflow-x-auto border-b border-gray-200 bg-gray-100 px-1.5 dark:border-odp-borderSoft dark:bg-odp-bg ${className}`.trim()
+        ? `flex h-9 shrink-0 items-stretch gap-2 overflow-x-auto border-b border-gray-200 bg-gray-100 px-1.5 dark:border-odp-borderSoft dark:bg-odp-bg ${className}`.trim()
         : `flex h-9 shrink-0 items-stretch gap-0.5 overflow-x-auto border-b border-gray-200 bg-gray-50 px-1 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${className}`.trim();
 
   const overlayStyle: CSSProperties | undefined = activeDrag?.size
@@ -859,48 +871,40 @@ export default function WorkspaceTabBar({
 
   const tabListBody = showGroups && tabGroups ? (
     <>
-      {tabGroups.map((group) => {
-        const groupTabs = group.tabIds
-          .map((id) => byId.get(id))
-          .filter(Boolean) as WorkspaceTab[];
-        if (groupTabs.length === 0) return null;
-        const groupInner = groupTabs.map(renderTab);
-        if (paneLayout && onApplyPaneLayout) {
-          return (
-            <WorkspaceTabGroupChrome
-              key={group.leafId}
-              group={group}
-              isMobileLayout={isMobileLayout}
-              mobileContextMenu={mobileContextMenu}
-              onOpenLayoutEditor={() => setLayoutModalOpen(true)}
-              {...(onCollapsePane ? { onCollapsePane } : {})}
-            >
-              {groupInner}
-            </WorkspaceTabGroupChrome>
-          );
-        }
-        return (
+      {paneLayout && onApplyPaneLayout ? (
+        <GroupJoinDroppable>
+          <WorkspaceTabGroupChrome
+            focused={tabGroups.some((g) => g.focused)}
+            isMobileLayout={isMobileLayout}
+            mobileContextMenu={mobileContextMenu}
+            onOpenLayoutEditor={() => setLayoutModalOpen(true)}
+          >
+            {groupedTabs.map(renderTab)}
+          </WorkspaceTabGroupChrome>
+        </GroupJoinDroppable>
+      ) : (
+        <GroupJoinDroppable>
           <div
-            key={group.leafId}
             role="group"
             aria-label="스플릿 탭 그룹"
-            data-tab-group={group.leafId}
-            className={`flex h-[calc(100%-3px)] shrink-0 items-stretch gap-0 self-end rounded-t-lg px-1 pt-0.5 ${
-              group.focused
+            className={`flex h-full shrink-0 items-stretch gap-0.5 self-stretch rounded-t-lg px-1 ${
+              tabGroups.some((g) => g.focused)
                 ? 'bg-blue-500/20 ring-1 ring-blue-500/50 dark:bg-blue-400/15 dark:ring-blue-400/45'
                 : 'bg-gray-300/90 ring-1 ring-gray-400/50 dark:bg-odp-bg dark:ring-odp-borderStrong'
             }`}
           >
-            {groupInner}
-            {onCollapsePane ? (
-              <SplitPaneDismissButton leafId={group.leafId} onCollapsePane={onCollapsePane} />
-            ) : null}
+            {groupedTabs.map(renderTab)}
           </div>
-        );
-      })}
-      {variant === 'titlebar' ? (
-        <div data-tauri-drag-region className="min-w-8 flex-1 shrink-0 self-stretch" />
-      ) : null}
+        </GroupJoinDroppable>
+      )}
+      <OrphanLeaveDroppable className="items-stretch">
+        {orphanTabs.map(renderTab)}
+        {variant === 'titlebar' ? (
+          <div data-tauri-drag-region className="min-w-8 flex-1 shrink-0 self-stretch" />
+        ) : (
+          <div className="min-w-4 flex-1 shrink-0 self-stretch" aria-hidden />
+        )}
+      </OrphanLeaveDroppable>
     </>
   ) : (
     <>

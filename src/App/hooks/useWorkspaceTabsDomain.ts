@@ -536,8 +536,10 @@ export function useWorkspaceTabsDomain({
       const next = moveTab(workspaceTabsRef.current, activeId, overId);
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
+      const active = getActiveTab(next);
+      if (active) activateWorkspaceTab(active.id, { navigateUrl: true });
     },
-    [workspaceTabsRef, setWorkspaceTabs],
+    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
   );
 
   const focusWorkspacePane = useCallback(

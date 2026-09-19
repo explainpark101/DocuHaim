@@ -378,7 +378,6 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             ? {
                 onSplitTab: splitWorkspaceTabToEdge,
                 onApplyPaneLayout: applyWorkspacePaneLayout,
-                onCollapsePane: collapseWorkspacePane,
               }
             : {})}
           onActivateTab={(id) => activateWorkspaceTab(id)}
