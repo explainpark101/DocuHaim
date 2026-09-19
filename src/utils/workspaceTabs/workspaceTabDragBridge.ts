@@ -74,6 +74,18 @@ export function getPaneDropOverlayHit(): PaneDropOverlayHit | null {
   return overlayHit;
 }
 
+type OverlayFlushFn = () => void;
+let overlayFlush: OverlayFlushFn | null = null;
+
+/** Overlay registers a flush so drop commit can apply a pending throttled move. */
+export function registerPaneDropOverlayFlush(fn: OverlayFlushFn | null): void {
+  overlayFlush = fn;
+}
+
+export function flushPaneDropOverlayForCommit(): void {
+  overlayFlush?.();
+}
+
 export function subscribeWorkspaceTabDrag(listener: Listener): () => void {
   listeners.add(listener);
   listener(current);
@@ -95,6 +107,7 @@ export function resolvePaneDropForCommit(
   clientX: number,
   clientY: number,
 ): PaneDropOverlayHit | null {
+  flushPaneDropOverlayForCommit();
   if (overlayHit) return overlayHit;
   return toOverlayHit(resolvePaneDropAt(clientX, clientY));
 }
