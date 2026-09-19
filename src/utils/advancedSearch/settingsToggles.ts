@@ -18,6 +18,11 @@ import {
   writeComposerHelperTextPref,
 } from '@/utils/chatWithMyself/composerPrefs.js';
 import {
+  loadChatComposerAutocompleteEnabled,
+  setChatComposerAutocompleteEnabled,
+} from '@/utils/chatWithMyself/composerAutocompleteSettings';
+
+import {
   loadHideRecordingCompanions,
   saveHideRecordingCompanions,
 } from '@/utils/recordingVisibilitySettings';
@@ -92,6 +97,7 @@ export type SettingsToggleId =
   | 'settings-status-bar-clock'
   | 'settings-status-bar-clock-date'
   | 'settings-composer-helper'
+  | 'settings-composer-autocomplete'
   | 'settings-as-animation'
   | 'settings-as-build-log-auto-scroll'
   | 'settings-as-index'
@@ -269,6 +275,26 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     keywords: ['chat', '채팅', 'helper', '단축키', '안내', 'composer'],
     load: getComposerHelperTextVisible,
     save: writeComposerHelperTextPref,
+  },
+  {
+    id: 'settings-composer-autocomplete',
+    enableTitle: '채팅 입력 자동완성 켜기',
+    disableTitle: '채팅 입력 자동완성 끄기',
+    description: '나와의 채팅 md-editor-rt 자동완성 추천',
+    keywords: [
+      'chat',
+      '채팅',
+      'composer',
+      'autocomplete',
+      'completion',
+      'suggestion',
+      '자동완성',
+      '추천',
+      'md-editor',
+      'codemirror',
+    ],
+    load: loadChatComposerAutocompleteEnabled,
+    save: setChatComposerAutocompleteEnabled,
   },
   {
     id: 'settings-as-animation',

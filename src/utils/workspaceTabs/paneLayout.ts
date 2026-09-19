@@ -148,9 +148,12 @@ function mapAllLeaves(node: PaneNode, mapper: (leaf: PaneLeaf) => PaneLeaf): Pan
   };
 }
 
+export const PANE_SPLIT_RATIO_MIN = 0.05;
+export const PANE_SPLIT_RATIO_MAX = 0.95;
+
 function clampRatio(ratio: number): number {
   if (!Number.isFinite(ratio)) return 0.5;
-  return Math.min(0.85, Math.max(0.15, ratio));
+  return Math.min(PANE_SPLIT_RATIO_MAX, Math.max(PANE_SPLIT_RATIO_MIN, ratio));
 }
 
 export function resizeSplit(node: PaneNode, splitId: string, ratio: number): PaneNode {

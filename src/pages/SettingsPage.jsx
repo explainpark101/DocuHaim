@@ -47,6 +47,9 @@ import {
   getComposerHelperTextVisible,
 } from '@/utils/chatWithMyself';
 import {
+  loadChatComposerAutocompleteEnabled,
+} from '@/utils/chatWithMyself/composerAutocompleteSettings';
+import {
   setSettingsToggle,
   subscribeSettingsToggles,
 } from '@/utils/advancedSearch/settingsToggles';
@@ -178,6 +181,9 @@ export default function SettingsPage({
   const [composerHelperTextVisible, setComposerHelperTextVisible] = useState(() =>
     getComposerHelperTextVisible(),
   );
+  const [composerAutocompleteEnabled, setComposerAutocompleteEnabled] = useState(() =>
+    loadChatComposerAutocompleteEnabled(),
+  );
   const advancedSearchStatus = useAdvancedSearchEngineStatus();
   const [advancedSearchUiAnimation, setAdvancedSearchUiAnimation] = useState(() =>
     loadAdvancedSearchUiAnimationEnabled(),
@@ -218,6 +224,7 @@ export default function SettingsPage({
       if (id === 'settings-alt-vim') setAltVimNavigationEnabled(enabled);
       else if (id === 'settings-workspace-tabs') setWorkspaceTabsEnabled(enabled);
       else if (id === 'settings-composer-helper') setComposerHelperTextVisible(enabled);
+      else if (id === 'settings-composer-autocomplete') setComposerAutocompleteEnabled(enabled);
       else if (id === 'settings-as-animation') setAdvancedSearchUiAnimation(enabled);
     });
   }, []);
@@ -1757,8 +1764,9 @@ export default function SettingsPage({
         >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">나와의 채팅</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-4">
-            채팅 입력창 아래 단축키 안내 문구 표시 여부를 설정합니다.
+            나와의 채팅 입력창 표시·자동완성 옵션입니다.
           </p>
+          <div className="space-y-4">
           <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
             <button
               type="button"
@@ -1786,6 +1794,34 @@ export default function SettingsPage({
               </span>
             </span>
           </label>
+          <label className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group">
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsToggle('settings-composer-autocomplete', !composerAutocompleteEnabled);
+              }}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
+                composerAutocompleteEnabled
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={composerAutocompleteEnabled}
+              aria-label="채팅 입력 자동완성"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  composerAutocompleteEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              채팅 입력 자동완성
+              <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                나와의 채팅 md-editor-rt 자동완성 추천입니다. 노트 편집기 자동완성과는 별도로 저장됩니다.
+              </span>
+            </span>
+          </label>
+          </div>
         </div>
             </SettingsPageGroup>
 

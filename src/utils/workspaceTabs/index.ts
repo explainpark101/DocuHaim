@@ -34,6 +34,8 @@ export {
   WORKSPACE_PANE_SOFT_CAP,
   WORKSPACE_TAB_GROUP_ZONE_ID,
   WORKSPACE_TAB_ORPHAN_ZONE_ID,
+  PANE_SPLIT_RATIO_MIN,
+  PANE_SPLIT_RATIO_MAX,
   collectLeaves,
   countLeaves,
   createEmptyLeaf,

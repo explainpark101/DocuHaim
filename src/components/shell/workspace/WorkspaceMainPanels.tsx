@@ -9,6 +9,7 @@ import WorkspaceTabHost, {
 } from '@/components/workspace/WorkspaceTabHost';
 import WorkspaceSplitLayout from '@/components/shell/workspace/WorkspaceSplitLayout';
 import WorkspacePaneDropOverlay from '@/components/shell/workspace/WorkspacePaneDropOverlay';
+import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
@@ -214,7 +215,8 @@ export default function WorkspaceMainPanels({
         typeof activeId === 'string' &&
         !findLeafContainingTab(layout, activeId),
     );
-  const showSplitPanes = Boolean(layout && isSplit && onResizeSplit && !activeIsOrphan);
+  /** Keep the split tree mounted even while an orphan tab is full-window (hide only). */
+  const splitLayoutMounted = Boolean(layout && isSplit && onResizeSplit);
   const singleLeafId = leaves[0]?.id ?? (layout && isPaneLeaf(layout) ? layout.id : null);
 
   const tabGroups: WorkspaceTabGroup[] | null = useMemo(() => {
@@ -601,7 +603,7 @@ export default function WorkspaceMainPanels({
           focused
             ? 'ring-2 ring-inset ring-blue-500/45 dark:ring-blue-400/40'
             : ''
-        }`}
+        } ${freshPaneIds.has(leafId) ? 'workspace-pane-appear-glow' : ''}`}
         onPointerDownCapture={() => onFocusPane?.(leafId)}
       >
         {onCollapsePane && isSplit ? (
@@ -652,17 +654,6 @@ export default function WorkspaceMainPanels({
             </Tooltip.Provider>
           </div>
         ) : null}
-        <WorkspacePaneDropOverlay
-          leafId={leafId}
-          visible={
-            draggingTab &&
-            splitDragEnabled &&
-            !isMobileLayout &&
-            dropHighlight?.leafId === leafId &&
-            draggingPaneLeafId !== leafId
-          }
-          activeZone={dropHighlight?.leafId === leafId ? dropHighlight.zone : null}
-        />
         {exportPdfForTabId ? (
           <LeafExportPdfBack
             leafId={leafId}
@@ -704,7 +695,9 @@ export default function WorkspaceMainPanels({
 
             return (
               <WorkspaceKeepAlivePanel key={`${leafId}:${tabId}`} active={paneActive}>
-                {renderTabContent(tab, paneActive, {
+                {/* Always keep the editor mounted; visibility is KeepAlivePanel's job.
+                    Avoids wiping CM/state when switching tabs or hiding the split for orphans. */}
+                {renderTabContent(tab, true, {
                   ...(isFileTab(tab) && tab.noteSurface
                     ? { noteSurface: tab.noteSurface }
                     : {}),
@@ -727,126 +720,197 @@ export default function WorkspaceMainPanels({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {tabBarPlacement === 'inline' ? tabBar : null}
-      {showSplitPanes && layout && onResizeSplit ? (
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gray-300 p-1.5 dark:bg-black">
-          <WorkspaceSplitLayout
-            layout={layout}
-            onResizeSplit={onResizeSplit}
-            renderLeaf={renderLeafContent}
-            freshPaneIds={freshPaneIds}
-          />
-        </div>
-      ) : (
-        <WorkspaceTabHost>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {splitLayoutMounted && layout && onResizeSplit ? (
           <div
-            className="absolute inset-0"
-            {...(singleLeafId ? { [PANE_LEAF_ATTR]: singleLeafId } : {})}
+            className={
+              activeIsOrphan
+                ? 'pointer-events-none invisible absolute inset-0 z-0 flex flex-col overflow-hidden bg-gray-300 p-1.5 dark:bg-black'
+                : 'relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gray-300 p-1.5 dark:bg-black'
+            }
+            aria-hidden={activeIsOrphan}
+            {...{ [PANE_SPLIT_ROOT_ATTR]: '' }}
           >
-          {fileTabs.map((tab) => {
-            const active = tab.id === activeId;
-            const exportLeaf = leaves.find(
-              (l) => l.exportPdfForTabId === tab.id && l.activeId === tab.id,
-            );
-            const handleExportClose = (result?: {
-              editorContent: string;
-              currentFile: ExportPdfDocumentFile;
-            }) => {
-              if (result) {
-                const nextContent =
-                  typeof result.editorContent === 'string' ? result.editorContent : '';
-                if (active && mirrors?.onChangeEditor) {
-                  mirrors.onChangeEditor(nextContent);
-                } else {
-                  mirrors?.onInactiveEditorChange?.(tab.id, nextContent);
-                }
-              }
-              if (exportLeaf) onClearExportPdf?.(exportLeaf.id);
-            };
-            return (
-              <WorkspaceKeepAlivePanel key={tab.id} active={active}>
-                {exportLeaf ? (
-                  <>
-                    <LeafExportPdfBack
-                      leafId={exportLeaf.id}
-                      open
-                      onClose={() => onClearExportPdf?.(exportLeaf.id)}
-                      onApplyPendingReturn={() => {
-                        applyExportPdfHandoffToTab({
-                          tab,
-                          activeId,
-                          ...(mirrors ? { mirrors } : {}),
-                        });
-                      }}
-                    />
-                    {renderTabContent(tab, active, {
-                      exportPdf: true,
-                      onExportPdfClose: handleExportClose,
-                      ...(tab.noteSurface ? { noteSurface: tab.noteSurface } : {}),
-                    })}
-                  </>
-                ) : (
-                  renderTabContent(
-                    tab,
-                    active,
-                    tab.noteSurface ? { noteSurface: tab.noteSurface } : undefined,
-                  )
-                )}
-              </WorkspaceKeepAlivePanel>
-            );
-          })}
-
-          {showChat ? (
-            <WorkspaceKeepAlivePanel active={chatActive}>
-              {renderTabContent(tabs.find((t) => t.kind === 'chat')!, chatActive)}
-            </WorkspaceKeepAlivePanel>
-          ) : null}
-
-          {showSettings ? (
-            <WorkspaceKeepAlivePanel active={settingsActive}>
-              {renderTabContent(tabs.find((t) => t.kind === 'settings')!, settingsActive)}
-            </WorkspaceKeepAlivePanel>
-          ) : null}
-
-          {showContentSearch ? (
-            <WorkspaceKeepAlivePanel active={contentSearchActive}>
-              {renderTabContent(
-                tabs.find((t) => t.kind === 'content-search')!,
-                contentSearchActive,
-              )}
-            </WorkspaceKeepAlivePanel>
-          ) : null}
-
-          {showEmpty ? (
-            <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
-              <EditorPane
-                {...editorPaneProps({
-                  currentFile: null,
-                  editorContent: '',
-                  editedFileName: '',
-                  ...(mirrors?.setEditedFileName
-                    ? { setEditedFileName: mirrors.setEditedFileName }
-                    : {}),
-                  ...(mirrors?.onChangeEditor
-                    ? { onChangeEditor: mirrors.onChangeEditor }
-                    : {}),
-                  isActiveFile: true,
-                })}
-              />
-            </div>
-          ) : null}
-
-          {singleLeafId && splitDragEnabled && !isMobileLayout ? (
+            <WorkspaceSplitLayout
+              layout={layout}
+              onResizeSplit={onResizeSplit}
+              renderLeaf={renderLeafContent}
+            />
             <WorkspacePaneDropOverlay
-              leafId={singleLeafId}
-              visible={draggingTab && dropHighlight?.leafId === singleLeafId}
+              leafId={
+                dropHighlight && dropHighlight.leafId !== draggingPaneLeafId
+                  ? dropHighlight.leafId
+                  : null
+              }
+              visible={Boolean(
+                !activeIsOrphan &&
+                  draggingTab &&
+                  splitDragEnabled &&
+                  !isMobileLayout &&
+                  dropHighlight &&
+                  dropHighlight.leafId !== draggingPaneLeafId,
+              )}
               activeZone={
-                dropHighlight?.leafId === singleLeafId ? dropHighlight.zone : null
+                dropHighlight && dropHighlight.leafId !== draggingPaneLeafId
+                  ? dropHighlight.zone
+                  : null
               }
             />
-          ) : null}
           </div>
-        </WorkspaceTabHost>
-      )}
+        ) : null}
+
+        {!splitLayoutMounted || activeIsOrphan ? (
+          <WorkspaceTabHost>
+            <div
+              className="absolute inset-0"
+              {...(singleLeafId && !activeIsOrphan
+                ? { [PANE_LEAF_ATTR]: singleLeafId }
+                : {})}
+            >
+              {activeIsOrphan
+                ? (() => {
+                    const orphanTab = tabs.find((t) => t.id === activeId);
+                    if (!orphanTab) return null;
+                    return (
+                      <WorkspaceKeepAlivePanel key={orphanTab.id} active>
+                        {renderTabContent(orphanTab, true, {
+                          ...(isFileTab(orphanTab) && orphanTab.noteSurface
+                            ? { noteSurface: orphanTab.noteSurface }
+                            : {}),
+                        })}
+                      </WorkspaceKeepAlivePanel>
+                    );
+                  })()
+                : (
+                  <>
+                    {fileTabs.map((tab) => {
+                      const active = tab.id === activeId;
+                      const exportLeaf = leaves.find(
+                        (l) => l.exportPdfForTabId === tab.id && l.activeId === tab.id,
+                      );
+                      const handleExportClose = (result?: {
+                        editorContent: string;
+                        currentFile: ExportPdfDocumentFile;
+                      }) => {
+                        if (result) {
+                          const nextContent =
+                            typeof result.editorContent === 'string'
+                              ? result.editorContent
+                              : '';
+                          if (active && mirrors?.onChangeEditor) {
+                            mirrors.onChangeEditor(nextContent);
+                          } else {
+                            mirrors?.onInactiveEditorChange?.(tab.id, nextContent);
+                          }
+                        }
+                        if (exportLeaf) onClearExportPdf?.(exportLeaf.id);
+                      };
+                      return (
+                        <WorkspaceKeepAlivePanel key={tab.id} active={active}>
+                          {exportLeaf ? (
+                            <>
+                              <LeafExportPdfBack
+                                leafId={exportLeaf.id}
+                                open
+                                onClose={() => onClearExportPdf?.(exportLeaf.id)}
+                                onApplyPendingReturn={() => {
+                                  applyExportPdfHandoffToTab({
+                                    tab,
+                                    activeId,
+                                    ...(mirrors ? { mirrors } : {}),
+                                  });
+                                }}
+                              />
+                              {renderTabContent(tab, active, {
+                                exportPdf: true,
+                                onExportPdfClose: handleExportClose,
+                                ...(tab.noteSurface
+                                  ? { noteSurface: tab.noteSurface }
+                                  : {}),
+                              })}
+                            </>
+                          ) : (
+                            renderTabContent(
+                              tab,
+                              active,
+                              tab.noteSurface
+                                ? { noteSurface: tab.noteSurface }
+                                : undefined,
+                            )
+                          )}
+                        </WorkspaceKeepAlivePanel>
+                      );
+                    })}
+
+                    {showChat ? (
+                      <WorkspaceKeepAlivePanel active={chatActive}>
+                        {renderTabContent(
+                          tabs.find((t) => t.kind === 'chat')!,
+                          chatActive,
+                        )}
+                      </WorkspaceKeepAlivePanel>
+                    ) : null}
+
+                    {showSettings ? (
+                      <WorkspaceKeepAlivePanel active={settingsActive}>
+                        {renderTabContent(
+                          tabs.find((t) => t.kind === 'settings')!,
+                          settingsActive,
+                        )}
+                      </WorkspaceKeepAlivePanel>
+                    ) : null}
+
+                    {showContentSearch ? (
+                      <WorkspaceKeepAlivePanel active={contentSearchActive}>
+                        {renderTabContent(
+                          tabs.find((t) => t.kind === 'content-search')!,
+                          contentSearchActive,
+                        )}
+                      </WorkspaceKeepAlivePanel>
+                    ) : null}
+
+                    {showEmpty ? (
+                      <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+                        <EditorPane
+                          {...editorPaneProps({
+                            currentFile: null,
+                            editorContent: '',
+                            editedFileName: '',
+                            ...(mirrors?.setEditedFileName
+                              ? { setEditedFileName: mirrors.setEditedFileName }
+                              : {}),
+                            ...(mirrors?.onChangeEditor
+                              ? { onChangeEditor: mirrors.onChangeEditor }
+                              : {}),
+                            isActiveFile: true,
+                          })}
+                        />
+                      </div>
+                    ) : null}
+
+                    {singleLeafId && splitDragEnabled && !isMobileLayout ? (
+                      <WorkspacePaneDropOverlay
+                        leafId={
+                          dropHighlight?.leafId === singleLeafId
+                            ? dropHighlight.leafId
+                            : null
+                        }
+                        visible={Boolean(
+                          draggingTab && dropHighlight?.leafId === singleLeafId,
+                        )}
+                        activeZone={
+                          dropHighlight?.leafId === singleLeafId
+                            ? dropHighlight.zone
+                            : null
+                        }
+                      />
+                    ) : null}
+                  </>
+                )}
+            </div>
+          </WorkspaceTabHost>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isTreeCopyModifierHeld } from '@/utils/treeCopy';
+import {
+  isTreeCopyModifierHeld,
+  type TreeCopyModifierEvent,
+} from '@/utils/treeCopy';
 
 /**
- * Tracks Ctrl/Alt during a tree drag so drop can copy instead of move.
+ * Tracks Ctrl / Cmd (meta) / Alt during a tree drag so drop can copy instead of move.
  * Live updates while the modifier is pressed or released mid-drag.
  */
 export function useTreeCopyDragModifier(isDragging: boolean) {
@@ -15,7 +18,7 @@ export function useTreeCopyDragModifier(isDragging: boolean) {
   }, []);
 
   const syncFromEvent = useCallback(
-    (event?: { ctrlKey?: boolean; altKey?: boolean } | null) => {
+    (event?: TreeCopyModifierEvent | null) => {
       setCopyDrag(isTreeCopyModifierHeld(event));
     },
     [setCopyDrag],
@@ -28,10 +31,10 @@ export function useTreeCopyDragModifier(isDragging: boolean) {
     }
 
     const onKey = (event: KeyboardEvent) => {
-      setCopyDrag(event.ctrlKey || event.altKey);
+      setCopyDrag(isTreeCopyModifierHeld(event));
     };
     const onPointer = (event: PointerEvent) => {
-      setCopyDrag(event.ctrlKey || event.altKey);
+      setCopyDrag(isTreeCopyModifierHeld(event));
     };
 
     window.addEventListener('keydown', onKey);

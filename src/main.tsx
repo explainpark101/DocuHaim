@@ -4,6 +4,7 @@ import { createBrowserRouter, createHashRouter, RouterProvider } from 'react-rou
 import '@/index.css'
 import '@/config/mdEditorConfig'
 import App from '@/App'
+import RouteErrorPage from '@/pages/RouteErrorPage'
 import { ActivityIndicatorProvider } from '@/contexts/ActivityIndicatorContext'
 import { FileUploadQueueProvider } from '@/contexts/FileUploadQueueContext'
 import { AlertModalProvider } from '@/contexts/AlertModalContext'
@@ -84,7 +85,13 @@ function AppShell() {
 }
 
 const router = (isDesktop ? createHashRouter : createBrowserRouter)(
-  [{ path: '/*', Component: AppShell }],
+  [
+    {
+      path: '/*',
+      Component: AppShell,
+      ErrorBoundary: RouteErrorPage,
+    },
+  ],
   { basename: routerBasename },
 )
 
