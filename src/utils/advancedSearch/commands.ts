@@ -352,9 +352,9 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'settings-editor',
     title: '설정 · 마크다운 에디터',
-    description: '마크다운 에디터 종류 (Novel 준비중)',
+    description: 'md-editor-rt 및 각주 표기 설정',
     path: '/settings#settings-editor',
-    keywords: ['에디터', 'editor', 'novel', 'markdown', '마크다운', 'tiptap'],
+    keywords: ['에디터', 'editor', 'markdown', '마크다운', '각주', 'footnote'],
   },
   {
     id: 'settings-navigation',

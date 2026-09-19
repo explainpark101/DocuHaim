@@ -6,9 +6,11 @@ import LlamaCppActionHost from '@/components/settings/LlamaCppActionHost';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useLocation } from 'react-router';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
 
 /**
  * Thin shell: gates + layout + modals. Domain state comes from AppProviders.
+ * When workspace tabs are on, `/export-pdf` stays inside AppLayout (pane surface).
  */
 export function AppShellView() {
   const location = useLocation();
@@ -26,7 +28,8 @@ export function AppShellView() {
     );
   }
 
-  if (shouldShowExportPdfGate(location.pathname)) {
+  const tabsEnabled = loadWorkspaceTabsEnabled();
+  if (shouldShowExportPdfGate(location.pathname) && !tabsEnabled) {
     return <ExportPdfGate />;
   }
 

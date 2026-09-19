@@ -197,7 +197,7 @@ function atomicPreviewImageHost(img: HTMLElement): HTMLElement {
   const figure = img.closest('figure');
   if (figure instanceof HTMLElement) return figure;
   const line = img.closest(
-    'p.novel-wiki-image-line, p.md-editor-wiki-image, span.md-editor-wiki-image',
+    'p.md-editor-wiki-image, span.md-editor-wiki-image',
   );
   if (line instanceof HTMLElement) {
     // Only treat the paragraph as atomic when it is essentially the image.

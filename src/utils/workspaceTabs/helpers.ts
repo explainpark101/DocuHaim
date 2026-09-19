@@ -33,6 +33,7 @@ export function createFileTab(params: {
   currentFile: FileWorkspaceTab['currentFile'];
   editorContent: string;
   editedFileName?: string;
+  noteSurface?: FileWorkspaceTab['noteSurface'];
   now?: number;
 }): FileWorkspaceTab {
   const { storageType, path, currentFile, editorContent } = params;
@@ -49,6 +50,7 @@ export function createFileTab(params: {
     baselineContent: baseline,
     editedFileName: params.editedFileName ?? String(currentFile.name ?? path.split('/').pop() ?? ''),
     lastActivatedAt: now,
+    ...(params.noteSurface ? { noteSurface: params.noteSurface } : {}),
   };
 }
 

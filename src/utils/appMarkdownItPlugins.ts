@@ -9,7 +9,6 @@ import { headingLevelsMarkdownItPlugin } from '@/utils/markdownItHeadingLevels';
 import { haimTableMarkdownItPlugin } from '@/utils/haimTable/markdownItPlugin';
 import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdownItPlugin';
 import { footnoteMarkdownItPlugin } from '@/utils/footnoteMarkdownIt';
-import { markdownItTaskListPlugin } from '@/utils/markdownItTaskListPlugin';
 import { betterMdMarkdownItPlugin } from '@/utils/betterMd/markdownItPlugin';
 import { mermaidFenceMarkdownItPlugin } from '@/utils/mermaidFenceMarkdownIt';
 
@@ -310,14 +309,6 @@ export function applyAppMarkdownItPluginsFromList(
   plugins: AppMarkdownItPluginEntry[],
 ): AppMarkdownItPluginEntry[] {
   return mergeAppMarkdownItPlugins(plugins);
-}
-
-export function applyNovelMarkdownItPlugins(md: MarkdownItInstance): void {
-  headingLevelsMarkdownItPlugin(md);
-  wikiImagePlugin(md as unknown as Parameters<typeof wikiImagePlugin>[0]);
-  markdownItTaskListPlugin(md as unknown as Parameters<typeof markdownItTaskListPlugin>[0], {
-    enabled: true,
-  });
 }
 
 export function applySearchMarkdownItPlugins(md: MarkdownItInstance): void {

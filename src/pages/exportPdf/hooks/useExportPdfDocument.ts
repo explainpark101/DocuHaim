@@ -39,12 +39,14 @@ export function useExportPdfDocument({
   documentValue = '',
   documentFile = null,
   openCoverEdit: openCoverEditProp = false,
+  onRequestClose,
   refs,
   printLayoutRef,
 }: UseExportPdfDocumentArgs) {
   const location = useLocation();
   const navigate = useNavigate();
   const { showAlert } = useAlertModal();
+  const embedMode = typeof onRequestClose === 'function';
 
   const locationState =
     location.state && typeof location.state === 'object'
@@ -144,10 +146,12 @@ export function useExportPdfDocument({
   }, [currentFileRef, previewValueRef]);
 
   useEffect(() => {
+    // Full-page /export-pdf requires navigation state; pane embed stays on the note route.
+    if (embedMode) return;
     if (location.state == null) {
       navigate('/', { replace: true });
     }
-  }, [location.state, navigate]);
+  }, [embedMode, location.state, navigate]);
 
   const isDirty = previewValue !== savedValue;
   const isDirtyRef = useRef(isDirty);
@@ -187,16 +191,27 @@ export function useExportPdfDocument({
   }, [currentFile, isSaving, previewValue, printLayoutRef, writeEditorHandoff]);
 
   const handleBack = useCallback(() => {
-    if (!isDirtyRef.current) {
-      writeEditorHandoff(previewValueRef.current, currentFileRef.current);
+    const editorContent = previewValueRef.current ?? '';
+    const file = currentFileRef.current;
+    writeEditorHandoff(editorContent, file);
+    if (onRequestClose) {
+      onRequestClose({ editorContent, currentFile: file });
+      return;
     }
-    const path = currentFileRef.current?.id || routeExportPath;
+    const path = file?.id || routeExportPath;
     if (path) {
       navigate(`/view/${path}`);
       return;
     }
     navigate(-1);
-  }, [currentFileRef, navigate, previewValueRef, routeExportPath, writeEditorHandoff]);
+  }, [
+    currentFileRef,
+    navigate,
+    onRequestClose,
+    previewValueRef,
+    routeExportPath,
+    writeEditorHandoff,
+  ]);
 
   const handleNavGuardSaveAndLeave = useCallback(async () => {
     const ok = await handleSave();

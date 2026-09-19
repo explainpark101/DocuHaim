@@ -83,8 +83,9 @@ import {
   subscribeSettingsToggles,
   toggleSettingsToggle,
 } from '@/utils/advancedSearch/settingsToggles';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
-import { exportPdfPathnameForStoragePath, contentSearchPathname } from '@/utils/appHref';
+import { contentSearchPathname } from '@/utils/appHref';
+import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
+import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 
 const PRINT_FOCUS_TARGETS: Record<string, PrintToolbarFocusTarget> = {
   'print-focus-back': 'back',
@@ -198,6 +199,9 @@ export default function AdvancedSearchHost({
   chatTabActive = false,
 }: AdvancedSearchHostProps) {
   const navigate = useNavigate();
+  const tabsCtx = useWorkspaceTabsCtxOptional();
+  const workspaceTabsEnabled = Boolean(tabsCtx?.workspaceTabsEnabled);
+  const openExportPdfInFocusedPane = tabsCtx?.openExportPdfInFocusedPane;
   const [open, setOpen] = useState(false);
   const [pickerMode, setPickerMode] = useState<AdvancedSearchOpenMode>('default');
   const [browsePath, setBrowsePath] = useState('');
@@ -489,19 +493,19 @@ export default function AdvancedSearchHost({
     (opts: { useCurrentFile: boolean }) => {
       const value = String(editorContent ?? currentFile?.content ?? '');
       const file = opts.useCurrentFile || currentFile?.id ? currentFile : null;
-      setPendingPrintReturnState({
+      openExportPdfSurface({
         currentFile: file,
         editorContent: value,
-      });
-      navigate(exportPdfPathnameForStoragePath(file?.id), {
-        state: {
-          value,
-          theme: theme === 'dark' ? 'dark' : 'light',
-          currentFile: file,
-        },
+        theme: theme === 'dark' ? 'dark' : 'light',
+        navigate,
+        openInFocusedPane: (tabId) =>
+          Boolean(
+            workspaceTabsEnabled &&
+              openExportPdfInFocusedPane?.(tabId),
+          ),
       });
     },
-    [navigate, editorContent, currentFile, theme],
+    [navigate, editorContent, currentFile, theme, workspaceTabsEnabled, openExportPdfInFocusedPane],
   );
 
   const handleSelect = useCallback(

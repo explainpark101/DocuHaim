@@ -4,25 +4,25 @@ overview: 워크스페이스 탭 모드에 VS Code식 재귀 스플릿(상·하�
 todos:
   - id: pane-model
     content: Add PaneNode types + pure layout ops (split/move/collapse/resize) and extend WorkspaceTabsState
-    status: pending
+    status: completed
   - id: split-ui
     content: WorkspaceSplitLayout (content only) + single tab list with leaf groups; convert WorkspaceMainPanels to tsx
-    status: pending
+    status: completed
   - id: tab-groups
     content: "Tab list: contiguous visual groups per leaf; reorder within group; drag between groups moves leaf membership"
-    status: pending
+    status: completed
   - id: dnd-edges
     content: "Extend tab DnD: 4-edge drop zones, cross-leaf move via group/list, lift horizontal-only restriction while over panes"
-    status: pending
+    status: completed
   - id: quiz-surface
     content: Per-tab/pane quiz vs edit surface so secondary panes work without global pathname
-    status: pending
+    status: completed
   - id: export-pdf-pane
     content: Pane-local ExportPDFPage + history overlay back; tabs-on skip ExportPdfGate; wire toolbar/AS/menu entry points
-    status: pending
+    status: completed
   - id: domain-persist
     content: Update useWorkspaceTabsDomain + persistence v2 for layout/focus/tab membership
-    status: pending
+    status: completed
 isProject: false
 ---
 

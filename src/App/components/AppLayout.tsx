@@ -37,6 +37,7 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { useAutoSave } from '@/App/hooks/useAutoSave';
 import { useAppBootstrap } from '@/App/hooks/useAppBootstrap';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { useExportPdfPaneDeepLink } from '@/App/hooks/useExportPdfPaneDeepLink';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
 import { usePwaSnippetsOwned } from '@/App/providers/AppPwaSnippetsStateProvider';
@@ -68,6 +69,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const autoSave = useAutoSave();
   const bootstrap = useAppBootstrap();
   const tabsCtx = useWorkspaceTabsCtx();
+  useExportPdfPaneDeepLink();
   const treeOps = useTreeOps();
   const recording = useRecordingOwned();
   const pwaSnippets = usePwaSnippetsOwned();
@@ -238,6 +240,12 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const openChatWorkspaceTab = tabsCtx.openChatWorkspaceTab;
   const openContentSearchWorkspaceTab = tabsCtx.openContentSearchWorkspaceTab;
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
+  const focusWorkspacePane = tabsCtx.focusWorkspacePane;
+  const resizeWorkspaceSplit = tabsCtx.resizeWorkspaceSplit;
+  const handleWorkspacePaneDrop = tabsCtx.handleWorkspacePaneDrop;
+  const splitWorkspaceTabToEdge = tabsCtx.splitWorkspaceTabToEdge;
+  const applyWorkspacePaneLayout = tabsCtx.applyWorkspacePaneLayout;
+  const clearExportPdfInFocusedPane = tabsCtx.clearExportPdfInFocusedPane;
   const setWorkspaceTabs = tabsCtx.setState;
 
   const {
@@ -361,6 +369,16 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           tabsEnabled={workspaceTabsEnabled}
           appName={appName}
           isMobileLayout={isMobile}
+          layout={workspaceTabs.layout}
+          focusedPaneId={workspaceTabs.focusedPaneId}
+          splitDragEnabled={workspaceTabsEnabled && !isMobile}
+          onPaneDrop={handleWorkspacePaneDrop}
+          {...(workspaceTabsEnabled && !isMobile
+            ? {
+                onSplitTab: splitWorkspaceTabToEdge,
+                onApplyPaneLayout: applyWorkspacePaneLayout,
+              }
+            : {})}
           onActivateTab={(id) => activateWorkspaceTab(id)}
           onCloseTab={(id) => {
             closeWorkspaceTabById(id);
@@ -594,6 +612,19 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                   savingTabIds={savingTabIds}
                   tabsEnabled={workspaceTabsEnabled}
                   tabBarPlacement={isTauriDesktopPlatform() ? 'titlebar' : 'inline'}
+                  layout={workspaceTabs.layout}
+                  focusedPaneId={workspaceTabs.focusedPaneId}
+                  splitDragEnabled={workspaceTabsEnabled && !isMobile}
+                  onFocusPane={focusWorkspacePane}
+                  onResizeSplit={resizeWorkspaceSplit}
+                  onPaneDrop={handleWorkspacePaneDrop}
+                  {...(workspaceTabsEnabled && !isMobile
+                    ? {
+                        onSplitTab: splitWorkspaceTabToEdge,
+                        onApplyPaneLayout: applyWorkspacePaneLayout,
+                      }
+                    : {})}
+                  onClearExportPdf={clearExportPdfInFocusedPane}
                   isChatRoute={isChatRoute}
                   isSettingsRoute={isSettingsRoute}
                   isContentSearchRoute={isContentSearchRoute}
@@ -907,7 +938,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           </div>
         </div>
 
-        {/* Status Bar — z above editor chrome (z-10100) so novel/md layers do not cover it on mobile */}
+        {/* Status Bar — z above editor chrome (z-10100) so md layers do not cover it on mobile */}
         <div
           data-app-status-bar=""
           className="relative z-10200 flex h-6 shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-white/90 px-2 pb-[max(0px,env(safe-area-inset-bottom))] text-[10px] dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 md:h-7 md:gap-3 md:px-3 md:text-[11px]"

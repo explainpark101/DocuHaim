@@ -17,7 +17,19 @@ import {
 } from '@/utils/workspaceTabs';
 import { findFileTab, softCapPrompt } from '@/utils/workspaceTabs/appBridge';
 import { closedTabEntryFromWorkspaceTab } from '@/utils/workspaceTabs/closedTabHistory';
-import { evictForSoftCap, openOrReplaceFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
+import {
+  fromPersistedPaneNode,
+  isPersistedPaneNode,
+  syncLayoutWithTabs,
+} from '@/utils/workspaceTabs/paneLayout';
+import {
+  evictForSoftCap,
+  openOrActivateChat,
+  openOrActivateContentSearch,
+  openOrActivateSettings,
+  openOrReplaceFileTab,
+  replaceWorkspaceLayout,
+} from '@/utils/workspaceTabs/workspaceTabsStore';
 import { readMeta, sortGroupsKo } from '@/utils/chatWithMyself';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { webdavHead } from '@/utils/webdavClient';
@@ -47,6 +59,25 @@ async function forEachWithConcurrency<T>(
     },
   );
   await Promise.all(workers);
+}
+
+function applyPersistedLayoutToState<T extends { tabs: { id: string }[]; focusedPaneId: string; layout: unknown }>(
+  state: T,
+  layout: unknown,
+  focusedPaneId: unknown,
+): T {
+  if (!isPersistedPaneNode(layout)) return state;
+  const focusHint = typeof focusedPaneId === 'string' ? focusedPaneId : state.focusedPaneId;
+  const synced = syncLayoutWithTabs(
+    fromPersistedPaneNode(layout),
+    state.tabs.map((t) => t.id),
+    focusHint,
+  );
+  return replaceWorkspaceLayout(
+    state as Parameters<typeof replaceWorkspaceLayout>[0],
+    synced.layout,
+    synced.focusedPaneId,
+  ) as T;
 }
 
 /**
@@ -202,24 +233,26 @@ export function useAdvancedSearchTabsDomain() {
 
       const targetActiveId = explicitActiveId ?? persisted.activeId;
       let restoredAny = false;
+      const savedLayout = persisted.layout;
+      const savedFocusedPaneId = persisted.focusedPaneId;
 
-      // Phase 1: open chat/settings shells without stealing focus.
+      // Build tab shells with pure reducers (single commit) so intermediate
+      // openChat/openSettings setStates cannot race past the split layout apply.
+      let nextState = workspaceTabsRef.current;
       for (const tab of persisted.tabs) {
         if (tab.kind === 'chat') {
-          openChatWorkspaceTab({ navigateUrl: false, activate: false });
+          nextState = openOrActivateChat(nextState, Date.now(), { activate: false });
           restoredAny = true;
         } else if (tab.kind === 'settings') {
-          openSettingsWorkspaceTab({ navigateUrl: false, activate: false });
+          nextState = openOrActivateSettings(nextState, Date.now(), { activate: false });
           restoredAny = true;
         } else if (tab.kind === 'content-search') {
-          openContentSearchWorkspaceTab({ navigateUrl: false, activate: false });
+          nextState = openOrActivateContentSearch(nextState, Date.now(), { activate: false });
           restoredAny = true;
         }
       }
 
-      // Phase 2: create file tab shells (loading placeholders) without activation.
       const fileTabs = persisted.tabs.filter((t: any) => t.kind === 'file');
-      let nextState = workspaceTabsRef.current;
       for (const tab of fileTabs) {
         if (findFileTab(nextState, tab.type, tab.path)) {
           restoredAny = true;
@@ -250,31 +283,35 @@ export function useAdvancedSearchTabsDomain() {
         );
         restoredAny = true;
       }
+
+      nextState = applyPersistedLayoutToState(nextState, savedLayout, savedFocusedPaneId);
       workspaceTabsRef.current = nextState;
       setWorkspaceTabs(nextState);
       await yieldToMain();
 
-      // Phase 3: activate the last-used tab from the start.
-      if (targetActiveId === CHAT_TAB_ID) {
-        if (nextState.tabs.some((t) => t.id === CHAT_TAB_ID)) {
-          activateWorkspaceTab(CHAT_TAB_ID, { navigateUrl: navigateActiveUrl });
+      const activateTarget = (navigateUrl: boolean) => {
+        if (targetActiveId === CHAT_TAB_ID) {
+          if (workspaceTabsRef.current.tabs.some((t) => t.id === CHAT_TAB_ID)) {
+            activateWorkspaceTab(CHAT_TAB_ID, { navigateUrl });
+          }
+        } else if (targetActiveId === SETTINGS_TAB_ID) {
+          if (workspaceTabsRef.current.tabs.some((t) => t.id === SETTINGS_TAB_ID)) {
+            activateWorkspaceTab(SETTINGS_TAB_ID, { navigateUrl });
+          }
+        } else if (targetActiveId === CONTENT_SEARCH_TAB_ID) {
+          if (workspaceTabsRef.current.tabs.some((t) => t.id === CONTENT_SEARCH_TAB_ID)) {
+            activateWorkspaceTab(CONTENT_SEARCH_TAB_ID, { navigateUrl });
+          }
+        } else if (typeof targetActiveId === 'string' && targetActiveId) {
+          if (workspaceTabsRef.current.tabs.some((tab) => tab.id === targetActiveId)) {
+            activateWorkspaceTab(targetActiveId, { navigateUrl });
+          }
         }
-      } else if (targetActiveId === SETTINGS_TAB_ID) {
-        if (nextState.tabs.some((t) => t.id === SETTINGS_TAB_ID)) {
-          activateWorkspaceTab(SETTINGS_TAB_ID, { navigateUrl: navigateActiveUrl });
-        }
-      } else if (targetActiveId === CONTENT_SEARCH_TAB_ID) {
-        if (nextState.tabs.some((t) => t.id === CONTENT_SEARCH_TAB_ID)) {
-          activateWorkspaceTab(CONTENT_SEARCH_TAB_ID, { navigateUrl: navigateActiveUrl });
-        }
-      } else if (typeof targetActiveId === 'string' && targetActiveId) {
-        const activeExists = nextState.tabs.some((tab) => tab.id === targetActiveId);
-        if (activeExists) {
-          activateWorkspaceTab(targetActiveId, { navigateUrl: navigateActiveUrl });
-        }
-      }
+      };
 
-      // Phase 4: load file tab contents with limited concurrency.
+      activateTarget(navigateActiveUrl);
+
+      // Load file contents in the background without stealing focus.
       await forEachWithConcurrency(fileTabs, TAB_RESTORE_FILE_CONCURRENCY, async (tab: any) => {
         try {
           const node = await resolveClosedFileNode({
@@ -292,35 +329,19 @@ export function useAdvancedSearchTabsDomain() {
         }
       });
 
-      // Re-activate in case any load briefly changed focus.
-      if (targetActiveId === CHAT_TAB_ID) {
-        if (workspaceTabsRef.current.tabs.some((t) => t.id === CHAT_TAB_ID)) {
-          activateWorkspaceTab(CHAT_TAB_ID, { navigateUrl: false });
-        }
-      } else if (targetActiveId === SETTINGS_TAB_ID) {
-        if (workspaceTabsRef.current.tabs.some((t) => t.id === SETTINGS_TAB_ID)) {
-          activateWorkspaceTab(SETTINGS_TAB_ID, { navigateUrl: false });
-        }
-      } else if (targetActiveId === CONTENT_SEARCH_TAB_ID) {
-        if (workspaceTabsRef.current.tabs.some((t) => t.id === CONTENT_SEARCH_TAB_ID)) {
-          activateWorkspaceTab(CONTENT_SEARCH_TAB_ID, { navigateUrl: false });
-        }
-      } else if (typeof targetActiveId === 'string' && targetActiveId) {
-        if (workspaceTabsRef.current.tabs.some((tab) => tab.id === targetActiveId)) {
-          activateWorkspaceTab(targetActiveId, { navigateUrl: false });
-        }
-      }
+      // Re-apply split membership after content loads (open paths may rehome tabs).
+      const repaired = applyPersistedLayoutToState(
+        workspaceTabsRef.current,
+        savedLayout,
+        savedFocusedPaneId,
+      );
+      workspaceTabsRef.current = repaired;
+      setWorkspaceTabs(repaired);
+      activateTarget(false);
 
       return restoredAny;
     },
-    [
-      activateWorkspaceTab,
-      openChatWorkspaceTab,
-      openContentSearchWorkspaceTab,
-      openSettingsWorkspaceTab,
-      resolveClosedFileNode,
-      setWorkspaceTabs,
-    ],
+    [activateWorkspaceTab, resolveClosedFileNode, setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef],
   );
 
   useEffect(() => {

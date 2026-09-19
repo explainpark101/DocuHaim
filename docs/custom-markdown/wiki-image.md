@@ -201,7 +201,6 @@ Public ImgBB cache without replacing the vault path: [remote-image.md](./remote-
 | markdown-it | `src/utils/wikiImageMarkdownIt.js` |
 | URL / 캐시 | `src/utils/wikiImageResolver.js`, `wikiImageCacheDb.js`, `wikiImageSettings.js` |
 | Hydration | `src/utils/storageImageHydration.ts`, `src/hooks/useWikiImageHydration.js` |
-| TipTap (Novel) | `src/extensions/wikiImageTiptap.js`, `src/utils/wikiImageHtmlInject.js` |
 | Hex helper | `src/utils/cssColor.ts` |
 | Bulk MD→wiki convert | `src/utils/convertMarkdownImagesToWiki.ts`, `EditorPane` file menu |
 

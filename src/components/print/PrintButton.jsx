@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Printer } from 'lucide-react';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
-import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
+import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
 
 export default function PrintButton({
   value = '',
@@ -12,14 +12,19 @@ export default function PrintButton({
   trigger,
 }) {
   const navigate = useNavigate();
+  const tabsCtx = useWorkspaceTabsCtxOptional();
 
   const open = useCallback(() => {
     if (disabled) return;
-    setPendingPrintReturnState({ currentFile, editorContent: value });
-    navigate(exportPdfPathnameForStoragePath(currentFile?.id), {
-      state: { value, theme, currentFile },
+    openExportPdfSurface({
+      currentFile,
+      editorContent: value,
+      theme,
+      navigate,
+      openInFocusedPane: (tabId) =>
+        Boolean(tabsCtx?.workspaceTabsEnabled && tabsCtx.openExportPdfInFocusedPane?.(tabId)),
     });
-  }, [navigate, value, theme, disabled, currentFile]);
+  }, [navigate, value, theme, disabled, currentFile, tabsCtx]);
 
   return (
     <button

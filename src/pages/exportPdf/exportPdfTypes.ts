@@ -11,6 +11,14 @@ export type ExportPDFPageProps = {
   openCoverEdit?: boolean;
   isDocumentLoading?: boolean;
   hasNavigationSession?: boolean;
+  /**
+   * Pane-embedded mode: close the print surface without router navigation.
+   * When set, back / leave calls this instead of `navigate('/view/...')`.
+   */
+  onRequestClose?: (result?: {
+    editorContent: string;
+    currentFile: ExportPdfDocumentFile;
+  }) => void;
 };
 
 export type ExportPdfTocItem = {

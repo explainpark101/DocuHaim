@@ -45,6 +45,13 @@ export function WorkspaceTabsProvider({ children }: Props) {
       reorderWorkspaceTabs: domain.reorderWorkspaceTabs,
       collapseToLegacyWorkspace: domain.collapseToLegacyWorkspace,
       cycleWorkspaceTab: domain.cycleWorkspaceTab,
+      focusWorkspacePane: domain.focusWorkspacePane,
+      resizeWorkspaceSplit: domain.resizeWorkspaceSplit,
+      handleWorkspacePaneDrop: domain.handleWorkspacePaneDrop,
+      splitWorkspaceTabToEdge: domain.splitWorkspaceTabToEdge,
+      applyWorkspacePaneLayout: domain.applyWorkspacePaneLayout,
+      openExportPdfInFocusedPane: domain.openExportPdfInFocusedPane,
+      clearExportPdfInFocusedPane: domain.clearExportPdfInFocusedPane,
     }),
     [tabsApi, domain],
   );

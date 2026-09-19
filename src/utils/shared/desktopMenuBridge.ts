@@ -8,8 +8,8 @@ import {
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
-import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
+import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
 
 export const DESKTOP_MENU_ACTION_EVENT = 'desktop-menu-action';
 
@@ -96,18 +96,18 @@ export function buildDesktopPrintNavigation(
   editorContent: string,
   theme: string,
   navigate: (path: string, options?: { state?: Record<string, unknown> }) => void,
+  openInFocusedPane?: (tabId: string | null) => boolean,
 ): void {
   const value = String(editorContent ?? file?.content ?? '');
   const useFile = file?.id ? file : null;
-  setPendingPrintReturnState({
+  openExportPdfSurface({
     currentFile: useFile,
     editorContent: value,
-  });
-  navigate(exportPdfPathnameForStoragePath(useFile?.id), {
-    state: {
-      value,
-      theme: theme === 'dark' ? 'dark' : 'light',
-      currentFile: useFile,
+    theme,
+    navigate,
+    openInFocusedPane: (tabId) => {
+      if (!loadWorkspaceTabsEnabled()) return false;
+      return Boolean(openInFocusedPane?.(tabId));
     },
   });
 }

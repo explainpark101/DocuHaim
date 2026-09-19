@@ -1,7 +1,10 @@
+import { useMemo } from 'react';
 import type { FileWorkspaceTab, WorkspaceTab } from '@/utils/workspaceTabs';
+import { collectLeaves, countLeaves, type PaneNode } from '@/utils/workspaceTabs';
+import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import { useMacosTitlebarChrome } from '@/hooks/useMacosTitlebarChrome';
-import WorkspaceTabBar from '@/components/workspace/WorkspaceTabBar';
+import WorkspaceTabBar, { type WorkspaceTabGroup } from '@/components/workspace/WorkspaceTabBar';
 import DesktopWindowControls from '@/components/desktop/DesktopWindowControls';
 import { IconX } from '@/components/icons';
 
@@ -17,14 +20,22 @@ type DesktopTitlebarProps = {
   onActivateTab: (id: string) => void;
   onCloseTab: (id: string) => void;
   onReorderTabs: (activeId: string, overId: string) => void;
+  layout?: PaneNode | null;
+  focusedPaneId?: string | null;
+  splitDragEnabled?: boolean;
+  onPaneDrop?: (
+    tabId: string,
+    leafId: string,
+    zone: PaneSplitEdge | 'center',
+  ) => boolean;
+  onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
+  onApplyPaneLayout?: (layout: PaneNode) => void;
   onFileTabContextMenu?: (
     tab: FileWorkspaceTab,
     point: { clientX: number; clientY: number },
   ) => void;
   isMobileLayout?: boolean;
-  /** Portrait Tauri: sidebar close control in the titlebar strip. */
   mobileSidebarClose?: MobileSidebarClose | undefined;
-  /** Shown in the drag strip when tabs are disabled or empty. */
   appName?: string;
 };
 
@@ -40,6 +51,12 @@ export default function DesktopTitlebar({
   onActivateTab,
   onCloseTab,
   onReorderTabs,
+  layout = null,
+  focusedPaneId = null,
+  splitDragEnabled = false,
+  onPaneDrop,
+  onSplitTab,
+  onApplyPaneLayout,
   onFileTabContextMenu,
   isMobileLayout = false,
   mobileSidebarClose,
@@ -52,12 +69,25 @@ export default function DesktopTitlebar({
     ? 'h-(--workspace-titlebar-tab-h)'
     : 'h-(--desktop-titlebar-h,2rem)';
 
-  // macOS Overlay: offset chrome right of native traffic lights (wry inset_traffic_lights).
+  const tabGroups: WorkspaceTabGroup[] | null = useMemo(() => {
+    if (!layout || countLeaves(layout) <= 1) return null;
+    return collectLeaves(layout).map((leaf) => ({
+      leafId: leaf.id,
+      tabIds: leaf.tabIds,
+      focused: leaf.id === focusedPaneId,
+    }));
+  }, [layout, focusedPaneId]);
+
   const macChromeClass = isMac ? 'desktop-titlebar--mac' : 'w-full';
+  const splitTabs = Boolean(tabGroups && tabGroups.length > 1);
 
   return (
     <header
-      className={`desktop-titlebar relative z-70 flex ${headerHeightClass} shrink-0 select-none items-stretch border-b border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft ${macChromeClass}`}
+      className={`desktop-titlebar relative z-70 flex ${headerHeightClass} shrink-0 select-none items-stretch border-b border-gray-200 dark:border-odp-borderSoft ${
+        splitTabs
+          ? 'bg-gray-200 dark:bg-odp-bg'
+          : 'bg-gray-50 dark:bg-odp-bgSoft'
+      } ${macChromeClass}`}
     >
       {mobileSidebarClose ? (
         <button
@@ -79,6 +109,12 @@ export default function DesktopTitlebar({
             onActivate={onActivateTab}
             onClose={onCloseTab}
             onReorder={onReorderTabs}
+            tabGroups={tabGroups}
+            splitDragEnabled={splitDragEnabled && !isMobileLayout}
+            {...(onPaneDrop ? { onPaneDrop } : {})}
+            {...(onSplitTab ? { onSplitTab } : {})}
+            paneLayout={layout}
+            {...(onApplyPaneLayout ? { onApplyPaneLayout } : {})}
             {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
             isMobileLayout={isMobileLayout}
             variant="titlebar"

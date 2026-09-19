@@ -41,8 +41,8 @@ import {
   insertExistingFootnoteRef,
   insertNewFootnote,
 } from '@/utils/footnoteInsertApply';
-import { setPendingPrintReturnState } from '@/utils/printNavigationState';
-import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
+import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { EditorView, drawSelection, keymap } from '@codemirror/view';
 import { EditorSelection, EditorState, Prec } from '@codemirror/state';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
@@ -617,6 +617,7 @@ export default function MarkdownEditor({
 }) {
   const llmAssist = useLlmAssistSessionOptional();
   const navigate = useNavigate();
+  const tabsCtx = useWorkspaceTabsCtxOptional();
   const { showAlert } = useAlertModal();
   // Unique per keep-alive mount so catalog getElementById / preview-wrapper
   // selectors do not hit a hidden sibling tab (default id is shared).
@@ -660,16 +661,16 @@ export default function MarkdownEditor({
   const navigateToExportPdf = useCallback((options = {}) => {
     const content = valueRef.current ?? '';
     const file = currentFileRef.current;
-    setPendingPrintReturnState({ currentFile: file, editorContent: content });
-    navigate(exportPdfPathnameForStoragePath(file?.id), {
-      state: {
-        value: content,
-        theme: themeRef.current === 'dark' ? 'dark' : 'light',
-        currentFile: file,
-        ...(options.openCoverEdit ? { openCoverEdit: true } : {}),
-      },
+    openExportPdfSurface({
+      currentFile: file,
+      editorContent: content,
+      theme: themeRef.current === 'dark' ? 'dark' : 'light',
+      navigate,
+      openCoverEdit: Boolean(options.openCoverEdit),
+      openInFocusedPane: (tabId) =>
+        Boolean(tabsCtx?.workspaceTabsEnabled && tabsCtx.openExportPdfInFocusedPane?.(tabId)),
     });
-  }, [navigate]);
+  }, [navigate, tabsCtx]);
   const { onChange: onChangeWithUndoHistory } = usePerFileEditorUndoHistory({
     currentFile,
     value,

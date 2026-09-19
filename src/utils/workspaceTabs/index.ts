@@ -1,10 +1,12 @@
 export type {
   ChatWorkspaceTab,
   ContentSearchWorkspaceTab,
+  FileNoteSurface,
   FileStorageType,
   FileWorkspaceTab,
   PersistedWorkspaceTab,
   PersistedWorkspaceTabs,
+  PersistedWorkspaceTabsV1,
   SettingsWorkspaceTab,
   WorkspaceTab,
   WorkspaceTabsState,
@@ -17,8 +19,31 @@ export {
   SETTINGS_TAB_ID,
   WORKSPACE_TABS_STORAGE_KEY,
   WORKSPACE_TAB_SOFT_CAP,
+  defaultWorkspaceLayout,
   isEditableViewer,
 } from '@/utils/workspaceTabs/types';
+export type {
+  PaneLeaf,
+  PaneNode,
+  PaneSplit,
+  PaneSplitEdge,
+  PersistedPaneNode,
+} from '@/utils/workspaceTabs/paneLayout';
+export {
+  WORKSPACE_PANE_SOFT_CAP,
+  collectLeaves,
+  countLeaves,
+  createEmptyLeaf,
+  createSingleLeafLayout,
+  findLeaf,
+  findLeafContainingTab,
+  flattenTabIdsFromLayout,
+  fromPersistedPaneNode,
+  getFocusedLeafActiveId,
+  isPaneLeaf,
+  isPaneSplit,
+  toPersistedPaneNode,
+} from '@/utils/workspaceTabs/paneLayout';
 export {
   anyFileTabDirty,
   createChatTab,
@@ -43,6 +68,7 @@ export {
 } from '@/utils/workspaceTabs/persistence';
 export {
   activateTab,
+  clearExportPdfInLeaf,
   closeTab,
   emptyWorkspaceTabsState,
   evictForSoftCap,
@@ -50,13 +76,18 @@ export {
   getActiveFileTab,
   getActiveTab,
   moveTab,
+  moveTabIntoLeaf,
+  openExportPdfInLeaf,
   openOrActivateChat,
   openOrActivateContentSearch,
   openOrActivateSettings,
   openOrReplaceFileTab,
   patchFileTab,
+  replaceWorkspaceLayout,
   retargetFileTab,
   retargetFileTabsByPathPrefix,
+  setFocusedPane,
+  splitTabToEdge,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
 export type { RetargetFileTabInput, OpenFileTabInput } from '@/utils/workspaceTabs/workspaceTabsStore';
 export {
