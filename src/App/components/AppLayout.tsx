@@ -15,6 +15,7 @@ import UserWebfontStyles from '@/components/UserWebfontStyles';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import FileUploadQueueStatusBar from '@/components/FileUploadQueueStatusBar';
 import FileUploadQueueFloatingPanel from '@/components/FileUploadQueueFloatingPanel';
+import StatusBarClock from '@/components/shell/StatusBarClock';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { isStoredWithWebAuthn, getStoredWebAuthn } from '@/utils/webauthn';
 import { refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
@@ -1221,6 +1222,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                 </span>
               </>
             )}
+            <StatusBarClock />
           </div>
         </div>
       </div>

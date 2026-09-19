@@ -30,6 +30,8 @@ import {
   type SettingsToggleId,
   type WorkspaceTabsAutoSaveCommandId,
   type FootnoteDisplayModeCommandId,
+  type StatusBarClockFormatCommandId,
+  getStatusBarClockFormatCommands,
 } from '@/utils/advancedSearch/settingsToggles';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import {
@@ -113,6 +115,7 @@ export type AppCommandId =
   | SettingsToggleId
   | WorkspaceTabsAutoSaveCommandId
   | FootnoteDisplayModeCommandId
+  | StatusBarClockFormatCommandId
   | FootnoteInsertCommandId
   | CircleNumberInsertCommandId
   | SnippetActionId
@@ -1122,6 +1125,16 @@ function getFootnoteDisplayModeAppCommands(): AppCommand[] {
   }));
 }
 
+function getStatusBarClockFormatAppCommands(): AppCommand[] {
+  return getStatusBarClockFormatCommands().map((cmd) => ({
+    id: cmd.id,
+    title: cmd.title,
+    description: cmd.description,
+    path: '',
+    keywords: cmd.keywords,
+  }));
+}
+
 /**
  * Relevance of a command to query. 0 = no useful match.
  * Uses chat-style fuzzy / partial matching (subsequence + substring).
@@ -1244,10 +1257,18 @@ export function matchAppCommandsRanked(
   const settingsToggles = getSettingsToggleCommands();
   const tabsAutoSave = getWorkspaceTabsAutoSaveAppCommands();
   const footnoteDisplay = getFootnoteDisplayModeAppCommands();
+  const statusBarClockFormat = getStatusBarClockFormatAppCommands();
   const seen = new Set<string>();
   const ranked: RankedAppCommand[] = [];
 
-  for (const command of [...core, ...page, ...settingsToggles, ...tabsAutoSave, ...footnoteDisplay]) {
+  for (const command of [
+    ...core,
+    ...page,
+    ...settingsToggles,
+    ...tabsAutoSave,
+    ...footnoteDisplay,
+    ...statusBarClockFormat,
+  ]) {
     if (seen.has(command.id)) continue;
     if (!isCoreCommandVisible(command, query, context)) continue;
     seen.add(command.id);

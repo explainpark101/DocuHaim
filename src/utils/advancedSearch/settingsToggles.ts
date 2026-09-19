@@ -66,6 +66,16 @@ import {
   saveTauriDownloadSaveDialogEnabled,
 } from '@/utils/tauriDownloadSettings';
 import {
+  loadStatusBarClockEnabled,
+  saveStatusBarClockEnabled,
+  loadStatusBarClockFormat,
+  setStatusBarClockFormat,
+  loadStatusBarClockShowDate,
+  setStatusBarClockShowDate,
+  STATUS_BAR_CLOCK_FORMAT_OPTIONS,
+  type StatusBarClockFormat,
+} from '@/utils/statusBarClockSettings';
+import {
   loadQuizSettings,
   saveQuizSettings,
 } from '@/utils/quiz/quizSettingsStore';
@@ -79,6 +89,8 @@ export type SettingsToggleId =
   | 'settings-hide-recording'
   | 'settings-tree-sticky'
   | 'settings-tree-modified-date'
+  | 'settings-status-bar-clock'
+  | 'settings-status-bar-clock-date'
   | 'settings-composer-helper'
   | 'settings-as-animation'
   | 'settings-as-build-log-auto-scroll'
@@ -212,6 +224,42 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadTreeShowModifiedDateEnabled,
     save: saveTreeShowModifiedDateEnabled,
+  },
+  {
+    id: 'settings-status-bar-clock',
+    enableTitle: '상태바 현재 시각 켜기',
+    disableTitle: '상태바 현재 시각 끄기',
+    description: '앱 하단 상태바 오른쪽에 현재 시각(시:분:초) 표시',
+    keywords: [
+      'clock',
+      'time',
+      '시각',
+      '현재시각',
+      '시계',
+      'status bar',
+      '상태바',
+      'statusbar',
+    ],
+    load: loadStatusBarClockEnabled,
+    save: saveStatusBarClockEnabled,
+  },
+  {
+    id: 'settings-status-bar-clock-date',
+    enableTitle: '상태바 시계 날짜 표시 켜기',
+    disableTitle: '상태바 시계 날짜 표시 끄기',
+    description: '상태바 시계에 날짜(yyyy-MM-dd)도 함께 표시',
+    keywords: [
+      'clock',
+      'date',
+      '날짜',
+      '시각',
+      '시계',
+      'status bar',
+      '상태바',
+      'yyyy',
+    ],
+    load: loadStatusBarClockShowDate,
+    save: setStatusBarClockShowDate,
   },
   {
     id: 'settings-composer-helper',
@@ -512,4 +560,75 @@ export function applyFootnoteDisplayModeCommand(
   id: FootnoteDisplayModeCommandId,
 ): void {
   setFootnoteDisplayMode(footnoteDisplayModeFromCommandId(id));
+}
+
+export type StatusBarClockFormatCommandId =
+  | 'settings-status-bar-clock-24h'
+  | 'settings-status-bar-clock-12h'
+  | 'settings-status-bar-clock-custom';
+
+const STATUS_BAR_CLOCK_FORMAT_COMMAND_BY_MODE = {
+  '24h': 'settings-status-bar-clock-24h',
+  '12h': 'settings-status-bar-clock-12h',
+  custom: 'settings-status-bar-clock-custom',
+} as const;
+
+export function isStatusBarClockFormatCommandId(
+  id: string | undefined | null,
+): id is StatusBarClockFormatCommandId {
+  return (
+    id === 'settings-status-bar-clock-24h' ||
+    id === 'settings-status-bar-clock-12h' ||
+    id === 'settings-status-bar-clock-custom'
+  );
+}
+
+export function statusBarClockFormatFromCommandId(
+  id: StatusBarClockFormatCommandId,
+): StatusBarClockFormat {
+  if (id === 'settings-status-bar-clock-12h') return '12h';
+  if (id === 'settings-status-bar-clock-custom') return 'custom';
+  return '24h';
+}
+
+/** Situational: only modes other than the current one (when clock is enabled). */
+export function getStatusBarClockFormatCommands(): Array<{
+  id: StatusBarClockFormatCommandId;
+  title: string;
+  description: string;
+  keywords: string[];
+}> {
+  if (!loadStatusBarClockEnabled()) return [];
+  const current = loadStatusBarClockFormat();
+  return STATUS_BAR_CLOCK_FORMAT_OPTIONS.filter((opt) => opt.value !== current).map((opt) => ({
+    id: STATUS_BAR_CLOCK_FORMAT_COMMAND_BY_MODE[opt.value],
+    title: `상태바 시계: ${opt.label}`,
+    description: opt.description,
+    keywords: [
+      'clock',
+      'time',
+      '시각',
+      '시계',
+      'status bar',
+      '상태바',
+      '24h',
+      '12h',
+      'ampm',
+      'am/pm',
+      'custom',
+      '직접',
+      'format',
+      '형식',
+      'pattern',
+      '패턴',
+      opt.value,
+      opt.label,
+    ],
+  }));
+}
+
+export function applyStatusBarClockFormatCommand(
+  id: StatusBarClockFormatCommandId,
+): void {
+  setStatusBarClockFormat(statusBarClockFormatFromCommandId(id));
 }

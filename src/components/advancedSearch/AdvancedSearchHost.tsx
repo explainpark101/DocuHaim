@@ -76,9 +76,11 @@ import {
 } from '@/utils/mirrorEditSettings';
 import {
   applyFootnoteDisplayModeCommand,
+  applyStatusBarClockFormatCommand,
   applyWorkspaceTabsAutoSaveCommand,
   isFootnoteDisplayModeCommandId,
   isSettingsToggleId,
+  isStatusBarClockFormatCommandId,
   isWorkspaceTabsAutoSaveCommandId,
   subscribeSettingsToggles,
   toggleSettingsToggle,
@@ -650,6 +652,11 @@ export default function AdvancedSearchHost({
 
         if (isFootnoteDisplayModeCommandId(commandId)) {
           applyFootnoteDisplayModeCommand(commandId);
+          return;
+        }
+
+        if (isStatusBarClockFormatCommandId(commandId)) {
+          applyStatusBarClockFormatCommand(commandId);
           return;
         }
 
