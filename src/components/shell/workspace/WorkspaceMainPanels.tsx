@@ -27,8 +27,10 @@ import {
 } from '@/utils/workspaceTabs';
 import {
   getWorkspaceTabDrag,
+  hitTestPaneDropAt,
   subscribeWorkspaceTabDrag,
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
+import { PANE_LEAF_ATTR } from '@/utils/workspaceTabs/paneDropGeometry';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import type { ExportPdfDocumentFile } from '@/pages/exportPdf/exportPdfTypes';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
@@ -152,25 +154,10 @@ function resolveDropHighlight(
   clientX: number,
   clientY: number,
 ): { leafId: string; zone: PaneSplitEdge | 'center' } | null {
-  const el = document.elementFromPoint(clientX, clientY);
-  const node = el?.closest?.('[data-pane-drop]') as HTMLElement | null;
-  if (!node) return null;
-  const raw = node.getAttribute('data-pane-drop') || '';
-  if (!raw.startsWith('pane-drop:')) return null;
-  const rest = raw.slice('pane-drop:'.length);
-  const idx = rest.lastIndexOf(':');
-  if (idx < 0) return null;
-  const zone = rest.slice(idx + 1) as PaneSplitEdge | 'center';
-  if (
-    zone !== 'left' &&
-    zone !== 'right' &&
-    zone !== 'top' &&
-    zone !== 'bottom' &&
-    zone !== 'center'
-  ) {
-    return null;
-  }
-  return { leafId: rest.slice(0, idx), zone };
+  return hitTestPaneDropAt(clientX, clientY) as {
+    leafId: string;
+    zone: PaneSplitEdge | 'center';
+  } | null;
 }
 
 /**
@@ -247,7 +234,10 @@ export default function WorkspaceMainPanels({
         setDropHighlight(null);
         return;
       }
-      setDropHighlight(resolveDropHighlight(snap.clientX, snap.clientY));
+      const next = resolveDropHighlight(snap.clientX, snap.clientY);
+      setDropHighlight((prev) =>
+        prev?.leafId === next?.leafId && prev?.zone === next?.zone ? prev : next,
+      );
     });
   }, [splitDragEnabled]);
 
@@ -255,7 +245,10 @@ export default function WorkspaceMainPanels({
     if (!draggingTab || !splitDragEnabled) return undefined;
     const onMove = (e: PointerEvent) => {
       if (!getWorkspaceTabDrag()) return;
-      setDropHighlight(resolveDropHighlight(e.clientX, e.clientY));
+      const next = resolveDropHighlight(e.clientX, e.clientY);
+      setDropHighlight((prev) =>
+        prev?.leafId === next?.leafId && prev?.zone === next?.zone ? prev : next,
+      );
     };
     window.addEventListener('pointermove', onMove);
     return () => window.removeEventListener('pointermove', onMove);
@@ -450,6 +443,7 @@ export default function WorkspaceMainPanels({
 
     return (
       <div
+        {...{ [PANE_LEAF_ATTR]: leafId }}
         className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white dark:bg-odp-surface ${
           focused
             ? 'ring-2 ring-inset ring-blue-500/45 dark:ring-blue-400/40'
@@ -499,7 +493,12 @@ export default function WorkspaceMainPanels({
         ) : null}
         <WorkspacePaneDropOverlay
           leafId={leafId}
-          visible={draggingTab && splitDragEnabled && !isMobileLayout}
+          visible={
+            draggingTab &&
+            splitDragEnabled &&
+            !isMobileLayout &&
+            dropHighlight?.leafId === leafId
+          }
           activeZone={dropHighlight?.leafId === leafId ? dropHighlight.zone : null}
         />
         {exportPdfForTabId ? (
@@ -576,6 +575,10 @@ export default function WorkspaceMainPanels({
         </div>
       ) : (
         <WorkspaceTabHost>
+          <div
+            className="absolute inset-0"
+            {...(singleLeafId ? { [PANE_LEAF_ATTR]: singleLeafId } : {})}
+          >
           {fileTabs.map((tab) => {
             const active = tab.id === activeId;
             const exportLeaf = leaves.find(
@@ -672,12 +675,13 @@ export default function WorkspaceMainPanels({
           {singleLeafId && splitDragEnabled && !isMobileLayout ? (
             <WorkspacePaneDropOverlay
               leafId={singleLeafId}
-              visible={draggingTab}
+              visible={draggingTab && dropHighlight?.leafId === singleLeafId}
               activeZone={
                 dropHighlight?.leafId === singleLeafId ? dropHighlight.zone : null
               }
             />
           ) : null}
+          </div>
         </WorkspaceTabHost>
       )}
     </div>
