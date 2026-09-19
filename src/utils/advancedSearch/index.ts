@@ -157,12 +157,17 @@ export {
   getFootnoteDisplayModeCommands,
   applyFootnoteDisplayModeCommand,
   footnoteDisplayModeFromCommandId,
+  isStatusBarClockFormatCommandId,
+  getStatusBarClockFormatCommands,
+  applyStatusBarClockFormatCommand,
+  statusBarClockFormatFromCommandId,
 } from '@/utils/advancedSearch/settingsToggles';
 export type {
   SettingsToggleId,
   SettingsToggleDef,
   WorkspaceTabsAutoSaveCommandId,
   FootnoteDisplayModeCommandId,
+  StatusBarClockFormatCommandId,
 } from '@/utils/advancedSearch/settingsToggles';
 export {
   fuzzyMatchText,

@@ -5,6 +5,7 @@ import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
 import AppUiFontSettings from '@/components/settings/AppUiFontSettings';
+import StatusBarClockSettings from '@/components/settings/StatusBarClockSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
@@ -1619,6 +1620,7 @@ export default function SettingsPage({
               </span>
             </label>
           )}
+          <StatusBarClockSettings />
           {typeof onTreeHoverExpandSettingsChange === 'function' && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">
               <p className="text-xs font-semibold text-gray-700 dark:text-odp-fg mb-1">
