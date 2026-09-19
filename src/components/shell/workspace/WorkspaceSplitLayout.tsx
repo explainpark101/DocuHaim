@@ -352,8 +352,9 @@ function SplitLayoutBranch({
 
 /**
  * Recursive split content tree. Tab strip stays outside — only pane bodies here.
- * Each split node owns one independent resize boundary; Alt links spanning
- * siblings; nearby boundaries snap (yellow while magnetized).
+ * Each split node owns one independent resize boundary by default.
+ * Hold Alt to link spanning sibling sashes; nearby boundaries still snap
+ * (yellow while magnetized) without merging handles unless Alt was held.
  */
 export default function WorkspaceSplitLayout({
   layout,

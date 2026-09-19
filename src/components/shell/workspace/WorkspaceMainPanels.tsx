@@ -9,6 +9,9 @@ import WorkspaceTabHost, {
 } from '@/components/workspace/WorkspaceTabHost';
 import WorkspaceSplitLayout from '@/components/shell/workspace/WorkspaceSplitLayout';
 import WorkspacePaneDropOverlay from '@/components/shell/workspace/WorkspacePaneDropOverlay';
+import WorkspacePanePlaceholder, {
+  WorkspacePaneContentReveal,
+} from '@/components/shell/workspace/WorkspacePanePlaceholder';
 import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 import {
   CHAT_TAB_ID,
@@ -49,11 +52,7 @@ const ContentSearchPage = lazy(() => import('@/pages/ContentSearchPage'));
 const ExportPDFPage = lazy(() => import('@/pages/exportPdf/ExportPDFPage'));
 
 function RouteSuspenseFallback() {
-  return (
-    <div className="flex h-full min-h-48 flex-1 items-center justify-center bg-white text-sm text-gray-400 dark:bg-odp-bgSofter dark:text-odp-muted">
-      로딩 중…
-    </div>
-  );
+  return <WorkspacePanePlaceholder label="로딩 중" />;
 }
 
 type Mirrors = {
@@ -103,7 +102,7 @@ export type WorkspaceMainPanelsProps = {
     ratio: number,
     opts?: { linkAligned?: boolean },
   ) => void;
-  /** After sash drag; when snapped, domain may transpose aligned 2×2 nests. */
+  /** After sash drag with Alt; may transpose aligned 2×2 into a spanning outer sash. */
   onResizeSplitEnd?: (
     splitId: string,
     snapped: boolean,
@@ -260,40 +259,86 @@ export default function WorkspaceMainPanels({
   );
   /** Leaf ids that just appeared via split — amber border flash (~2s). */
   const [freshPaneIds, setFreshPaneIds] = useState<ReadonlySet<string>>(() => new Set());
-  const prevLeafIdsRef = useRef<Set<string> | null>(null);
+  /** Leaves that still show a body placeholder until content paints. */
+  const [pendingPlaceholderLeafIds, setPendingPlaceholderLeafIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [trackedLeafIds, setTrackedLeafIds] = useState<ReadonlySet<string> | null>(null);
   const freshPaneTimersRef = useRef(new Map<string, number>());
 
-  useEffect(() => {
-    const nextIds = new Set(leaves.map((leaf) => leaf.id));
-    const prev = prevLeafIdsRef.current;
-    prevLeafIdsRef.current = nextIds;
+  const clearPlaceholderLeaf = useCallback((leafId: string) => {
+    setPendingPlaceholderLeafIds((cur) => {
+      if (!cur.has(leafId)) return cur;
+      const next = new Set(cur);
+      next.delete(leafId);
+      return next;
+    });
+  }, []);
 
+  // Sync during render so the first paint of a new leaf already shows a placeholder.
+  const nextLeafIdSet = useMemo(() => new Set(leaves.map((leaf) => leaf.id)), [leaves]);
+  if (!isSplit) {
+    if (trackedLeafIds != null) {
+      setTrackedLeafIds(null);
+      setPendingPlaceholderLeafIds(new Set());
+      setFreshPaneIds(new Set());
+    }
+  } else if (trackedLeafIds == null) {
+    // First split observation (incl. restore): remember ids, no placeholder flash.
+    setTrackedLeafIds(nextLeafIdSet);
+  } else {
+    let added: string[] | null = null;
+    for (const id of nextLeafIdSet) {
+      if (!trackedLeafIds.has(id)) {
+        (added ??= []).push(id);
+      }
+    }
+    let removed = false;
+    for (const id of trackedLeafIds) {
+      if (!nextLeafIdSet.has(id)) {
+        removed = true;
+        break;
+      }
+    }
+    if (added || removed || nextLeafIdSet.size !== trackedLeafIds.size) {
+      setTrackedLeafIds(nextLeafIdSet);
+      if (added && added.length > 0) {
+        setPendingPlaceholderLeafIds((cur) => {
+          const merged = new Set(cur);
+          for (const id of added!) merged.add(id);
+          return merged;
+        });
+        setFreshPaneIds((cur) => {
+          const merged = new Set(cur);
+          for (const id of added!) merged.add(id);
+          return merged;
+        });
+      }
+      if (removed) {
+        setPendingPlaceholderLeafIds((cur) => {
+          const next = new Set([...cur].filter((id) => nextLeafIdSet.has(id)));
+          return next.size === cur.size ? cur : next;
+        });
+        setFreshPaneIds((cur) => {
+          const next = new Set([...cur].filter((id) => nextLeafIdSet.has(id)));
+          return next.size === cur.size ? cur : next;
+        });
+      }
+    }
+  }
+
+  useEffect(() => {
     if (!isSplit) {
       if (freshPaneTimersRef.current.size > 0) {
         for (const timer of freshPaneTimersRef.current.values()) {
           window.clearTimeout(timer);
         }
         freshPaneTimersRef.current.clear();
-        setFreshPaneIds(new Set());
       }
       return;
     }
-
-    // Skip first observation (restore / initial mount) so persisted splits do not flash.
-    if (!prev || prev.size === 0) return;
-
-    const added = [...nextIds].filter((id) => !prev.has(id));
-    if (added.length === 0) return;
-
-    setFreshPaneIds((cur) => {
-      const merged = new Set(cur);
-      for (const id of added) merged.add(id);
-      return merged;
-    });
-
-    for (const id of added) {
-      const existing = freshPaneTimersRef.current.get(id);
-      if (existing != null) window.clearTimeout(existing);
+    for (const id of freshPaneIds) {
+      if (freshPaneTimersRef.current.has(id)) continue;
       const timer = window.setTimeout(() => {
         freshPaneTimersRef.current.delete(id);
         setFreshPaneIds((cur) => {
@@ -305,7 +350,7 @@ export default function WorkspaceMainPanels({
       }, 2000);
       freshPaneTimersRef.current.set(id, timer);
     }
-  }, [leaves, isSplit]);
+  }, [freshPaneIds, isSplit]);
 
   useEffect(
     () => () => {
@@ -692,48 +737,55 @@ export default function WorkspaceMainPanels({
           />
         ) : null}
         <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
-          {leaf.tabIds.map((tabId) => {
-            const tab = tabs.find((t) => t.id === tabId);
-            if (!tab) return null;
-            const active = tabId === leafActiveId;
-            const showExport = Boolean(exportPdfForTabId && exportPdfForTabId === tabId);
-            // Pane-local active: each visible leaf must load its editor (not only the focused pane).
-            const paneActive = active;
-            const handleExportClose = (result?: {
-              editorContent: string;
-              currentFile: ExportPdfDocumentFile;
-            }) => {
-              if (result && isFileTab(tab)) {
-                const nextContent =
-                  typeof result.editorContent === 'string' ? result.editorContent : '';
-                if (tab.id === activeId && mirrors?.onChangeEditor) {
-                  mirrors.onChangeEditor(nextContent);
-                } else {
-                  mirrors?.onInactiveEditorChange?.(tab.id, nextContent);
-                }
-              }
-              onClearExportPdf?.(leafId);
-            };
+          <WorkspacePaneContentReveal
+            pending={pendingPlaceholderLeafIds.has(leafId)}
+            onReady={() => clearPlaceholderLeaf(leafId)}
+          >
+            <Suspense fallback={<WorkspacePanePlaceholder variant="body" />}>
+              {leaf.tabIds.map((tabId) => {
+                const tab = tabs.find((t) => t.id === tabId);
+                if (!tab) return null;
+                const active = tabId === leafActiveId;
+                const showExport = Boolean(exportPdfForTabId && exportPdfForTabId === tabId);
+                // Pane-local active: each visible leaf must load its editor (not only the focused pane).
+                const paneActive = active;
+                const handleExportClose = (result?: {
+                  editorContent: string;
+                  currentFile: ExportPdfDocumentFile;
+                }) => {
+                  if (result && isFileTab(tab)) {
+                    const nextContent =
+                      typeof result.editorContent === 'string' ? result.editorContent : '';
+                    if (tab.id === activeId && mirrors?.onChangeEditor) {
+                      mirrors.onChangeEditor(nextContent);
+                    } else {
+                      mirrors?.onInactiveEditorChange?.(tab.id, nextContent);
+                    }
+                  }
+                  onClearExportPdf?.(leafId);
+                };
 
-            return (
-              <WorkspaceKeepAlivePanel key={`${leafId}:${tabId}`} active={paneActive}>
-                {/* Always keep the editor mounted; visibility is KeepAlivePanel's job.
-                    Avoids wiping CM/state when switching tabs or hiding the split for orphans. */}
-                {renderTabContent(tab, true, {
-                  ...(isFileTab(tab) && tab.noteSurface
-                    ? { noteSurface: tab.noteSurface }
-                    : {}),
-                  exportPdf: showExport,
-                  ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
-                })}
-              </WorkspaceKeepAlivePanel>
-            );
-          })}
-          {leaf.tabIds.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-odp-muted">
-              빈 페인
-            </div>
-          ) : null}
+                return (
+                  <WorkspaceKeepAlivePanel key={`${leafId}:${tabId}`} active={paneActive}>
+                    {/* Always keep the editor mounted; visibility is KeepAlivePanel's job.
+                        Avoids wiping CM/state when switching tabs or hiding the split for orphans. */}
+                    {renderTabContent(tab, true, {
+                      ...(isFileTab(tab) && tab.noteSurface
+                        ? { noteSurface: tab.noteSurface }
+                        : {}),
+                      exportPdf: showExport,
+                      ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
+                    })}
+                  </WorkspaceKeepAlivePanel>
+                );
+              })}
+              {leaf.tabIds.length === 0 ? (
+                <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-odp-muted">
+                  빈 페인
+                </div>
+              ) : null}
+            </Suspense>
+          </WorkspacePaneContentReveal>
         </div>
       </div>
     );
