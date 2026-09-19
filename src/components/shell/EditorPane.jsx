@@ -146,6 +146,8 @@ export default function EditorPane({
   /** When set, overrides pathname-based quiz mode (split panes). */
   forceQuizMode = undefined,
   noteSurface = undefined,
+  /** Focused pane: heavy editor/preview work runs. Visible unfocused panes stay mounted but pause. */
+  isSurfaceLive = true,
 }) {
   const [pdfIframeKey, setPdfIframeKey] = useState(0);
   const pdfIframeRef = useRef(null);
@@ -1176,6 +1178,7 @@ export default function EditorPane({
                 onResolveWikiImageUrl={onResolveWikiImageUrl}
                 llmProviderProfiles={llmProviderProfiles}
                 isActiveFile={isActiveFile}
+                isSurfaceLive={isSurfaceLive}
                 registerToolbar={setQuizToolbarNode}
                 registerFileManagement={setQuizFileManagement}
               />
@@ -1201,6 +1204,7 @@ export default function EditorPane({
                       previewOnly={previewOnly}
                       isMobileLayout={isMobileLayout}
                       isActiveFile={isActiveFile}
+                      isSurfaceLive={isSurfaceLive}
                       onUploadImage={onUploadImage}
                       isUploadingEditorImage={isUploadingEditorImage}
                       uploadImagePercent={uploadImagePercent}

@@ -37,8 +37,11 @@ function QuizMdPreview({
   const hydration = useQuizImageHydration();
   const getPresignedUrl = getPresignedUrlProp ?? hydration.getPresignedUrl;
   const currentNotePath = currentNotePathProp ?? hydration.currentNotePath ?? null;
+  const hydrationEnabled = hydration.hydrationEnabled !== false;
 
-  useWikiImageHydration(rootRef, value, getPresignedUrl, currentNotePath);
+  useWikiImageHydration(rootRef, value, getPresignedUrl, currentNotePath, {
+    enabled: hydrationEnabled,
+  });
 
   return (
     <div ref={rootRef} className={`quiz-md-preview markdown-content ${className}`}>

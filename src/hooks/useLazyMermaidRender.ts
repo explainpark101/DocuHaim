@@ -13,6 +13,8 @@ export type UseLazyMermaidRenderOptions = {
   eager?: boolean;
   /** Re-bind when preview markdown / theme changes. */
   layoutKey?: string;
+  /** When false, disconnect observers (paused / unfocused pane). */
+  enabled?: boolean;
 };
 
 /**
@@ -23,9 +25,10 @@ export function useLazyMermaidRender(
   rootRef: RefObject<HTMLElement | null>,
   options: UseLazyMermaidRenderOptions = {},
 ): void {
-  const { eager = false, layoutKey = '' } = options;
+  const { eager = false, layoutKey = '', enabled = true } = options;
 
   useEffect(() => {
+    if (!enabled) return undefined;
     const root = rootRef.current;
     if (!root) return undefined;
 
@@ -87,5 +90,5 @@ export function useLazyMermaidRender(
       mutationObserver.disconnect();
       observer?.disconnect();
     };
-  }, [eager, layoutKey, rootRef]);
+  }, [eager, enabled, layoutKey, rootRef]);
 }
