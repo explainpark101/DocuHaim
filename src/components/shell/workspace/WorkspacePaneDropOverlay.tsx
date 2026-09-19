@@ -1,9 +1,7 @@
+import { motion as Motion } from 'motion/react';
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
-import {
-  paneDropId,
-  paneDropZoneStyle,
-  paneSplitPreviewStyle,
-} from '@/components/shell/workspace/WorkspacePaneDropTargets';
+import { PANE_SPLIT_PREVIEW_PCT } from '@/utils/workspaceTabs/paneDropGeometry';
+import { paneDropZoneStyle } from '@/components/shell/workspace/WorkspacePaneDropTargets';
 
 type WorkspacePaneDropOverlayProps = {
   leafId: string;
@@ -11,45 +9,97 @@ type WorkspacePaneDropOverlayProps = {
   activeZone: PaneSplitEdge | 'center' | null;
 };
 
+const PREVIEW_TRANSITION = {
+  type: 'spring' as const,
+  bounce: 0.1,
+  duration: 0.28,
+};
+
+type RectAnim = {
+  left: string;
+  top: string;
+  width: string;
+  height: string;
+};
+
+function splitRects(zone: PaneSplitEdge): { incoming: RectAnim; remaining: RectAnim } {
+  const half = `${PANE_SPLIT_PREVIEW_PCT}%`;
+  switch (zone) {
+    case 'left':
+      return {
+        incoming: { left: '0%', top: '0%', width: half, height: '100%' },
+        remaining: { left: half, top: '0%', width: half, height: '100%' },
+      };
+    case 'right':
+      return {
+        remaining: { left: '0%', top: '0%', width: half, height: '100%' },
+        incoming: { left: half, top: '0%', width: half, height: '100%' },
+      };
+    case 'top':
+      return {
+        incoming: { left: '0%', top: '0%', width: '100%', height: half },
+        remaining: { left: '0%', top: half, width: '100%', height: half },
+      };
+    case 'bottom':
+      return {
+        remaining: { left: '0%', top: '0%', width: '100%', height: half },
+        incoming: { left: '0%', top: half, width: '100%', height: half },
+      };
+  }
+}
+
 /**
- * Hit-test targets for tab→pane drops + a blue preview only on the space
- * the new split pane will occupy (no full-pane dim / no idle zone fill).
+ * Motion preview of how the current pane shrinks when an edge split is created.
+ * Uses absolute rect animation (no remount) so the preview stays solid while dragging.
+ */
+function EdgeSplitPreview({ zone }: { zone: PaneSplitEdge }) {
+  const { incoming, remaining } = splitRects(zone);
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <Motion.div
+        className="pointer-events-none absolute bg-blue-500/55 ring-2 ring-inset ring-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.85)]"
+        initial={false}
+        animate={incoming}
+        transition={PREVIEW_TRANSITION}
+      />
+      <Motion.div
+        className="pointer-events-none absolute overflow-hidden rounded-sm bg-white/30 ring-2 ring-inset ring-white/80 dark:bg-odp-surface/35 dark:ring-white/40"
+        initial={false}
+        animate={remaining}
+        transition={PREVIEW_TRANSITION}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,rgba(59,130,246,0.14)_100%)]" />
+      </Motion.div>
+    </div>
+  );
+}
+
+function CenterJoinPreview() {
+  return (
+    <div
+      className="pointer-events-none absolute bg-blue-500/45 ring-2 ring-inset ring-blue-400"
+      style={paneDropZoneStyle('center')}
+    />
+  );
+}
+
+/**
+ * Visual-only drop preview. Zone resolution is geometric on `[data-pane-leaf]`
+ * (see resolvePaneDropAt) — no fragile hit-target gaps.
  */
 export default function WorkspacePaneDropOverlay({
-  leafId,
   visible,
   activeZone,
 }: WorkspacePaneDropOverlayProps) {
-  if (!visible) return null;
-
-  const zones: (PaneSplitEdge | 'center')[] = ['left', 'right', 'top', 'bottom', 'center'];
-  const previewStyle = activeZone ? paneSplitPreviewStyle(activeZone) : null;
-  const showCenterPreview = activeZone === 'center';
+  if (!visible || !activeZone) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 z-30" aria-hidden>
-      {/* Invisible hit targets (pointer only). */}
-      {zones.map((zone) => (
-        <div
-          key={zone}
-          data-pane-drop={paneDropId(leafId, zone)}
-          style={paneDropZoneStyle(zone)}
-          className="absolute pointer-events-auto"
-        />
-      ))}
-      {/* Blue only on the future split pane region (edge) or center join target. */}
-      {previewStyle ? (
-        <div
-          style={previewStyle}
-          className="absolute bg-blue-500/55 ring-2 ring-inset ring-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.9)]"
-        />
-      ) : null}
-      {showCenterPreview ? (
-        <div
-          style={paneDropZoneStyle('center')}
-          className="absolute bg-blue-500/45 ring-2 ring-inset ring-blue-400"
-        />
-      ) : null}
+      {activeZone === 'center' ? (
+        <CenterJoinPreview />
+      ) : (
+        <EdgeSplitPreview zone={activeZone} />
+      )}
     </div>
   );
 }

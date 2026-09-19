@@ -1,3 +1,5 @@
+import { resolvePaneDropAt } from '@/utils/workspaceTabs/paneDropGeometry';
+
 type WorkspaceTabDragSnapshot = {
   tabId: string;
   clientX: number;
@@ -36,25 +38,10 @@ export function subscribeWorkspaceTabDrag(listener: Listener): () => void {
   };
 }
 
-/** Resolve `[data-pane-drop="pane-drop:leaf:zone"]` under the pointer. */
+/** Resolve pane drop under the pointer via leaf geometry (stable; no overlay gaps). */
 export function hitTestPaneDropAt(
   clientX: number,
   clientY: number,
 ): { leafId: string; zone: string } | null {
-  if (typeof document === 'undefined') return null;
-  const stack =
-    typeof document.elementsFromPoint === 'function'
-      ? document.elementsFromPoint(clientX, clientY)
-      : ([document.elementFromPoint(clientX, clientY)].filter(Boolean) as Element[]);
-  for (const el of stack) {
-    const node = el.closest?.('[data-pane-drop]') as HTMLElement | null;
-    if (!node) continue;
-    const raw = node.getAttribute('data-pane-drop') || '';
-    if (!raw.startsWith('pane-drop:')) continue;
-    const rest = raw.slice('pane-drop:'.length);
-    const idx = rest.lastIndexOf(':');
-    if (idx < 0) continue;
-    return { leafId: rest.slice(0, idx), zone: rest.slice(idx + 1) };
-  }
-  return null;
+  return resolvePaneDropAt(clientX, clientY);
 }

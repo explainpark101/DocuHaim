@@ -1,6 +1,21 @@
 import { useDroppable } from '@dnd-kit/core';
 import type { CSSProperties } from 'react';
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
+import {
+  PANE_DROP_EDGE_PCT,
+  PANE_DROP_INNER_PCT,
+  PANE_SPLIT_PREVIEW_PCT,
+} from '@/utils/workspaceTabs/paneDropGeometry';
+
+export {
+  PANE_DROP_EDGE_PCT,
+  PANE_DROP_GUTTER_PCT,
+  PANE_DROP_INNER_PCT,
+  PANE_SPLIT_PREVIEW_PCT,
+  PANE_LEAF_ATTR,
+  resolvePaneDropAt,
+  zoneFromPanePoint,
+} from '@/utils/workspaceTabs/paneDropGeometry';
 
 export function paneDropId(leafId: string, zone: PaneSplitEdge | 'center'): string {
   return `pane-drop:${leafId}:${zone}`;
@@ -27,21 +42,6 @@ export function parsePaneDropId(
   }
   return { leafId, zone };
 }
-
-/** Edge zone thickness as a percent of the pane (hit-test target). */
-export const PANE_DROP_EDGE_PCT = 40;
-
-/** Empty strip between edge and center zones (corners stay empty; no overlap). */
-export const PANE_DROP_GUTTER_PCT = 0;
-
-/** Distance from pane edge to center start / cross-axis inset for edge zones. */
-export const PANE_DROP_INNER_PCT = PANE_DROP_EDGE_PCT + PANE_DROP_GUTTER_PCT;
-
-/**
- * Visual preview size for the pane that will be created by an edge split
- * (matches default split ratio of 0.5).
- */
-export const PANE_SPLIT_PREVIEW_PCT = 50;
 
 /** Absolute layout for one drop zone, derived from the % constants above. */
 export function paneDropZoneStyle(zone: PaneSplitEdge | 'center'): CSSProperties {
