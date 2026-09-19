@@ -1,9 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import {
   hydrateStorageImagesInRoot,
   markdownLikelyHasStorageImages,
 } from '@/utils/storageImageHydration';
 import { PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/printSettingsStore';
+
+export type UseWikiImageHydrationOptions = {
+  /** When false, disconnect observers and skip hydrate passes (paused pane). */
+  enabled?: boolean;
+};
 
 /**
  * Wiki `![[path]]` and standard markdown storage images hydration.
@@ -13,24 +18,25 @@ import { PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/printSettingsStore';
  * Does not tear down observers on every markdown `value` change — that would
  * delay re-binding and flash placeholders. DOM mutations drive re-hydrate;
  * `value` only schedules a sync pass (memory cache hits before paint).
- *
- * @param {{ current: HTMLElement | null }} rootRef
- * @param {string} value
- * @param {(path: string) => Promise<string|null>} [getPresignedUrl]
- * @param {string | null} [currentNotePath]
  */
-export function useWikiImageHydration(rootRef, value, getPresignedUrl, currentNotePath = null) {
+export function useWikiImageHydration(
+  rootRef: RefObject<HTMLElement | null> | { current: HTMLElement | null },
+  value: string,
+  getPresignedUrl?: ((path: string) => Promise<string | null>) | null,
+  currentNotePath: string | null = null,
+  options: UseWikiImageHydrationOptions = {},
+): void {
+  const { enabled = true } = options;
   const valueRef = useRef(value);
   valueRef.current = value;
 
   useEffect(() => {
-    if (!getPresignedUrl) return undefined;
+    if (!enabled || !getPresignedUrl) return undefined;
 
     let cancelled = false;
-    /** @type {MutationObserver | null} */
-    let mutationObserver = null;
+    let mutationObserver: MutationObserver | null = null;
 
-    const ensureObserver = (root) => {
+    const ensureObserver = (root: HTMLElement | null) => {
       if (!root || mutationObserver || typeof MutationObserver === 'undefined') return;
       // Sync in the MO callback so remembered URLs attach before paint.
       mutationObserver = new MutationObserver(() => {
@@ -47,7 +53,7 @@ export function useWikiImageHydration(rootRef, value, getPresignedUrl, currentNo
 
     const runHydration = () => {
       if (cancelled) return;
-      const root = rootRef?.current;
+      const root = rootRef?.current ?? null;
       ensureObserver(root);
       const scopedCount = hydrateStorageImagesInRoot(root, {
         getPresignedUrl,
@@ -61,7 +67,7 @@ export function useWikiImageHydration(rootRef, value, getPresignedUrl, currentNo
       });
     };
 
-    ensureObserver(rootRef?.current);
+    ensureObserver(rootRef?.current ?? null);
 
     // Initial settle only (not on every keystroke).
     const delays = [0, 100, 350, 700];
@@ -80,16 +86,16 @@ export function useWikiImageHydration(rootRef, value, getPresignedUrl, currentNo
       window.removeEventListener('online', onOnline);
       window.removeEventListener(PRINT_SETTINGS_STORE_CHANGED_EVENT, onStoreReady);
     };
-  }, [getPresignedUrl, rootRef, currentNotePath]);
+  }, [enabled, getPresignedUrl, rootRef, currentNotePath]);
 
   // Markdown edits rebuild preview HTML. Apply remembered URLs immediately;
   // MutationObserver covers cases where React commits after this effect.
   useEffect(() => {
-    if (!getPresignedUrl || !value) return;
+    if (!enabled || !getPresignedUrl || !value) return;
     if (!markdownLikelyHasStorageImages(value)) return;
-    hydrateStorageImagesInRoot(rootRef?.current, {
+    hydrateStorageImagesInRoot(rootRef?.current ?? null, {
       getPresignedUrl,
       currentNotePath,
     });
-  }, [value, getPresignedUrl, rootRef, currentNotePath]);
+  }, [enabled, value, getPresignedUrl, rootRef, currentNotePath]);
 }

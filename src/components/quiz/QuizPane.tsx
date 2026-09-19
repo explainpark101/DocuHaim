@@ -203,6 +203,8 @@ export type QuizPaneProps = {
     | undefined;
   llmProviderProfiles?: LlmProviderProfile[];
   isActiveFile?: boolean;
+  /** Focused pane: register chrome + run preview hydration. Visible unfocused stays mounted. */
+  isSurfaceLive?: boolean;
   registerToolbar?: (node: ReactNode | null) => void;
   registerFileManagement?: (actions: QuizFileManagementActions | null) => void;
 };
@@ -217,6 +219,7 @@ export default function QuizPane({
   onResolveWikiImageUrl,
   llmProviderProfiles = [],
   isActiveFile = true,
+  isSurfaceLive = true,
   registerToolbar,
   registerFileManagement,
 }: QuizPaneProps) {
@@ -853,7 +856,7 @@ export default function QuizPane({
   ]);
 
   useEffect(() => {
-    if (!isActiveFile || !registerFileManagement) return;
+    if (!isActiveFile || !isSurfaceLive || !registerFileManagement) return;
     registerFileManagement({
       extractWrongQuestions: handleExtractWrongQuestions,
       shuffleChoiceOptions: handleShuffleChoiceOptions,
@@ -863,6 +866,7 @@ export default function QuizPane({
     return () => registerFileManagement(null);
   }, [
     isActiveFile,
+    isSurfaceLive,
     registerFileManagement,
     handleExtractWrongQuestions,
     handleShuffleChoiceOptions,
@@ -1011,10 +1015,11 @@ export default function QuizPane({
   }, [handleRegisterQuizSourceDrop, handleTreeSourceDrop]);
 
   useEffect(() => {
-    const active = isActiveFile && (Boolean(sourcePicker) || sourcesDockOpen);
+    const active =
+      isActiveFile && isSurfaceLive && (Boolean(sourcePicker) || sourcesDockOpen);
     setQuizSourceDropActive(active);
     return () => setQuizSourceDropActive(false);
-  }, [isActiveFile, sourcePicker, sourcesDockOpen, setQuizSourceDropActive]);
+  }, [isActiveFile, isSurfaceLive, sourcePicker, sourcesDockOpen, setQuizSourceDropActive]);
 
   const scoreBoard = useMemo(
     () =>
@@ -1028,7 +1033,7 @@ export default function QuizPane({
     [doc.questions, userAnswers, graded, isSubmitted, subjGrades],
   );
 
-  const headerMirrorEnabled = isActiveFile && scoreBoard.total > 0;
+  const headerMirrorEnabled = isActiveFile && isSurfaceLive && scoreBoard.total > 0;
   const contentProgressInView = useQuizScrollSectionInView(
     quizScrollRef,
     contentProgressRef,
@@ -1139,7 +1144,7 @@ export default function QuizPane({
   }, [hasAnsweredQuestions, stopwatch]);
 
   useEffect(() => {
-    if (!isActiveFile || !registerToolbar) return;
+    if (!isActiveFile || !isSurfaceLive || !registerToolbar) return;
     registerToolbar(
       <QuizStopwatchToolbar
         stopwatch={stopwatch}
@@ -1149,6 +1154,7 @@ export default function QuizPane({
     return () => registerToolbar(null);
   }, [
     isActiveFile,
+    isSurfaceLive,
     registerToolbar,
     stopwatch.displayMs,
     stopwatch.running,
@@ -1923,8 +1929,9 @@ export default function QuizPane({
     () => ({
       getPresignedUrl: onResolveWikiImageUrl,
       currentNotePath: currentFile?.id ?? null,
+      hydrationEnabled: isSurfaceLive,
     }),
-    [currentFile?.id, onResolveWikiImageUrl],
+    [currentFile?.id, isSurfaceLive, onResolveWikiImageUrl],
   );
 
   const handleWrongExpRef = useRef(handleWrongExp);
@@ -2052,7 +2059,13 @@ export default function QuizPane({
   return (
     <QuizImageHydrationProvider value={imageHydrationValue}>
       <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-        <div className="quiz-pane relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg">
+        <div
+          className={`quiz-pane relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-odp-bg${
+            isSurfaceLive ? '' : ' pointer-events-none'
+          }`}
+          {...(!isSurfaceLive ? { inert: true } : {})}
+          aria-hidden={!isSurfaceLive ? true : undefined}
+        >
           <div className="min-w-0 shrink-0 border-b border-slate-200 bg-white/90 px-4 py-3 dark:border-odp-borderSoft dark:bg-odp-surface">
             <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-hidden">
               <div className="mr-auto flex min-w-0 flex-1 basis-full items-center gap-2 sm:basis-auto sm:gap-3">

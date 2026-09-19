@@ -4,9 +4,7 @@ import { Tooltip } from 'radix-ui';
 import EditorPane from '@/components/EditorPane';
 import SettingsVaultDropHost from '@/components/shell/SettingsVaultDropHost';
 import WorkspaceTabBar, { type WorkspaceTabGroup } from '@/components/workspace/WorkspaceTabBar';
-import WorkspaceTabHost, {
-  WorkspaceKeepAlivePanel,
-} from '@/components/workspace/WorkspaceTabHost';
+import WorkspaceTabHost from '@/components/workspace/WorkspaceTabHost';
 import WorkspaceSplitLayout from '@/components/shell/workspace/WorkspaceSplitLayout';
 import WorkspacePaneDropOverlay from '@/components/shell/workspace/WorkspacePaneDropOverlay';
 import WorkspacePanePlaceholder, {
@@ -420,9 +418,15 @@ export default function WorkspaceMainPanels({
       }) => void;
       /** Pane-local compact layout (window mobile OR narrow split pane). */
       contentIsMobileLayout?: boolean;
+      /**
+       * Focused / interactive surface. Visible unfocused split panes stay mounted
+       * but pause editor/preview work. Defaults to `active`.
+       */
+      isSurfaceLive?: boolean;
     },
   ): ReactNode => {
     const contentIsMobileLayout = opts?.contentIsMobileLayout ?? isMobileLayout;
+    const isSurfaceLive = opts?.isSurfaceLive ?? active;
 
     if (tab.kind === 'chat') {
       return (
@@ -431,7 +435,7 @@ export default function WorkspaceMainPanels({
           <ChatWithMyselfPane
             {...(chatPaneProps as any)}
             isMobileLayout={contentIsMobileLayout}
-            isActive={active}
+            isActive={active && isSurfaceLive}
           />
         </Suspense>
       );
@@ -439,7 +443,7 @@ export default function WorkspaceMainPanels({
     if (tab.kind === 'settings') {
       return (
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-        <SettingsVaultDropHost enabled={active} {...(vaultDropProps as any)}>
+        <SettingsVaultDropHost enabled={active && isSurfaceLive} {...(vaultDropProps as any)}>
           <Suspense fallback={<RouteSuspenseFallback />}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             <SettingsPage
@@ -454,7 +458,10 @@ export default function WorkspaceMainPanels({
       return (
         <Suspense fallback={<RouteSuspenseFallback />}>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          <ContentSearchPage {...(contentSearchPaneProps as any)} isActive={active} />
+          <ContentSearchPage
+            {...(contentSearchPaneProps as any)}
+            isActive={active && isSurfaceLive}
+          />
         </Suspense>
       );
     }
@@ -505,6 +512,7 @@ export default function WorkspaceMainPanels({
           forceQuizMode: noteSurface === 'quiz',
         })}
         isMobileLayout={contentIsMobileLayout}
+        isSurfaceLive={isSurfaceLive}
       />
     );
   };
@@ -771,13 +779,25 @@ export default function WorkspaceMainPanels({
                 onReady={() => clearPlaceholderLeaf(leafId)}
               >
                 <Suspense fallback={<WorkspacePanePlaceholder variant="body" />}>
-                  {leaf.tabIds.map((tabId) => {
-                    const tab = tabs.find((t) => t.id === tabId);
-                    if (!tab) return null;
-                    const active = tabId === leafActiveId;
-                    const showExport = Boolean(exportPdfForTabId && exportPdfForTabId === tabId);
-                    // Pane-local active: each visible leaf must load its editor (not only the focused pane).
-                    const paneActive = active;
+                  {(() => {
+                    if (!leafActiveId) {
+                      return (
+                        <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-odp-muted">
+                          빈 페인
+                        </div>
+                      );
+                    }
+                    const tab = tabs.find((t) => t.id === leafActiveId);
+                    if (!tab) {
+                      return (
+                        <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-odp-muted">
+                          빈 페인
+                        </div>
+                      );
+                    }
+                    const showExport = Boolean(
+                      exportPdfForTabId && exportPdfForTabId === leafActiveId,
+                    );
                     const handleExportClose = (result?: {
                       editorContent: string;
                       currentFile: ExportPdfDocumentFile;
@@ -794,10 +814,13 @@ export default function WorkspaceMainPanels({
                       onClearExportPdf?.(leafId);
                     };
 
+                    // Mount only the leaf's active tab (invisible tabs unmount).
+                    // Visible but unfocused panes stay mounted with isSurfaceLive=false.
                     return (
-                      <WorkspaceKeepAlivePanel key={`${leafId}:${tabId}`} active={paneActive}>
-                        {/* Always keep the editor mounted; visibility is KeepAlivePanel's job.
-                            Avoids wiping CM/state when switching tabs or hiding the split for orphans. */}
+                      <div
+                        key={`${leafId}:${leafActiveId}`}
+                        className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden"
+                      >
                         {renderTabContent(tab, true, {
                           ...(isFileTab(tab) && tab.noteSurface
                             ? { noteSurface: tab.noteSurface }
@@ -805,15 +828,12 @@ export default function WorkspaceMainPanels({
                           exportPdf: showExport,
                           ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
                           contentIsMobileLayout,
+                          // Orphan full-window view keeps the split tree mounted but hidden — pause it.
+                          isSurfaceLive: focused && !activeIsOrphan,
                         })}
-                      </WorkspaceKeepAlivePanel>
+                      </div>
                     );
-                  })}
-                  {leaf.tabIds.length === 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-odp-muted">
-                      빈 페인
-                    </div>
-                  ) : null}
+                  })()}
                 </Suspense>
               </WorkspacePaneContentReveal>
             </div>
@@ -887,20 +907,25 @@ export default function WorkspaceMainPanels({
                       const orphanTab = tabs.find((t) => t.id === activeId);
                       if (!orphanTab) return null;
                       return (
-                        <WorkspaceKeepAlivePanel key={orphanTab.id} active>
+                        <div
+                          key={orphanTab.id}
+                          className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden"
+                        >
                           {renderTabContent(orphanTab, true, {
                             ...(isFileTab(orphanTab) && orphanTab.noteSurface
                               ? { noteSurface: orphanTab.noteSurface }
                               : {}),
                             contentIsMobileLayout,
+                            isSurfaceLive: true,
                           })}
-                        </WorkspaceKeepAlivePanel>
+                        </div>
                       );
                     })()
                   : (
                     <>
                       {fileTabs.map((tab) => {
                         const active = tab.id === activeId;
+                        if (!active) return null;
                         const exportLeaf = leaves.find(
                           (l) => l.exportPdfForTabId === tab.id && l.activeId === tab.id,
                         );
@@ -922,7 +947,10 @@ export default function WorkspaceMainPanels({
                           if (exportLeaf) onClearExportPdf?.(exportLeaf.id);
                         };
                         return (
-                          <WorkspaceKeepAlivePanel key={tab.id} active={active}>
+                          <div
+                            key={tab.id}
+                            className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden"
+                          >
                             {exportLeaf ? (
                               <>
                                 <LeafExportPdfBack
@@ -937,55 +965,57 @@ export default function WorkspaceMainPanels({
                                     });
                                   }}
                                 />
-                                {renderTabContent(tab, active, {
+                                {renderTabContent(tab, true, {
                                   exportPdf: true,
                                   onExportPdfClose: handleExportClose,
                                   ...(tab.noteSurface
                                     ? { noteSurface: tab.noteSurface }
                                     : {}),
                                   contentIsMobileLayout,
+                                  isSurfaceLive: true,
                                 })}
                               </>
                             ) : (
-                              renderTabContent(tab, active, {
+                              renderTabContent(tab, true, {
                                 ...(tab.noteSurface
                                   ? { noteSurface: tab.noteSurface }
                                   : {}),
                                 contentIsMobileLayout,
+                                isSurfaceLive: true,
                               })
                             )}
-                          </WorkspaceKeepAlivePanel>
+                          </div>
                         );
                       })}
 
-                      {showChat ? (
-                        <WorkspaceKeepAlivePanel active={chatActive}>
+                      {showChat && chatActive ? (
+                        <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
                           {renderTabContent(
                             tabs.find((t) => t.kind === 'chat')!,
-                            chatActive,
-                            { contentIsMobileLayout },
+                            true,
+                            { contentIsMobileLayout, isSurfaceLive: true },
                           )}
-                        </WorkspaceKeepAlivePanel>
+                        </div>
                       ) : null}
 
-                      {showSettings ? (
-                        <WorkspaceKeepAlivePanel active={settingsActive}>
+                      {showSettings && settingsActive ? (
+                        <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
                           {renderTabContent(
                             tabs.find((t) => t.kind === 'settings')!,
-                            settingsActive,
-                            { contentIsMobileLayout },
+                            true,
+                            { contentIsMobileLayout, isSurfaceLive: true },
                           )}
-                        </WorkspaceKeepAlivePanel>
+                        </div>
                       ) : null}
 
-                      {showContentSearch ? (
-                        <WorkspaceKeepAlivePanel active={contentSearchActive}>
+                      {showContentSearch && contentSearchActive ? (
+                        <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
                           {renderTabContent(
                             tabs.find((t) => t.kind === 'content-search')!,
-                            contentSearchActive,
-                            { contentIsMobileLayout },
+                            true,
+                            { contentIsMobileLayout, isSurfaceLive: true },
                           )}
-                        </WorkspaceKeepAlivePanel>
+                        </div>
                       ) : null}
 
                       {showEmpty ? (
