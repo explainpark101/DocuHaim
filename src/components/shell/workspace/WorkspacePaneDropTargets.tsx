@@ -27,20 +27,27 @@ export function parsePaneDropId(
   return { leafId, zone };
 }
 
+/** Edge 30%, gutter 3% → inner start 33%. Corners stay empty (no overlap). */
+export const PANE_DROP_ZONE_POS: Record<PaneSplitEdge | 'center', string> = {
+  left: 'left-0 top-[33%] bottom-[33%] w-[30%]',
+  right: 'right-0 top-[33%] bottom-[33%] w-[30%]',
+  top: 'top-0 left-[33%] right-[33%] h-[30%]',
+  bottom: 'bottom-0 left-[33%] right-[33%] h-[30%]',
+  center: 'inset-[33%]',
+};
+
 function Zone({
   leafId,
   zone,
-  className,
 }: {
   leafId: string;
   zone: PaneSplitEdge | 'center';
-  className: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: paneDropId(leafId, zone) });
   return (
     <div
       ref={setNodeRef}
-      className={`${className} ${
+      className={`absolute ${PANE_DROP_ZONE_POS[zone]} ${
         isOver ? 'bg-blue-500/60 ring-2 ring-inset ring-blue-400' : 'bg-blue-500/20'
       }`}
       data-pane-drop={paneDropId(leafId, zone)}
@@ -60,11 +67,11 @@ export default function WorkspacePaneDropTargets({
   return (
     <div className="pointer-events-none absolute inset-0 z-30" aria-hidden>
       <div className="pointer-events-auto absolute inset-0">
-        <Zone leafId={leafId} zone="left" className="absolute inset-y-0 left-0 w-[22%]" />
-        <Zone leafId={leafId} zone="right" className="absolute inset-y-0 right-0 w-[22%]" />
-        <Zone leafId={leafId} zone="top" className="absolute inset-x-0 top-0 h-[22%]" />
-        <Zone leafId={leafId} zone="bottom" className="absolute inset-x-0 bottom-0 h-[22%]" />
-        <Zone leafId={leafId} zone="center" className="absolute inset-[22%]" />
+        <Zone leafId={leafId} zone="left" />
+        <Zone leafId={leafId} zone="right" />
+        <Zone leafId={leafId} zone="top" />
+        <Zone leafId={leafId} zone="bottom" />
+        <Zone leafId={leafId} zone="center" />
       </div>
     </div>
   );

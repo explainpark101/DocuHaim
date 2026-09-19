@@ -19,7 +19,9 @@ import {
   revokeFileTabObjectUrl,
 } from '@/utils/workspaceTabs/helpers';
 import {
+  addTabAsStandaloneLeaf,
   addTabToFocusedLeaf,
+  collapseLeafIntoSibling,
   findLeafContainingTab,
   flattenTabIdsFromLayout,
   getFocusedLeafActiveId,
@@ -31,6 +33,7 @@ import {
   setLeafExportPdf,
   splitLeaf,
   syncLayoutWithTabs,
+  countLeaves,
   type PaneSplitEdge,
 } from '@/utils/workspaceTabs/paneLayout';
 
@@ -80,6 +83,36 @@ function touchActivate(tabs: WorkspaceTab[], id: string, now: number): Workspace
     if (t.kind === 'file') return { ...t, lastActivatedAt: now };
     return t;
   });
+}
+
+/** Place a newly opened tab: into focused leaf when unsplit; own leaf when already split. */
+function placeNewTab(
+  layout: PaneNode,
+  focusedPaneId: string,
+  tabId: string,
+  opts?: { activate?: boolean },
+): { layout: PaneNode; focusedPaneId: string } {
+  const activate = opts?.activate !== false;
+  if (activate && countLeaves(layout) > 1) {
+    return addTabAsStandaloneLeaf(layout, focusedPaneId, tabId, {
+      activate: true,
+      side: 'before',
+    });
+  }
+  return addTabToFocusedLeaf(layout, focusedPaneId, tabId, { activate });
+}
+
+function tabsOrderedByLayout(
+  tabs: WorkspaceTab[],
+  layout: PaneNode,
+): WorkspaceTab[] {
+  const order = flattenTabIdsFromLayout(layout);
+  const byId = new Map(tabs.map((t) => [t.id, t]));
+  const next = order.map((id) => byId.get(id)).filter(Boolean) as WorkspaceTab[];
+  for (const t of tabs) {
+    if (!order.includes(t.id)) next.push(t);
+  }
+  return next;
 }
 
 /**
@@ -163,11 +196,12 @@ export function openOrActivateChat(
     return activate ? activateTab(state, CHAT_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createChatTab()];
-  const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, CHAT_TAB_ID, {
+  const placed = placeNewTab(state.layout, state.focusedPaneId, CHAT_TAB_ID, {
     activate,
   });
+  const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
-    tabs: activate ? touchActivate(tabs, CHAT_TAB_ID, now) : tabs,
+    tabs: activate ? touchActivate(ordered, CHAT_TAB_ID, now) : ordered,
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
   });
@@ -184,11 +218,11 @@ export function openOrActivateSettings(
     return activate ? activateTab(state, SETTINGS_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createSettingsTab()];
-  const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, SETTINGS_TAB_ID, {
+  const placed = placeNewTab(state.layout, state.focusedPaneId, SETTINGS_TAB_ID, {
     activate,
   });
   return ensureLayout({
-    tabs: activate ? touchActivate(tabs, SETTINGS_TAB_ID, now) : tabs,
+    tabs: activate ? touchActivate(tabsOrderedByLayout(tabs, placed.layout), SETTINGS_TAB_ID, now) : tabsOrderedByLayout(tabs, placed.layout),
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
   });
@@ -205,11 +239,13 @@ export function openOrActivateContentSearch(
     return activate ? activateTab(state, CONTENT_SEARCH_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createContentSearchTab()];
-  const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, CONTENT_SEARCH_TAB_ID, {
+  const placed = placeNewTab(state.layout, state.focusedPaneId, CONTENT_SEARCH_TAB_ID, {
     activate,
   });
   return ensureLayout({
-    tabs: activate ? touchActivate(tabs, CONTENT_SEARCH_TAB_ID, now) : tabs,
+    tabs: activate
+      ? touchActivate(tabsOrderedByLayout(tabs, placed.layout), CONTENT_SEARCH_TAB_ID, now)
+      : tabsOrderedByLayout(tabs, placed.layout),
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
   });
@@ -267,13 +303,13 @@ export function openOrReplaceFileTab(
   }
 
   if (!activate) {
-    // New tab still needs a leaf slot.
+    // New tab still needs a leaf slot (background restore shells stay in focused leaf).
     if (idx < 0) {
-      const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, tab.id, {
+      const placed = placeNewTab(state.layout, state.focusedPaneId, tab.id, {
         activate: false,
       });
       return ensureLayout({
-        tabs,
+        tabs: tabsOrderedByLayout(tabs, placed.layout),
         layout: placed.layout,
         focusedPaneId: placed.focusedPaneId,
       });
@@ -284,11 +320,11 @@ export function openOrReplaceFileTab(
   if (idx >= 0) {
     return activateTab({ ...state, tabs }, tab.id, now);
   }
-  const placed = addTabToFocusedLeaf(state.layout, state.focusedPaneId, tab.id, {
+  const placed = placeNewTab(state.layout, state.focusedPaneId, tab.id, {
     activate: true,
   });
   return ensureLayout({
-    tabs: touchActivate(tabs, tab.id, now),
+    tabs: touchActivate(tabsOrderedByLayout(tabs, placed.layout), tab.id, now),
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
   });
@@ -602,5 +638,19 @@ export function replaceWorkspaceLayout(
     tabs,
     layout,
     focusedPaneId: focus,
+  });
+}
+
+/** Dismiss a split pane: merge its tabs into the sibling and collapse the leaf. */
+export function collapsePaneLeaf(
+  state: WorkspaceTabsState,
+  leafId: string,
+): WorkspaceTabsState {
+  const result = collapseLeafIntoSibling(state.layout, leafId);
+  if (!result) return state;
+  return ensureLayout({
+    tabs: tabsOrderedByLayout(state.tabs, result.layout),
+    layout: result.layout,
+    focusedPaneId: result.focusedPaneId,
   });
 }

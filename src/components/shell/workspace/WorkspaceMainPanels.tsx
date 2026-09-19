@@ -92,6 +92,7 @@ export type WorkspaceMainPanelsProps = {
   ) => boolean;
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
   onApplyPaneLayout?: (layout: PaneNode) => void;
+  onCollapsePane?: (leafId: string) => void;
   onClearExportPdf?: (leafId: string) => void;
 };
 
@@ -199,6 +200,7 @@ export default function WorkspaceMainPanels({
   onPaneDrop,
   onSplitTab,
   onApplyPaneLayout,
+  onCollapsePane,
   onClearExportPdf,
 }: WorkspaceMainPanelsProps) {
   const fileTabs = tabs.filter(isFileTab);
@@ -417,6 +419,7 @@ export default function WorkspaceMainPanels({
       {...(onSplitTab ? { onSplitTab } : {})}
       paneLayout={layout}
       {...(onApplyPaneLayout ? { onApplyPaneLayout } : {})}
+      {...(onCollapsePane ? { onCollapsePane } : {})}
       {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
       isMobileLayout={isMobileLayout}
     />
@@ -431,7 +434,7 @@ export default function WorkspaceMainPanels({
 
     return (
       <div
-        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg ${
+        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg ${
           focused
             ? 'ring-2 ring-inset ring-blue-500/45 dark:ring-blue-400/40'
             : ''

@@ -50,6 +50,7 @@ export function WorkspaceTabsProvider({ children }: Props) {
       handleWorkspacePaneDrop: domain.handleWorkspacePaneDrop,
       splitWorkspaceTabToEdge: domain.splitWorkspaceTabToEdge,
       applyWorkspacePaneLayout: domain.applyWorkspacePaneLayout,
+      collapseWorkspacePane: domain.collapseWorkspacePane,
       openExportPdfInFocusedPane: domain.openExportPdfInFocusedPane,
       clearExportPdfInFocusedPane: domain.clearExportPdfInFocusedPane,
     }),

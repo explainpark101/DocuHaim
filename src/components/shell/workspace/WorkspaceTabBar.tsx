@@ -26,7 +26,7 @@ import {
   IconSettings,
   IconVideo,
 } from '@/components/icons';
-import { MessageSquare, Search, X, Loader2, ClipboardList } from 'lucide-react';
+import { MessageSquare, Search, X, Loader2, ClipboardList, PanelRightClose } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { useHorizontalOverflowScroll } from '@/hooks/useHorizontalOverflowScroll';
 import {
@@ -109,6 +109,8 @@ type WorkspaceTabBarProps = {
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
   paneLayout?: PaneNode | null;
   onApplyPaneLayout?: (layout: PaneNode) => void;
+  /** Dismiss a split pane group (merge tabs into sibling). */
+  onCollapsePane?: (leafId: string) => void;
   onFileTabContextMenu?: (
     tab: FileWorkspaceTab,
     point: { clientX: number; clientY: number },
@@ -549,7 +551,43 @@ type TabGroupChromeProps = {
   isMobileLayout: boolean;
   mobileContextMenu: boolean;
   onOpenLayoutEditor: () => void;
+  onCollapsePane?: (leafId: string) => void;
 };
+
+function SplitPaneDismissButton({
+  leafId,
+  onCollapsePane,
+}: {
+  leafId: string;
+  onCollapsePane: (leafId: string) => void;
+}) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <button
+          type="button"
+          aria-label="분할 끄기"
+          data-tab-group-dismiss={leafId}
+          className="inline-flex size-6 shrink-0 items-center justify-center self-center text-gray-500 transition-colors hover:text-gray-800 dark:text-odp-muted dark:hover:text-odp-fgStrong"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onCollapsePane(leafId);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <PanelRightClose size={14} strokeWidth={2} aria-hidden />
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content side="bottom" sideOffset={6} className={tooltipContentClass}>
+          분할 끄기
+          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
 
 function WorkspaceTabGroupChrome({
   group,
@@ -557,6 +595,7 @@ function WorkspaceTabGroupChrome({
   isMobileLayout,
   mobileContextMenu,
   onOpenLayoutEditor,
+  onCollapsePane,
 }: TabGroupChromeProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const itemClass = mobileContextMenu ? MOBILE_CONTEXT_MENU_ITEM_CLASS : tabMenuItemClass;
@@ -647,6 +686,9 @@ function WorkspaceTabGroupChrome({
         </AdaptiveMenuItem>
       </AdaptiveContextMenu>
       {children}
+      {onCollapsePane ? (
+        <SplitPaneDismissButton leafId={group.leafId} onCollapsePane={onCollapsePane} />
+      ) : null}
     </div>
   );
 }
@@ -664,6 +706,7 @@ export default function WorkspaceTabBar({
   onSplitTab,
   paneLayout = null,
   onApplyPaneLayout,
+  onCollapsePane,
   onFileTabContextMenu,
   isMobileLayout = false,
   variant = 'inline',
@@ -678,11 +721,19 @@ export default function WorkspaceTabBar({
   const orderedTabs = useMemo(() => {
     if (!tabGroups || tabGroups.length === 0) return tabs;
     const out: WorkspaceTab[] = [];
+    const seen = new Set<string>();
     for (const g of tabGroups) {
       for (const id of g.tabIds) {
         const t = byId.get(id);
-        if (t) out.push(t);
+        if (t) {
+          out.push(t);
+          seen.add(id);
+        }
       }
+    }
+    // Prefer layout order; append any tabs missing from groups (should be rare).
+    for (const t of tabs) {
+      if (!seen.has(t.id)) out.push(t);
     }
     return out.length > 0 ? out : tabs;
   }, [tabGroups, tabs, byId]);
@@ -822,6 +873,7 @@ export default function WorkspaceTabBar({
               isMobileLayout={isMobileLayout}
               mobileContextMenu={mobileContextMenu}
               onOpenLayoutEditor={() => setLayoutModalOpen(true)}
+              {...(onCollapsePane ? { onCollapsePane } : {})}
             >
               {groupInner}
             </WorkspaceTabGroupChrome>
@@ -840,6 +892,9 @@ export default function WorkspaceTabBar({
             }`}
           >
             {groupInner}
+            {onCollapsePane ? (
+              <SplitPaneDismissButton leafId={group.leafId} onCollapsePane={onCollapsePane} />
+            ) : null}
           </div>
         );
       })}
