@@ -707,6 +707,10 @@ export default function WorkspaceMainPanels({
             : ''
         } ${freshPaneIds.has(leafId) ? 'workspace-pane-appear-glow' : ''}`}
         onPointerDownCapture={() => onFocusPane?.(leafId)}
+        onWheelCapture={() => {
+          // Frozen panes pause heavy work; wheel must focus so scroll targets this leaf.
+          if (!focused) onFocusPane?.(leafId);
+        }}
       >
         {(contentIsMobileLayout) => (
           <>
@@ -815,10 +819,9 @@ export default function WorkspaceMainPanels({
                       onClearExportPdf?.(leafId);
                     };
 
-                    // Mount only the leaf's active tab (invisible tabs unmount).
-                    // Visible but unfocused panes stay mounted with isSurfaceLive=false.
-                    // Include file path so remount clears CM/undo when the leaf
-                    // active tab identity would otherwise reuse the wrong body.
+                    // Visible but unfocused panes stay mounted with isSurfaceLive=false
+                    // (heavy work paused). Wheel/pointer on the leaf focuses it so
+                    // scroll targets this pane and freezing lifts.
                     const fileKey =
                       isFileTab(tab) ? `${tab.storageType}:${tab.path}` : tab.id;
                     return (

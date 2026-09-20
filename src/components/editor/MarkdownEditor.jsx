@@ -184,6 +184,12 @@ import {
 import { cmEditorGlyphRepaintFix } from '@/utils/cmEditorGlyphRepaintFix';
 import { createMirrorEditPreviewRemirror } from '@/utils/mirrorEditPreviewRemirror';
 import { createPreviewScrollFollow } from '@/utils/previewScrollFollow';
+import { findPreviewScrollContainer } from '@/utils/previewSelectionSync';
+import {
+  editorScrollMemoryKeyFromFile,
+  recallEditorScroll,
+  rememberEditorScroll,
+} from '@/utils/editorScrollMemory';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
 import {
   toggleBoldForSelection,
@@ -1598,6 +1604,84 @@ export default function MarkdownEditor({
     };
   }, [previewOnly, mirrorEditEnabled, isSurfaceLive]);
 
+  // Remember CM + preview scroll per file so split-pane remount / focus keeps place.
+  useEffect(() => {
+    if (previewOnly) return undefined;
+    const key = editorScrollMemoryKeyFromFile(currentFile);
+    if (!key) return undefined;
+
+    const root = containerRef.current;
+    let saveTimer = 0;
+    let restoreGen = 0;
+
+    const getView = () => {
+      const api = editorRef.current?.value ?? editorRef.current;
+      return api?.getEditorView?.() ?? null;
+    };
+
+    const readSnapshot = () => {
+      const view = getView();
+      if (!view?.scrollDOM) return null;
+      const previewRoot = root?.querySelector('.md-editor-preview');
+      const preview = previewRoot ? findPreviewScrollContainer(previewRoot) : null;
+      return {
+        editorTop: view.scrollDOM.scrollTop,
+        editorLeft: view.scrollDOM.scrollLeft,
+        previewTop: preview?.scrollTop ?? 0,
+        previewLeft: preview?.scrollLeft ?? 0,
+      };
+    };
+
+    const applySnapshot = (snap) => {
+      const view = getView();
+      if (!view?.scrollDOM) return false;
+      view.scrollDOM.scrollTop = snap.editorTop;
+      view.scrollDOM.scrollLeft = snap.editorLeft;
+      const previewRoot = root?.querySelector('.md-editor-preview');
+      const preview = previewRoot ? findPreviewScrollContainer(previewRoot) : null;
+      if (preview) {
+        preview.scrollTop = snap.previewTop;
+        preview.scrollLeft = snap.previewLeft;
+      }
+      return true;
+    };
+
+    const persist = () => {
+      const snap = readSnapshot();
+      if (snap) rememberEditorScroll(key, snap);
+    };
+
+    const schedulePersist = () => {
+      if (saveTimer) window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => {
+        saveTimer = 0;
+        persist();
+      }, 80);
+    };
+
+    const snap = recallEditorScroll(key);
+    if (snap) {
+      const gen = ++restoreGen;
+      const attempt = (triesLeft) => {
+        if (restoreGen !== gen) return;
+        if (applySnapshot(snap)) return;
+        if (triesLeft <= 0) return;
+        window.setTimeout(() => attempt(triesLeft - 1), 50);
+      };
+      attempt(40);
+    }
+
+    const onScroll = () => schedulePersist();
+    root?.addEventListener('scroll', onScroll, true);
+
+    return () => {
+      restoreGen += 1;
+      if (saveTimer) window.clearTimeout(saveTimer);
+      root?.removeEventListener('scroll', onScroll, true);
+      persist();
+    };
+  }, [previewOnly, currentFile?.type, currentFile?.id, isSurfaceLive]);
+
   // Mirror Edit: double-click preview block ? contentEditable in place.
   useEffect(() => {
     if (previewOnly || safariMdEditor || !mirrorEditEnabled || !isSurfaceLive) {
@@ -2513,12 +2597,8 @@ export default function MarkdownEditor({
   return (
     <div
       ref={containerRef}
-      className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}${
-        isSurfaceLive ? '' : ' pointer-events-none'
-      }`}
+      className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}`}
       style={{ '--md-catalog-width': `${catalogWidth}px`, ...documentFontStyleVars }}
-      {...(!isSurfaceLive ? { inert: true } : {})}
-      aria-hidden={!isSurfaceLive ? true : undefined}
     >
       {documentSettings?.webfontCss ? (
         <style data-s3haim-document-webfonts="1">{documentSettings.webfontCss}</style>
