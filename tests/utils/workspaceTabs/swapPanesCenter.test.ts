@@ -45,7 +45,7 @@ function twoPaneState(): WorkspaceTabsState {
 }
 
 describe('swapPanesOrMoveTabToCenter', () => {
-  it('swaps both pane contents when dropping a tab onto another leaf center', () => {
+  it('swaps both pane nodes when dropping a tab onto another leaf center', () => {
     const state = twoPaneState();
     const [left, right] = collectLeaves(state.layout);
     const leftTab = left!.tabIds[0]!;
@@ -53,9 +53,12 @@ describe('swapPanesOrMoveTabToCenter', () => {
 
     const next = swapPanesOrMoveTabToCenter(state, leftTab, right!.id);
     const leaves = collectLeaves(next.layout);
+    // Whole leaf nodes moved: source leaf (left) now sits where the target was.
+    expect(leaves[0]?.id).toBe(right!.id);
     expect(leaves[0]?.tabIds).toEqual([rightTab]);
+    expect(leaves[1]?.id).toBe(left!.id);
     expect(leaves[1]?.tabIds).toEqual([leftTab]);
-    expect(next.focusedPaneId).toBe(right!.id);
+    expect(next.focusedPaneId).toBe(left!.id);
     expect(next.activeId).toBe(leftTab);
   });
 
