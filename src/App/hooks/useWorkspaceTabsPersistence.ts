@@ -33,12 +33,14 @@ function buildPersistedWorkspaceTabsPayload(
   return toPersistedWorkspaceTabs(
     flushed.tabs.map((t) =>
       t.kind === 'chat'
-        ? { kind: 'chat' }
+        ? { kind: 'chat' as const }
         : t.kind === 'settings'
-          ? { kind: 'settings' }
+          ? { kind: 'settings' as const }
           : t.kind === 'content-search'
-            ? { kind: 'content-search' }
-            : { kind: 'file', storageType: t.storageType, path: t.path },
+            ? { kind: 'content-search' as const }
+            : t.kind === 'llm-assist'
+              ? { kind: 'llm-assist' as const }
+              : { kind: 'file' as const, storageType: t.storageType, path: t.path },
     ),
     flushed.activeId,
     toPersistedPaneNode(flushed.layout),

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import { useChatStorageCtx } from '@/components/chatWithMyself/ShareTargetGate';
 import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
 import { headObject } from '@/utils/s3Client';
@@ -89,7 +90,8 @@ export function useAdvancedSearchTabsDomain() {
   const { s3Creds } = useAuth();
   const { getS3Client, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspaces, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
   const { restorePersistedWorkspaceTabsRef, selectFileRawRef } = useFileSessionOwned();
-  const { activateWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab, openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, setState: setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
+  const { activateWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab, openChatWorkspaceTab, openContentSearchWorkspaceTab, openLlmAssistWorkspaceTab, openSettingsWorkspaceTab, setState: setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
+  const llmAssistSession = useLlmAssistSessionOptional();
   const advancedSearchTreesRef = useRef({
     storageMode,
     s3Tree,
@@ -208,6 +210,10 @@ export function useAdvancedSearchTabsDomain() {
         openContentSearchWorkspaceTab();
         return;
       }
+      if (entry.kind === 'llm-assist') {
+        llmAssistSession?.openAsSplit();
+        return;
+      }
       try {
         const node = await resolveClosedFileNode(entry);
         if (!node) {
@@ -223,7 +229,7 @@ export function useAdvancedSearchTabsDomain() {
         return;
       }
     }
-  }, [openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode]);
+  }, [llmAssistSession, openChatWorkspaceTab, openContentSearchWorkspaceTab, openLlmAssistWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode]);
 
   const restorePersistedWorkspaceTabs = useCallback(
     async (persisted: any, options: any = {}) => {
@@ -251,6 +257,8 @@ export function useAdvancedSearchTabsDomain() {
         } else if (tab.kind === 'content-search') {
           nextState = openOrActivateContentSearch(nextState, Date.now(), { activate: false });
           restoredAny = true;
+        } else if (tab.kind === 'llm-assist') {
+          // Ephemeral — skip restore; presentation preference reopens via Assist.
         }
       }
 

@@ -10,6 +10,9 @@ export const SETTINGS_TAB_ID = 'settings' as const;
 /** Fixed id for the singleton vault content search tab. */
 export const CONTENT_SEARCH_TAB_ID = 'content-search' as const;
 
+/** Fixed id for the singleton LLM Assist split-pane tab. */
+export const LLM_ASSIST_TAB_ID = 'llm-assist' as const;
+
 /** Soft max open file tabs (chat / settings excluded). */
 export const WORKSPACE_TAB_SOFT_CAP = 12;
 
@@ -36,6 +39,11 @@ export type SettingsWorkspaceTab = {
 export type ContentSearchWorkspaceTab = {
   id: typeof CONTENT_SEARCH_TAB_ID;
   kind: 'content-search';
+};
+
+export type LlmAssistWorkspaceTab = {
+  id: typeof LLM_ASSIST_TAB_ID;
+  kind: 'llm-assist';
 };
 
 export type FileWorkspaceTab = {
@@ -65,6 +73,7 @@ export type WorkspaceTab =
   | ChatWorkspaceTab
   | SettingsWorkspaceTab
   | ContentSearchWorkspaceTab
+  | LlmAssistWorkspaceTab
   | FileWorkspaceTab;
 
 export type WorkspaceTabsState = {
@@ -79,6 +88,7 @@ export type PersistedWorkspaceTab =
   | { kind: 'chat' }
   | { kind: 'settings' }
   | { kind: 'content-search' }
+  | { kind: 'llm-assist' }
   | { kind: 'file'; type: FileStorageType; path: string };
 
 export type PersistedWorkspaceTabsV1 = {

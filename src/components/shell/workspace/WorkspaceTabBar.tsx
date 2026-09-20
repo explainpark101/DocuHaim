@@ -27,7 +27,7 @@ import {
   IconSettings,
   IconVideo,
 } from '@/components/icons';
-import { MessageSquare, Search, X, Loader2, ClipboardList, Columns2 } from 'lucide-react';
+import { MessageSquare, Search, X, Loader2, ClipboardList, Columns2, Sparkles } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { useHorizontalOverflowScroll } from '@/hooks/useHorizontalOverflowScroll';
 import {
@@ -306,6 +306,8 @@ function WorkspaceTabRow({
         <IconSettings size={13} className="shrink-0 opacity-80" aria-hidden />
       ) : tab.kind === 'content-search' ? (
         <Search size={13} className="shrink-0 opacity-80" aria-hidden />
+      ) : tab.kind === 'llm-assist' ? (
+        <Sparkles size={13} className="shrink-0 opacity-80" aria-hidden />
       ) : saving || loading ? (
         <Loader2
           size={13}

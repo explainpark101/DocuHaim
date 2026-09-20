@@ -11,6 +11,7 @@ import {
   isContentSearchTab,
   isFileTab,
   isFileTabDirty,
+  isLlmAssistTab,
   isSettingsTab,
   pushClosedTab,
 } from '@/utils/workspaceTabs';
@@ -24,6 +25,7 @@ import {
   openExportPdfInLeaf,
   openOrActivateChat,
   openOrActivateContentSearch,
+  openOrActivateLlmAssist,
   openOrActivateSettings,
   replaceWorkspaceLayout,
   setFocusedPane,
@@ -47,6 +49,7 @@ import {
   collapseWorkspaceToLegacy,
   stripChatTab,
   stripContentSearchTab,
+  stripLlmAssistTab,
   stripSettingsTab,
 } from '@/utils/workspaceTabs/legacyMode';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
@@ -61,6 +64,8 @@ import {
   type WorkspaceTabsAutoSaveMode,
 } from '@/utils/workspaceTabsSettings';
 import type { WorkspacePaneSoftCapPrompt } from '@/components/shell/workspace/WorkspacePaneSoftCapModal';
+import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
+import { LLM_ASSIST_TAB_ID } from '@/utils/workspaceTabs/types';
 
 type SoftCapPendingAction =
   | {
@@ -95,6 +100,7 @@ export function useWorkspaceTabsDomain({
   const navigate = useNavigate();
   const location = useLocation();
   const { isUnlocked } = useAuth();
+  const llmAssistSession = useLlmAssistSessionOptional();
   const {
     currentFile,
     setCurrentFile,
@@ -270,6 +276,10 @@ export function useWorkspaceTabsDomain({
         setCurrentFile(null);
         currentFileRef.current = null;
         if (navigateUrl) navigate('/search');
+      } else if (isLlmAssistTab(active)) {
+        // Stay on current route — LLM Assist is a pane, not a page.
+        setCurrentFile(null);
+        currentFileRef.current = null;
       } else if (navigateUrl) {
         navigate('/');
       }
@@ -446,6 +456,79 @@ export function useWorkspaceTabsDomain({
     ],
   );
 
+  const openLlmAssistWorkspaceTab = useCallback(
+    (options: { activate?: boolean } = {}) => {
+      const { activate = true } = options;
+      if (!workspaceTabsEnabledRef.current) return;
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const next = openOrActivateLlmAssist(flushed, Date.now(), { activate });
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      if (activate) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+      }
+    },
+    [
+      workspaceTabsEnabledRef,
+      workspaceTabsRef,
+      setWorkspaceTabs,
+      editorContentRef,
+      currentFileRef,
+      setCurrentFile,
+    ],
+  );
+
+  const closeLlmAssistWorkspaceTab = useCallback(
+    (options: { skipHistory?: boolean } = {}) => {
+      const { skipHistory = true } = options;
+      const state = workspaceTabsRef.current;
+      if (!state.tabs.some((t: { kind: string }) => t.kind === 'llm-assist')) return;
+      if (!skipHistory) {
+        const closing = state.tabs.find((t: { kind: string }) => t.kind === 'llm-assist');
+        if (closing) pushClosedTab(closedTabEntryFromWorkspaceTab(closing));
+      }
+      const next = stripLlmAssistTab(state);
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      const active = getActiveTab(next);
+      if (isFileTab(active)) {
+        const file = active.currentFile;
+        setCurrentFile(file);
+        currentFileRef.current = file;
+        setEditorContent(active.editorContent);
+        editorContentRef.current = active.editorContent;
+        setEditedFileName(active.editedFileName || String(file?.name || ''));
+      }
+    },
+    [
+      workspaceTabsRef,
+      setWorkspaceTabs,
+      currentFileRef,
+      editorContentRef,
+      setCurrentFile,
+      setEditorContent,
+      setEditedFileName,
+    ],
+  );
+
+  // Wire split presentation ↔ workspace tab without circular imports.
+  const registerSplitWorkspaceHandlers = llmAssistSession?.registerSplitWorkspaceHandlers;
+  useEffect(() => {
+    if (!registerSplitWorkspaceHandlers) return;
+    registerSplitWorkspaceHandlers({
+      open: () => openLlmAssistWorkspaceTab({ activate: true }),
+      close: () => closeLlmAssistWorkspaceTab({ skipHistory: true }),
+    });
+    return () => {
+      registerSplitWorkspaceHandlers(null);
+    };
+  }, [registerSplitWorkspaceHandlers, openLlmAssistWorkspaceTab, closeLlmAssistWorkspaceTab]);
+
   const collapseToLegacyWorkspace = useCallback(() => {
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
       editorContent: editorContentRef.current ?? '',
@@ -512,9 +595,14 @@ export function useWorkspaceTabsDomain({
         const closedPath = closing.currentFile?.id || closing.path || '';
         if (closedPath) clearEncMdPassword(closedPath);
       }
+      const wasLlmAssist = id === LLM_ASSIST_TAB_ID || closing?.kind === 'llm-assist';
       const next = closeTab(workspaceTabsRef.current, id);
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
+      if (wasLlmAssist) {
+        // Keep presentation preference; only close the assist session.
+        llmAssistSession?.setOpen(false);
+      }
       const active = getActiveTab(next);
       if (isFileTab(active)) {
         const file = active.currentFile;
@@ -540,6 +628,9 @@ export function useWorkspaceTabsDomain({
         setCurrentFile(null);
         currentFileRef.current = null;
         navigate('/search');
+      } else if (isLlmAssistTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
       } else {
         setCurrentFile(null);
         currentFileRef.current = null;
@@ -560,6 +651,7 @@ export function useWorkspaceTabsDomain({
       setCurrentFile,
       setEditorContent,
       setEditedFileName,
+      llmAssistSession,
     ],
   );
 
@@ -826,6 +918,8 @@ export function useWorkspaceTabsDomain({
     openChatWorkspaceTab,
     openSettingsWorkspaceTab,
     openContentSearchWorkspaceTab,
+    openLlmAssistWorkspaceTab,
+    closeLlmAssistWorkspaceTab,
     reorderWorkspaceTabs,
     collapseToLegacyWorkspace,
     cycleWorkspaceTab,
