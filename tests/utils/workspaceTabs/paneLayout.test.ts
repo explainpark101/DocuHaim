@@ -14,6 +14,7 @@ import {
   splitLeaf,
   syncLayoutPreservingOrphansWhenSplit,
   syncLayoutWithTabs,
+  type PaneNode,
   type SplitLeafResult,
 } from '@/utils/workspaceTabs/paneLayout';
 
@@ -128,7 +129,7 @@ describe('paneLayout', () => {
 
   it('does not dump first-pane tabs into the focused 2nd leaf on restore', () => {
     // Persisted: [a | b | c], focus on the rightmost leaf (c).
-    let layout = createSingleLeafLayout(['a', 'b', 'c'], 'a');
+    let layout: PaneNode = createSingleLeafLayout(['a', 'b', 'c'], 'a');
     layout = expectSplitOk(splitLeaf(layout, layout.id, 'right', 'c')).layout;
     const left = collectLeaves(layout).find((l) => l.tabIds.includes('a'))!;
     layout = expectSplitOk(splitLeaf(layout, left.id, 'right', 'b')).layout;
@@ -153,7 +154,7 @@ describe('paneLayout', () => {
   });
 
   it('re-homes tabs from a persisted tree even when live layout had them on the focused leaf', () => {
-    let desired = createSingleLeafLayout(['a', 'b'], 'a');
+    let desired: PaneNode = createSingleLeafLayout(['a', 'b'], 'a');
     desired = expectSplitOk(splitLeaf(desired, desired.id, 'right', 'b')).layout;
     const [left, right] = collectLeaves(desired);
     // Simulate a bad live tree where both tabs sit on the focused (right) leaf.
