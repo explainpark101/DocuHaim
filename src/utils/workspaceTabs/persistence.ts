@@ -2,6 +2,7 @@ import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
   LAST_FILE_KEY,
+  LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
   WORKSPACE_TABS_STORAGE_KEY,
   type FileStorageType,
@@ -55,7 +56,14 @@ function clearBoth(key: string): void {
 function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (v.kind === 'chat' || v.kind === 'settings' || v.kind === 'content-search') return true;
+  if (
+    v.kind === 'chat' ||
+    v.kind === 'settings' ||
+    v.kind === 'content-search' ||
+    v.kind === 'llm-assist'
+  ) {
+    return true;
+  }
   if (
     v.kind === 'file' &&
     (v.type === 's3' || v.type === 'local' || v.type === 'webdav' || v.type === 'session') &&
@@ -71,6 +79,7 @@ export function persistedId(tab: PersistedWorkspaceTab): string {
   if (tab.kind === 'chat') return CHAT_TAB_ID;
   if (tab.kind === 'settings') return SETTINGS_TAB_ID;
   if (tab.kind === 'content-search') return CONTENT_SEARCH_TAB_ID;
+  if (tab.kind === 'llm-assist') return LLM_ASSIST_TAB_ID;
   return fileTabId(tab.type, tab.path);
 }
 
@@ -196,6 +205,10 @@ export function savePersistedWorkspaceTabs(payload: PersistedWorkspaceTabs | Per
     writeBoth(LAST_FILE_KEY, { type: 'content-search' });
     return;
   }
+  if (active.kind === 'llm-assist') {
+    writeBoth(LAST_FILE_KEY, { type: 'llm-assist' });
+    return;
+  }
   writeBoth(LAST_FILE_KEY, { type: active.type, path: active.path });
 }
 
@@ -210,6 +223,7 @@ export function toPersistedWorkspaceTabs(
     | { kind: 'chat' }
     | { kind: 'settings' }
     | { kind: 'content-search' }
+    | { kind: 'llm-assist' }
     | { kind: 'file'; storageType: FileStorageType; path: string }
   >,
   activeId: string | null,
@@ -224,6 +238,8 @@ export function toPersistedWorkspaceTabs(
       persisted.push({ kind: 'settings' });
     } else if (t.kind === 'content-search') {
       persisted.push({ kind: 'content-search' });
+    } else if (t.kind === 'llm-assist') {
+      // Ephemeral — only while assist is open in split mode; do not persist.
     } else if (t.kind === 'file' && t.storageType !== 'session') {
       // Session tabs are ephemeral — do not persist.
       persisted.push({ kind: 'file', type: t.storageType, path: t.path });

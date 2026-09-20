@@ -15,6 +15,7 @@ import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
+  LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
   collectLeaves,
   countLeaves,
@@ -28,6 +29,7 @@ import {
   type PaneSplitEdge,
   type WorkspaceTab,
 } from '@/utils/workspaceTabs';
+import LlmAssistSplitHostShell from '@/components/llm/LlmAssistSplitHostShell';
 import {
   getPaneDropOverlayHit,
   getWorkspaceTabDrag,
@@ -214,6 +216,7 @@ export default function WorkspaceMainPanels({
   const hasChatTab = tabs.some((t) => t.kind === 'chat');
   const hasSettingsTab = tabs.some((t) => t.kind === 'settings');
   const hasContentSearchTab = tabs.some((t) => t.kind === 'content-search');
+  const hasLlmAssistTab = tabs.some((t) => t.kind === 'llm-assist');
 
   const leaves = useMemo(() => (layout ? collectLeaves(layout) : []), [layout]);
   const isSplit = layout != null && countLeaves(layout) > 1;
@@ -395,9 +398,11 @@ export default function WorkspaceMainPanels({
   const contentSearchActive = tabsEnabled
     ? activeId === CONTENT_SEARCH_TAB_ID
     : isContentSearchRoute;
+  const llmAssistActive = tabsEnabled ? activeId === LLM_ASSIST_TAB_ID : false;
   const showChat = tabsEnabled ? hasChatTab : isChatRoute;
   const showSettings = tabsEnabled ? hasSettingsTab : isSettingsRoute;
   const showContentSearch = tabsEnabled ? hasContentSearchTab : isContentSearchRoute;
+  const showLlmAssist = tabsEnabled ? hasLlmAssistTab : false;
   const showEmpty = tabsEnabled
     ? tabs.length === 0 || activeId == null
     : !isChatRoute &&
@@ -464,6 +469,9 @@ export default function WorkspaceMainPanels({
           />
         </Suspense>
       );
+    }
+    if (tab.kind === 'llm-assist') {
+      return <LlmAssistSplitHostShell />;
     }
 
     if (opts?.exportPdf && isFileTab(tab)) {
@@ -1020,6 +1028,16 @@ export default function WorkspaceMainPanels({
                         <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
                           {renderTabContent(
                             tabs.find((t) => t.kind === 'content-search')!,
+                            true,
+                            { contentIsMobileLayout, isSurfaceLive: true },
+                          )}
+                        </div>
+                      ) : null}
+
+                      {showLlmAssist && llmAssistActive ? (
+                        <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+                          {renderTabContent(
+                            tabs.find((t) => t.kind === 'llm-assist')!,
                             true,
                             { contentIsMobileLayout, isSurfaceLive: true },
                           )}

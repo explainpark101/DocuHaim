@@ -19,8 +19,8 @@ import { APP_PROVIDER_ORDER, APP_LOGIC_PROVIDER_ORDER } from '@/App/providers/pr
 export { APP_PROVIDER_ORDER, APP_LOGIC_PROVIDER_ORDER };
 
 /**
- * Nest: FileSessionState → Modals → Tabs → Chrome → FileSession → TreeOps…
- * so Tabs can use useModalsOwned and FileSession can use useChromeOwned / useModalsOwned.
+ * Nest: FileSessionState → Modals → LlmAssist → Tabs → Chrome → FileSession → TreeOps…
+ * so Tabs can use useModalsOwned / useLlmAssistSession and FileSession can use useChromeOwned / useModalsOwned.
  */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
@@ -29,25 +29,25 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <VaultProvider>
           <AppFileSessionStateProvider>
             <AppModalsStateProvider>
-              <WorkspaceTabsProvider>
-                <AppChromeStateProvider>
-                  <FileSessionProvider>
-                    <AppTreeOpsStateProvider>
-                      <TreeOpsProvider>
-                        <AppPwaSnippetsStateProvider>
-                          <RecordingProvider>
-                            <AppLogicProvider>
-                              <LlmAssistSessionProvider>
+              <LlmAssistSessionProvider>
+                <WorkspaceTabsProvider>
+                  <AppChromeStateProvider>
+                    <FileSessionProvider>
+                      <AppTreeOpsStateProvider>
+                        <TreeOpsProvider>
+                          <AppPwaSnippetsStateProvider>
+                            <RecordingProvider>
+                              <AppLogicProvider>
                                 <AiSettingsDockProvider>{children}</AiSettingsDockProvider>
-                              </LlmAssistSessionProvider>
-                            </AppLogicProvider>
-                          </RecordingProvider>
-                        </AppPwaSnippetsStateProvider>
-                      </TreeOpsProvider>
-                    </AppTreeOpsStateProvider>
-                  </FileSessionProvider>
-                </AppChromeStateProvider>
-              </WorkspaceTabsProvider>
+                              </AppLogicProvider>
+                            </RecordingProvider>
+                          </AppPwaSnippetsStateProvider>
+                        </TreeOpsProvider>
+                      </AppTreeOpsStateProvider>
+                    </FileSessionProvider>
+                  </AppChromeStateProvider>
+                </WorkspaceTabsProvider>
+              </LlmAssistSessionProvider>
             </AppModalsStateProvider>
           </AppFileSessionStateProvider>
         </VaultProvider>

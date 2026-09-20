@@ -1,11 +1,13 @@
 import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
+  LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
   type ChatWorkspaceTab,
   type ContentSearchWorkspaceTab,
   type FileStorageType,
   type FileWorkspaceTab,
+  type LlmAssistWorkspaceTab,
   type SettingsWorkspaceTab,
   type WorkspaceTab,
   isEditableViewer,
@@ -25,6 +27,10 @@ export function createSettingsTab(): SettingsWorkspaceTab {
 
 export function createContentSearchTab(): ContentSearchWorkspaceTab {
   return { id: CONTENT_SEARCH_TAB_ID, kind: 'content-search' };
+}
+
+export function createLlmAssistTab(): LlmAssistWorkspaceTab {
+  return { id: LLM_ASSIST_TAB_ID, kind: 'llm-assist' };
 }
 
 export function createFileTab(params: {
@@ -68,6 +74,12 @@ export function isContentSearchTab(
   return tab?.kind === 'content-search';
 }
 
+export function isLlmAssistTab(
+  tab: WorkspaceTab | null | undefined,
+): tab is LlmAssistWorkspaceTab {
+  return tab?.kind === 'llm-assist';
+}
+
 export function isFileTab(tab: WorkspaceTab | null | undefined): tab is FileWorkspaceTab {
   return tab?.kind === 'file';
 }
@@ -89,6 +101,7 @@ export function tabDisplayTitle(tab: WorkspaceTab): string {
   if (tab.kind === 'chat') return '나와의 채팅';
   if (tab.kind === 'settings') return '설정';
   if (tab.kind === 'content-search') return '본문 검색';
+  if (tab.kind === 'llm-assist') return 'AI 도우미';
   const name = tab.editedFileName || String(tab.currentFile.name || '') || tab.path;
   return name.split('/').filter(Boolean).pop() || name || tab.path;
 }

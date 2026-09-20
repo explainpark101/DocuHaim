@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { GripHorizontal, PanelRight, Sparkles, X, EyeOff, SquareArrowOutUpRight, PanelTop } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
+import { GripHorizontal, Sparkles, X, EyeOff, SquareArrowOutUpRight } from 'lucide-react';
+import { Tooltip } from 'radix-ui';
 import {
   createEmptyLlmPromptTemplate,
   deleteLlmPromptTemplate,
@@ -51,10 +53,12 @@ import LlmAssistPanel, {
 } from '@/components/llm/LlmAssistPanel';
 import LlmAssistDockShell from '@/components/llm/LlmAssistDockShell';
 import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
+import LlmAssistPresentationMenu from '@/components/llm/LlmAssistPresentationMenu';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { normalizeImageAttachment, readImageFilesAsAttachments } from '@/utils/llmAssistImages';
 import { copyText } from '@/utils/copyText';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
+import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import {
   LLM_ASSIST_DEFAULT_REQUEST_OPTIONS,
@@ -66,9 +70,56 @@ import {
   isLlmAssistAbortError,
 } from '@/utils/llm/llmAssistAbort';
 import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
+import type { LlmAssistPresentation } from '@/utils/llm/llmAssistPresentation';
+import {
+  getLlmAssistSplitHost,
+  subscribeLlmAssistSplitHost,
+} from '@/utils/llm/llmAssistSplitHost';
 
 const FLOAT_EASE = [0.4, 0, 0.2, 1] as const;
 const FLOAT_TRANSITION = { duration: 0.28, ease: FLOAT_EASE };
+
+const HEADER_BTN_CLASS =
+  'rounded p-1 text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-violet-200 dark:hover:bg-violet-900/50';
+
+const HEADER_TOOLTIP_CONTENT_CLASS =
+  'z-100051 max-w-[min(92vw,280px)] rounded-md border border-violet-200/80 bg-white px-2 py-1 text-xs text-violet-950 shadow-md dark:border-violet-800/60 dark:bg-odp-surface dark:text-violet-50';
+
+function HeaderIconButton({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={onClick}
+          disabled={disabled}
+          className={HEADER_BTN_CLASS}
+          aria-label={label}
+        >
+          {children}
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content side="bottom" sideOffset={6} className={HEADER_TOOLTIP_CONTENT_CLASS}>
+          {label}
+          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
 
 type PopoutActionPayload = Record<string, unknown>;
 
@@ -83,7 +134,7 @@ export type LlmAssistModalProps = {
 };
 
 /**
- * Global LLM Assist host: floating modal or right dock.
+ * Global LLM Assist host: floating modal, right dock, or workspace split pane.
  * Prefer mounting once under AppLayout with LlmAssistSessionProvider.
  */
 export default function LlmAssistModal({
@@ -96,15 +147,43 @@ export default function LlmAssistModal({
   theme = 'light',
 }: LlmAssistModalProps) {
   const session = useLlmAssistSessionOptional();
+  const tabsCtx = useWorkspaceTabsCtxOptional();
   const { requestCreateFileWithContent } = useTreeOps();
   const open = session ? session.open : Boolean(openProp);
   const onOpenChange = session ? session.setOpen : onOpenChangeProp;
   const presentation = session?.presentation ?? 'floating';
+  const setPresentation = session?.setPresentation;
+  const openAsSplit = session?.openAsSplit;
   const dockToRight = session?.dockToRight;
   const undockToFloating = session?.undockToFloating;
   const canInsertIntoDocument = session
     ? session.canInsertIntoDocument
     : Boolean(editorRefProp);
+  const splitEnabled = Boolean(tabsCtx?.workspaceTabsEnabled);
+
+  const [splitHost, setSplitHost] = useState<HTMLElement | null>(() => getLlmAssistSplitHost());
+  useEffect(() => {
+    setSplitHost(getLlmAssistSplitHost());
+    return subscribeLlmAssistSplitHost(() => {
+      setSplitHost(getLlmAssistSplitHost());
+    });
+  }, []);
+
+  const handlePresentationChange = useCallback(
+    (next: LlmAssistPresentation) => {
+      if (next === 'split') {
+        if (!splitEnabled) return;
+        openAsSplit?.();
+        return;
+      }
+      if (next === 'docked') {
+        dockToRight?.();
+        return;
+      }
+      undockToFloating?.();
+    },
+    [splitEnabled, openAsSplit, dockToRight, undockToFloating],
+  );
 
   const editorRef = (session?.editorBridge?.editorRef ?? editorRefProp) as EditorRefLike | null | undefined;
   const editorBridge = session?.editorBridge ?? null;
@@ -241,16 +320,19 @@ export default function LlmAssistModal({
 
   useEffect(() => {
     if (!open) return;
-    if (presentation === 'docked' || presentation === 'floating') {
+    if (presentation !== 'floating') {
       setHidden(false);
       saveLlmModalHidden(false);
+    }
+    if (presentation === 'split' || presentation === 'docked') {
+      closePopout();
     }
     refreshBounds();
     syncProfileId();
     refreshSelection();
     loadTemplates();
     setError('');
-  }, [open, presentation, refreshBounds, refreshSelection, loadTemplates, syncProfileId]);
+  }, [open, presentation, refreshBounds, refreshSelection, loadTemplates, syncProfileId, closePopout]);
 
   useEffect(() => {
     if (!selectedProfile?.id || !selectedProfile?.kind) {
@@ -893,75 +975,41 @@ export default function LlmAssistModal({
   };
 
   const headerActions = (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-      {presentation === 'floating' && typeof dockToRight === 'function' ? (
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={() => dockToRight()}
-          className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
-          title="우측에 고정"
-          aria-label="우측에 고정"
-        >
-          <PanelRight size={15} />
-        </button>
-      ) : null}
-      {presentation === 'docked' && typeof undockToFloating === 'function' ? (
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={() => undockToFloating()}
-          className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
-          title="플로팅 창으로"
-          aria-label="플로팅 창으로"
-        >
-          <PanelTop size={15} />
-        </button>
-      ) : null}
-      {presentation === 'floating' ? (
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={handleOpenPopout}
-          disabled={popoutActive}
-          className="rounded p-1 text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-violet-200 dark:hover:bg-violet-900/50"
-          title={popoutActive ? '새 창에서 열려 있음' : '새 창으로 열기'}
-          aria-label="새 창으로 열기"
-        >
-          <SquareArrowOutUpRight size={15} />
-        </button>
-      ) : null}
-      {presentation === 'floating' ? (
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={handleHide}
-          className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
-          title="숨기기"
-          aria-label="숨기기"
-        >
-          <EyeOff size={15} />
-        </button>
-      ) : null}
-      <button
-        type="button"
-        onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-        onClick={handleClose}
-        className="rounded p-1 text-violet-700 hover:bg-violet-100 dark:text-violet-200 dark:hover:bg-violet-900/50"
-        title="닫기"
-        aria-label="닫기"
-      >
-        <X size={15} />
-      </button>
-    </div>
+    <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+        {typeof setPresentation === 'function' ||
+        typeof dockToRight === 'function' ||
+        typeof undockToFloating === 'function' ||
+        typeof openAsSplit === 'function' ? (
+          <LlmAssistPresentationMenu
+            presentation={presentation}
+            onChange={handlePresentationChange}
+            splitEnabled={splitEnabled}
+          />
+        ) : null}
+        {presentation === 'floating' ? (
+          <HeaderIconButton
+            label={popoutActive ? '새 창에서 열려 있음' : '새 창으로 열기'}
+            onClick={handleOpenPopout}
+            disabled={popoutActive}
+          >
+            <SquareArrowOutUpRight size={15} />
+          </HeaderIconButton>
+        ) : null}
+        {presentation === 'floating' ? (
+          <HeaderIconButton label="숨기기" onClick={handleHide}>
+            <EyeOff size={15} />
+          </HeaderIconButton>
+        ) : null}
+        <HeaderIconButton label="닫기" onClick={handleClose}>
+          <X size={15} />
+        </HeaderIconButton>
+      </div>
+    </Tooltip.Provider>
   );
 
   const dockOpen = Boolean(open && presentation === 'docked');
+  const splitVisible = Boolean(open && presentation === 'split' && splitHost);
   const floatingVisible = Boolean(
     open && presentation === 'floating' && !hidden && !popoutActive,
   );
@@ -996,9 +1044,13 @@ export default function LlmAssistModal({
 
   return (
     <>
-      <LlmAssistDockShell open={dockOpen} onClose={handleClose}>
-        {dockBody}
-      </LlmAssistDockShell>
+      {dockOpen ? (
+        <LlmAssistDockShell open onClose={handleClose}>
+          {dockBody}
+        </LlmAssistDockShell>
+      ) : null}
+
+      {splitVisible && splitHost ? createPortal(dockBody, splitHost) : null}
 
       <AnimatePresence>
         {chipVisible ? (

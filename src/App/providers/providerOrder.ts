@@ -12,6 +12,7 @@ export const APP_PROVIDER_ORDER = [
   'VaultProvider',
   'AppFileSessionStateProvider',
   'AppModalsStateProvider',
+  'LlmAssistSessionProvider',
   'WorkspaceTabsProvider',
   'AppChromeStateProvider',
   'FileSessionProvider',

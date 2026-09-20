@@ -10,6 +10,7 @@ export type ClosedTabEntry =
   | { kind: 'chat' }
   | { kind: 'settings' }
   | { kind: 'content-search' }
+  | { kind: 'llm-assist' }
   | {
       kind: 'file';
       storageType: Exclude<FileStorageType, 'session'>;
@@ -59,7 +60,14 @@ function writeRaw(entries: ClosedTabEntry[]): void {
 function isClosedTabEntry(value: unknown): value is ClosedTabEntry {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  if (v.kind === 'chat' || v.kind === 'settings' || v.kind === 'content-search') return true;
+  if (
+    v.kind === 'chat' ||
+    v.kind === 'settings' ||
+    v.kind === 'content-search' ||
+    v.kind === 'llm-assist'
+  ) {
+    return true;
+  }
   if (
     v.kind === 'file' &&
     (v.storageType === 's3' || v.storageType === 'local' || v.storageType === 'webdav') &&
@@ -99,6 +107,7 @@ export function closedTabEntryFromWorkspaceTab(tab: WorkspaceTab): ClosedTabEntr
   if (tab.kind === 'chat') return { kind: 'chat' };
   if (tab.kind === 'settings') return { kind: 'settings' };
   if (tab.kind === 'content-search') return { kind: 'content-search' };
+  if (tab.kind === 'llm-assist') return { kind: 'llm-assist' };
   if (!isFileTab(tab)) return null;
   if (tab.storageType === 'session') return null;
   const name =
@@ -122,6 +131,7 @@ export function pushClosedTab(entry: ClosedTabEntry | null | undefined): void {
     if (entry.kind === 'chat') return e.kind !== 'chat';
     if (entry.kind === 'settings') return e.kind !== 'settings';
     if (entry.kind === 'content-search') return e.kind !== 'content-search';
+    if (entry.kind === 'llm-assist') return e.kind !== 'llm-assist';
     if (entry.kind !== 'file') return true;
     return !(
       e.kind === 'file' &&

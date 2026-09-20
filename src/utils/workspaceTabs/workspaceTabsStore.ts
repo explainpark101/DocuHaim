@@ -1,6 +1,7 @@
 import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
+  LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
   WORKSPACE_TAB_SOFT_CAP,
   defaultWorkspaceLayout,
@@ -13,6 +14,7 @@ import {
   createChatTab,
   createContentSearchTab,
   createFileTab,
+  createLlmAssistTab,
   createSettingsTab,
   isFileTab,
   isFileTabDirty,
@@ -395,6 +397,50 @@ export function openOrActivateContentSearch(
     focusedPaneId: placed.focusedPaneId,
     activeId: placed.activeId,
   });
+}
+
+/**
+ * Open LLM Assist as a workspace pane. First open splits to the workspace right edge;
+ * subsequent opens only activate the existing leaf (keeps user layout).
+ */
+export function openOrActivateLlmAssist(
+  state: WorkspaceTabsState,
+  now = Date.now(),
+  opts?: { activate?: boolean },
+): WorkspaceTabsState {
+  const activate = opts?.activate !== false;
+  const existing = state.tabs.find((t) => t.kind === 'llm-assist');
+  if (existing) {
+    return activate ? activateTab(state, LLM_ASSIST_TAB_ID, now) : state;
+  }
+
+  const tabs = [...state.tabs, createLlmAssistTab()];
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    LLM_ASSIST_TAB_ID,
+    { activate: true },
+  );
+  let next: WorkspaceTabsState = ensureLayout({
+    tabs: touchActivate(tabsOrderedByLayout(tabs, placed.layout), LLM_ASSIST_TAB_ID, now),
+    layout: placed.layout,
+    focusedPaneId: placed.focusedPaneId,
+    activeId: LLM_ASSIST_TAB_ID,
+  });
+
+  const split = splitTabToWorkspaceEdge(next, 'right', LLM_ASSIST_TAB_ID);
+  if (split.ok) {
+    next = split.state;
+  }
+
+  if (!activate) {
+    // Tab is placed but do not steal focus from the prior active tab.
+    const priorActive = state.activeId;
+    if (priorActive && next.tabs.some((t) => t.id === priorActive)) {
+      return activateTab(next, priorActive, now);
+    }
+  }
+  return next;
 }
 
 export type OpenFileTabInput = {
