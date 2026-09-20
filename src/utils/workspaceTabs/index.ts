@@ -49,6 +49,7 @@ export {
   isPaneSplit,
   listOrphanTabIds,
   pruneLayoutToTabs,
+  applyPersistedLayoutMembership,
   syncLayoutPreservingOrphansWhenSplit,
   syncLayoutWithTabs,
   toPersistedPaneNode,

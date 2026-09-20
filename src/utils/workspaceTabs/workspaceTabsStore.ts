@@ -117,7 +117,7 @@ function touchActivate(tabs: WorkspaceTab[], id: string, now: number): Workspace
   });
 }
 
-/** Place a newly opened tab. While split, leave it outside the pane tree (full window). */
+/** Place a newly opened tab. While split, leave it outside the pane tree (orphan). */
 function placeNewTab(
   layout: PaneNode,
   focusedPaneId: string,
@@ -125,7 +125,9 @@ function placeNewTab(
   opts?: { activate?: boolean },
 ): { layout: PaneNode; focusedPaneId: string; activeId: string | null } {
   const activate = opts?.activate !== false;
-  if (activate && countLeaves(layout) > 1) {
+  // While split, never inject into the focused leaf — background restore would
+  // otherwise dump first-pane files into the 2nd/3rd pane when that leaf is focused.
+  if (countLeaves(layout) > 1) {
     const stripped = removeTabFromLayout(layout, tabId);
     const pruned = pruneLayoutToTabs(
       stripped,
@@ -135,7 +137,7 @@ function placeNewTab(
     return {
       layout: pruned.layout,
       focusedPaneId: pruned.focusedPaneId,
-      activeId: tabId,
+      activeId: activate ? tabId : null,
     };
   }
   const placed = addTabToFocusedLeaf(layout, focusedPaneId, tabId, { activate });
@@ -447,7 +449,7 @@ export function openOrReplaceFileTab(
   }
 
   if (!activate) {
-    // New tab still needs a leaf slot (background restore shells stay in focused leaf).
+    // New tab while split becomes an orphan (not injected into the focused leaf).
     if (idx < 0) {
       const placed = placeNewTab(state.layout, state.focusedPaneId, tab.id, {
         activate: false,

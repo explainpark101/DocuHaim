@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addTabToFocusedLeaf,
+  applyPersistedLayoutMembership,
   collapseLeafIntoSibling,
   collectLeaves,
   countLeaves,
@@ -123,6 +124,46 @@ describe('paneLayout', () => {
     expect(countLeaves(synced.layout)).toBe(2);
     expect(flattenTabIdsFromLayout(synced.layout)).toEqual(['a', 'b']);
     expect(listOrphanTabIds(['a', 'b', 'c'], synced.layout)).toEqual(['c']);
+  });
+
+  it('does not dump first-pane tabs into the focused 2nd leaf on restore', () => {
+    // Persisted: [a | b | c], focus on the rightmost leaf (c).
+    let layout = createSingleLeafLayout(['a', 'b', 'c'], 'a');
+    layout = expectSplitOk(splitLeaf(layout, layout.id, 'right', 'c')).layout;
+    const left = collectLeaves(layout).find((l) => l.tabIds.includes('a'))!;
+    layout = expectSplitOk(splitLeaf(layout, left.id, 'right', 'b')).layout;
+    const leaves = collectLeaves(layout);
+    expect(leaves).toHaveLength(3);
+    const focusC = leaves.find((l) => l.tabIds.includes('c'))!.id;
+
+    // Cold-start bug: syncLayoutWithTabs absorbed extras into the focused leaf.
+    const absorbed = syncLayoutWithTabs(layout, ['a', 'b', 'c', 'extra'], focusC);
+    const absorbedFocus = collectLeaves(absorbed.layout).find((l) => l.id === focusC);
+    expect(absorbedFocus?.tabIds).toContain('extra');
+
+    // Restore path must keep exact persisted homes (extra stays orphan).
+    const restored = applyPersistedLayoutMembership(layout, ['a', 'b', 'c', 'extra'], focusC);
+    expect(collectLeaves(restored.layout).map((l) => l.tabIds)).toEqual([
+      ['a'],
+      ['b'],
+      ['c'],
+    ]);
+    expect(listOrphanTabIds(['a', 'b', 'c', 'extra'], restored.layout)).toEqual(['extra']);
+    expect(restored.focusedPaneId).toBe(focusC);
+  });
+
+  it('re-homes tabs from a persisted tree even when live layout had them on the focused leaf', () => {
+    let desired = createSingleLeafLayout(['a', 'b'], 'a');
+    desired = expectSplitOk(splitLeaf(desired, desired.id, 'right', 'b')).layout;
+    const [left, right] = collectLeaves(desired);
+    // Simulate a bad live tree where both tabs sit on the focused (right) leaf.
+    const corrupted = addTabToFocusedLeaf(desired, right!.id, 'a', { activate: false }).layout;
+    expect(collectLeaves(corrupted).find((l) => l.id === right!.id)?.tabIds).toContain('a');
+
+    // Apply from the desired persisted membership (not the corrupted live tree).
+    const fixed = applyPersistedLayoutMembership(desired, ['a', 'b'], right!.id);
+    expect(collectLeaves(fixed.layout).find((l) => l.id === left!.id)?.tabIds).toEqual(['a']);
+    expect(collectLeaves(fixed.layout).find((l) => l.id === right!.id)?.tabIds).toEqual(['b']);
   });
 
   it('absorbs orphans when syncing a single-leaf layout', () => {

@@ -351,6 +351,19 @@ export function syncLayoutWithTabs(
 }
 
 /**
+ * Restore leaf membership from a persisted tree without dumping unknown tabs
+ * into the focused leaf. Orphans (live tabs not listed in `layout`) stay outside
+ * the split group — critical when focus is the 2nd/3rd pane on cold start.
+ */
+export function applyPersistedLayoutMembership(
+  layout: PaneNode,
+  tabIds: string[],
+  focusedPaneId: string | null,
+): { layout: PaneNode; focusedPaneId: string } {
+  return pruneLayoutToTabs(layout, tabIds, focusedPaneId);
+}
+
+/**
  * While split, keep orphans outside the pane tree; when unsplit, absorb everyone.
  * Used by persistence and store sync so drag-out / full-window tabs survive restarts.
  */
