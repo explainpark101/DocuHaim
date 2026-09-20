@@ -18,9 +18,9 @@ import {
 import { findFileTab, softCapPrompt } from '@/utils/workspaceTabs/appBridge';
 import { closedTabEntryFromWorkspaceTab } from '@/utils/workspaceTabs/closedTabHistory';
 import {
+  applyPersistedLayoutMembership,
   fromPersistedPaneNode,
   isPersistedPaneNode,
-  syncLayoutWithTabs,
 } from '@/utils/workspaceTabs/paneLayout';
 import {
   evictForSoftCap,
@@ -68,7 +68,9 @@ function applyPersistedLayoutToState<T extends { tabs: { id: string }[]; focused
 ): T {
   if (!isPersistedPaneNode(layout)) return state;
   const focusHint = typeof focusedPaneId === 'string' ? focusedPaneId : state.focusedPaneId;
-  const synced = syncLayoutWithTabs(
+  // Exact leaf homes from persistence — do not absorb orphans into the focused
+  // leaf (that moved first-pane files into the 2nd/3rd pane on cold start).
+  const synced = applyPersistedLayoutMembership(
     fromPersistedPaneNode(layout),
     state.tabs.map((t) => t.id),
     focusHint,
