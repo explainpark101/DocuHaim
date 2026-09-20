@@ -40,7 +40,7 @@ import {
   type PaneSplitEdge,
   splitAtWorkspaceEdge,
 } from '@/utils/workspaceTabs/paneLayout';
-import { swapLeafContents } from '@/utils/workspaceTabs/paneLayoutEdit';
+import { swapLeafNodes } from '@/utils/workspaceTabs/paneLayoutEdit';
 
 export { WORKSPACE_TAB_GROUP_ZONE_ID, WORKSPACE_TAB_ORPHAN_ZONE_ID };
 
@@ -301,6 +301,21 @@ export function setFocusedPane(state: WorkspaceTabsState, paneId: string): Works
   });
 }
 
+/**
+ * Place a singleton app tab (chat / settings / search) into the focused leaf.
+ * Unlike placeNewTab, does not force a full-window orphan while split.
+ */
+function placeSingletonIntoFocusedLeaf(
+  layout: PaneNode,
+  focusedPaneId: string,
+  tabId: string,
+  opts?: { activate?: boolean },
+): { layout: PaneNode; focusedPaneId: string; activeId: string | null } {
+  const activate = opts?.activate !== false;
+  const placed = addTabToFocusedLeaf(layout, focusedPaneId, tabId, { activate });
+  return { ...placed, activeId: activate ? tabId : null };
+}
+
 export function openOrActivateChat(
   state: WorkspaceTabsState,
   now = Date.now(),
@@ -309,12 +324,16 @@ export function openOrActivateChat(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'chat');
   if (existing) {
-    return activate ? activateTabFullWindow(state, CHAT_TAB_ID, now) : state;
+    // Keep leaf membership — do not yank an in-pane chat out to full-window.
+    return activate ? activateTab(state, CHAT_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createChatTab()];
-  const placed = placeNewTab(state.layout, state.focusedPaneId, CHAT_TAB_ID, {
-    activate,
-  });
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    CHAT_TAB_ID,
+    { activate },
+  );
   const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
     tabs: activate ? touchActivate(ordered, CHAT_TAB_ID, now) : ordered,
@@ -332,12 +351,15 @@ export function openOrActivateSettings(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'settings');
   if (existing) {
-    return activate ? activateTabFullWindow(state, SETTINGS_TAB_ID, now) : state;
+    return activate ? activateTab(state, SETTINGS_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createSettingsTab()];
-  const placed = placeNewTab(state.layout, state.focusedPaneId, SETTINGS_TAB_ID, {
-    activate,
-  });
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    SETTINGS_TAB_ID,
+    { activate },
+  );
   const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
     tabs: activate ? touchActivate(ordered, SETTINGS_TAB_ID, now) : ordered,
@@ -355,12 +377,15 @@ export function openOrActivateContentSearch(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'content-search');
   if (existing) {
-    return activate ? activateTabFullWindow(state, CONTENT_SEARCH_TAB_ID, now) : state;
+    return activate ? activateTab(state, CONTENT_SEARCH_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createContentSearchTab()];
-  const placed = placeNewTab(state.layout, state.focusedPaneId, CONTENT_SEARCH_TAB_ID, {
-    activate,
-  });
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    CONTENT_SEARCH_TAB_ID,
+    { activate },
+  );
   const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
     tabs: activate ? touchActivate(ordered, CONTENT_SEARCH_TAB_ID, now) : ordered,
@@ -814,12 +839,13 @@ export function swapPanesOrMoveTabToCenter(
   if (!source || source.id === targetLeafId) {
     return moveTabIntoLeaf(state, tabId, targetLeafId);
   }
-  const layout = swapLeafContents(state.layout, source.id, targetLeafId);
+  const layout = swapLeafNodes(state.layout, source.id, targetLeafId);
   if (layout === state.layout) return state;
+  // Focus the moved source leaf (still owns tabId) at its new position.
   return ensureLayout({
     tabs: state.tabs,
     layout,
-    focusedPaneId: targetLeafId,
+    focusedPaneId: source.id,
     activeId: tabId,
   });
 }

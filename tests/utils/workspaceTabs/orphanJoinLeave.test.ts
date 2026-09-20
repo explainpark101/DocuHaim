@@ -15,9 +15,11 @@ import {
   emptyWorkspaceTabsState,
   extractTabToOrphan,
   moveTab,
+  moveTabIntoLeaf,
+  openOrActivateChat,
   openOrReplaceFileTab,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
-import type { WorkspaceTabsState } from '@/utils/workspaceTabs/types';
+import { CHAT_TAB_ID, type WorkspaceTabsState } from '@/utils/workspaceTabs/types';
 
 
 function expectSplitOk(result: SplitLeafResult) {
@@ -133,5 +135,38 @@ describe('workspaceTabsStore orphan join/leave', () => {
     }
     expect(state.activeId).toBe(keepId);
     expect(leaveIds).not.toContain(state.activeId);
+  });
+
+  it('openOrActivateChat joins the focused leaf while split (not a full-window orphan)', () => {
+    let state = threeLeafSplit();
+    const focused = state.focusedPaneId;
+    state = openOrActivateChat(state);
+    expect(findOrphan(state, CHAT_TAB_ID)).toBe(false);
+    expect(flattenTabIdsFromLayout(state.layout)).toContain(CHAT_TAB_ID);
+    const host = collectLeaves(state.layout).find((l) => l.tabIds.includes(CHAT_TAB_ID));
+    expect(host?.id).toBe(focused);
+    expect(state.activeId).toBe(CHAT_TAB_ID);
+  });
+
+  it('re-opening chat keeps it inside its split leaf', () => {
+    let state = threeLeafSplit();
+    state = openOrActivateChat(state);
+    const hostId = collectLeaves(state.layout).find((l) => l.tabIds.includes(CHAT_TAB_ID))!.id;
+    // Move chat into another leaf, then re-activate via openOrActivateChat.
+    const other = collectLeaves(state.layout).find((l) => l.id !== hostId)!;
+    state = moveTabIntoLeaf(state, CHAT_TAB_ID, other.id);
+    expect(collectLeaves(state.layout).find((l) => l.id === other.id)?.tabIds).toContain(
+      CHAT_TAB_ID,
+    );
+
+    state = openOrActivateChat(state);
+    expect(findOrphan(state, CHAT_TAB_ID)).toBe(false);
+    expect(flattenTabIdsFromLayout(state.layout)).toContain(CHAT_TAB_ID);
+    expect(
+      collectLeaves(state.layout).find((l) => l.id === other.id)?.tabIds,
+    ).toContain(CHAT_TAB_ID);
+    expect(state.focusedPaneId).toBe(other.id);
+    expect(state.activeId).toBe(CHAT_TAB_ID);
+    expect(countLeaves(state.layout)).toBe(3);
   });
 });

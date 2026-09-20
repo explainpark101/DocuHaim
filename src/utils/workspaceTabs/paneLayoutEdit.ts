@@ -66,6 +66,35 @@ export function swapLeafContents(
   return remapLeafContentsByOrder(layout, next);
 }
 
+/**
+ * Exchange two leaf *nodes* in the tree (ids + tabs move together).
+ * Prefer this over swapLeafContents for pane header / tab center drops so
+ * React fibers keyed by leaf id keep the same editor body.
+ */
+export function swapLeafNodes(
+  layout: PaneNode,
+  leafIdA: string,
+  leafIdB: string,
+): PaneNode {
+  if (leafIdA === leafIdB) return layout;
+  const leafA = findLeaf(layout, leafIdA);
+  const leafB = findLeaf(layout, leafIdB);
+  if (!leafA || !leafB) return layout;
+
+  const walk = (node: PaneNode): PaneNode => {
+    if (node.type === 'leaf') {
+      if (node.id === leafIdA) return cloneLeaf(leafB);
+      if (node.id === leafIdB) return cloneLeaf(leafA);
+      return node;
+    }
+    return {
+      ...node,
+      children: [walk(node.children[0]), walk(node.children[1])],
+    };
+  };
+  return walk(layout);
+}
+
 function cloneLeaf(leaf: PaneLeaf): PaneLeaf {
   return {
     type: 'leaf',
@@ -202,9 +231,11 @@ export function relocateLeaf(
 
   if (zone === 'center') {
     if (!findLeaf(layout, targetLeafId)) return null;
-    const swapped = swapLeafContents(layout, sourceLeafId, targetLeafId);
+    // Move whole leaf nodes so id↔tabs↔editor stay bound (not content remap).
+    const swapped = swapLeafNodes(layout, sourceLeafId, targetLeafId);
     if (swapped === layout) return null;
-    return { layout: swapped, focusedPaneId: targetLeafId };
+    // Focus follows the dragged leaf to its new tree position.
+    return { layout: swapped, focusedPaneId: sourceLeafId };
   }
 
   const detached = detachLeaf(layout, sourceLeafId);

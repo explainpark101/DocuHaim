@@ -698,6 +698,7 @@ export default function WorkspaceMainPanels({
 
     return (
       <WorkspacePaneCompactHost
+        key={leafId}
         shellIsMobile={isMobileLayout}
         {...{ [PANE_LEAF_ATTR]: leafId }}
         className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white dark:bg-odp-surface ${
