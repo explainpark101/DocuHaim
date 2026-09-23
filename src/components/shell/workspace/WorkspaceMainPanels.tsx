@@ -45,6 +45,11 @@ import { lockPaneDragSelection } from '@/utils/workspaceTabs/paneDragSelectLock'
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import type { ExportPdfDocumentFile } from '@/pages/exportPdf/exportPdfTypes';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
+import {
+  loadWorkspacePaneFreezeEnabled,
+  WORKSPACE_PANE_FREEZE_CHANGED_EVENT,
+} from '@/utils/workspacePaneFreezeSettings';
+import { subscribeSettingsToggles } from '@/utils/advancedSearch/settingsToggles';
 
 const PANE_HEADER_DRAG_SLOP_PX = 8;
 
@@ -242,6 +247,9 @@ export default function WorkspaceMainPanels({
 
   const [draggingTab, setDraggingTab] = useState(false);
   const [draggingPaneLeafId, setDraggingPaneLeafId] = useState<string | null>(null);
+  const [paneFreezeEnabled, setPaneFreezeEnabled] = useState(() =>
+    loadWorkspacePaneFreezeEnabled(),
+  );
   const [dropHighlight, setDropHighlight] = useState<{
     leafId: string;
     zone: PaneSplitEdge | 'center';
@@ -249,6 +257,25 @@ export default function WorkspaceMainPanels({
   } | null>(null);
   const dropHighlightRef = useRef(dropHighlight);
   dropHighlightRef.current = dropHighlight;
+
+  useEffect(() => {
+    const unsub = subscribeSettingsToggles((id, enabled) => {
+      if (id === 'settings-workspace-pane-freeze') setPaneFreezeEnabled(enabled);
+    });
+    const sync = (event?: Event) => {
+      const detail = (event as CustomEvent<{ enabled?: boolean }> | undefined)?.detail;
+      setPaneFreezeEnabled(
+        typeof detail?.enabled === 'boolean'
+          ? detail.enabled
+          : loadWorkspacePaneFreezeEnabled(),
+      );
+    };
+    window.addEventListener(WORKSPACE_PANE_FREEZE_CHANGED_EVENT, sync);
+    return () => {
+      unsub();
+      window.removeEventListener(WORKSPACE_PANE_FREEZE_CHANGED_EVENT, sync);
+    };
+  }, []);
 
   const publishDropHighlight = useCallback(
     (next: { leafId: string; zone: PaneSplitEdge | 'center'; workspaceEdge: boolean } | null) => {
@@ -827,11 +854,14 @@ export default function WorkspaceMainPanels({
                       onClearExportPdf?.(leafId);
                     };
 
-                    // Visible but unfocused panes stay mounted with isSurfaceLive=false
-                    // (heavy work paused). Wheel/pointer on the leaf focuses it so
-                    // scroll targets this pane and freezing lifts.
+                    // When pane freeze is enabled, visible but unfocused panes stay
+                    // mounted with isSurfaceLive=false (heavy work paused). Wheel/pointer
+                    // on the leaf focuses it so scroll targets this pane and freezing lifts.
+                    // Default: freeze off — always keep surfaces live to avoid content mix.
                     const fileKey =
                       isFileTab(tab) ? `${tab.storageType}:${tab.path}` : tab.id;
+                    const surfaceLive =
+                      !activeIsOrphan && (!paneFreezeEnabled || focused);
                     return (
                       <div
                         key={`${leafId}:${fileKey}`}
@@ -845,7 +875,7 @@ export default function WorkspaceMainPanels({
                           ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
                           contentIsMobileLayout,
                           // Orphan full-window view keeps the split tree mounted but hidden — pause it.
-                          isSurfaceLive: focused && !activeIsOrphan,
+                          isSurfaceLive: surfaceLive,
                         })}
                       </div>
                     );
