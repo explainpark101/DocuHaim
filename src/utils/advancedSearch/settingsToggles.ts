@@ -14,6 +14,10 @@ import {
   WORKSPACE_TABS_AUTO_SAVE_OPTIONS,
 } from '@/utils/workspaceTabsSettings';
 import {
+  loadWorkspacePaneFreezeEnabled,
+  saveWorkspacePaneFreezeEnabled,
+} from '@/utils/workspacePaneFreezeSettings';
+import {
   getComposerHelperTextVisible,
   writeComposerHelperTextPref,
 } from '@/utils/chatWithMyself/composerPrefs.js';
@@ -89,6 +93,7 @@ import { advancedSearchEngine } from '@/utils/advancedSearch/engine';
 export type SettingsToggleId =
   | 'settings-alt-vim'
   | 'settings-workspace-tabs'
+  | 'settings-workspace-pane-freeze'
   | 'settings-show-trash'
   | 'settings-show-hidden'
   | 'settings-hide-recording'
@@ -166,6 +171,27 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadWorkspaceTabsEnabled,
     save: saveWorkspaceTabsEnabled,
+  },
+  {
+    id: 'settings-workspace-pane-freeze',
+    enableTitle: '비활성 스플릿 페인 프리징 켜기',
+    disableTitle: '비활성 스플릿 페인 프리징 끄기',
+    description:
+      '포커스 없는 분할 페인에서 md-editor-rt 등 무거운 작업 일시 중지 (기본 꺼짐)',
+    keywords: [
+      'freeze',
+      '프리징',
+      '스플릿',
+      'split',
+      '페인',
+      'pane',
+      'isSurfaceLive',
+      'md-editor',
+      '성능',
+      'performance',
+    ],
+    load: loadWorkspacePaneFreezeEnabled,
+    save: saveWorkspacePaneFreezeEnabled,
   },
   {
     id: 'settings-show-trash',
