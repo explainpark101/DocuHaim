@@ -26,9 +26,11 @@ import {
 import {
   SETTINGS_TOGGLE_DEFS,
   getWorkspaceTabsAutoSaveCommands,
+  getWorkspacePaneFreezeCommands,
   getFootnoteDisplayModeCommands,
   type SettingsToggleId,
   type WorkspaceTabsAutoSaveCommandId,
+  type WorkspacePaneFreezeCommandId,
   type FootnoteDisplayModeCommandId,
   type StatusBarClockFormatCommandId,
   getStatusBarClockFormatCommands,
@@ -115,6 +117,7 @@ export type AppCommandId =
   | LlamaCppActionId
   | SettingsToggleId
   | WorkspaceTabsAutoSaveCommandId
+  | WorkspacePaneFreezeCommandId
   | FootnoteDisplayModeCommandId
   | StatusBarClockFormatCommandId
   | FootnoteInsertCommandId
@@ -1116,6 +1119,16 @@ function getWorkspaceTabsAutoSaveAppCommands(): AppCommand[] {
   }));
 }
 
+function getWorkspacePaneFreezeAppCommands(): AppCommand[] {
+  return getWorkspacePaneFreezeCommands().map((cmd) => ({
+    id: cmd.id,
+    title: cmd.title,
+    description: cmd.description,
+    path: '',
+    keywords: cmd.keywords,
+  }));
+}
+
 function getFootnoteDisplayModeAppCommands(): AppCommand[] {
   return getFootnoteDisplayModeCommands().map((cmd) => ({
     id: cmd.id,
@@ -1257,6 +1270,7 @@ export function matchAppCommandsRanked(
   const page = getPageActionCommands(context);
   const settingsToggles = getSettingsToggleCommands();
   const tabsAutoSave = getWorkspaceTabsAutoSaveAppCommands();
+  const paneFreeze = getWorkspacePaneFreezeAppCommands();
   const footnoteDisplay = getFootnoteDisplayModeAppCommands();
   const statusBarClockFormat = getStatusBarClockFormatAppCommands();
   const seen = new Set<string>();
@@ -1267,6 +1281,7 @@ export function matchAppCommandsRanked(
     ...page,
     ...settingsToggles,
     ...tabsAutoSave,
+    ...paneFreeze,
     ...footnoteDisplay,
     ...statusBarClockFormat,
   ]) {

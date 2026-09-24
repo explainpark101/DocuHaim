@@ -77,10 +77,12 @@ import {
 import {
   applyFootnoteDisplayModeCommand,
   applyStatusBarClockFormatCommand,
+  applyWorkspacePaneFreezeCommand,
   applyWorkspaceTabsAutoSaveCommand,
   isFootnoteDisplayModeCommandId,
   isSettingsToggleId,
   isStatusBarClockFormatCommandId,
+  isWorkspacePaneFreezeCommandId,
   isWorkspaceTabsAutoSaveCommandId,
   subscribeSettingsToggles,
   toggleSettingsToggle,
@@ -647,6 +649,11 @@ export default function AdvancedSearchHost({
 
         if (isWorkspaceTabsAutoSaveCommandId(commandId)) {
           applyWorkspaceTabsAutoSaveCommand(commandId);
+          return;
+        }
+
+        if (isWorkspacePaneFreezeCommandId(commandId)) {
+          applyWorkspacePaneFreezeCommand(commandId);
           return;
         }
 

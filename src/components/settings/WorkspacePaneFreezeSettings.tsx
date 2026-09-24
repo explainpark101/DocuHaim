@@ -1,69 +1,84 @@
 import { useEffect, useState } from 'react';
+import { RadioGroup } from 'radix-ui';
 import {
-  loadWorkspacePaneFreezeEnabled,
+  loadWorkspacePaneFreezeMode,
+  saveWorkspacePaneFreezeMode,
   WORKSPACE_PANE_FREEZE_CHANGED_EVENT,
+  WORKSPACE_PANE_FREEZE_OPTIONS,
+  type WorkspacePaneFreezeMode,
 } from '@/utils/workspacePaneFreezeSettings';
-import {
-  setSettingsToggle,
-  subscribeSettingsToggles,
-} from '@/utils/advancedSearch/settingsToggles';
 
-/** Settings toggle: freeze unfocused split panes (under tab / split settings). */
+function isFreezeMode(value: string): value is WorkspacePaneFreezeMode {
+  return value === 'off' || value === 'hover-or-focus' || value === 'focus';
+}
+
+/** Settings radio: freeze policy for unfocused / idle split panes. */
 export default function WorkspacePaneFreezeSettings() {
-  const [enabled, setEnabled] = useState(() => loadWorkspacePaneFreezeEnabled());
+  const [mode, setMode] = useState<WorkspacePaneFreezeMode>(() =>
+    loadWorkspacePaneFreezeMode(),
+  );
 
   useEffect(() => {
-    const unsub = subscribeSettingsToggles((id, next) => {
-      if (id === 'settings-workspace-pane-freeze') setEnabled(next);
-    });
     const sync = (event?: Event) => {
-      const detail = (event as CustomEvent<{ enabled?: boolean }> | undefined)?.detail;
-      setEnabled(
-        typeof detail?.enabled === 'boolean'
-          ? detail.enabled
-          : loadWorkspacePaneFreezeEnabled(),
+      const detail = (event as CustomEvent<{ mode?: WorkspacePaneFreezeMode }> | undefined)
+        ?.detail;
+      setMode(
+        detail?.mode && isFreezeMode(detail.mode)
+          ? detail.mode
+          : loadWorkspacePaneFreezeMode(),
       );
     };
     window.addEventListener(WORKSPACE_PANE_FREEZE_CHANGED_EVENT, sync);
     return () => {
-      unsub();
       window.removeEventListener(WORKSPACE_PANE_FREEZE_CHANGED_EVENT, sync);
     };
   }, []);
 
   return (
-    <label
+    <div
       id="settings-workspace-pane-freeze"
       tabIndex={-1}
-      className="flex scroll-mt-4 items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group"
+      className="scroll-mt-4 space-y-2"
     >
-      <button
-        type="button"
-        onClick={() => {
-          setSettingsToggle('settings-workspace-pane-freeze', !enabled);
+      <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+        비활성 스플릿 페인 프리징
+      </p>
+      <RadioGroup.Root
+        className="flex flex-col gap-2"
+        value={mode}
+        onValueChange={(next) => {
+          if (!isFreezeMode(next)) return;
+          saveWorkspacePaneFreezeMode(next);
+          setMode(next);
         }}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-all duration-200 ${
-          enabled
-            ? 'bg-blue-500 border-blue-500 shadow-sm'
-            : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
-        } group-hover:brightness-105 group-hover:border-blue-400`}
-        aria-pressed={enabled}
         aria-label="비활성 스플릿 페인 프리징"
       >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-            enabled ? 'translate-x-4' : 'translate-x-0.5'
-          }`}
-        />
-      </button>
-      <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
-        비활성 스플릿 페인 프리징
-        <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
-          포커스가 없는 분할 페인에서 md-editor-rt 등 무거운 작업을 일시 중지합니다.
-          켜면 성능에 도움이 될 수 있으나, 포커스를 바꿀 때 내용이 섞일 수 있습니다. 기본값은
-          꺼짐입니다.
-        </span>
-      </span>
-    </label>
+        {WORKSPACE_PANE_FREEZE_OPTIONS.map((opt) => {
+          const selected = mode === opt.value;
+          return (
+            <RadioGroup.Item
+              key={opt.value}
+              value={opt.value}
+              className={[
+                'w-90 origin-left rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200',
+                'focus-visible:ring-2 focus-visible:ring-blue-500/40',
+                selected
+                  ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
+                  : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
+              ].join(' ')}
+            >
+              <div className={selected ? '' : 'opacity-50'}>
+                <div className="text-sm font-medium text-gray-800 dark:text-odp-fgStrong">
+                  {opt.label}
+                </div>
+                <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                  {opt.description}
+                </div>
+              </div>
+            </RadioGroup.Item>
+          );
+        })}
+      </RadioGroup.Root>
+    </div>
   );
 }
