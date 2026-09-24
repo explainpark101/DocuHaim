@@ -153,6 +153,10 @@ export {
   getWorkspaceTabsAutoSaveCommands,
   applyWorkspaceTabsAutoSaveCommand,
   workspaceTabsAutoSaveModeFromCommandId,
+  isWorkspacePaneFreezeCommandId,
+  getWorkspacePaneFreezeCommands,
+  applyWorkspacePaneFreezeCommand,
+  workspacePaneFreezeModeFromCommandId,
   isFootnoteDisplayModeCommandId,
   getFootnoteDisplayModeCommands,
   applyFootnoteDisplayModeCommand,
@@ -166,6 +170,7 @@ export type {
   SettingsToggleId,
   SettingsToggleDef,
   WorkspaceTabsAutoSaveCommandId,
+  WorkspacePaneFreezeCommandId,
   FootnoteDisplayModeCommandId,
   StatusBarClockFormatCommandId,
 } from '@/utils/advancedSearch/settingsToggles';

@@ -11,6 +11,7 @@ import WorkspacePanePlaceholder, {
   WorkspacePaneContentReveal,
 } from '@/components/shell/workspace/WorkspacePanePlaceholder';
 import WorkspacePaneCompactHost from '@/components/shell/workspace/WorkspacePaneCompactHost';
+import WorkspacePaneFreezeLeafHost from '@/components/shell/workspace/WorkspacePaneFreezeLeafHost';
 import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 import {
   CHAT_TAB_ID,
@@ -46,10 +47,10 @@ import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import type { ExportPdfDocumentFile } from '@/pages/exportPdf/exportPdfTypes';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import {
-  loadWorkspacePaneFreezeEnabled,
+  loadWorkspacePaneFreezeMode,
   WORKSPACE_PANE_FREEZE_CHANGED_EVENT,
+  type WorkspacePaneFreezeMode,
 } from '@/utils/workspacePaneFreezeSettings';
-import { subscribeSettingsToggles } from '@/utils/advancedSearch/settingsToggles';
 
 const PANE_HEADER_DRAG_SLOP_PX = 8;
 
@@ -247,8 +248,8 @@ export default function WorkspaceMainPanels({
 
   const [draggingTab, setDraggingTab] = useState(false);
   const [draggingPaneLeafId, setDraggingPaneLeafId] = useState<string | null>(null);
-  const [paneFreezeEnabled, setPaneFreezeEnabled] = useState(() =>
-    loadWorkspacePaneFreezeEnabled(),
+  const [paneFreezeMode, setPaneFreezeMode] = useState<WorkspacePaneFreezeMode>(() =>
+    loadWorkspacePaneFreezeMode(),
   );
   const [dropHighlight, setDropHighlight] = useState<{
     leafId: string;
@@ -259,20 +260,19 @@ export default function WorkspaceMainPanels({
   dropHighlightRef.current = dropHighlight;
 
   useEffect(() => {
-    const unsub = subscribeSettingsToggles((id, enabled) => {
-      if (id === 'settings-workspace-pane-freeze') setPaneFreezeEnabled(enabled);
-    });
     const sync = (event?: Event) => {
-      const detail = (event as CustomEvent<{ enabled?: boolean }> | undefined)?.detail;
-      setPaneFreezeEnabled(
-        typeof detail?.enabled === 'boolean'
-          ? detail.enabled
-          : loadWorkspacePaneFreezeEnabled(),
+      const detail = (event as CustomEvent<{ mode?: WorkspacePaneFreezeMode }> | undefined)
+        ?.detail;
+      setPaneFreezeMode(
+        detail?.mode === 'off' ||
+          detail?.mode === 'hover-or-focus' ||
+          detail?.mode === 'focus'
+          ? detail.mode
+          : loadWorkspacePaneFreezeMode(),
       );
     };
     window.addEventListener(WORKSPACE_PANE_FREEZE_CHANGED_EVENT, sync);
     return () => {
-      unsub();
       window.removeEventListener(WORKSPACE_PANE_FREEZE_CHANGED_EVENT, sync);
     };
   }, []);
@@ -732,9 +732,11 @@ export default function WorkspaceMainPanels({
       Boolean(onApplyPaneLayout) && splitDragEnabled && !isMobileLayout && isSplit;
 
     return (
-      <WorkspacePaneCompactHost
+      <WorkspacePaneFreezeLeafHost
         key={leafId}
         shellIsMobile={isMobileLayout}
+        freezeMode={paneFreezeMode}
+        activeIsOrphan={activeIsOrphan}
         {...{ [PANE_LEAF_ATTR]: leafId }}
         className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white dark:bg-odp-surface ${
           focused
@@ -743,11 +745,11 @@ export default function WorkspaceMainPanels({
         } ${freshPaneIds.has(leafId) ? 'workspace-pane-appear-glow' : ''}`}
         onPointerDownCapture={() => onFocusPane?.(leafId)}
         onWheelCapture={() => {
-          // Frozen panes pause heavy work; wheel must focus so scroll targets this leaf.
+          // Frozen panes pause heavy work; wheel focuses so scroll targets this leaf.
           if (!focused) onFocusPane?.(leafId);
         }}
       >
-        {(contentIsMobileLayout) => (
+        {(contentIsMobileLayout, surfaceLive) => (
           <>
             {onCollapsePane && isSplit ? (
               <div
@@ -854,14 +856,9 @@ export default function WorkspaceMainPanels({
                       onClearExportPdf?.(leafId);
                     };
 
-                    // When pane freeze is enabled, visible but unfocused panes stay
-                    // mounted with isSurfaceLive=false (heavy work paused). Wheel/pointer
-                    // on the leaf focuses it so scroll targets this pane and freezing lifts.
-                    // Default: freeze off — always keep surfaces live to avoid content mix.
+                    // Freeze mode: off | hover-or-focus | focus (see WorkspacePaneFreezeLeafHost).
                     const fileKey =
                       isFileTab(tab) ? `${tab.storageType}:${tab.path}` : tab.id;
-                    const surfaceLive =
-                      !activeIsOrphan && (!paneFreezeEnabled || focused);
                     return (
                       <div
                         key={`${leafId}:${fileKey}`}
@@ -885,7 +882,7 @@ export default function WorkspaceMainPanels({
             </div>
           </>
         )}
-      </WorkspacePaneCompactHost>
+      </WorkspacePaneFreezeLeafHost>
     );
   };
 
