@@ -1,4 +1,6 @@
 import {
+  useEffect,
+  useRef,
   useState,
   type FocusEvent,
   type HTMLAttributes,
@@ -7,6 +9,7 @@ import {
 import WorkspacePaneCompactHost from '@/components/shell/workspace/WorkspacePaneCompactHost';
 import {
   isWorkspacePaneSurfaceLive,
+  WORKSPACE_PANE_HOVER_FREEZE_MS,
   type WorkspacePaneFreezeMode,
 } from '@/utils/workspacePaneFreezeSettings';
 
@@ -21,6 +24,7 @@ type WorkspacePaneFreezeLeafHostProps = {
 /**
  * Pane leaf shell that tracks hover + keyboard focus-within to decide
  * whether the editor surface should stay live under the freeze mode.
+ * Hover-off is debounced to avoid thrashing when the pointer crosses gutters.
  */
 export default function WorkspacePaneFreezeLeafHost({
   shellIsMobile,
@@ -37,6 +41,23 @@ export default function WorkspacePaneFreezeLeafHost({
 }: WorkspacePaneFreezeLeafHostProps) {
   const [hovered, setHovered] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
+  const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverLeaveTimerRef.current != null) {
+        clearTimeout(hoverLeaveTimerRef.current);
+        hoverLeaveTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const clearHoverLeaveTimer = () => {
+    if (hoverLeaveTimerRef.current != null) {
+      clearTimeout(hoverLeaveTimerRef.current);
+      hoverLeaveTimerRef.current = null;
+    }
+  };
 
   const surfaceLive =
     !activeIsOrphan &&
@@ -48,11 +69,16 @@ export default function WorkspacePaneFreezeLeafHost({
       className={className}
       tabIndex={-1}
       onMouseEnter={(e) => {
+        clearHoverLeaveTimer();
         setHovered(true);
         onMouseEnter?.(e);
       }}
       onMouseLeave={(e) => {
-        setHovered(false);
+        clearHoverLeaveTimer();
+        hoverLeaveTimerRef.current = setTimeout(() => {
+          hoverLeaveTimerRef.current = null;
+          setHovered(false);
+        }, WORKSPACE_PANE_HOVER_FREEZE_MS);
         onMouseLeave?.(e);
       }}
       onFocusCapture={(e) => {

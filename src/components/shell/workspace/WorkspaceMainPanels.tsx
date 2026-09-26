@@ -12,6 +12,7 @@ import WorkspacePanePlaceholder, {
 } from '@/components/shell/workspace/WorkspacePanePlaceholder';
 import WorkspacePaneCompactHost from '@/components/shell/workspace/WorkspacePaneCompactHost';
 import WorkspacePaneFreezeLeafHost from '@/components/shell/workspace/WorkspacePaneFreezeLeafHost';
+import WorkspacePaneLeafSlot from '@/components/shell/workspace/WorkspacePaneLeafSlot';
 import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 import {
   CHAT_TAB_ID,
@@ -233,8 +234,8 @@ export default function WorkspaceMainPanels({
         typeof activeId === 'string' &&
         !findLeafContainingTab(layout, activeId),
     );
-  /** Keep the split tree mounted even while an orphan tab is full-window (hide only). */
-  const splitLayoutMounted = Boolean(layout && isSplit && onResizeSplit);
+  /** Unmount split editors while an orphan tab is full-window (remount on return). */
+  const splitLayoutMounted = Boolean(layout && isSplit && onResizeSplit && !activeIsOrphan);
   const singleLeafId = leaves[0]?.id ?? (layout && isPaneLeaf(layout) ? layout.id : null);
 
   const tabGroups: WorkspaceTabGroup[] | null = useMemo(() => {
@@ -859,22 +860,29 @@ export default function WorkspaceMainPanels({
                     // Freeze mode: off | hover-or-focus | focus (see WorkspacePaneFreezeLeafHost).
                     const fileKey =
                       isFileTab(tab) ? `${tab.storageType}:${tab.path}` : tab.id;
+                    const contentRevision = isFileTab(tab)
+                      ? `${fileKey}:${tab.editorContent?.length ?? 0}:${tab.noteSurface ?? ''}`
+                      : `${tab.id}:${tab.kind}`;
                     return (
-                      <div
+                      <WorkspacePaneLeafSlot
                         key={`${leafId}:${fileKey}`}
-                        className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden"
+                        tabId={tab.id}
+                        surfaceLive={surfaceLive}
+                        contentRevision={contentRevision}
                       >
-                        {renderTabContent(tab, true, {
-                          ...(isFileTab(tab) && tab.noteSurface
-                            ? { noteSurface: tab.noteSurface }
-                            : {}),
-                          exportPdf: showExport,
-                          ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
-                          contentIsMobileLayout,
-                          // Orphan full-window view keeps the split tree mounted but hidden — pause it.
-                          isSurfaceLive: surfaceLive,
-                        })}
-                      </div>
+                        <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+                          {renderTabContent(tab, true, {
+                            ...(isFileTab(tab) && tab.noteSurface
+                              ? { noteSurface: tab.noteSurface }
+                              : {}),
+                            exportPdf: showExport,
+                            ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
+                            contentIsMobileLayout,
+                            // Orphan full-window unmounts the split tree; when mounted, pause if frozen.
+                            isSurfaceLive: surfaceLive,
+                          })}
+                        </div>
+                      </WorkspacePaneLeafSlot>
                     );
                   })()}
                 </Suspense>
@@ -892,12 +900,7 @@ export default function WorkspaceMainPanels({
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {splitLayoutMounted && layout && onResizeSplit ? (
           <div
-            className={
-              activeIsOrphan
-                ? 'pointer-events-none invisible absolute inset-0 z-0 flex flex-col overflow-hidden bg-gray-300 p-1.5 dark:bg-black'
-                : 'relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gray-300 p-1.5 dark:bg-black'
-            }
-            aria-hidden={activeIsOrphan}
+            className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gray-300 p-1.5 dark:bg-black"
             {...{ [PANE_SPLIT_ROOT_ATTR]: '' }}
           >
             <WorkspaceSplitLayout
@@ -916,8 +919,7 @@ export default function WorkspaceMainPanels({
               }
               workspaceEdge={Boolean(dropHighlight?.workspaceEdge)}
               visible={Boolean(
-                !activeIsOrphan &&
-                  draggingTab &&
+                draggingTab &&
                   splitDragEnabled &&
                   !isMobileLayout &&
                   dropHighlight &&
