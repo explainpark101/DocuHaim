@@ -58,6 +58,8 @@ export async function compositeAnnotatedImageBlob(options: {
   canvas.height = Math.max(1, Math.round(h));
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D unavailable');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(bitmap as CanvasImageSource, 0, 0, canvas.width, canvas.height);
   if (inkCanvas && inkCanvas.width > 0 && inkCanvas.height > 0) {
     ctx.drawImage(inkCanvas, 0, 0, canvas.width, canvas.height);
