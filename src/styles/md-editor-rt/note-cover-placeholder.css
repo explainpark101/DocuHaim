@@ -1,5 +1,7 @@
 /* Note cover comment → preview mount host (CoverSlide mounts on click) */
-.md-editor-preview .md-note-cover-placeholder {
+.md-editor-preview .md-note-cover-placeholder,
+.haim-editor .md-note-cover-placeholder,
+.haim-editor-prose .md-note-cover-placeholder {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -15,12 +17,18 @@
   user-select: none;
 }
 
-.md-editor-preview .md-note-cover-placeholder--ready {
+.md-editor-preview .md-note-cover-placeholder--ready,
+.haim-editor .md-note-cover-placeholder--ready,
+.haim-editor-prose .md-note-cover-placeholder--ready {
   min-height: 0;
 }
 
 .md-editor-preview .md-note-cover-placeholder--pending,
-.md-editor-preview .md-note-cover-placeholder--empty {
+.md-editor-preview .md-note-cover-placeholder--empty,
+.haim-editor .md-note-cover-placeholder--pending,
+.haim-editor .md-note-cover-placeholder--empty,
+.haim-editor-prose .md-note-cover-placeholder--pending,
+.haim-editor-prose .md-note-cover-placeholder--empty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,49 +40,92 @@
 }
 
 .md-editor-preview .md-note-cover-placeholder--pending .md-note-cover-placeholder__mount:empty,
-.md-editor-preview .md-note-cover-placeholder--empty .md-note-cover-placeholder__mount:empty {
+.md-editor-preview .md-note-cover-placeholder--empty .md-note-cover-placeholder__mount:empty,
+.haim-editor .md-note-cover-placeholder--pending .md-note-cover-placeholder__mount:empty,
+.haim-editor .md-note-cover-placeholder--empty .md-note-cover-placeholder__mount:empty {
   display: none;
 }
 
 .md-editor-preview .md-note-cover-placeholder:hover,
-.md-editor-preview .md-note-cover-placeholder:focus-visible {
+.md-editor-preview .md-note-cover-placeholder:focus-visible,
+.haim-editor .md-note-cover-placeholder:hover,
+.haim-editor .md-note-cover-placeholder:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px color-mix(in srgb, #3b82f6 45%, transparent);
 }
 
-.md-editor-preview .md-note-cover-placeholder__mount:empty + .md-note-cover-placeholder__fallback {
-  display: flex;
+.md-editor-preview .md-note-cover-placeholder__mount:empty + .md-note-cover-placeholder__fallback,
+.haim-editor .md-note-cover-placeholder__mount:empty + .md-note-cover-placeholder__fallback {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.55rem;
   min-height: 7.5rem;
   font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
 
-.md-editor-preview .md-note-cover-placeholder--ready .md-note-cover-placeholder__fallback {
+.md-editor-preview .md-note-cover-placeholder--ready .md-note-cover-placeholder__fallback,
+.haim-editor .md-note-cover-placeholder--ready .md-note-cover-placeholder__fallback {
   display: none;
 }
 
-.md-editor-preview .md-note-cover-placeholder__fallback {
+.md-editor-preview .md-note-cover-placeholder__fallback,
+.haim-editor .md-note-cover-placeholder__fallback {
   display: none;
 }
 
 .md-editor-preview .md-note-cover-placeholder--pending .md-note-cover-placeholder__fallback,
-.md-editor-preview .md-note-cover-placeholder--empty .md-note-cover-placeholder__fallback {
-  display: flex;
+.md-editor-preview .md-note-cover-placeholder--empty .md-note-cover-placeholder__fallback,
+.haim-editor .md-note-cover-placeholder--pending .md-note-cover-placeholder__fallback,
+.haim-editor .md-note-cover-placeholder--empty .md-note-cover-placeholder__fallback {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.55rem;
   font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   line-height: 1.2;
 }
 
+.md-editor-preview .md-note-cover-placeholder__spinner,
+.haim-editor .md-note-cover-placeholder__spinner {
+  display: none;
+  box-sizing: border-box;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
+  border-radius: 9999px;
+  animation: md-note-cover-spinner 0.7s linear infinite;
+}
+
+.md-editor-preview .md-note-cover-placeholder--pending .md-note-cover-placeholder__spinner,
+.haim-editor .md-note-cover-placeholder--pending .md-note-cover-placeholder__spinner {
+  display: inline-block;
+}
+
+.md-editor-preview .md-note-cover-placeholder--empty .md-note-cover-placeholder__spinner,
+.haim-editor .md-note-cover-placeholder--empty .md-note-cover-placeholder__spinner {
+  display: none;
+}
+
+@keyframes md-note-cover-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Cover surface always light; do not inherit dark preview tokens */
 .md-editor-preview .md-note-cover-preview-light,
 .md-editor-dark .md-editor-preview .md-note-cover-preview-light,
-.dark .md-editor-preview .md-note-cover-preview-light {
+.dark .md-editor-preview .md-note-cover-preview-light,
+.haim-editor .md-note-cover-preview-light,
+.haim-editor--dark .md-note-cover-preview-light,
+.dark .haim-editor .md-note-cover-preview-light {
   color-scheme: light;
   background: #ffffff;
   color: #111827;
@@ -82,7 +133,8 @@
   container-type: inline-size;
 }
 
-.md-editor-preview .md-note-cover-preview-slide {
+.md-editor-preview .md-note-cover-preview-slide,
+.haim-editor .md-note-cover-preview-slide {
   display: block;
   max-width: 100%;
   /* 100cqi = preview host width; --print-page-width is design paper width. */
@@ -90,7 +142,8 @@
 }
 
 @media print {
-  .md-editor-preview .md-note-cover-placeholder {
+  .md-editor-preview .md-note-cover-placeholder,
+  .haim-editor .md-note-cover-placeholder {
     display: none !important;
   }
 }

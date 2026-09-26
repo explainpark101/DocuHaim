@@ -11,6 +11,13 @@
  *   @@@/haim-raw
  */
 
+import {
+  parseWikiImageInner,
+  WIKI_IMAGE_RE,
+  wikiImageMarkupFromAttrs,
+} from '@/utils/wikiImageSyntax';
+import { wikiImageToProtectedHtml } from '@/components/haimEditor/extensions/WikiImage';
+
 const SENTINEL_OPEN = '@@@haim-raw:';
 const SENTINEL_CLOSE = '@@@/haim-raw';
 
@@ -56,11 +63,24 @@ export function protectCustomMarkdown(src: string): string {
   // Page breaks → HTML TipTap PageBreak can parse
   out = out.replace(/<pgbr\s*\/?\s*>/gi, '<pgbr></pgbr>');
 
-  // Wiki images → HTML TipTap WikiImage can parse
-  out = out.replace(/!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g, (_m, path, opts) => {
-    const p = String(path || '').trim();
-    const o = opts != null ? String(opts).trim() : '';
-    return `<div data-haim-wiki-image="1" data-wiki-path="${escapeAttr(p)}" data-wiki-options="${escapeAttr(o)}"></div>`;
+  // Wiki images → canonical <img data-wiki-path> for TipTap WikiImage + hydration
+  out = out.replace(WIKI_IMAGE_RE, (m, inner) => {
+    const parsed = parseWikiImageInner(inner);
+    if (!parsed?.path) return m;
+    const lastPipe = String(inner).lastIndexOf('|');
+    const rawOpts =
+      lastPipe >= 0 ? String(inner).slice(lastPipe + 1).trim() : '';
+    const normalizedOpts = [
+      parsed.width ? `w=${parsed.width}` : '',
+      parsed.height ? `h=${parsed.height}` : '',
+      parsed.background ? `bg=${parsed.background}` : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    return wikiImageToProtectedHtml(
+      parsed.path,
+      rawOpts || normalizedOpts,
+    );
   });
 
   // Deep headings #######…########## → h6 data-heading-level
@@ -107,7 +127,22 @@ export function restoreCustomMarkdown(src: string): string {
     },
   );
 
-  // TipTap may emit wiki HTML — read attrs without order dependency
+  // Note-cover WYSIWYG host — vault comment lives in metaPrefix
+  out = stripNoteCoverPlaceholderHosts(out);
+
+  // TipTap may emit wiki <img> or legacy wiki <div>
+  out = out.replace(/<img\b[^>]*\bdata-wiki-path\b[^>]*\/?>/gi, (tag) => {
+    const path = attr(tag, 'data-wiki-path');
+    if (!path) return tag;
+    const width = attr(tag, 'data-wiki-width') || null;
+    const height = attr(tag, 'data-wiki-height') || null;
+    const background = attr(tag, 'data-wiki-bg') || null;
+    const options = attr(tag, 'data-wiki-options');
+    if (width || height || background) {
+      return wikiImageMarkupFromAttrs({ path, width, height, background });
+    }
+    return options ? `![[${path}|${options}]]` : `![[${path}]]`;
+  });
   out = out.replace(
     /<div\b[^>]*\bdata-haim-wiki-image\b[^>]*>[\s\S]*?<\/div>/gi,
     (tag) => {
@@ -151,6 +186,9 @@ export function restoreCustomMarkdown(src: string): string {
     },
   );
 
+  // Collapse blank lines left by stripped note-cover host
+  out = out.replace(/^\n+/, '');
+
   return out;
 }
 
@@ -163,6 +201,40 @@ export const HAIM_RAW_SENTINEL = {
 function attr(tag: string, name: string): string {
   const m = new RegExp(`${name}="([^"]*)"`, 'i').exec(tag);
   return m ? unescapeAttr(m[1] || '') : '';
+}
+
+/** Remove TipTap/md note-cover preview hosts (nested spinner markup OK). */
+function stripNoteCoverPlaceholderHosts(src: string): string {
+  const openRe = /<div\b[^>]*\bdata-note-cover-placeholder\b[^>]*>/gi;
+  let out = '';
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = openRe.exec(src))) {
+    const start = match.index;
+    out += src.slice(last, start);
+    const afterOpen = start + match[0].length;
+    let depth = 1;
+    let i = afterOpen;
+    while (i < src.length && depth > 0) {
+      const nextOpen = src.indexOf('<div', i);
+      const nextClose = src.indexOf('</div>', i);
+      if (nextClose < 0) {
+        i = src.length;
+        break;
+      }
+      if (nextOpen >= 0 && nextOpen < nextClose) {
+        depth += 1;
+        i = nextOpen + 4;
+      } else {
+        depth -= 1;
+        i = nextClose + 6;
+      }
+    }
+    last = i;
+    openRe.lastIndex = i;
+  }
+  out += src.slice(last);
+  return out;
 }
 
 function escapeAttr(s: string): string {

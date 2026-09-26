@@ -36,10 +36,12 @@ import {
 import { NodeRange } from '@tiptap/extension-node-range';
 import { PageBreak } from '@/components/haimEditor/extensions/PageBreak';
 import { WikiImage } from '@/components/haimEditor/extensions/WikiImage';
+import { NoteCover } from '@/components/haimEditor/extensions/NoteCover';
 import { RawMarkdownBlock } from '@/components/haimEditor/extensions/RawMarkdownBlock';
 import { DeepHeading } from '@/components/haimEditor/extensions/DeepHeading';
 import { MathBlock } from '@/components/haimEditor/extensions/MathBlock';
 import { HaimCodeBlock } from '@/components/haimEditor/extensions/HaimCodeBlock';
+import { HaimParagraph } from '@/components/haimEditor/extensions/HaimParagraph';
 import type { Extensions } from '@tiptap/core';
 
 export type HaimExtensionProfile = 'note' | 'composer';
@@ -65,6 +67,7 @@ export function createHaimExtensions(
   const starterKit = isNote
     ? StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
+        paragraph: false,
         codeBlock: false,
         bulletList: false,
         orderedList: false,
@@ -75,6 +78,7 @@ export function createHaimExtensions(
       })
     : StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
+        paragraph: false,
         bulletList: false,
         orderedList: false,
         listItem: false,
@@ -85,6 +89,7 @@ export function createHaimExtensions(
 
   const base: Extensions = [
     starterKit,
+    HaimParagraph,
     Markdown,
     Link.configure({
       openOnClick: false,
@@ -94,7 +99,15 @@ export function createHaimExtensions(
         target: '_blank',
       },
     }),
-    Image.configure({
+    Image.extend({
+      parseHTML() {
+        return [
+          {
+            tag: 'img[src]:not([data-wiki-path])',
+          },
+        ];
+      },
+    }).configure({
       allowBase64: true,
     }),
     ListKit.configure({
@@ -125,8 +138,8 @@ export function createHaimExtensions(
     // DocuHaim custom
     PageBreak,
     WikiImage,
-    RawMarkdownBlock,
-    DeepHeading,
+    ...(isNote ? [NoteCover] : []),
+    RawMarkdownBlock,    DeepHeading,
     MathBlock,
   ];
 
