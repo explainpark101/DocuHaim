@@ -85,7 +85,11 @@ export default function ChatComposerHaimEditor({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const extensions = useMemo(
-    () => createHaimExtensions({ placeholder: '메시지 입력…' }),
+    () =>
+      createHaimExtensions({
+        placeholder: '메시지 입력…',
+        profile: 'composer',
+      }),
     [],
   );
 

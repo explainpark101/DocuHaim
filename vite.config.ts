@@ -423,7 +423,13 @@ function manualChunks(id: string): string | undefined {
 
   if (
     normalizedId.includes('/node_modules/@tiptap/') ||
-    normalizedId.includes('/node_modules/prosemirror-')
+    normalizedId.includes('/node_modules/prosemirror-') ||
+    normalizedId.includes('/node_modules/lowlight/') ||
+    normalizedId.includes('/node_modules/highlight.js/') ||
+    normalizedId.includes('/node_modules/katex/') ||
+    normalizedId.includes('/node_modules/yjs/') ||
+    normalizedId.includes('/node_modules/y-protocols/') ||
+    normalizedId.includes('/node_modules/lib0/')
   ) {
     return 'vendor-tiptap';
   }

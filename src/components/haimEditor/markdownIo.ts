@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/react';
+import { migrateMathStrings } from '@tiptap/extension-mathematics';
 import {
   splitLeadingMetaComments,
   joinMetaPrefix,
@@ -8,6 +9,7 @@ import {
   restoreCustomMarkdown,
 } from '@/components/haimEditor/protectCustomMarkdown';
 import { getCachedMarkdown, invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
+import { trimCodeBlocksInEditor } from '@/components/haimEditor/trimCodeBlockEdges';
 
 /**
  * Prepare vault markdown for TipTap (meta strip + protect custom blocks).
@@ -50,4 +52,16 @@ export function setEditorMarkdown(
     emitUpdate: options?.emitUpdate ?? false,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
+  // Convert any leftover $…$ text to inlineMath nodes
+  try {
+    migrateMathStrings(editor);
+  } catch {
+    // ignore if Mathematics not registered
+  }
+  // Drop leading/trailing blank lines inside fenced code blocks for WYSIWYG
+  try {
+    trimCodeBlocksInEditor(editor, { skipSelectionBlock: false });
+  } catch {
+    // ignore if codeBlock extension absent (composer)
+  }
 }

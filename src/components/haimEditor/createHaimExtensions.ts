@@ -2,35 +2,89 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
-import { Table } from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
+import { TableKit } from '@tiptap/extension-table';
+import { ListKit } from '@tiptap/extension-list';
+import { TextStyleKit } from '@tiptap/extension-text-style';
+import {
+  CharacterCount,
+  Focus,
+  Placeholder,
+  Selection,
+  TrailingNode,
+} from '@tiptap/extensions';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
-import Placeholder from '@tiptap/extension-placeholder';
+import Typography from '@tiptap/extension-typography';
+import TextAlign from '@tiptap/extension-text-align';
+import Highlight from '@tiptap/extension-highlight';
+import { Mathematics } from '@tiptap/extension-mathematics';
+import Youtube from '@tiptap/extension-youtube';
+import { Audio } from '@tiptap/extension-audio';
+import {
+  Details,
+  DetailsContent,
+  DetailsSummary,
+} from '@tiptap/extension-details';
+import { Emoji, gitHubEmojis } from '@tiptap/extension-emoji';
+import { FindAndReplace } from '@tiptap/extension-find-and-replace';
+import InvisibleCharacters from '@tiptap/extension-invisible-characters';
+import UniqueID from '@tiptap/extension-unique-id';
+import {
+  TableOfContents,
+  getHierarchicalIndexes,
+} from '@tiptap/extension-table-of-contents';
+import { NodeRange } from '@tiptap/extension-node-range';
 import { PageBreak } from '@/components/haimEditor/extensions/PageBreak';
 import { WikiImage } from '@/components/haimEditor/extensions/WikiImage';
 import { RawMarkdownBlock } from '@/components/haimEditor/extensions/RawMarkdownBlock';
 import { DeepHeading } from '@/components/haimEditor/extensions/DeepHeading';
 import { MathBlock } from '@/components/haimEditor/extensions/MathBlock';
+import { HaimCodeBlock } from '@/components/haimEditor/extensions/HaimCodeBlock';
+import type { Extensions } from '@tiptap/core';
 
-/** Shared TipTap extension list for Haim Editor (edit + read-only preview). */
-export function createHaimExtensions(options?: {
+export type HaimExtensionProfile = 'note' | 'composer';
+
+export type CreateHaimExtensionsOptions = {
   placeholder?: string;
-}) {
-  const placeholder = options?.placeholder ?? '내용을 입력하세요…';
+  /** note = full open-source set; composer = lean chat subset */
+  profile?: HaimExtensionProfile;
+};
 
-  return [
-    StarterKit.configure({
-      heading: {
-        levels: [1, 2, 3, 4, 5, 6],
-      },
-      // Custom Link config below
-      link: false,
-    }),
+/**
+ * TipTap open-source extension set for Haim Editor.
+ * Snapshot (Pro) intentionally omitted.
+ * @see https://tiptap.dev/docs/editor/extensions/overview?filter=opensource
+ */
+export function createHaimExtensions(
+  options?: CreateHaimExtensionsOptions,
+): Extensions {
+  const placeholder = options?.placeholder ?? '내용을 입력하세요…';
+  const profile = options?.profile ?? 'note';
+  const isNote = profile === 'note';
+
+  const starterKit = isNote
+    ? StarterKit.configure({
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+        codeBlock: false,
+        bulletList: false,
+        orderedList: false,
+        listItem: false,
+        listKeymap: false,
+        link: false,
+        trailingNode: false,
+      })
+    : StarterKit.configure({
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+        bulletList: false,
+        orderedList: false,
+        listItem: false,
+        listKeymap: false,
+        link: false,
+        trailingNode: false,
+      });
+
+  const base: Extensions = [
+    starterKit,
     Markdown,
     Link.configure({
       openOnClick: false,
@@ -43,25 +97,69 @@ export function createHaimExtensions(options?: {
     Image.configure({
       allowBase64: true,
     }),
-    Table.configure({
-      resizable: true,
+    ListKit.configure({
+      taskItem: { nested: true },
     }),
-    TableRow,
-    TableHeader,
-    TableCell,
-    TaskList,
-    TaskItem.configure({
-      nested: true,
+    TableKit.configure({
+      table: { resizable: isNote },
     }),
+    TextStyleKit,
+    TextAlign.configure({
+      types: ['heading', 'paragraph'],
+    }),
+    Highlight.configure({ multicolor: true }),
+    ...(isNote ? [HaimCodeBlock] : []),
     Subscript,
     Superscript,
-    Placeholder.configure({
-      placeholder,
+    Typography,
+    Placeholder.configure({ placeholder }),
+    CharacterCount,
+    Focus.configure({ className: 'haim-node-focused' }),
+    Selection,
+    TrailingNode,
+    Mathematics.configure({
+      katexOptions: {
+        throwOnError: false,
+      },
     }),
+    // DocuHaim custom
     PageBreak,
     WikiImage,
     RawMarkdownBlock,
     DeepHeading,
     MathBlock,
+  ];
+
+  if (!isNote) {
+    return base;
+  }
+
+  // Note-only: heavier open-source nodes (DragHandle + Collaboration = lazy UI)
+  return [
+    ...base,
+    Audio,
+    Youtube.configure({
+      controls: true,
+      nocookie: true,
+    }),
+    Details.configure({ persist: true }),
+    DetailsSummary,
+    DetailsContent,
+    Emoji.configure({
+      emojis: gitHubEmojis,
+      enableEmoticons: true,
+    }),
+    FindAndReplace,
+    InvisibleCharacters.configure({
+      injectCSS: true,
+      visible: false,
+    }),
+    UniqueID.configure({
+      types: ['heading', 'paragraph'],
+    }),
+    TableOfContents.configure({
+      getIndex: getHierarchicalIndexes,
+    }),
+    NodeRange,
   ];
 }

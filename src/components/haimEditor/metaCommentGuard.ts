@@ -4,7 +4,7 @@
  */
 
 const META_COMMENT_RE =
-  /^(\uFEFF?\s*(?:<!--\s*(?:note-cover|print-chrome|footnotes|document-settings)\b[\s\S]*?-->\s*)+)/;
+  /^(\uFEFF?\s*(?:<!--\s*(?:note-cover|print-chrome|footnotes|document-settings|remote-image)\b[\s\S]*?-->\s*)+)/;
 
 export type SplitMetaResult = {
   prefix: string;
