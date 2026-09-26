@@ -1,4 +1,9 @@
-import { useEffect, type ReactNode } from 'react';
+import {
+  useEffect,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import Button from '@/components/Button';
@@ -16,20 +21,20 @@ export type ConfirmModalVariant = 'default' | 'danger';
 
 export type ConfirmModalProps = {
   isOpen: boolean;
-  title?: string;
-  message?: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  discardLabel?: string;
-  variant?: ConfirmModalVariant;
-  onConfirm?: () => void;
-  onCancel?: () => void;
-  onDiscard?: () => void;
-  children?: ReactNode;
-  confirmDisabled?: boolean;
-  resizable?: boolean;
+  title?: string | undefined;
+  message?: string | undefined;
+  confirmLabel?: string | undefined;
+  cancelLabel?: string | undefined;
+  discardLabel?: string | undefined;
+  variant?: ConfirmModalVariant | undefined;
+  onConfirm?: (() => void) | undefined;
+  onCancel?: (() => void) | undefined;
+  onDiscard?: (() => void) | undefined;
+  children?: ReactNode | undefined;
+  confirmDisabled?: boolean | undefined;
+  resizable?: boolean | undefined;
   /** Root fixed layer (z-index); default `z-100000`. */
-  overlayClassName?: string;
+  overlayClassName?: string | undefined;
 };
 
 function isDangerConfirm(
@@ -97,14 +102,14 @@ export function ConfirmModal({
         >
           <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
           <Motion.div
-            ref={panelRef}
+            ref={panelRef as RefObject<HTMLDivElement | null>}
             role="dialog"
             aria-modal="true"
             aria-labelledby={title ? 'confirm-modal-title' : undefined}
             className={`relative z-10 flex w-full max-w-md max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl dark:bg-odp-surface dark:text-odp-fgStrong ${
               positioned ? 'max-w-none!' : ''
             }`}
-            style={positionedStyle}
+            style={positionedStyle as CSSProperties}
             initial={positioned ? false : { opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
