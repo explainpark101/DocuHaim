@@ -14,7 +14,10 @@ export function buildNoteCoverPlaceholderHtml(): string {
   return [
     '<div class="md-note-cover-placeholder md-note-cover-placeholder--pending" data-note-cover-placeholder="1" role="button" tabindex="0" title="표지 편집으로 이동">',
     '<div class="md-note-cover-placeholder__mount" data-note-cover-mount="1"></div>',
-    '<span class="md-note-cover-placeholder__fallback">표지 불러오는 중…</span>',
+    '<span class="md-note-cover-placeholder__fallback">',
+    '<span class="md-note-cover-placeholder__spinner" aria-hidden="true"></span>',
+    '<span class="md-note-cover-placeholder__fallback-text">표지 불러오는 중…</span>',
+    '</span>',
     '</div>',
   ].join('');
 }

@@ -42,8 +42,15 @@ import HeadingRemapModal, {
 } from '@/components/modals/HeadingRemapModal';
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
 import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
+import { ConfirmModal } from '@/components/modals/ConfirmModal.jsx';
+import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import {
+  hydrateNoteCoverPreviewsInRoot,
+  teardownNoteCoverPreviewsInRoot,
+} from '@/utils/noteCover/hydrateNoteCoverPreview';
 import '@/styles/haim-editor/style.css';
 import '@/styles/haim-editor/code-hljs-themes.css';
+import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import 'katex/dist/katex.min.css';
 
 const HaimFindReplaceBar = lazy(
@@ -66,6 +73,7 @@ export default function HaimEditor({
   previewOnly = false,
   isMobileLayout = false,
   onUploadImage,
+  onResolveWikiImageUrl,
   isActiveFile = true,
   isSurfaceLive = true,
   onRequestConvertAllImagesToWiki,
@@ -94,6 +102,7 @@ export default function HaimEditor({
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [invisibleCharsVisible, setInvisibleCharsVisible] = useState(false);
   const [checklistHint, setChecklistHint] = useState<string | null>(null);
+  const [coverExportConfirmOpen, setCoverExportConfirmOpen] = useState(false);
 
   const effectiveMode: HaimViewMode =
     isMobileLayout && viewMode === HAIM_VIEW_MODE_DOUBLE && !previewOnly
@@ -211,6 +220,97 @@ export default function HaimEditor({
     cmRevision,
   });
 
+  const resolveWikiUrl = useCallback(
+    async (path: string): Promise<string | null> => {
+      if (!onResolveWikiImageUrl) return null;
+      try {
+        const result = await onResolveWikiImageUrl(path);
+        return typeof result === 'string' ? result : null;
+      } catch {
+        return null;
+      }
+    },
+    [onResolveWikiImageUrl],
+  );
+
+  useWikiImageHydration(
+    wysiwygScrollRef,
+    value || '',
+    onResolveWikiImageUrl ? resolveWikiUrl : null,
+    currentFile?.path ?? currentFile?.id ?? null,
+    {
+      enabled: Boolean(
+        showWysiwyg && isSurfaceLive && onResolveWikiImageUrl,
+      ),
+    },
+  );
+
+  useEffect(() => {
+    if (!showWysiwyg || !isSurfaceLive) return undefined;
+    const root = wysiwygScrollRef.current;
+    if (!root) return undefined;
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      hydrateNoteCoverPreviewsInRoot(root, value || '', resolveWikiUrl, {
+        load: true,
+      });
+    };
+    const delays = [0, 100, 350, 700];
+    const timers = delays.map((d) => setTimeout(run, d));
+    const mo =
+      typeof MutationObserver !== 'undefined'
+        ? new MutationObserver(() => run())
+        : null;
+    mo?.observe(root, { childList: true, subtree: true });
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+      mo?.disconnect();
+      teardownNoteCoverPreviewsInRoot(root);
+    };
+  }, [
+    value,
+    showWysiwyg,
+    isSurfaceLive,
+    resolveWikiUrl,
+    currentFile?.id,
+    editor,
+  ]);
+
+  useEffect(() => {
+    const root = wysiwygScrollRef.current;
+    if (!root || !showWysiwyg) return undefined;
+    const activate = (target: EventTarget | null) => {
+      const el =
+        target instanceof Element
+          ? target.closest('[data-note-cover-placeholder]')
+          : null;
+      if (!el || !root.contains(el)) return false;
+      setCoverExportConfirmOpen(true);
+      return true;
+    };
+    const onClick = (e: MouseEvent) => {
+      if (activate(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (activate(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    root.addEventListener('click', onClick);
+    root.addEventListener('keydown', onKeyDown);
+    return () => {
+      root.removeEventListener('click', onClick);
+      root.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showWysiwyg, editor]);
+
   useEffect(() => {
     return () => {
       flush();
@@ -276,26 +376,30 @@ export default function HaimEditor({
     originRef,
   ]);
 
-  const navigateToExportPdf = useCallback(() => {
-    if (!editor) return;
-    openExportPdfSurface({
-      currentFile: currentFile
-        ? {
-            id: currentFile.id ?? null,
-            type: currentFile.type ?? null,
-            name: currentFile.name ?? undefined,
-          }
-        : null,
-      editorContent: editorToVaultMarkdown(editor, metaPrefixRef.current),
-      theme: theme === 'dark' ? 'dark' : 'light',
-      navigate,
-      openInFocusedPane: (tabId) =>
-        Boolean(
-          tabsCtx?.workspaceTabsEnabled &&
-            tabsCtx.openExportPdfInFocusedPane?.(tabId),
-        ),
-    });
-  }, [editor, currentFile, theme, navigate, tabsCtx]);
+  const navigateToExportPdf = useCallback(
+    (options: { openCoverEdit?: boolean } = {}) => {
+      if (!editor) return;
+      openExportPdfSurface({
+        currentFile: currentFile
+          ? {
+              id: currentFile.id ?? null,
+              type: currentFile.type ?? null,
+              name: currentFile.name ?? undefined,
+            }
+          : null,
+        editorContent: editorToVaultMarkdown(editor, metaPrefixRef.current),
+        theme: theme === 'dark' ? 'dark' : 'light',
+        navigate,
+        openCoverEdit: Boolean(options.openCoverEdit),
+        openInFocusedPane: (tabId) =>
+          Boolean(
+            tabsCtx?.workspaceTabsEnabled &&
+              tabsCtx.openExportPdfInFocusedPane?.(tabId),
+          ),
+      });
+    },
+    [editor, currentFile, theme, navigate, tabsCtx],
+  );
 
   const openHeadingRemap = useCallback(() => {
     if (!editor) return;
@@ -342,7 +446,14 @@ export default function HaimEditor({
         .focus()
         .insertContent({
           type: 'wikiImage',
-          attrs: { path, options: '', alt: path },
+          attrs: {
+            path,
+            options: '',
+            alt: path,
+            width: null,
+            height: null,
+            background: null,
+          },
         })
         .run();
       invalidateMarkdownCache(editor);
@@ -712,6 +823,18 @@ export default function HaimEditor({
           setClipCropFile(null);
           await handleUploadFiles([file]);
         }}
+      />
+      <ConfirmModal
+        isOpen={coverExportConfirmOpen}
+        title="표지 편집"
+        message="표지를 편집하려면 Export PDF 페이지를 열어야 합니다. 계속할까요?"
+        confirmLabel="열기"
+        cancelLabel="취소"
+        onConfirm={() => {
+          setCoverExportConfirmOpen(false);
+          navigateToExportPdf({ openCoverEdit: true });
+        }}
+        onCancel={() => setCoverExportConfirmOpen(false)}
       />
     </EditorContext.Provider>
   );

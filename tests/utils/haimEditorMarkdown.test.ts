@@ -49,7 +49,8 @@ describe('protectCustomMarkdown', () => {
   it('round-trips wiki images and pgbr', () => {
     const src = 'Hello\n\n![[img/a.png|w=50%]]\n\n<pgbr/>\n\nDone\n';
     const protectedMd = protectCustomMarkdown(src);
-    expect(protectedMd).toContain('data-haim-wiki-image');
+    expect(protectedMd).toContain('data-wiki-path');
+    expect(protectedMd).toContain('img/a.png');
     expect(protectedMd).toContain('<pgbr>');
     const restored = restoreCustomMarkdown(protectedMd);
     expect(restored).toContain('![[img/a.png|w=50%]]');
@@ -127,5 +128,33 @@ describe('protectCustomMarkdown', () => {
     const protectedMd = protectCustomMarkdown(src);
     expect(protectedMd).not.toContain('data-type="inline-math"');
     expect(protectedMd).toContain('$100$');
+  });
+});
+
+describe('scrubEmptyParagraphNbsp', () => {
+  it('removes TipTap empty-paragraph &nbsp; lines from vault markdown', async () => {
+    const { scrubEmptyParagraphNbsp } = await import(
+      '@/components/haimEditor/markdownIo'
+    );
+    const dirty = 'Hello\n\n&nbsp;\n\nWorld\n\n\u00A0\n';
+    const clean = scrubEmptyParagraphNbsp(dirty);
+    expect(clean).not.toContain('&nbsp;');
+    expect(clean).not.toContain('\u00A0');
+    expect(clean).toContain('Hello');
+    expect(clean).toContain('World');
+  });
+});
+
+describe('markdownToEditorContent note-cover', () => {
+  it('injects note-cover placeholder when leading meta has note-cover', async () => {
+    const { markdownToEditorContent } = await import(
+      '@/components/haimEditor/markdownIo'
+    );
+    const md = `<!-- note-cover\n{"v":2,"enabled":true}\n-->\n\n# Title\n`;
+    const { prefix, content } = markdownToEditorContent(md);
+    expect(prefix).toContain('note-cover');
+    expect(content).toContain('data-note-cover-placeholder');
+    expect(content).toContain('data-note-cover-mount');
+    expect(content).toContain('# Title');
   });
 });
