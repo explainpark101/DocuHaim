@@ -1,5 +1,6 @@
 /**
- * Haim double-pane: keep TipTap and source CM scroll positions aligned.
+ * Haim double-pane: keep TipTap and source CM scroll positions aligned
+ * via [data-line] block markers (default on).
  */
 
 const LOCAL_STORAGE_KEY = 's3haim_haim_double_scroll_sync';
@@ -8,7 +9,7 @@ const LOCAL_STORAGE_KEY = 's3haim_haim_double_scroll_sync';
 export const HAIM_DOUBLE_SCROLL_SYNC_CHANGED_EVENT =
   's3haim-haim-double-scroll-sync';
 
-/** Default on — matching scroll is usually desirable in double mode. */
+/** Default on — line-based scroll sync is usually desirable in double mode. */
 export const HAIM_DOUBLE_SCROLL_SYNC_DEFAULT = true;
 
 export function loadHaimDoubleScrollSyncEnabled(): boolean {

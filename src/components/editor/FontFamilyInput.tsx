@@ -1,11 +1,16 @@
-import { useState, useRef, useEffect, useMemo, type ChangeEvent } from 'react';
+import { useState, useRef, useEffect, useMemo, lazy, Suspense, type ChangeEvent } from 'react';
 import { Plus } from 'lucide-react';
 import { Form } from 'radix-ui';
-import { WebfontCssEditorModal } from '@/components/settings/WebfontCssEditorModal';
 import { formInputClassName } from '@/components/ui/RadixSelectField';
 import { buildFontFamilyOptions } from '@/utils/fontOptions';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 import { withFontFallback } from '@/utils/fontFallback';
+
+const WebfontCssEditorModal = lazy(() =>
+  import('@/components/settings/WebfontCssEditorModal').then((m) => ({
+    default: m.WebfontCssEditorModal,
+  })),
+);
 
 type FontFamilyInputProps = {
   value?: string;
@@ -183,18 +188,22 @@ export default function FontFamilyInput({
         )}
       </div>
 
-      <WebfontCssEditorModal
-        isOpen={addOpen}
-        onClose={() => setAddOpen(false)}
-        onSaved={(families) => {
-          const first = families[0];
-          if (first) {
-            setInputValue(first);
-            onChange(first);
-          }
-          setOptionsTick((t) => t + 1);
-        }}
-      />
+      {addOpen ? (
+        <Suspense fallback={null}>
+          <WebfontCssEditorModal
+            isOpen={addOpen}
+            onClose={() => setAddOpen(false)}
+            onSaved={(families) => {
+              const first = families[0];
+              if (first) {
+                setInputValue(first);
+                onChange(first);
+              }
+              setOptionsTick((t) => t + 1);
+            }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

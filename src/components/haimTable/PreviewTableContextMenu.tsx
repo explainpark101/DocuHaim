@@ -98,8 +98,16 @@ export function PreviewTableContextMenu({
         return;
       }
       const previewRoot = previewRootOf();
-      const table = (event.target as Element | null)?.closest?.('table');
+      // Prefer haim-table (data attr) so TipTap GFM tables are ignored in Haim Editor.
+      const table =
+        (event.target as Element | null)?.closest?.(
+          'table[data-haim-table="1"]',
+        ) ?? (event.target as Element | null)?.closest?.('table');
       if (!(table instanceof HTMLTableElement) || !previewRoot?.contains(table)) {
+        return;
+      }
+      if (table.getAttribute('data-haim-table') !== '1') {
+        // Plain GFM / TipTap tables: no haim-table modal.
         return;
       }
       event.preventDefault();
@@ -128,7 +136,9 @@ export function PreviewTableContextMenu({
       if (event.pointerType === 'mouse') return;
       const previewRoot = previewRootOf();
       if (!previewRoot) return;
-      const table = (event.target as Element | null)?.closest?.('table');
+      const table = (event.target as Element | null)?.closest?.(
+        'table[data-haim-table="1"]',
+      );
       if (!(table instanceof HTMLTableElement) || !previewRoot.contains(table)) return;
       clearPress();
       opened = false;

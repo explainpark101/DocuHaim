@@ -1,20 +1,10 @@
 import { memo, useLayoutEffect, useMemo, useRef } from 'react';
-import { config } from 'md-editor-rt';
-import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import { sanitizeMdEditorIdFragment } from '@/utils/mdEditorInstanceId';
 import { recallEditorScroll } from '@/utils/editorScrollMemory';
 import '@/styles/md-editor-rt/preview.css';
-
-config({
-  editorConfig: {
-    languageUserDefined: {
-      'ko-KR': KO_KR,
-    },
-  },
-});
 
 type FrozenPaneMarkdownPreviewProps = {
   content: string;
@@ -28,6 +18,7 @@ type FrozenPaneMarkdownPreviewProps = {
 /**
  * Lightweight markdown snapshot for frozen split panes (CodeMirror unmounted).
  * Skips wiki hydration / mermaid / observers — visual placeholder until remount.
+ * Does not static-import md-editor-rt (keeps cold-start graph lean).
  */
 function FrozenPaneMarkdownPreview({
   content,

@@ -1,54 +1,31 @@
-import { renderAppMarkdown } from '@/utils/createAppMarkdownIt';
 import { getCachedOg } from '@/utils/chatWithMyself/chatDb.js';
 import { extractUrls, hashUrl } from '@/utils/chatWithMyself/og';
 import { ogArchiveKey } from '@/utils/chatWithMyself/paths.js';
+import {
+  fuzzyMatchText,
+  fuzzyMatchTokensInHaystacks,
+  splitSearchTokens,
+} from '@/utils/chatWithMyself/fuzzyMatchCore';
 
-/**
- * VS Code-style fuzzy / partial match: every needle char appears in order
- * in haystack (not necessarily contiguous). Space-separated tokens are AND.
- */
-export function fuzzyMatchText(haystack, needle) {
-  const text = String(haystack || '').toLowerCase();
-  const q = String(needle || '').trim().toLowerCase();
-  if (!q) return true;
-  if (text.includes(q)) return true;
+export { fuzzyMatchText, fuzzyMatchTokensInHaystacks, splitSearchTokens };
 
-  const tokens = q.split(/\s+/).filter(Boolean);
-  return tokens.every((token) => fuzzySubsequence(text, token));
-}
+/** Lazy markdown renderer — avoid pulling md-editor into the app boot graph. */
+let renderAppMarkdownFn = null;
+let renderAppMarkdownPromise = null;
 
-export function splitSearchTokens(query) {
-  return String(query || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-}
-
-/**
- * Space-separated tokens are AND across the message, OR across fields:
- * each token must match at least one haystack.
- */
-export function fuzzyMatchTokensInHaystacks(haystacks, query) {
-  const tokens = splitSearchTokens(query);
-  if (tokens.length === 0) return true;
-  const texts = (Array.isArray(haystacks) ? haystacks : [haystacks]).map((h) =>
-    String(h || ''),
-  );
-  return tokens.every((token) =>
-    texts.some((text) => fuzzyMatchText(text, token)),
-  );
-}
-
-function fuzzySubsequence(haystack, needle) {
-  if (!needle) return true;
-  if (haystack.includes(needle)) return true;
-  let hi = 0;
-  for (let ni = 0; ni < needle.length; ni++) {
-    const found = haystack.indexOf(needle[ni], hi);
-    if (found < 0) return false;
-    hi = found + 1;
+function loadRenderAppMarkdown() {
+  if (!renderAppMarkdownPromise) {
+    renderAppMarkdownPromise = import('@/utils/createAppMarkdownIt').then((m) => {
+      renderAppMarkdownFn = m.renderAppMarkdown;
+      return renderAppMarkdownFn;
+    });
   }
-  return true;
+  return renderAppMarkdownPromise;
+}
+
+/** Preload markdown-it stack for search result cards (chat search panel). */
+export function ensureSearchMarkdownRenderer() {
+  return loadRenderAppMarkdown();
 }
 
 function escapeRegExp(s) {
@@ -241,10 +218,14 @@ export function renderSearchResultHtml(
   const asMarkdown = options.markdown === true;
   let html;
   if (asMarkdown) {
-    try {
-      html = renderAppMarkdown(raw, 'search');
-    } catch {
-      html = null;
+    // Warm the markdown renderer for subsequent calls; first hit may escape plain.
+    void loadRenderAppMarkdown();
+    if (typeof renderAppMarkdownFn === 'function') {
+      try {
+        html = renderAppMarkdownFn(raw, 'search');
+      } catch {
+        html = null;
+      }
     }
   }
   if (typeof html !== 'string') {

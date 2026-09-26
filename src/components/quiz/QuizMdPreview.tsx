@@ -1,6 +1,5 @@
 import { memo, useMemo, useRef } from 'react';
-import { config } from 'md-editor-rt';
-import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import '@/config/mdEditorConfig';
 import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
@@ -8,14 +7,6 @@ import { useQuizImageHydration } from '@/components/quiz/QuizImageHydrationConte
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/preview.css';
-
-config({
-  editorConfig: {
-    languageUserDefined: {
-      'ko-KR': KO_KR,
-    },
-  },
-});
 
 type QuizMdPreviewProps = {
   text: string;

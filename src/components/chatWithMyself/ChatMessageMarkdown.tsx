@@ -1,6 +1,4 @@
 import { useMemo, useRef } from 'react';
-import { config } from 'md-editor-rt';
-import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import {
@@ -15,14 +13,6 @@ import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/preview.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 import '@/styles/md-editor-rt/code-copy.css';
-
-config({
-  editorConfig: {
-    languageUserDefined: {
-      'ko-KR': KO_KR,
-    },
-  },
-});
 
 type ChatMessageMarkdownProps = {
   text?: string | null;

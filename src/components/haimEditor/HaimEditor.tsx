@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, EditorContext } from '@tiptap/react';
+import { Loader2 } from 'lucide-react';
 import type { NoteEditorProps } from '@/editor/contracts/noteEditorTypes';
 import { createHaimExtensions } from '@/components/haimEditor/createHaimExtensions';
 import {
@@ -38,12 +39,16 @@ import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useNavigate } from 'react-router';
 import type { EditorView as CmEditorView } from '@codemirror/view';
 import { EditorSelection } from '@codemirror/state';
+import { NodeSelection } from '@tiptap/pm/state';
 import HeadingRemapModal, {
   type HeadingRemapScope,
 } from '@/components/modals/HeadingRemapModal';
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
 import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal.jsx';
+import { TableEditModal } from '@/components/haimTable/TableEditModal';
+import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
+import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import {
   hydrateNoteCoverPreviewsInRoot,
@@ -52,7 +57,24 @@ import {
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 import { useBase64ImageFold } from '@/hooks/useBase64ImageFold';
 import { getNoteCoverFoldKeyFromFile } from '@/utils/noteCover/noteCoverFoldStateDb';
-import { Loader2 } from 'lucide-react';
+import {
+  createEmptyHaimTableRaw,
+  parseHaimTableRawText,
+  serializeHaimTableRawText,
+} from '@/components/haimEditor/haimTableRawText';
+import {
+  HAIM_TABLE_EDIT_REQUEST_EVENT,
+  type HaimTableEditRequestDetail,
+} from '@/components/haimEditor/haimTableEditEvents';
+import {
+  findHaimTableBlockAt,
+  findHaimTableBlocks,
+  resolveHaimTableBlockFromPreview,
+  upsertHaimTableBlock,
+  type HaimTableBlock,
+  type HaimTableGrid,
+  type HaimTableMeta,
+} from '@/utils/haimTable';
 import '@/styles/haim-editor/style.css';
 import '@/styles/haim-editor/code-hljs-themes.css';
 import '@/styles/editor-image-align.css';
@@ -65,6 +87,11 @@ const HaimFindReplaceBar = lazy(
 const HaimDragHandleLayer = lazy(
   () => import('@/components/haimEditor/HaimDragHandleLayer'),
 );
+
+type HaimTableEditSession =
+  | { mode: 'node'; pos: number; meta: HaimTableMeta; grid: HaimTableGrid }
+  | { mode: 'md'; block: HaimTableBlock; meta: HaimTableMeta; grid: HaimTableGrid }
+  | { mode: 'insert'; meta: HaimTableMeta; grid: HaimTableGrid };
 
 /**
  * TipTap-based Haim Editor.
@@ -116,6 +143,8 @@ export default function HaimEditor({
   const [coverExportConfirmOpen, setCoverExportConfirmOpen] = useState(false);
   const [localImageUploading, setLocalImageUploading] = useState(false);
   const imageUploadingRef = useRef(false);
+  const [tableEdit, setTableEdit] = useState<HaimTableEditSession | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   const effectiveMode: HaimViewMode =
     isMobileLayout && viewMode === HAIM_VIEW_MODE_DOUBLE && !previewOnly
@@ -159,6 +188,7 @@ export default function HaimEditor({
       createHaimExtensions({
         placeholder: previewOnly ? '' : '내용을 입력하세요…',
         profile: 'note',
+        getMetaPrefix: () => metaPrefixRef.current,
       }),
     [previewOnly],
   );
@@ -184,6 +214,12 @@ export default function HaimEditor({
         if ((value || '') !== joinCheck(initial.prefix, initial.content)) {
           setEditorMarkdown(ed, value || '', metaPrefixRef, { emitUpdate: false });
         }
+        // Rebuild data-line after metaPrefix is known (initial create may race).
+        try {
+          ed.commands.updateDecorations('haimSourceLine');
+        } catch {
+          // ignore if command unavailable
+        }
       },
     },
     [extensions],
@@ -199,6 +235,11 @@ export default function HaimEditor({
     const current = editorToVaultMarkdown(editor, metaPrefixRef.current);
     if (current === (value || '')) return;
     setEditorMarkdown(editor, value || '', metaPrefixRef, { emitUpdate: false });
+    try {
+      editor.commands.updateDecorations('haimSourceLine');
+    } catch {
+      // ignore
+    }
     const cm = cmViewRef.current;
     if (cm) {
       const cur = cm.state.doc.toString();
@@ -434,6 +475,170 @@ export default function HaimEditor({
     setHeadingRemapOpen(true);
   }, [editor]);
 
+  const openHaimTableEditor = useCallback(
+    (detail: HaimTableEditRequestDetail) => {
+      if (typeof detail.pos === 'number') {
+        const parsed = parseHaimTableRawText(detail.text);
+        if (!parsed) return;
+        setTableEdit({
+          mode: 'node',
+          pos: detail.pos,
+          meta: parsed.meta,
+          grid: parsed.grid,
+        });
+        return;
+      }
+      const empty = createEmptyHaimTableRaw();
+      setTableEdit({ mode: 'insert', meta: empty.meta, grid: empty.grid });
+    },
+    [],
+  );
+
+  const openHaimTableFromPreview = useCallback(
+    (tableEl: HTMLTableElement, previewRoot: Element) => {
+      if (!editor) return false;
+      const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
+      const block = resolveHaimTableBlockFromPreview(md, tableEl, previewRoot);
+      if (!block) return false;
+      setTableEdit({
+        mode: 'md',
+        block,
+        meta: block.meta ?? createEmptyHaimTableRaw().meta,
+        grid: block.grid,
+      });
+      return true;
+    },
+    [editor],
+  );
+
+  const openHaimTableFromSelection = useCallback(() => {
+    if (!editor) return;
+    // Prefer CodeMirror selection when source pane is active
+    const cm = cmViewRef.current;
+    const preferCm =
+      cm != null &&
+      (cm.hasFocus ||
+        effectiveMode === HAIM_VIEW_MODE_SOURCE ||
+        (showSource && !showWysiwyg));
+    if (preferCm) {
+      const md = cm.state.doc.toString();
+      const { from, to } = cm.state.selection.main;
+      const block = findHaimTableBlockAt(md, from, to);
+      if (block) {
+        setTableEdit({
+          mode: 'md',
+          block,
+          meta: block.meta ?? createEmptyHaimTableRaw().meta,
+          grid: block.grid,
+        });
+        return;
+      }
+      const empty = createEmptyHaimTableRaw();
+      setTableEdit({ mode: 'insert', meta: empty.meta, grid: empty.grid });
+      return;
+    }
+
+    // TipTap: selected / parent rawMarkdownBlock
+    const { selection } = editor.state;
+    const tryNode = (
+      pos: number,
+      node: { type: { name: string }; attrs: Record<string, unknown> } | null,
+    ) => {
+      if (!node || node.type.name !== 'rawMarkdownBlock') return false;
+      if (String(node.attrs.kind || '') !== 'haim-table') return false;
+      const parsed = parseHaimTableRawText(String(node.attrs.text || ''));
+      if (!parsed) return false;
+      setTableEdit({
+        mode: 'node',
+        pos,
+        meta: parsed.meta,
+        grid: parsed.grid,
+      });
+      return true;
+    };
+
+    if (selection instanceof NodeSelection) {
+      if (tryNode(selection.from, selection.node as never)) return;
+    }
+
+    const selNode = selection.$from.nodeAfter ?? selection.$from.nodeBefore;
+    const selPos =
+      selection.$from.nodeAfter != null
+        ? selection.$from.pos
+        : selection.$from.pos - (selection.$from.nodeBefore?.nodeSize ?? 0);
+    if (selNode && tryNode(selPos, selNode as never)) return;
+
+    for (let d = selection.$from.depth; d > 0; d -= 1) {
+      const node = selection.$from.node(d);
+      if (tryNode(selection.$from.before(d), node as never)) return;
+    }
+
+    // Fallback: first haim-table in doc, or insert new
+    const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
+    const blocks = findHaimTableBlocks(md);
+    if (blocks[0]) {
+      const block = blocks[0];
+      setTableEdit({
+        mode: 'md',
+        block,
+        meta: block.meta ?? createEmptyHaimTableRaw().meta,
+        grid: block.grid,
+      });
+      return;
+    }
+    const empty = createEmptyHaimTableRaw();
+    setTableEdit({ mode: 'insert', meta: empty.meta, grid: empty.grid });
+  }, [editor, effectiveMode, showSource, showWysiwyg]);
+
+  const applyHaimTableEdit = useCallback(
+    (meta: HaimTableMeta, grid: HaimTableGrid) => {
+      if (!editor || !tableEdit) return;
+      const text = serializeHaimTableRawText(meta, grid);
+
+      if (tableEdit.mode === 'node') {
+        const node = editor.state.doc.nodeAt(tableEdit.pos);
+        if (node?.type.name === 'rawMarkdownBlock') {
+          editor
+            .chain()
+            .focus()
+            .command(({ tr, dispatch }) => {
+              tr.setNodeMarkup(tableEdit.pos, undefined, {
+                ...node.attrs,
+                text,
+                kind: 'haim-table',
+              });
+              dispatch?.(tr);
+              return true;
+            })
+            .run();
+          invalidateMarkdownCache(editor);
+          pushEditorMarkdownToCmNow();
+        }
+      } else if (tableEdit.mode === 'md') {
+        const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
+        const next = upsertHaimTableBlock(md, tableEdit.block, meta, grid);
+        originRef.current = 'external';
+        setEditorMarkdown(editor, next, metaPrefixRef, { emitUpdate: false });
+        emitVault(next);
+        pushEditorMarkdownToCmNow();
+        originRef.current = null;
+      } else {
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: 'rawMarkdownBlock',
+            attrs: { text, kind: 'haim-table' },
+          })
+          .run();
+        invalidateMarkdownCache(editor);
+        pushEditorMarkdownToCmNow();
+      }
+      setTableEdit(null);
+    },
+    [editor, tableEdit, emitVault, originRef, pushEditorMarkdownToCmNow],
+  );
+
   const applyHeadingRemap = useCallback(
     (nextMarkdown: string, scope: HeadingRemapScope) => {
       if (!editor) return;
@@ -470,7 +675,7 @@ export default function HaimEditor({
       // Snapshot cursor/selection BEFORE await — paste-time position.
       const cmAtStart = cmViewRef.current;
       const preferSource =
-        Boolean(cmAtStart) &&
+        cmAtStart != null &&
         (cmAtStart.hasFocus ||
           effectiveMode === HAIM_VIEW_MODE_SOURCE ||
           (showSource && !showWysiwyg));
@@ -669,6 +874,7 @@ export default function HaimEditor({
         };
         input.click();
       },
+      'editor-table-edit': () => openHaimTableFromSelection(),
     });
     return unregister;
   }, [
@@ -681,7 +887,21 @@ export default function HaimEditor({
     llmAssist,
     openHeadingRemap,
     handleUploadFiles,
+    openHaimTableFromSelection,
   ]);
+
+  useEffect(() => {
+    if (!editor || previewOnly) return undefined;
+    const onEditRequest = (event: Event) => {
+      const ce = event as CustomEvent<HaimTableEditRequestDetail>;
+      if (!ce.detail) return;
+      openHaimTableEditor(ce.detail);
+    };
+    const dom = editor.view.dom;
+    dom.addEventListener(HAIM_TABLE_EDIT_REQUEST_EVENT, onEditRequest);
+    return () =>
+      dom.removeEventListener(HAIM_TABLE_EDIT_REQUEST_EVENT, onEditRequest);
+  }, [editor, previewOnly, openHaimTableEditor]);
 
   useEffect(() => {
     onRegisterConvertAllImagesToWiki?.(null);
@@ -696,7 +916,9 @@ export default function HaimEditor({
         e.stopPropagation();
         return;
       }
-      const imageFiles = collectClipboardImageFiles(e.clipboardData);
+      const imageFiles = e.clipboardData
+        ? collectClipboardImageFiles(e.clipboardData)
+        : [];
       if (!imageFiles.length) return;
       e.preventDefault();
       e.stopPropagation();
@@ -715,8 +937,20 @@ export default function HaimEditor({
 
   if (!editor) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-odp-muted">
-        Haim Editor 로딩 중…
+      <div
+        className="flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-white dark:bg-odp-surface"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <Loader2
+          size={18}
+          className="animate-spin text-gray-400 dark:text-gray-500"
+          aria-hidden
+        />
+        <div className="text-sm text-gray-500 dark:text-odp-muted">
+          Haim Editor 로딩 중…
+        </div>
       </div>
     );
   }
@@ -724,6 +958,7 @@ export default function HaimEditor({
   return (
     <EditorContext.Provider value={providerValue}>
       <div
+        ref={rootRef}
         className={`haim-editor flex h-full min-h-0 flex-col bg-white dark:bg-odp-surface ${
           theme === 'dark' ? 'haim-editor--dark' : ''
         }`}
@@ -948,6 +1183,61 @@ export default function HaimEditor({
         }}
         onCancel={() => setCoverExportConfirmOpen(false)}
       />
+      <TableEditModal
+        isOpen={Boolean(tableEdit)}
+        initialMeta={tableEdit?.meta ?? null}
+        initialGrid={
+          tableEdit?.grid ?? { rows: [['']], aligns: [null] }
+        }
+        onClose={() => setTableEdit(null)}
+        onSave={applyHaimTableEdit}
+      />
+      {!previewOnly && isSurfaceLive ? (
+        <>
+          <PreviewTableContextMenu
+            containerRef={rootRef}
+            getMarkdown={() =>
+              editor
+                ? editorToVaultMarkdown(editor, metaPrefixRef.current)
+                : valueRef.current || ''
+            }
+            setMarkdown={(next) => {
+              if (!editor) return;
+              originRef.current = 'external';
+              setEditorMarkdown(editor, next, metaPrefixRef, {
+                emitUpdate: false,
+              });
+              emitVault(next);
+              pushEditorMarkdownToCmNow();
+              originRef.current = null;
+            }}
+            onEditTable={openHaimTableFromPreview}
+            findPreviewRoot={(container) =>
+              container.querySelector('.ProseMirror')
+              ?? container.querySelector('.md-editor-preview')
+            }
+          />
+          <HaimTableBoxResizeLayer
+            containerRef={rootRef}
+            getMarkdown={() =>
+              editor
+                ? editorToVaultMarkdown(editor, metaPrefixRef.current)
+                : valueRef.current || ''
+            }
+            setMarkdown={(next) => {
+              if (!editor) return;
+              originRef.current = 'external';
+              setEditorMarkdown(editor, next, metaPrefixRef, {
+                emitUpdate: false,
+              });
+              emitVault(next);
+              pushEditorMarkdownToCmNow();
+              originRef.current = null;
+            }}
+            enabled={!tableEdit}
+          />
+        </>
+      ) : null}
     </EditorContext.Provider>
   );
 }

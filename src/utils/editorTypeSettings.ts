@@ -12,8 +12,8 @@ export type EditorTypeId =
 
 const LOCAL_STORAGE_KEY = 's3haim_editor_type';
 
-/** Default remains the legacy engine until Haim reaches full parity. */
-export const EDITOR_TYPE_DEFAULT: EditorTypeId = EDITOR_TYPE_MD_EDITOR_RT;
+/** Default markdown engine for new installs / unset preference. */
+export const EDITOR_TYPE_DEFAULT: EditorTypeId = EDITOR_TYPE_HAIM;
 
 export type EditorTypeOption = {
   value: EditorTypeId;
@@ -23,16 +23,16 @@ export type EditorTypeOption = {
 
 export const EDITOR_TYPE_OPTIONS: readonly EditorTypeOption[] = [
   {
-    value: EDITOR_TYPE_MD_EDITOR_RT,
-    label: '기존 에디터',
-    description:
-      'md-editor-rt 기반 마크다운 소스 편집기입니다. 미리보기·위키 이미지·미러 편집 등 기존 기능 전체.',
-  },
-  {
     value: EDITOR_TYPE_HAIM,
     label: 'Haim Editor',
     description:
       'TipTap 기반 WYSIWYG 에디터입니다. 설정에서 소스+WYSIWYG 동시 편집(듀얼)로 전환할 수 있습니다.',
+  },
+  {
+    value: EDITOR_TYPE_MD_EDITOR_RT,
+    label: '기존 에디터',
+    description:
+      'md-editor-rt 기반 마크다운 소스 편집기입니다. 미리보기·위키 이미지·미러 편집 등 기존 기능 전체.',
   },
 ] as const;
 

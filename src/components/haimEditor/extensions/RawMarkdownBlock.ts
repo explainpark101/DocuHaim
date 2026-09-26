@@ -1,8 +1,11 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import RawMarkdownBlockView from '@/components/haimEditor/extensions/RawMarkdownBlockView';
 
 /**
  * Opaque block that round-trips markdown the TipTap schema cannot model yet
  * (haim-table comments, plan frontmatter cards, mermaid fences, etc.).
+ * haim-table uses a NodeView that renders the HTML preview.
  */
 export const RawMarkdownBlock = Node.create({
   name: 'rawMarkdownBlock',
@@ -43,6 +46,10 @@ export const RawMarkdownBlock = Node.create({
       }),
       String(node.attrs.text || ''),
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(RawMarkdownBlockView);
   },
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

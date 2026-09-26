@@ -16,6 +16,9 @@ export function findHaimTablePreviewRoot(container: HTMLElement | null): Element
     container.querySelector('.md-editor-preview')
     ?? container.querySelector('#export-pdf-preview .md-editor-preview')
     ?? container.querySelector('[data-export-pdf-preview] .md-editor-preview')
+    // Haim Editor TipTap surface
+    ?? container.querySelector('.ProseMirror')
+    ?? (container.classList.contains('ProseMirror') ? container : null)
     ?? null
   );
 }

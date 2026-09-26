@@ -172,9 +172,11 @@
 }
 
 .haim-wiki-image-wrap {
+  position: relative;
+  display: inline-block;
   margin: 0.5em 0;
   line-height: 0;
-  width: 100%;
+  max-width: 100%;
 }
 
 .haim-wiki-image-wrap.is-selected .haim-wiki-image {
@@ -198,10 +200,178 @@
   outline-color: var(--md-theme-code-active-color, #818cf8);
 }
 
+.haim-wiki-image-resize-handle {
+  position: absolute;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid #fff;
+  border-radius: 9999px;
+  background: #2563eb;
+  box-shadow: 0 0 0 1px rgb(37 99 235 / 40%);
+  pointer-events: auto;
+}
+
+.haim-wiki-image-resize-handle--nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+  transform: translate(-50%, -50%);
+}
+
+.haim-wiki-image-resize-handle--ne {
+  right: 0;
+  top: 0;
+  cursor: nesw-resize;
+  transform: translate(50%, -50%);
+}
+
+.haim-wiki-image-resize-handle--sw {
+  left: 0;
+  bottom: 0;
+  cursor: nesw-resize;
+  transform: translate(-50%, 50%);
+}
+
+.haim-wiki-image-resize-handle--se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  transform: translate(50%, 50%);
+}
+
+.haim-wiki-image-wrap.is-resizing {
+  user-select: none;
+}
+
 .haim-raw-md {
   white-space: pre-wrap;
   font-size: 12px;
   opacity: 0.85;
+}
+
+.haim-raw-md--haim-table {
+  white-space: normal;
+  font-size: inherit;
+  opacity: 1;
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.haim-raw-md--haim-table.is-selected {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.haim-haim-table-preview table {
+  border-collapse: collapse;
+  max-width: 100%;
+}
+
+.haim-haim-table-preview th,
+.haim-haim-table-preview td {
+  border: 1px solid #cbd5e1;
+  padding: 0.35em 0.6em;
+}
+
+.haim-editor--dark .haim-haim-table-preview th,
+.haim-editor--dark .haim-haim-table-preview td {
+  border-color: var(--odp-borderStrong, #475569);
+}
+
+/* Math (KaTeX + source edit) */
+.haim-math-block {
+  position: relative;
+  margin: 0.75em 0;
+  padding: 0.5em 0.75em;
+  overflow-x: auto;
+  text-align: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--md-theme-code-bg-color, #f1f5f9) 80%, transparent);
+}
+
+.haim-math-block.is-selected,
+.haim-math-inline.is-selected {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+}
+
+.haim-math-block__toolbar {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.haim-math-block:hover .haim-math-block__toolbar,
+.haim-math-block.is-selected .haim-math-block__toolbar,
+.haim-math-block--editing .haim-math-block__toolbar {
+  opacity: 1;
+}
+
+.haim-math-block__textarea {
+  display: block;
+  width: 100%;
+  min-height: 2.5rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+}
+
+.haim-editor--dark .haim-math-block__textarea {
+  border-color: var(--odp-borderStrong, #475569);
+  background: var(--odp-bgSoft, #0f172a);
+}
+
+.haim-math-block__fallback,
+.haim-math-inline__fallback {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+
+.haim-math-block--error,
+.haim-math-inline--error {
+  color: #dc2626;
+}
+
+.haim-math-inline {
+  display: inline-block;
+  vertical-align: middle;
+  padding: 0 0.15em;
+  cursor: default;
+}
+
+.haim-math-inline--editing {
+  padding: 0;
+}
+
+.haim-math-inline__input {
+  min-width: 4rem;
+  max-width: min(80vw, 28rem);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  padding: 0.15em 0.35em;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #fff;
+  color: inherit;
+}
+
+.haim-editor--dark .haim-math-inline__input {
+  border-color: var(--odp-borderStrong, #475569);
+  background: var(--odp-bgSoft, #0f172a);
 }
 
 .haim-source-pane .cm-editor {
