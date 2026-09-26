@@ -64,6 +64,7 @@ Export PDF renders markdown (Mermaid, code blocks, wiki images) in a staging `Md
 | 역할 | 경로 |
 |------|------|
 | markdown-it | `src/utils/pageBreakMarkdownIt.js` |
+| Haim TipTap node | `src/components/haimEditor/extensions/PageBreak.ts` (markdownTokenizer + `setPageBreak`) |
 | paged.js preview | `src/pages/exportPdf/hooks/usePagedJsPreview.ts`, `exportPdfPagedStyles.ts` |
 | XSS whitelist | `src/config/mdEditorConfig.js` |
-| AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx` |
+| AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx`, Haim toolbar `onInsertPageBreak` |

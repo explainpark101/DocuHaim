@@ -51,7 +51,7 @@ describe('protectCustomMarkdown', () => {
     const protectedMd = protectCustomMarkdown(src);
     expect(protectedMd).toContain('data-wiki-path');
     expect(protectedMd).toContain('img/a.png');
-    expect(protectedMd).toContain('<pgbr>');
+    expect(protectedMd).toContain('<pgbr/>');
     const restored = restoreCustomMarkdown(protectedMd);
     expect(restored).toContain('![[img/a.png|w=50%]]');
     expect(restored).toContain('<pgbr/>');

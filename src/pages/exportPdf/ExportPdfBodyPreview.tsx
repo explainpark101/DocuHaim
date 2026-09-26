@@ -21,6 +21,7 @@ import {
   headingId,
 } from '@/pages/exportPdf/exportPdfPrintStyles';
 import { useExportPdfPreviewZoomClip } from '@/pages/exportPdf/hooks/useExportPdfPreviewZoomClip';
+import type { ExportPdfPreviewEngineId } from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
 
 export type ExportPdfBodyPreviewProps = {
   coverPages: ReactNode;
@@ -48,6 +49,8 @@ export type ExportPdfBodyPreviewProps = {
   metricRef: RefObject<HTMLDivElement | null>;
   bodyMarkdown: string;
   previewFootnotesRenderKey: number;
+  /** Staging MdPreview engine; default `auto` follows note editor type. */
+  previewEngine?: ExportPdfPreviewEngineId;
   printChrome: PrintChromeDoc | null;
   printChromeMarginsMm: PrintPageMarginsMm;
   chromeEditable?: boolean;
@@ -83,6 +86,7 @@ export function ExportPdfBodyPreview({
   metricRef,
   bodyMarkdown,
   previewFootnotesRenderKey,
+  previewEngine = 'auto',
   printChrome,
   printChromeMarginsMm,
   chromeEditable = true,
@@ -217,7 +221,8 @@ export function ExportPdfBodyPreview({
               aria-hidden
             />
             <MarkdownPreviewSurface
-              key={`footnotes-${previewFootnotesRenderKey}`}
+              key={`engine-${previewEngine}|footnotes-${previewFootnotesRenderKey}`}
+              engineHint={previewEngine}
               id={EDITOR_ID}
               theme="light"
               language="ko-KR"

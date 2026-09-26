@@ -18,11 +18,23 @@
 
 .haim-editor-content .tiptap {
   outline: none;
-  /* Match md-editor-rt: allow scrolling last lines to ~viewport center */
-  padding-bottom: 50vh;
-  padding-bottom: 50dvh;
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+
+/*
+ * Scroll-center padding only for live note WYSIWYG.
+ * HaimMarkdownPreview sets data-haim-preview-only — do not apply 50vh there
+ * (chat bubbles, Export PDF staging/paged clone would get a huge empty gap).
+ */
+.haim-editor:not([data-haim-preview-only]) .haim-editor-content .tiptap {
+  padding-bottom: 50vh;
+  padding-bottom: 50dvh;
+}
+
+/* Compact read-only preview: strip md-editor-rt .md-editor-preview 50vh too. */
+.haim-markdown-preview.md-editor-preview {
+  padding-bottom: 0 !important;
 }
 
 .haim-editor-prose {
@@ -153,37 +165,40 @@
 
 .haim-pgbr,
 .md-pgbr {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 1rem 0;
+  /* Match md-editor-rt preview rule — empty flex + dashed borders often collapse. */
+  display: block;
+  height: 1px;
+  margin: 14px 0;
+  padding: 16px 0;
+  border: none;
+  border-block-start: 1px dashed var(--haim-pgbr-color);
+  background: transparent;
   color: var(--haim-pgbr-color);
   font-size: 11px;
   user-select: none;
 }
 
-.haim-pgbr::before,
-.haim-pgbr::after,
-.md-pgbr::before,
-.md-pgbr::after {
-  content: '';
-  flex: 1;
-  border-top: 1px dashed var(--haim-pgbr-color);
+.haim-pgbr.is-selected,
+.md-pgbr.ProseMirror-selectednode {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
 }
 
 .haim-wiki-image-wrap {
   position: relative;
-  display: inline-block;
-  width: fit-content;
+  display: flex;
+  justify-content: center;
+  width: 100%;
   max-width: 100%;
   margin: 0.5em 0;
   line-height: 0;
-  vertical-align: middle;
 }
 
-/* TipTap NodeViewWrapper can stretch as a block; keep handle box = image box. */
+/* TipTap NodeViewWrapper: full-width row so the frame can sit centered. */
 .haim-wiki-image-wrap[data-node-view-wrapper] {
-  width: fit-content;
+  display: flex;
+  justify-content: center;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -195,24 +210,40 @@
   line-height: 0;
 }
 
+.haim-stock-image-wrap {
+  display: flex !important;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.5em 0;
+  line-height: 0;
+}
+
 .haim-wiki-image-wrap.is-selected .haim-wiki-image {
   outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
   outline-offset: 2px;
 }
 
+.haim-stock-image-wrap.is-selected .haim-stock-image {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+}
+
 .haim-wiki-image {
-  display: inline-block;
+  display: block;
   max-width: 100%;
   height: auto;
-  margin: 0;
+  margin-block: 0;
+  margin-inline: auto;
   padding: 0;
   border: 0;
   border-radius: 4px;
   background: transparent;
-  vertical-align: middle;
+  cursor: pointer;
 }
 
-.haim-editor--dark .haim-wiki-image-wrap.is-selected .haim-wiki-image {
+.haim-editor--dark .haim-wiki-image-wrap.is-selected .haim-wiki-image,
+.haim-editor--dark .haim-stock-image-wrap.is-selected .haim-stock-image {
   outline-color: var(--md-theme-code-active-color, #818cf8);
 }
 

@@ -41,4 +41,9 @@ export function normalizeHaimPreviewForExportPdf(root: ParentNode): void {
     root.querySelector('.haim-editor');
   if (!hasHaim) return;
   applyHaimPreviewExportPdfAliases(root);
+
+  // TipTap leaves contenteditable on the clone; strip for print layout.
+  for (const el of root.querySelectorAll<HTMLElement>('[contenteditable]')) {
+    el.removeAttribute('contenteditable');
+  }
 }

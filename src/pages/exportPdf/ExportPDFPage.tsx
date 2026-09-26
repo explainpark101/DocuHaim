@@ -186,6 +186,7 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       metricRef={layout.metricRef}
       bodyMarkdown={doc.bodyMarkdown}
       previewFootnotesRenderKey={layout.previewFootnotesRenderKey}
+      previewEngine={layout.previewEngine}
       printChrome={printChromeState.parsedChrome}
       printChromeMarginsMm={pageMarginsMm}
       chromeEditable

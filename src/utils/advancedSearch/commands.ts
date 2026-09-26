@@ -29,10 +29,12 @@ import {
   getWorkspacePaneFreezeCommands,
   getFootnoteDisplayModeCommands,
   getEditorImageAlignCommands,
+  getExportPdfPreviewEngineCommands,
   type SettingsToggleId,
   type WorkspaceTabsAutoSaveCommandId,
   type WorkspacePaneFreezeCommandId,
   type FootnoteDisplayModeCommandId,
+  type ExportPdfPreviewEngineCommandId,
   type EditorImageAlignCommandId,
   type StatusBarClockFormatCommandId,
   getStatusBarClockFormatCommands,
@@ -78,6 +80,7 @@ export type AppCommandId =
   | 'settings-imgbb'
   | 'settings-webauthn'
   | 'settings-editor'
+  | 'settings-export-pdf-preview'
   | 'settings-navigation'
   | 'settings-display'
   | 'settings-chat'
@@ -121,6 +124,7 @@ export type AppCommandId =
   | WorkspaceTabsAutoSaveCommandId
   | WorkspacePaneFreezeCommandId
   | FootnoteDisplayModeCommandId
+  | ExportPdfPreviewEngineCommandId
   | EditorImageAlignCommandId
   | StatusBarClockFormatCommandId
   | FootnoteInsertCommandId
@@ -362,7 +366,7 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'settings-editor',
     title: '설정 · 마크다운 에디터',
-    description: '기존 에디터 / Haim Editor 및 각주 표기 설정',
+    description: '기존 에디터 / Haim Editor, Export PDF 미리보기 엔진, 각주 표기',
     path: '/settings#settings-editor',
     keywords: [
       '에디터',
@@ -374,6 +378,28 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       'haim',
       'tiptap',
       '기존 에디터',
+      'export pdf',
+      '미리보기 엔진',
+    ],
+  },
+  {
+    id: 'settings-export-pdf-preview',
+    title: '설정 · Export PDF 미리보기 엔진',
+    description: '에디터 따라가기 / md-editor-rt / Haim Editor',
+    path: '/settings#settings-export-pdf-preview',
+    keywords: [
+      'export pdf',
+      'export-pdf',
+      'pdf',
+      '인쇄',
+      'print',
+      '미리보기',
+      'preview',
+      'engine',
+      '엔진',
+      '에디터 따라가기',
+      'md-editor-rt',
+      'haim',
     ],
   },
   {
@@ -1152,6 +1178,16 @@ function getFootnoteDisplayModeAppCommands(): AppCommand[] {
   }));
 }
 
+function getExportPdfPreviewEngineAppCommands(): AppCommand[] {
+  return getExportPdfPreviewEngineCommands().map((cmd) => ({
+    id: cmd.id,
+    title: cmd.title,
+    description: cmd.description,
+    path: '',
+    keywords: cmd.keywords,
+  }));
+}
+
 function getEditorImageAlignAppCommands(): AppCommand[] {
   return getEditorImageAlignCommands().map((cmd) => ({
     id: cmd.id,
@@ -1295,6 +1331,7 @@ export function matchAppCommandsRanked(
   const tabsAutoSave = getWorkspaceTabsAutoSaveAppCommands();
   const paneFreeze = getWorkspacePaneFreezeAppCommands();
   const footnoteDisplay = getFootnoteDisplayModeAppCommands();
+  const exportPdfPreviewEngine = getExportPdfPreviewEngineAppCommands();
   const imageAlign = getEditorImageAlignAppCommands();
   const statusBarClockFormat = getStatusBarClockFormatAppCommands();
   const seen = new Set<string>();
@@ -1307,6 +1344,7 @@ export function matchAppCommandsRanked(
     ...tabsAutoSave,
     ...paneFreeze,
     ...footnoteDisplay,
+    ...exportPdfPreviewEngine,
     ...imageAlign,
     ...statusBarClockFormat,
   ]) {

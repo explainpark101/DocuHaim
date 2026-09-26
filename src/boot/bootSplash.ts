@@ -109,6 +109,7 @@ export function initBootSplash(): BootSplashApi {
 
   const statusEl = document.getElementById('boot-splash-status');
   const detailEl = document.getElementById('boot-splash-detail');
+  const pctEl = document.getElementById('boot-splash-pct');
   const fillEl = document.getElementById('boot-splash-bar-fill');
   const barEl = document.getElementById('boot-splash-bar');
 
@@ -151,6 +152,7 @@ export function initBootSplash(): BootSplashApi {
     const pct = Math.round(ratio * 100);
     if (fillEl) fillEl.style.width = `${pct}%`;
     if (barEl) barEl.setAttribute('aria-valuenow', String(pct));
+    if (pctEl) pctEl.textContent = `${pct}%`;
     return pct;
   };
 
@@ -160,18 +162,18 @@ export function initBootSplash(): BootSplashApi {
       detailEl.textContent = explicit;
       return;
     }
-    const pct = paintBar() ?? 0;
+    paintBar();
     if (useByteBudget) {
       const label = lastLabel ? ` · ${lastLabel}` : '';
       detailEl.textContent =
-        `${formatBootBytes(loadedBytes)} / ${formatBootBytes(totalBytes)} · ${pct}%${label}`;
+        `${formatBootBytes(loadedBytes)} / ${formatBootBytes(totalBytes)}${label}`;
       return;
     }
     if (loadedCount > 0) {
       const label = lastLabel ? ` · ${lastLabel}` : '';
       const budget = Math.max(totalBytes, loadedBytes + DEV_HEADROOM_BYTES);
       detailEl.textContent =
-        `${formatBootBytes(loadedBytes)} / ~${formatBootBytes(budget)} · ${pct}%${label}`;
+        `${formatBootBytes(loadedBytes)} / ~${formatBootBytes(budget)}${label}`;
       return;
     }
     detailEl.textContent = '모듈을 불러오는 중…';
@@ -256,11 +258,12 @@ export function initBootSplash(): BootSplashApi {
       }
       if (fillEl) fillEl.style.width = '100%';
       if (barEl) barEl.setAttribute('aria-valuenow', '100');
+      if (pctEl) pctEl.textContent = '100%';
       if (statusEl) statusEl.textContent = '거의 완료…';
       if (detailEl) {
         detailEl.textContent = useByteBudget
-          ? `${formatBootBytes(totalBytes)} / ${formatBootBytes(totalBytes)} · 100%`
-          : '100%';
+          ? `${formatBootBytes(totalBytes)} / ${formatBootBytes(totalBytes)}`
+          : '로딩 완료';
       }
     },
   };
@@ -284,7 +287,7 @@ export function initBootSplash(): BootSplashApi {
       render();
     }, DEV_CREEP_MS);
   } else {
-    render(`0 B / ${formatBootBytes(totalBytes)} · 0%`);
+    render(`0 B / ${formatBootBytes(totalBytes)}`);
   }
 
   document.querySelectorAll('link[rel="modulepreload"], link[rel="stylesheet"][href]').forEach((node) => {

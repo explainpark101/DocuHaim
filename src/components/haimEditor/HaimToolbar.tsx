@@ -389,7 +389,7 @@ export default function HaimToolbar({
           label="페이지 나눔"
           onClick={() => {
             if (onInsertPageBreak) onInsertPageBreak();
-            else editor.chain().focus().insertContent({ type: 'pageBreak' }).run();
+            else editor.chain().focus().setPageBreak().run();
           }}
         >
           <SeparatorHorizontal size={14} />
