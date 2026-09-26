@@ -50,6 +50,8 @@ import {
   teardownNoteCoverPreviewsInRoot,
 } from '@/utils/noteCover/hydrateNoteCoverPreview';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
+import { useBase64ImageFold } from '@/hooks/useBase64ImageFold';
+import { getNoteCoverFoldKeyFromFile } from '@/utils/noteCover/noteCoverFoldStateDb';
 import { Loader2 } from 'lucide-react';
 import '@/styles/haim-editor/style.css';
 import '@/styles/haim-editor/code-hljs-themes.css';
@@ -98,6 +100,8 @@ export default function HaimEditor({
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(() =>
     loadHaimDoubleScrollSyncEnabled(),
   );
+  const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
+  const noteCoverFoldDocKey = getNoteCoverFoldKeyFromFile(currentFile);
   const [tocOpen, setTocOpen] = useState(false);
   const [tocLayout, setTocLayout] = useState<HaimTocLayout>(() => loadHaimTocLayout());
   const [cmRevision, setCmRevision] = useState(0);
@@ -737,6 +741,9 @@ export default function HaimEditor({
             setScrollSyncEnabled(next);
             saveHaimDoubleScrollSyncEnabled(next);
           }}
+          foldBase64Images={foldBase64Images}
+          onFoldBase64ImagesChange={setFoldBase64Images}
+          theme={theme}
           tocOpen={tocOpen}
           onTocOpenChange={setTocOpen}
           {...(onSave ? { onSave } : {})}
@@ -849,6 +856,8 @@ export default function HaimEditor({
                   onDocChanged={notifyCmDocChanged}
                   viewRef={cmViewRef}
                   onViewReady={() => setCmRevision((n) => n + 1)}
+                  noteCoverFoldDocKey={noteCoverFoldDocKey}
+                  foldBase64Images={foldBase64Images}
                   {...(onUploadImage && !previewOnly
                     ? {
                         onPasteImages: (files: File[]) => {
