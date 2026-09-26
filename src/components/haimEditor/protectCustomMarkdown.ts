@@ -60,8 +60,8 @@ export function protectCustomMarkdown(src: string): string {
     out = wrapRawHtml('plan-frontmatter', plan[0]) + out.slice(plan[0].length);
   }
 
-  // Page breaks → HTML TipTap PageBreak can parse
-  out = out.replace(/<pgbr\s*\/?\s*>/gi, '<pgbr></pgbr>');
+  // Normalize page breaks to `<pgbr/>` for PageBreak.markdownTokenizer.
+  out = out.replace(/<pgbr\s*\/?\s*>(?:\s*<\/pgbr>)?/gi, '<pgbr/>');
 
   // Wiki images → canonical <img data-wiki-path> for TipTap WikiImage + hydration
   out = out.replace(WIKI_IMAGE_RE, (m, inner) => {

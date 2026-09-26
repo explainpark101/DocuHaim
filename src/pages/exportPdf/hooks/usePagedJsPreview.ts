@@ -257,13 +257,21 @@ export function usePagedJsPreview({
         const preview = source?.querySelector('.md-editor-preview') ?? null;
         attempts += 1;
         if (preview) {
-          exportPdfLoadDebugElapsed('paged:preview-ready', started, {
-            generation,
-            runId,
-            attempts,
-            htmlLength: preview.innerHTML?.length ?? 0,
-          });
-          return preview;
+          // Haim TipTap mounts async (immediatelyRender: false). Do not paginate
+          // an empty host before the editor is ready — legacy MdPreview has no marker.
+          const isHaimHost = preview.hasAttribute('data-haim-markdown-preview');
+          const haimReady =
+            !isHaimHost || preview.hasAttribute('data-haim-preview-ready');
+          if (haimReady) {
+            exportPdfLoadDebugElapsed('paged:preview-ready', started, {
+              generation,
+              runId,
+              attempts,
+              htmlLength: preview.innerHTML?.length ?? 0,
+              haim: isHaimHost,
+            });
+            return preview;
+          }
         }
         if (Date.now() - started >= PREVIEW_RETRY_MAX_MS) {
           exportPdfLoadDebugElapsed('paged:preview-timeout', started, {

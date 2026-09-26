@@ -135,12 +135,19 @@ export default function HaimMarkdownPreview({
         ref={rootRef}
         className="md-editor-preview haim-markdown-preview"
         data-haim-markdown-preview=""
+        {...(editor ? { 'data-haim-preview-ready': '' } : {})}
       >
         <div
           className={`haim-editor ${isDark ? 'haim-editor--dark' : ''}`.trim()}
           data-haim-preview-only=""
         >
-          <EditorContent editor={editor} className="haim-editor-content" />
+          {editor ? (
+            <EditorContent editor={editor} className="haim-editor-content" />
+          ) : (
+            <pre className="m-0 whitespace-pre-wrap break-words font-[inherit] text-[inherit] leading-[inherit]">
+              {markdown}
+            </pre>
+          )}
         </div>
       </div>
     </div>

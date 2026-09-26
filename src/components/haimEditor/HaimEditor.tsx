@@ -788,6 +788,46 @@ export default function HaimEditor({
     }
   }, [editor]);
 
+  /**
+   * Insert `<pgbr/>` at the active surface caret (CM source or TipTap),
+   * then sync so raw shows vault markdown and WYSIWYG shows the break.
+   */
+  const insertPageBreak = useCallback(() => {
+    if (!editor) return;
+    const cm = cmViewRef.current;
+    const preferCm =
+      cm != null &&
+      (cm.hasFocus ||
+        effectiveMode === HAIM_VIEW_MODE_SOURCE ||
+        (showSource && !showWysiwyg));
+
+    if (preferCm && cm) {
+      const { from, to } = cm.state.selection.main;
+      const insertion = '\n\n<pgbr/>\n\n';
+      cm.dispatch({
+        changes: { from, to, insert: insertion },
+        selection: { anchor: from + insertion.length },
+        scrollIntoView: true,
+      });
+      cm.focus();
+      pushCmMarkdownToEditorNow();
+      return;
+    }
+
+    const ok = editor.chain().focus().setPageBreak().run();
+    if (ok) {
+      invalidateMarkdownCache(editor);
+      pushEditorMarkdownToCmNow();
+    }
+  }, [
+    editor,
+    effectiveMode,
+    showSource,
+    showWysiwyg,
+    pushCmMarkdownToEditorNow,
+    pushEditorMarkdownToCmNow,
+  ]);
+
   useEffect(() => {
     if (previewOnly || !isSurfaceLive || !editor) return undefined;
     const run = (fn: () => unknown) => {
@@ -825,8 +865,7 @@ export default function HaimEditor({
         ),
       'editor-revoke': () => run(() => editor.chain().focus().undo().run()),
       'editor-next': () => run(() => editor.chain().focus().redo().run()),
-      'editor-pgbr': () =>
-        run(() => editor.chain().focus().insertContent({ type: 'pageBreak' }).run()),
+      'editor-pgbr': () => run(() => insertPageBreak()),
       'editor-export-pdf': () => {
         flush();
         navigateToExportPdf();
@@ -903,6 +942,7 @@ export default function HaimEditor({
     openHaimTableFromSelection,
     onUploadImage,
     showImageUploadOverlay,
+    insertPageBreak,
   ]);
 
   useEffect(() => {
@@ -983,9 +1023,7 @@ export default function HaimEditor({
           viewMode={viewMode}
           onViewModeChange={setViewMode}
           previewOnly={previewOnly}
-          onInsertPageBreak={() => {
-            editor.chain().focus().insertContent({ type: 'pageBreak' }).run();
-          }}
+          onInsertPageBreak={insertPageBreak}
           scrollSyncEnabled={scrollSyncEnabled}
           onScrollSyncChange={(next) => {
             setScrollSyncEnabled(next);

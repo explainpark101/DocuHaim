@@ -9,6 +9,7 @@ import {
   useEffect,
   useState,
   type ComponentType,
+  type ReactNode,
 } from 'react';
 import {
   EDITOR_TYPE_CHANGED_EVENT,
@@ -34,6 +35,8 @@ const HaimMarkdownPreview = lazy(
 export type MarkdownPreviewSurfaceProps = Record<string, unknown> & {
   /** `auto` follows loadEditorType(); freeze panes should force `legacy`. */
   engineHint?: PreviewEngineHint;
+  /** Suspense fallback while the preview engine chunk loads. */
+  fallback?: ReactNode;
 };
 
 function PreviewFallback() {
@@ -46,6 +49,7 @@ function PreviewFallback() {
 
 export default function MarkdownPreviewSurface({
   engineHint = 'auto',
+  fallback,
   ...props
 }: MarkdownPreviewSurfaceProps) {
   const [engine, setEngine] = useState<PreviewEngineId>(() =>
@@ -69,7 +73,7 @@ export default function MarkdownPreviewSurface({
   const Preview = engine === 'haim' ? HaimMarkdownPreview : LegacyMdPreview;
 
   return (
-    <Suspense fallback={<PreviewFallback />}>
+    <Suspense fallback={fallback ?? <PreviewFallback />}>
       <Preview {...props} />
     </Suspense>
   );

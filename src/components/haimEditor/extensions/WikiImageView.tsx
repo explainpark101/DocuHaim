@@ -15,6 +15,7 @@ import {
   wikiImageMarkupFromAttrs,
 } from '@/utils/wikiImageSyntax';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
+import HaimImageLightbox from '@/components/haimEditor/HaimImageLightbox';
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
 
@@ -82,6 +83,8 @@ export default function WikiImageView({
   const imgRef = useRef<HTMLImageElement | null>(null);
   const liveSizeRef = useRef<{ width: number; height: number } | null>(null);
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [liveSize, setLiveSize] = useState<{
     width: number;
     height: number;
@@ -229,7 +232,7 @@ export default function WikiImageView({
   );
 
   useEffect(() => {
-    if (!selected || !editable || sizeModalOpen) return undefined;
+    if (!selected || !editable || sizeModalOpen || lightboxOpen) return undefined;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Enter') return;
@@ -248,7 +251,38 @@ export default function WikiImageView({
 
     document.addEventListener('keydown', onKeyDown, true);
     return () => document.removeEventListener('keydown', onKeyDown, true);
-  }, [selected, editable, sizeModalOpen, exitSizeEditMode]);
+  }, [selected, editable, sizeModalOpen, lightboxOpen, exitSizeEditMode]);
+
+  /** Single click → node selection (resize / edit mode). */
+  const selectForEdit = useCallback(
+    (event: ReactMouseEvent) => {
+      if (event.detail > 1) return;
+      // Allow context-menu / resize handles to own their events.
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-resize-handle]')
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const pos = typeof getPos === 'function' ? getPos() : null;
+      if (typeof pos !== 'number') return;
+      editor.chain().focus().setNodeSelection(pos).run();
+    },
+    [editor, getPos],
+  );
+
+  /** Double click → fullscreen enlarge viewer. */
+  const openEnlarge = useCallback((event: ReactMouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const img = imgRef.current;
+    const src = img?.currentSrc || img?.src || '';
+    if (!src) return;
+    setLightboxSrc(src);
+    setLightboxOpen(true);
+  }, []);
 
   return (
     <NodeViewWrapper
@@ -257,7 +291,9 @@ export default function WikiImageView({
         liveSize ? ' is-resizing' : ''
       }`}
       data-drag-handle
-      style={{ width: 'fit-content', maxWidth: '100%' }}
+      style={{ width: '100%', maxWidth: '100%' }}
+      onClick={selectForEdit}
+      onDoubleClick={openEnlarge}
       onContextMenu={(e: ReactMouseEvent) => {
         if (!editable) return;
         e.preventDefault();
@@ -303,6 +339,15 @@ export default function WikiImageView({
         onApply={({ width: nextW, height: nextH }) => {
           commitSize(nextW, nextH);
           setSizeModalOpen(false);
+        }}
+      />
+      <HaimImageLightbox
+        src={lightboxSrc}
+        alt={alt}
+        open={lightboxOpen}
+        onClose={() => {
+          setLightboxOpen(false);
+          setLightboxSrc(null);
         }}
       />
     </NodeViewWrapper>

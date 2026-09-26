@@ -69,6 +69,12 @@ import {
   type FootnoteDisplayMode,
 } from '@/utils/previewFootnotesSettings';
 import {
+  EXPORT_PDF_PREVIEW_ENGINE_OPTIONS,
+  loadExportPdfPreviewEngine,
+  saveExportPdfPreviewEngine,
+  type ExportPdfPreviewEngineId,
+} from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
+import {
   EDITOR_IMAGE_ALIGN_OPTIONS,
   loadEditorImageAlign,
   setEditorImageAlign,
@@ -853,6 +859,75 @@ export function applyFootnoteDisplayModeCommand(
   id: FootnoteDisplayModeCommandId,
 ): void {
   setFootnoteDisplayMode(footnoteDisplayModeFromCommandId(id));
+}
+
+export type ExportPdfPreviewEngineCommandId =
+  | 'settings-export-pdf-preview-auto'
+  | 'settings-export-pdf-preview-legacy'
+  | 'settings-export-pdf-preview-haim';
+
+const EXPORT_PDF_PREVIEW_ENGINE_COMMAND_BY_MODE = {
+  auto: 'settings-export-pdf-preview-auto',
+  legacy: 'settings-export-pdf-preview-legacy',
+  haim: 'settings-export-pdf-preview-haim',
+} as const;
+
+export function isExportPdfPreviewEngineCommandId(
+  id: string | undefined | null,
+): id is ExportPdfPreviewEngineCommandId {
+  return (
+    id === 'settings-export-pdf-preview-auto' ||
+    id === 'settings-export-pdf-preview-legacy' ||
+    id === 'settings-export-pdf-preview-haim'
+  );
+}
+
+export function exportPdfPreviewEngineFromCommandId(
+  id: ExportPdfPreviewEngineCommandId,
+): ExportPdfPreviewEngineId {
+  if (id === 'settings-export-pdf-preview-legacy') return 'legacy';
+  if (id === 'settings-export-pdf-preview-haim') return 'haim';
+  return 'auto';
+}
+
+/** Situational: only engines other than the current preference. */
+export function getExportPdfPreviewEngineCommands(): Array<{
+  id: ExportPdfPreviewEngineCommandId;
+  title: string;
+  description: string;
+  keywords: string[];
+}> {
+  const current = loadExportPdfPreviewEngine();
+  return EXPORT_PDF_PREVIEW_ENGINE_OPTIONS.filter((opt) => opt.value !== current).map(
+    (opt) => ({
+      id: EXPORT_PDF_PREVIEW_ENGINE_COMMAND_BY_MODE[opt.value],
+      title: `Export PDF 미리보기: ${opt.label}`,
+      description: opt.description,
+      keywords: [
+        'export pdf',
+        'export-pdf',
+        'pdf',
+        '인쇄',
+        'print',
+        '미리보기',
+        'preview',
+        'engine',
+        '엔진',
+        '에디터 따라가기',
+        'md-editor-rt',
+        'haim',
+        'tiptap',
+        opt.value,
+        opt.label,
+      ],
+    }),
+  );
+}
+
+export function applyExportPdfPreviewEngineCommand(
+  id: ExportPdfPreviewEngineCommandId,
+): void {
+  saveExportPdfPreviewEngine(exportPdfPreviewEngineFromCommandId(id));
 }
 
 export type EditorImageAlignCommandId =

@@ -45,6 +45,12 @@ import {
   saveEditorType,
 } from '@/utils/editorTypeSettings';
 import {
+  EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT,
+  EXPORT_PDF_PREVIEW_ENGINE_OPTIONS,
+  loadExportPdfPreviewEngine,
+  saveExportPdfPreviewEngine,
+} from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
+import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
   HAIM_VIEW_MODE_OPTIONS,
   loadHaimViewMode,
@@ -239,6 +245,9 @@ export default function SettingsPage({
   const [editorType, setEditorTypeState] = useState(
     () => editorTypeProp ?? loadEditorType(),
   );
+  const [exportPdfPreviewEngine, setExportPdfPreviewEngineState] = useState(() =>
+    loadExportPdfPreviewEngine(),
+  );
   const [haimViewMode, setHaimViewModeState] = useState(() => loadHaimViewMode());
   const [haimTocLayout, setHaimTocLayoutState] = useState(() => loadHaimTocLayout());
   const [haimFocusOutline, setHaimFocusOutlineState] = useState(() =>
@@ -334,6 +343,17 @@ export default function SettingsPage({
     const sync = () => setEditorTypeState(loadEditorType());
     window.addEventListener(EDITOR_TYPE_CHANGED_EVENT, sync);
     return () => window.removeEventListener(EDITOR_TYPE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const engine = event?.detail?.engine ?? loadExportPdfPreviewEngine();
+      setExportPdfPreviewEngineState(engine);
+    };
+    window.addEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, sync);
+    return () => {
+      window.removeEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -1154,6 +1174,41 @@ export default function SettingsPage({
               </label>
             ))}
           </div>
+          <div
+            id="settings-export-pdf-preview"
+            tabIndex={-1}
+            className="mt-4 scroll-mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong"
+          >
+            <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
+              Export PDF 미리보기 엔진
+            </p>
+            <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+              인쇄 미리보기(스테이징)에 쓸 렌더러입니다. 기본값은 마크다운 에디터 설정을 따릅니다.
+            </p>
+            <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg mb-4">
+              {EXPORT_PDF_PREVIEW_ENGINE_OPTIONS.map((opt) => (
+                <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="exportPdfPreviewEngine"
+                    value={opt.value}
+                    checked={exportPdfPreviewEngine === opt.value}
+                    onChange={() => {
+                      setExportPdfPreviewEngineState(opt.value);
+                      saveExportPdfPreviewEngine(opt.value);
+                    }}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <span>
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                      {opt.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
           {editorType === EDITOR_TYPE_HAIM ? (
             <div className="mb-4 rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderStrong dark:bg-odp-bgSoft/40">
               <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
@@ -1353,7 +1408,8 @@ export default function SettingsPage({
             이미지 정렬
           </h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
-            에디터 미리보기·WYSIWYG에서 위키 이미지와 마크다운 이미지를 가로로 어떻게 배치할지 고릅니다.
+            기존 에디터 미리보기에서 위키 이미지와 마크다운 이미지를 가로로 어떻게 배치할지
+            고릅니다. Haim Editor WYSIWYG·미리보기와 Export PDF는 항상 가운데 정렬입니다.
             기본값은 가운데입니다.
           </p>
           <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">

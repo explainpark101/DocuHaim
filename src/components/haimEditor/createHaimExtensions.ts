@@ -2,6 +2,8 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import HaimStockImageView from '@/components/haimEditor/extensions/HaimStockImageView';
 import { TableKit } from '@tiptap/extension-table';
 import { ListKit } from '@tiptap/extension-list';
 import { TextStyleKit } from '@tiptap/extension-text-style';
@@ -114,6 +116,9 @@ export function createHaimExtensions(
             tag: 'img[src]:not([data-wiki-path])',
           },
         ];
+      },
+      addNodeView() {
+        return ReactNodeViewRenderer(HaimStockImageView);
       },
     }).configure({
       allowBase64: true,
