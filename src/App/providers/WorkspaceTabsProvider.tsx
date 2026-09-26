@@ -43,6 +43,8 @@ export function WorkspaceTabsProvider({ children }: Props) {
       openChatWorkspaceTab: domain.openChatWorkspaceTab,
       openSettingsWorkspaceTab: domain.openSettingsWorkspaceTab,
       openContentSearchWorkspaceTab: domain.openContentSearchWorkspaceTab,
+      openLlmAssistWorkspaceTab: domain.openLlmAssistWorkspaceTab,
+      closeLlmAssistWorkspaceTab: domain.closeLlmAssistWorkspaceTab,
       reorderWorkspaceTabs: domain.reorderWorkspaceTabs,
       collapseToLegacyWorkspace: domain.collapseToLegacyWorkspace,
       cycleWorkspaceTab: domain.cycleWorkspaceTab,

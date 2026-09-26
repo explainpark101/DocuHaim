@@ -281,6 +281,7 @@ function SplitNode({
         style={{ flex: `${firstFlex} 1 0%` }}
       >
         <SplitLayoutBranch
+          key={node.children[0].id}
           layout={node.children[0]}
           layoutRoot={layoutRoot}
           onResizeSplit={onResizeSplit}
@@ -300,6 +301,7 @@ function SplitNode({
         style={{ flex: `${secondFlex} 1 0%` }}
       >
         <SplitLayoutBranch
+          key={node.children[1].id}
           layout={node.children[1]}
           layoutRoot={layoutRoot}
           onResizeSplit={onResizeSplit}
@@ -333,13 +335,17 @@ function SplitLayoutBranch({
 }) {
   if (isPaneLeaf(layout)) {
     return (
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div
+        key={layout.id}
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      >
         {renderLeaf(layout.id)}
       </div>
     );
   }
   return (
     <SplitNode
+      key={layout.id}
       node={layout}
       layoutRoot={layoutRoot}
       onResizeSplit={onResizeSplit}
@@ -367,6 +373,7 @@ export default function WorkspaceSplitLayout({
   return (
     <PaneResizeDragContext.Provider value={dragVisual}>
       <SplitLayoutBranch
+        key={layout.id}
         layout={layout}
         layoutRoot={layout}
         onResizeSplit={onResizeSplit}

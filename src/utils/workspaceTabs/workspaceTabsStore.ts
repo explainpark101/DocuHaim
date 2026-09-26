@@ -1,6 +1,7 @@
 import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
+  LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
   WORKSPACE_TAB_SOFT_CAP,
   defaultWorkspaceLayout,
@@ -13,6 +14,7 @@ import {
   createChatTab,
   createContentSearchTab,
   createFileTab,
+  createLlmAssistTab,
   createSettingsTab,
   isFileTab,
   isFileTabDirty,
@@ -40,7 +42,7 @@ import {
   type PaneSplitEdge,
   splitAtWorkspaceEdge,
 } from '@/utils/workspaceTabs/paneLayout';
-import { swapLeafContents } from '@/utils/workspaceTabs/paneLayoutEdit';
+import { swapLeafNodes } from '@/utils/workspaceTabs/paneLayoutEdit';
 
 export { WORKSPACE_TAB_GROUP_ZONE_ID, WORKSPACE_TAB_ORPHAN_ZONE_ID };
 
@@ -117,7 +119,7 @@ function touchActivate(tabs: WorkspaceTab[], id: string, now: number): Workspace
   });
 }
 
-/** Place a newly opened tab. While split, leave it outside the pane tree (full window). */
+/** Place a newly opened tab. While split, leave it outside the pane tree (orphan). */
 function placeNewTab(
   layout: PaneNode,
   focusedPaneId: string,
@@ -125,7 +127,9 @@ function placeNewTab(
   opts?: { activate?: boolean },
 ): { layout: PaneNode; focusedPaneId: string; activeId: string | null } {
   const activate = opts?.activate !== false;
-  if (activate && countLeaves(layout) > 1) {
+  // While split, never inject into the focused leaf — background restore would
+  // otherwise dump first-pane files into the 2nd/3rd pane when that leaf is focused.
+  if (countLeaves(layout) > 1) {
     const stripped = removeTabFromLayout(layout, tabId);
     const pruned = pruneLayoutToTabs(
       stripped,
@@ -135,7 +139,7 @@ function placeNewTab(
     return {
       layout: pruned.layout,
       focusedPaneId: pruned.focusedPaneId,
-      activeId: tabId,
+      activeId: activate ? tabId : null,
     };
   }
   const placed = addTabToFocusedLeaf(layout, focusedPaneId, tabId, { activate });
@@ -301,6 +305,21 @@ export function setFocusedPane(state: WorkspaceTabsState, paneId: string): Works
   });
 }
 
+/**
+ * Place a singleton app tab (chat / settings / search) into the focused leaf.
+ * Unlike placeNewTab, does not force a full-window orphan while split.
+ */
+function placeSingletonIntoFocusedLeaf(
+  layout: PaneNode,
+  focusedPaneId: string,
+  tabId: string,
+  opts?: { activate?: boolean },
+): { layout: PaneNode; focusedPaneId: string; activeId: string | null } {
+  const activate = opts?.activate !== false;
+  const placed = addTabToFocusedLeaf(layout, focusedPaneId, tabId, { activate });
+  return { ...placed, activeId: activate ? tabId : null };
+}
+
 export function openOrActivateChat(
   state: WorkspaceTabsState,
   now = Date.now(),
@@ -309,12 +328,16 @@ export function openOrActivateChat(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'chat');
   if (existing) {
-    return activate ? activateTabFullWindow(state, CHAT_TAB_ID, now) : state;
+    // Keep leaf membership — do not yank an in-pane chat out to full-window.
+    return activate ? activateTab(state, CHAT_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createChatTab()];
-  const placed = placeNewTab(state.layout, state.focusedPaneId, CHAT_TAB_ID, {
-    activate,
-  });
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    CHAT_TAB_ID,
+    { activate },
+  );
   const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
     tabs: activate ? touchActivate(ordered, CHAT_TAB_ID, now) : ordered,
@@ -332,12 +355,15 @@ export function openOrActivateSettings(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'settings');
   if (existing) {
-    return activate ? activateTabFullWindow(state, SETTINGS_TAB_ID, now) : state;
+    return activate ? activateTab(state, SETTINGS_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createSettingsTab()];
-  const placed = placeNewTab(state.layout, state.focusedPaneId, SETTINGS_TAB_ID, {
-    activate,
-  });
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    SETTINGS_TAB_ID,
+    { activate },
+  );
   const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
     tabs: activate ? touchActivate(ordered, SETTINGS_TAB_ID, now) : ordered,
@@ -355,12 +381,15 @@ export function openOrActivateContentSearch(
   const activate = opts?.activate !== false;
   const existing = state.tabs.find((t) => t.kind === 'content-search');
   if (existing) {
-    return activate ? activateTabFullWindow(state, CONTENT_SEARCH_TAB_ID, now) : state;
+    return activate ? activateTab(state, CONTENT_SEARCH_TAB_ID, now) : state;
   }
   const tabs = [...state.tabs, createContentSearchTab()];
-  const placed = placeNewTab(state.layout, state.focusedPaneId, CONTENT_SEARCH_TAB_ID, {
-    activate,
-  });
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    CONTENT_SEARCH_TAB_ID,
+    { activate },
+  );
   const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
     tabs: activate ? touchActivate(ordered, CONTENT_SEARCH_TAB_ID, now) : ordered,
@@ -368,6 +397,50 @@ export function openOrActivateContentSearch(
     focusedPaneId: placed.focusedPaneId,
     activeId: placed.activeId,
   });
+}
+
+/**
+ * Open LLM Assist as a workspace pane. First open splits to the workspace right edge;
+ * subsequent opens only activate the existing leaf (keeps user layout).
+ */
+export function openOrActivateLlmAssist(
+  state: WorkspaceTabsState,
+  now = Date.now(),
+  opts?: { activate?: boolean },
+): WorkspaceTabsState {
+  const activate = opts?.activate !== false;
+  const existing = state.tabs.find((t) => t.kind === 'llm-assist');
+  if (existing) {
+    return activate ? activateTab(state, LLM_ASSIST_TAB_ID, now) : state;
+  }
+
+  const tabs = [...state.tabs, createLlmAssistTab()];
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    LLM_ASSIST_TAB_ID,
+    { activate: true },
+  );
+  let next: WorkspaceTabsState = ensureLayout({
+    tabs: touchActivate(tabsOrderedByLayout(tabs, placed.layout), LLM_ASSIST_TAB_ID, now),
+    layout: placed.layout,
+    focusedPaneId: placed.focusedPaneId,
+    activeId: LLM_ASSIST_TAB_ID,
+  });
+
+  const split = splitTabToWorkspaceEdge(next, 'right', LLM_ASSIST_TAB_ID);
+  if (split.ok) {
+    next = split.state;
+  }
+
+  if (!activate) {
+    // Tab is placed but do not steal focus from the prior active tab.
+    const priorActive = state.activeId;
+    if (priorActive && next.tabs.some((t) => t.id === priorActive)) {
+      return activateTab(next, priorActive, now);
+    }
+  }
+  return next;
 }
 
 export type OpenFileTabInput = {
@@ -422,7 +495,7 @@ export function openOrReplaceFileTab(
   }
 
   if (!activate) {
-    // New tab still needs a leaf slot (background restore shells stay in focused leaf).
+    // New tab while split becomes an orphan (not injected into the focused leaf).
     if (idx < 0) {
       const placed = placeNewTab(state.layout, state.focusedPaneId, tab.id, {
         activate: false,
@@ -814,12 +887,13 @@ export function swapPanesOrMoveTabToCenter(
   if (!source || source.id === targetLeafId) {
     return moveTabIntoLeaf(state, tabId, targetLeafId);
   }
-  const layout = swapLeafContents(state.layout, source.id, targetLeafId);
+  const layout = swapLeafNodes(state.layout, source.id, targetLeafId);
   if (layout === state.layout) return state;
+  // Focus the moved source leaf (still owns tabId) at its new position.
   return ensureLayout({
     tabs: state.tabs,
     layout,
-    focusedPaneId: targetLeafId,
+    focusedPaneId: source.id,
     activeId: tabId,
   });
 }

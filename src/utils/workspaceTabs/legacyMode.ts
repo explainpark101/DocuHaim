@@ -1,6 +1,7 @@
 import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
+  LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
   defaultWorkspaceLayout,
   type FileWorkspaceTab,
@@ -75,7 +76,7 @@ export function retainOnlyFileTab(
 
 function stripKind(
   state: WorkspaceTabsState,
-  kind: 'chat' | 'settings' | 'content-search',
+  kind: 'chat' | 'settings' | 'content-search' | 'llm-assist',
   singletonId: string,
 ): WorkspaceTabsState {
   const tabs = state.tabs.filter((t) => t.kind !== kind);
@@ -110,6 +111,10 @@ export function stripContentSearchTab(state: WorkspaceTabsState): WorkspaceTabsS
 
 export function stripSettingsTab(state: WorkspaceTabsState): WorkspaceTabsState {
   return stripKind(state, 'settings', SETTINGS_TAB_ID);
+}
+
+export function stripLlmAssistTab(state: WorkspaceTabsState): WorkspaceTabsState {
+  return stripKind(state, 'llm-assist', LLM_ASSIST_TAB_ID);
 }
 
 export type { WorkspaceTab };

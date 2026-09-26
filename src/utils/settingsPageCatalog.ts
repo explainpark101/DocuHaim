@@ -76,6 +76,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     sections: [
       { id: 'settings-navigation', label: '네비게이션' },
       { id: 'settings-workspace-pane-soft-cap', label: '분할 페인 개수 상한' },
+      { id: 'settings-workspace-pane-freeze', label: '비활성 스플릿 페인 프리징' },
       { id: 'settings-display', label: '표시 옵션' },
       { id: 'settings-wiki-image', label: '위키 이미지 캐싱' },
     ],

@@ -15,14 +15,29 @@ import {
 
 type KeyLike = Pick<KeyboardEvent, 'key' | 'code' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'isComposing' | 'defaultPrevented'>;
 
+/** macOS / iOS / iPadOS — KO layouts map the backtick key to ₩ / \\. */
+export function isApplePlatformForInlineCodeFence(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const platform = navigator.platform || '';
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua) || /iPhone|iPad|iPod/i.test(platform)) return true;
+  if (/Mac/i.test(platform) || /Mac OS X/i.test(ua)) return true;
+  return false;
+}
+
 /**
- * Mac KO/US layouts: backtick may arrive as ` / ₩ / \\ with Backquote or IntlBackslash.
+ * Inline-code wrap trigger for a non-empty selection.
+ * Always: ` / Backquote.
+ * Apple only: ₩ / \\ / IntlBackslash (Mac KO layouts; not Windows/Android backslash).
  */
 export function isInlineCodeFenceTriggerKey(e: KeyLike): boolean {
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
   const { key, code } = e;
-  if (key === '`' || key === '₩' || key === '\\') return true;
-  if (code === 'Backquote' || code === 'IntlBackslash') return true;
+  if (key === '`') return true;
+  if (code === 'Backquote') return true;
+  if (!isApplePlatformForInlineCodeFence()) return false;
+  if (key === '₩' || key === '\\') return true;
+  if (code === 'IntlBackslash') return true;
   return false;
 }
 

@@ -11,10 +11,12 @@ import WorkspacePanePlaceholder, {
   WorkspacePaneContentReveal,
 } from '@/components/shell/workspace/WorkspacePanePlaceholder';
 import WorkspacePaneCompactHost from '@/components/shell/workspace/WorkspacePaneCompactHost';
+import WorkspacePaneFreezeLeafHost from '@/components/shell/workspace/WorkspacePaneFreezeLeafHost';
 import { PANE_SPLIT_ROOT_ATTR } from '@/utils/workspaceTabs/paneBoundarySnap';
 import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
+  LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
   collectLeaves,
   countLeaves,
@@ -28,6 +30,7 @@ import {
   type PaneSplitEdge,
   type WorkspaceTab,
 } from '@/utils/workspaceTabs';
+import LlmAssistSplitHostShell from '@/components/llm/LlmAssistSplitHostShell';
 import {
   getPaneDropOverlayHit,
   getWorkspaceTabDrag,
@@ -43,6 +46,11 @@ import { lockPaneDragSelection } from '@/utils/workspaceTabs/paneDragSelectLock'
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import type { ExportPdfDocumentFile } from '@/pages/exportPdf/exportPdfTypes';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
+import {
+  loadWorkspacePaneFreezeMode,
+  WORKSPACE_PANE_FREEZE_CHANGED_EVENT,
+  type WorkspacePaneFreezeMode,
+} from '@/utils/workspacePaneFreezeSettings';
 
 const PANE_HEADER_DRAG_SLOP_PX = 8;
 
@@ -214,6 +222,7 @@ export default function WorkspaceMainPanels({
   const hasChatTab = tabs.some((t) => t.kind === 'chat');
   const hasSettingsTab = tabs.some((t) => t.kind === 'settings');
   const hasContentSearchTab = tabs.some((t) => t.kind === 'content-search');
+  const hasLlmAssistTab = tabs.some((t) => t.kind === 'llm-assist');
 
   const leaves = useMemo(() => (layout ? collectLeaves(layout) : []), [layout]);
   const isSplit = layout != null && countLeaves(layout) > 1;
@@ -239,6 +248,9 @@ export default function WorkspaceMainPanels({
 
   const [draggingTab, setDraggingTab] = useState(false);
   const [draggingPaneLeafId, setDraggingPaneLeafId] = useState<string | null>(null);
+  const [paneFreezeMode, setPaneFreezeMode] = useState<WorkspacePaneFreezeMode>(() =>
+    loadWorkspacePaneFreezeMode(),
+  );
   const [dropHighlight, setDropHighlight] = useState<{
     leafId: string;
     zone: PaneSplitEdge | 'center';
@@ -246,6 +258,24 @@ export default function WorkspaceMainPanels({
   } | null>(null);
   const dropHighlightRef = useRef(dropHighlight);
   dropHighlightRef.current = dropHighlight;
+
+  useEffect(() => {
+    const sync = (event?: Event) => {
+      const detail = (event as CustomEvent<{ mode?: WorkspacePaneFreezeMode }> | undefined)
+        ?.detail;
+      setPaneFreezeMode(
+        detail?.mode === 'off' ||
+          detail?.mode === 'hover-or-focus' ||
+          detail?.mode === 'focus'
+          ? detail.mode
+          : loadWorkspacePaneFreezeMode(),
+      );
+    };
+    window.addEventListener(WORKSPACE_PANE_FREEZE_CHANGED_EVENT, sync);
+    return () => {
+      window.removeEventListener(WORKSPACE_PANE_FREEZE_CHANGED_EVENT, sync);
+    };
+  }, []);
 
   const publishDropHighlight = useCallback(
     (next: { leafId: string; zone: PaneSplitEdge | 'center'; workspaceEdge: boolean } | null) => {
@@ -395,9 +425,11 @@ export default function WorkspaceMainPanels({
   const contentSearchActive = tabsEnabled
     ? activeId === CONTENT_SEARCH_TAB_ID
     : isContentSearchRoute;
+  const llmAssistActive = tabsEnabled ? activeId === LLM_ASSIST_TAB_ID : false;
   const showChat = tabsEnabled ? hasChatTab : isChatRoute;
   const showSettings = tabsEnabled ? hasSettingsTab : isSettingsRoute;
   const showContentSearch = tabsEnabled ? hasContentSearchTab : isContentSearchRoute;
+  const showLlmAssist = tabsEnabled ? hasLlmAssistTab : false;
   const showEmpty = tabsEnabled
     ? tabs.length === 0 || activeId == null
     : !isChatRoute &&
@@ -464,6 +496,9 @@ export default function WorkspaceMainPanels({
           />
         </Suspense>
       );
+    }
+    if (tab.kind === 'llm-assist') {
+      return <LlmAssistSplitHostShell />;
     }
 
     if (opts?.exportPdf && isFileTab(tab)) {
@@ -697,8 +732,11 @@ export default function WorkspaceMainPanels({
       Boolean(onApplyPaneLayout) && splitDragEnabled && !isMobileLayout && isSplit;
 
     return (
-      <WorkspacePaneCompactHost
+      <WorkspacePaneFreezeLeafHost
+        key={leafId}
         shellIsMobile={isMobileLayout}
+        freezeMode={paneFreezeMode}
+        activeIsOrphan={activeIsOrphan}
         {...{ [PANE_LEAF_ATTR]: leafId }}
         className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-lg bg-white dark:bg-odp-surface ${
           focused
@@ -706,8 +744,12 @@ export default function WorkspaceMainPanels({
             : ''
         } ${freshPaneIds.has(leafId) ? 'workspace-pane-appear-glow' : ''}`}
         onPointerDownCapture={() => onFocusPane?.(leafId)}
+        onWheelCapture={() => {
+          // Frozen panes pause heavy work; wheel focuses so scroll targets this leaf.
+          if (!focused) onFocusPane?.(leafId);
+        }}
       >
-        {(contentIsMobileLayout) => (
+        {(contentIsMobileLayout, surfaceLive) => (
           <>
             {onCollapsePane && isSplit ? (
               <div
@@ -814,10 +856,7 @@ export default function WorkspaceMainPanels({
                       onClearExportPdf?.(leafId);
                     };
 
-                    // Mount only the leaf's active tab (invisible tabs unmount).
-                    // Visible but unfocused panes stay mounted with isSurfaceLive=false.
-                    // Include file path so remount clears CM/undo when the leaf
-                    // active tab identity would otherwise reuse the wrong body.
+                    // Freeze mode: off | hover-or-focus | focus (see WorkspacePaneFreezeLeafHost).
                     const fileKey =
                       isFileTab(tab) ? `${tab.storageType}:${tab.path}` : tab.id;
                     return (
@@ -833,7 +872,7 @@ export default function WorkspaceMainPanels({
                           ...(showExport ? { onExportPdfClose: handleExportClose } : {}),
                           contentIsMobileLayout,
                           // Orphan full-window view keeps the split tree mounted but hidden — pause it.
-                          isSurfaceLive: focused && !activeIsOrphan,
+                          isSurfaceLive: surfaceLive,
                         })}
                       </div>
                     );
@@ -843,7 +882,7 @@ export default function WorkspaceMainPanels({
             </div>
           </>
         )}
-      </WorkspacePaneCompactHost>
+      </WorkspacePaneFreezeLeafHost>
     );
   };
 
@@ -1016,6 +1055,16 @@ export default function WorkspaceMainPanels({
                         <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
                           {renderTabContent(
                             tabs.find((t) => t.kind === 'content-search')!,
+                            true,
+                            { contentIsMobileLayout, isSurfaceLive: true },
+                          )}
+                        </div>
+                      ) : null}
+
+                      {showLlmAssist && llmAssistActive ? (
+                        <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+                          {renderTabContent(
+                            tabs.find((t) => t.kind === 'llm-assist')!,
                             true,
                             { contentIsMobileLayout, isSurfaceLive: true },
                           )}

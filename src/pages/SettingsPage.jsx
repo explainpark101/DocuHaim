@@ -43,6 +43,7 @@ import {
   requestFocusWorkspacePaneSoftCapSetting,
 } from '@/utils/workspaceTabsSettings';
 import WorkspacePaneSoftCapSettings from '@/components/settings/WorkspacePaneSoftCapSettings';
+import WorkspacePaneFreezeSettings from '@/components/settings/WorkspacePaneFreezeSettings';
 import {
   getComposerHelperTextVisible,
 } from '@/utils/chatWithMyself';
@@ -1487,6 +1488,7 @@ export default function SettingsPage({
                   })}
                 </RadioGroup.Root>
                 <WorkspacePaneSoftCapSettings />
+                <WorkspacePaneFreezeSettings />
               </div>
             </SettingsCollapsibleContent>
           </div>
