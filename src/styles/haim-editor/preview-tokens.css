@@ -120,20 +120,28 @@
   border-color: var(--md-theme-border-color);
 }
 
-/* Focus / selection helpers from @tiptap/extensions — toggle via settings */
-.haim-editor .tiptap .haim-node-focused {
+/* Focus / selection helpers from @tiptap/extensions — off by default; settings toggle on */
+html[data-haim-focus-outline='1'] .haim-editor .tiptap .haim-node-focused {
   outline: 1px dashed var(--md-theme-code-active-color);
   outline-offset: 2px;
 }
 
-html[data-haim-focus-outline='0'] .haim-editor .tiptap .haim-node-focused {
+.haim-editor .tiptap .haim-node-focused {
   outline: none;
 }
 
-/* Drag handle portal target */
+/* Drag handle portal target — gutter left of blocks */
 .haim-drag-handle {
   position: absolute;
   z-index: 5;
+  /* Extra hit area so the grip is easier to find/grab */
+  padding: 0.15rem 0.35rem 0.15rem 0.2rem;
+  margin-left: -0.15rem;
+}
+
+.haim-drag-handle button {
+  width: 1.5rem;
+  height: 1.75rem;
 }
 
 /* TipTap Mathematics (KaTeX) — no scrollbar chrome */

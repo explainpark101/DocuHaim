@@ -1,6 +1,6 @@
 /**
  * Haim WYSIWYG: dashed outline on the node currently being edited (TipTap Focus).
- * Default: on.
+ * Default: off.
  */
 
 const LOCAL_STORAGE_KEY = 's3haim_haim_focus_outline';
@@ -9,7 +9,7 @@ const DOM_ATTR = 'data-haim-focus-outline';
 /** Fired on `window` when the preference changes. */
 export const HAIM_FOCUS_OUTLINE_CHANGED_EVENT = 's3haim-haim-focus-outline';
 
-export const HAIM_FOCUS_OUTLINE_DEFAULT = true;
+export const HAIM_FOCUS_OUTLINE_DEFAULT = false;
 
 export function applyHaimFocusOutlineDom(enabled: boolean): void {
   if (typeof document === 'undefined') return;

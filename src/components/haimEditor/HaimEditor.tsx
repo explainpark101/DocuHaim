@@ -37,6 +37,7 @@ import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useNavigate } from 'react-router';
 import type { EditorView as CmEditorView } from '@codemirror/view';
+import { EditorSelection } from '@codemirror/state';
 import HeadingRemapModal, {
   type HeadingRemapScope,
 } from '@/components/modals/HeadingRemapModal';
@@ -48,6 +49,8 @@ import {
   hydrateNoteCoverPreviewsInRoot,
   teardownNoteCoverPreviewsInRoot,
 } from '@/utils/noteCover/hydrateNoteCoverPreview';
+import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
+import { Loader2 } from 'lucide-react';
 import '@/styles/haim-editor/style.css';
 import '@/styles/haim-editor/code-hljs-themes.css';
 import '@/styles/editor-image-align.css';
@@ -74,6 +77,9 @@ export default function HaimEditor({
   previewOnly = false,
   isMobileLayout = false,
   onUploadImage,
+  isUploadingEditorImage = false,
+  uploadImagePercent = 0,
+  onCancelUploadImage,
   onResolveWikiImageUrl,
   isActiveFile = true,
   isSurfaceLive = true,
@@ -104,6 +110,8 @@ export default function HaimEditor({
   const [invisibleCharsVisible, setInvisibleCharsVisible] = useState(false);
   const [checklistHint, setChecklistHint] = useState<string | null>(null);
   const [coverExportConfirmOpen, setCoverExportConfirmOpen] = useState(false);
+  const [localImageUploading, setLocalImageUploading] = useState(false);
+  const imageUploadingRef = useRef(false);
 
   const effectiveMode: HaimViewMode =
     isMobileLayout && viewMode === HAIM_VIEW_MODE_DOUBLE && !previewOnly
@@ -162,7 +170,7 @@ export default function HaimEditor({
       immediatelyRender: false,
       editorProps: {
         attributes: {
-          class: `haim-editor-prose prose dark:prose-invert max-w-none focus:outline-none min-h-[12rem] px-3 py-2 ${
+          class: `haim-editor-prose prose dark:prose-invert max-w-none focus:outline-none min-h-[12rem] py-2 pl-10 pr-3 ${
             theme === 'dark' ? 'haim-editor--dark' : ''
           }`,
         },
@@ -201,7 +209,14 @@ export default function HaimEditor({
     if (md !== valueRef.current) onChangeRef.current(md);
   }, []);
 
-  const { notifyCmDocChanged, flush, originRef } = useHaimDualSync({
+  const {
+    notifyCmDocChanged,
+    flush,
+    originRef,
+    cancelPending,
+    pushEditorMarkdownToCmNow,
+    pushCmMarkdownToEditorNow,
+  } = useHaimDualSync({
     editor,
     cmViewRef,
     metaPrefixRef,
@@ -439,48 +454,109 @@ export default function HaimEditor({
     [editor, emitVault],
   );
 
-  const insertWikiPath = useCallback(
-    (path: string) => {
-      if (!editor || !path) return;
-      editor
-        .chain()
-        .focus()
-        .insertContent({
-          type: 'wikiImage',
-          attrs: {
-            path,
-            options: '',
-            alt: path,
-            width: null,
-            height: null,
-            background: null,
-          },
-        })
-        .run();
-      invalidateMarkdownCache(editor);
-    },
-    [editor],
-  );
-
+  /**
+   * Upload files as wiki images and insert at the selection captured
+   * when the upload started (paste / toolbar), not after async wait.
+   */
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
-      if (!onUploadImage || !files.length) return;
+      if (!onUploadImage || !files.length || !editor) return;
+      if (imageUploadingRef.current || isUploadingEditorImage) return;
+
+      // Snapshot cursor/selection BEFORE await — paste-time position.
+      const cmAtStart = cmViewRef.current;
+      const preferSource =
+        Boolean(cmAtStart) &&
+        (cmAtStart.hasFocus ||
+          effectiveMode === HAIM_VIEW_MODE_SOURCE ||
+          (showSource && !showWysiwyg));
+      const insertTarget = preferSource && cmAtStart
+        ? {
+            surface: 'cm' as const,
+            from: cmAtStart.state.selection.main.from,
+            to: cmAtStart.state.selection.main.to,
+          }
+        : {
+            surface: 'tiptap' as const,
+            from: editor.state.selection.from,
+            to: editor.state.selection.to,
+          };
+
+      imageUploadingRef.current = true;
+      setLocalImageUploading(true);
       try {
-        for (const file of files) {
-          const result = await onUploadImage(file);
-          const path =
-            typeof result === 'string'
-              ? result
-              : result && typeof result === 'object' && 'path' in result
-                ? String((result as { path: string }).path)
-                : '';
-          if (path) insertWikiPath(path);
+        const result = await onUploadImage(files);
+        const paths = Array.isArray(result)
+          ? result.map((p) => String(p || '').trim()).filter(Boolean)
+          : typeof result === 'string' && result.trim()
+            ? [result.trim()]
+            : [];
+        if (!paths.length) return;
+
+        cancelPending();
+        const markup = `${paths.map((p) => `![[${p}]]`).join('\n\n')}\n\n`;
+
+        if (insertTarget.surface === 'cm') {
+          const cm = cmViewRef.current;
+          if (!cm) return;
+          const docLen = cm.state.doc.length;
+          const from = Math.max(0, Math.min(insertTarget.from, docLen));
+          const to = Math.max(from, Math.min(insertTarget.to, docLen));
+          originRef.current = 'external';
+          cm.dispatch({
+            changes: { from, to, insert: markup },
+            selection: EditorSelection.cursor(from + markup.length),
+          });
+          pushCmMarkdownToEditorNow();
+          originRef.current = null;
+        } else {
+          originRef.current = 'external';
+          // Insert all wiki nodes at the captured TipTap range (first replaces).
+          const size = editor.state.doc.content.size;
+          let from = Math.max(0, Math.min(insertTarget.from, size));
+          let to = Math.max(from, Math.min(insertTarget.to, size));
+          const nodes = paths.map((path) => ({
+            type: 'wikiImage' as const,
+            attrs: {
+              path,
+              options: '',
+              alt: path,
+              width: null,
+              height: null,
+              background: null,
+            },
+          }));
+          editor.chain().focus().insertContentAt({ from, to }, nodes).run();
+          invalidateMarkdownCache(editor);
+          pushEditorMarkdownToCmNow();
+          originRef.current = null;
         }
       } catch {
         // parent alerts
+      } finally {
+        imageUploadingRef.current = false;
+        setLocalImageUploading(false);
       }
     },
-    [onUploadImage, insertWikiPath],
+    [
+      onUploadImage,
+      editor,
+      isUploadingEditorImage,
+      cancelPending,
+      effectiveMode,
+      showSource,
+      showWysiwyg,
+      originRef,
+      pushCmMarkdownToEditorNow,
+      pushEditorMarkdownToCmNow,
+    ],
+  );
+
+  const showImageUploadOverlay =
+    Boolean(isUploadingEditorImage) || localImageUploading;
+  const uploadPercentLabel = Math.max(
+    0,
+    Math.min(100, Math.round(Number(uploadImagePercent) || 0)),
   );
 
   const toggleInvisibleChars = useCallback(() => {
@@ -607,33 +683,25 @@ export default function HaimEditor({
     onRegisterConvertAllImagesToWiki?.(null);
   }, [onRegisterConvertAllImagesToWiki]);
 
-  const handleUpload = useCallback(
-    async (file: File) => {
-      await handleUploadFiles([file]);
-    },
-    [handleUploadFiles],
-  );
-
   useEffect(() => {
-    if (!editor || previewOnly) return undefined;
+    if (!editor || previewOnly || !onUploadImage) return undefined;
     const dom = editor.view.dom;
     const onPaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) {
-            e.preventDefault();
-            void handleUpload(file);
-          }
-          break;
-        }
+      if (imageUploadingRef.current || isUploadingEditorImage) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
       }
+      const imageFiles = collectClipboardImageFiles(e.clipboardData);
+      if (!imageFiles.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void handleUploadFiles(imageFiles);
     };
-    dom.addEventListener('paste', onPaste);
-    return () => dom.removeEventListener('paste', onPaste);
-  }, [editor, previewOnly, handleUpload]);
+    // Capture so TipTap does not insert clipboard images as base64 first.
+    dom.addEventListener('paste', onPaste, true);
+    return () => dom.removeEventListener('paste', onPaste, true);
+  }, [editor, previewOnly, onUploadImage, handleUploadFiles, isUploadingEditorImage]);
 
   const providerValue = useMemo(() => ({ editor }), [editor]);
 
@@ -696,7 +764,8 @@ export default function HaimEditor({
               void handleUploadFiles(files);
             },
             onImageClip: (file) => setClipCropFile(file),
-            imageDisabled: typeof onUploadImage !== 'function',
+            imageDisabled:
+              typeof onUploadImage !== 'function' || showImageUploadOverlay,
             onInsertMermaid: () => {
               editor
                 .chain()
@@ -742,6 +811,30 @@ export default function HaimEditor({
           </div>
         ) : null}
         <div className="relative flex min-h-0 flex-1">
+          {showImageUploadOverlay ? (
+            <div
+              className="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-blue-300/40 text-sm text-blue-700 dark:bg-blue-800/50 dark:text-blue-300"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <Loader2 size={16} className="shrink-0 animate-spin" aria-hidden />
+              <span>
+                이미지 업로드 중…
+                {isUploadingEditorImage && uploadPercentLabel > 0
+                  ? ` ${uploadPercentLabel}%`
+                  : ''}
+              </span>
+              {typeof onCancelUploadImage === 'function' ? (
+                <button
+                  type="button"
+                  onClick={() => onCancelUploadImage()}
+                  className="ml-2 rounded-md border border-blue-600/50 bg-white/80 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-white dark:border-blue-300/40 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-950"
+                >
+                  취소
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="relative flex min-h-0 min-w-0 flex-1">
             {showSource ? (
               <div
@@ -756,6 +849,15 @@ export default function HaimEditor({
                   onDocChanged={notifyCmDocChanged}
                   viewRef={cmViewRef}
                   onViewReady={() => setCmRevision((n) => n + 1)}
+                  {...(onUploadImage && !previewOnly
+                    ? {
+                        onPasteImages: (files: File[]) => {
+                          if (imageUploadingRef.current || isUploadingEditorImage)
+                            return;
+                          void handleUploadFiles(files);
+                        },
+                      }
+                    : {})}
                 />
               </div>
             ) : null}

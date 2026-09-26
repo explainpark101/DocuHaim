@@ -16,7 +16,7 @@ export default function HaimDragHandleLayer({ editor }: Props) {
         type="button"
         tabIndex={-1}
         aria-label="블록 드래그"
-        className="flex h-6 w-5 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-bgSoft dark:hover:text-odp-fg"
+        className="flex h-7 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-bgSoft dark:hover:text-odp-fg"
       >
         <GripVertical size={14} aria-hidden />
       </button>

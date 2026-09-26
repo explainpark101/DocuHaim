@@ -34,6 +34,9 @@ export function useHaimDualSync({
   originRef: React.MutableRefObject<SyncOrigin>;
   notifyCmDocChanged: () => void;
   flush: () => void;
+  cancelPending: () => void;
+  pushEditorMarkdownToCmNow: () => void;
+  pushCmMarkdownToEditorNow: () => void;
 } {
   const originRef = useRef<SyncOrigin>(null);
   const onVaultChangeRef = useRef(onVaultChange);
@@ -54,6 +57,51 @@ export function useHaimDualSync({
     }
     const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
     onVaultChangeRef.current(md);
+  };
+
+  /** Cancel pending debounced sync (e.g. before image upload apply). */
+  const cancelPending = () => {
+    if (tipTapTimer.current) {
+      clearTimeout(tipTapTimer.current);
+      tipTapTimer.current = null;
+    }
+    if (cmTimer.current) {
+      clearTimeout(cmTimer.current);
+      cmTimer.current = null;
+    }
+  };
+
+  /**
+   * Push current TipTap vault markdown into CM immediately (even if CM focused).
+   * Used after wiki-image upload so source + WYSIWYG stay in sync.
+   */
+  const pushEditorMarkdownToCmNow = () => {
+    if (!editor) return;
+    cancelPending();
+    const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
+    onVaultChangeRef.current(md);
+    const cm = cmViewRef.current;
+    if (!cm) return;
+    const cur = cm.state.doc.toString();
+    if (cur === md) return;
+    originRef.current = 'external';
+    cm.dispatch({ changes: { from: 0, to: cur.length, insert: md } });
+    originRef.current = null;
+  };
+
+  /**
+   * Push CM doc into TipTap + vault immediately.
+   */
+  const pushCmMarkdownToEditorNow = () => {
+    if (!editor) return;
+    const cm = cmViewRef.current;
+    if (!cm) return;
+    cancelPending();
+    originRef.current = 'external';
+    const md = cm.state.doc.toString();
+    onVaultChangeRef.current(md);
+    setEditorMarkdown(editor, md, metaPrefixRef, { emitUpdate: false });
+    originRef.current = null;
   };
 
   // TipTap → CM + vault
@@ -120,5 +168,12 @@ export function useHaimDualSync({
     }, debounceMs);
   };
 
-  return { originRef, notifyCmDocChanged, flush };
+  return {
+    originRef,
+    notifyCmDocChanged,
+    flush,
+    cancelPending,
+    pushEditorMarkdownToCmNow,
+    pushCmMarkdownToEditorNow,
+  };
 }

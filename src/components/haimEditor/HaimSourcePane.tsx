@@ -10,6 +10,7 @@ import {
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
 
 type Props = {
   initialValue: string;
@@ -19,6 +20,8 @@ type Props = {
   className?: string;
   /** Fired after CM create and again after destroy (scroll-sync rebind). */
   onViewReady?: (() => void) | undefined;
+  /** Clipboard / OS image paste → upload as wiki images. */
+  onPasteImages?: ((files: File[]) => void) | undefined;
 };
 
 /**
@@ -32,12 +35,15 @@ export default function HaimSourcePane({
   viewRef,
   className = '',
   onViewReady,
+  onPasteImages,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const onDocChangedRef = useRef(onDocChanged);
   onDocChangedRef.current = onDocChanged;
   const onViewReadyRef = useRef(onViewReady);
   onViewReadyRef.current = onViewReady;
+  const onPasteImagesRef = useRef(onPasteImages);
+  onPasteImagesRef.current = onPasteImages;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -53,6 +59,17 @@ export default function HaimSourcePane({
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onDocChangedRef.current();
+      }),
+      EditorView.domEventHandlers({
+        paste(event) {
+          const handler = onPasteImagesRef.current;
+          if (!handler) return false;
+          const files = collectClipboardImageFiles(event.clipboardData);
+          if (!files.length) return false;
+          event.preventDefault();
+          handler(files);
+          return true;
+        },
       }),
       EditorView.theme({
         '&': { height: '100%', fontSize: '13px' },
