@@ -16,4 +16,8 @@ export const HAIM_PERF_CHECKLIST = [
   'markdown-serialize-cache',
   'vendor-tiptap-chunk',
   'freeze-demote-preview-surface',
+  'composer-lean-extensions',
+  'lazy-drag-handle',
+  'lazy-find-replace',
+  'note-only-lowlight',
 ] as const;

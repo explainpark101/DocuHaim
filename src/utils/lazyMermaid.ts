@@ -208,3 +208,34 @@ export async function renderAllLazyMermaidsInRoot(
     await renderLazyMermaidElement(el);
   }
 }
+
+/**
+ * Render mermaid source to SVG string (Haim TipTap code-block node view).
+ */
+export async function renderMermaidSourceToSvg(
+  source: string,
+  theme: MermaidThemeName = 'default',
+): Promise<string | null> {
+  const text = (source || '').trim();
+  if (!text) return null;
+  const cached = getCachedMermaidSvg(theme, text);
+  if (cached) return cached;
+
+  const mermaid = await ensureInitialized(theme);
+  const offscreen = document.createElement('div');
+  const w = Math.max(document.body.offsetWidth, 1366);
+  const h = Math.max(document.body.offsetHeight, 768);
+  offscreen.style.cssText = `width:${w}px;height:${h}px;position:fixed;z-index:-10000;top:-10000px;left:0;`;
+  document.body.appendChild(offscreen);
+
+  try {
+    const { svg } = await mermaid.render(nextRenderId(), text, offscreen);
+    setCachedMermaidSvg(theme, text, svg);
+    return svg;
+  } catch (err) {
+    console.warn('[lazyMermaid] source render failed', err);
+    return null;
+  } finally {
+    offscreen.remove();
+  }
+}

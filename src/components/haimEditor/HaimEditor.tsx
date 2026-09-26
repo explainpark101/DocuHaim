@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, EditorContext } from '@tiptap/react';
 import type { NoteEditorProps } from '@/editor/contracts/noteEditorTypes';
 import { createHaimExtensions } from '@/components/haimEditor/createHaimExtensions';
@@ -37,7 +37,21 @@ import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useNavigate } from 'react-router';
 import type { EditorView as CmEditorView } from '@codemirror/view';
+import HeadingRemapModal, {
+  type HeadingRemapScope,
+} from '@/components/modals/HeadingRemapModal';
+import ImageLinkModal from '@/components/modals/ImageLinkModal';
+import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
 import '@/styles/haim-editor/style.css';
+import '@/styles/haim-editor/code-hljs-themes.css';
+import 'katex/dist/katex.min.css';
+
+const HaimFindReplaceBar = lazy(
+  () => import('@/components/haimEditor/HaimFindReplaceBar'),
+);
+const HaimDragHandleLayer = lazy(
+  () => import('@/components/haimEditor/HaimDragHandleLayer'),
+);
 
 /**
  * TipTap-based Haim Editor.
@@ -72,7 +86,15 @@ export default function HaimEditor({
   const [tocOpen, setTocOpen] = useState(false);
   const [tocLayout, setTocLayout] = useState<HaimTocLayout>(() => loadHaimTocLayout());
   const [cmRevision, setCmRevision] = useState(0);
-  // Mobile: double collapses to wysiwyg; source stays full-width CM.
+  const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
+  const [headingRemapSelection, setHeadingRemapSelection] = useState('');
+  const headingRemapRangeRef = useRef<{ from: number; to: number } | null>(null);
+  const [imageLinkOpen, setImageLinkOpen] = useState(false);
+  const [clipCropFile, setClipCropFile] = useState<File | null>(null);
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [invisibleCharsVisible, setInvisibleCharsVisible] = useState(false);
+  const [checklistHint, setChecklistHint] = useState<string | null>(null);
+
   const effectiveMode: HaimViewMode =
     isMobileLayout && viewMode === HAIM_VIEW_MODE_DOUBLE && !previewOnly
       ? HAIM_VIEW_MODE_WYSIWYG
@@ -114,6 +136,7 @@ export default function HaimEditor({
     () =>
       createHaimExtensions({
         placeholder: previewOnly ? '' : '내용을 입력하세요…',
+        profile: 'note',
       }),
     [previewOnly],
   );
@@ -136,7 +159,6 @@ export default function HaimEditor({
       },
       onCreate: ({ editor: ed }) => {
         metaPrefixRef.current = initial.prefix;
-        // Ensure body matches current value after create
         if ((value || '') !== joinCheck(initial.prefix, initial.content)) {
           setEditorMarkdown(ed, value || '', metaPrefixRef, { emitUpdate: false });
         }
@@ -145,13 +167,11 @@ export default function HaimEditor({
     [extensions],
   );
 
-  // Keep editable in sync
   useEffect(() => {
     if (!editor) return;
     editor.setEditable(!previewOnly && isSurfaceLive);
   }, [editor, previewOnly, isSurfaceLive]);
 
-  // External value changes (file switch / remote refresh)
   useEffect(() => {
     if (!editor) return;
     const current = editorToVaultMarkdown(editor, metaPrefixRef.current);
@@ -191,15 +211,12 @@ export default function HaimEditor({
     cmRevision,
   });
 
-  // WYSIWYG-only: still need TipTap → vault (useHaimDualSync handles it when enabled)
-  // Flush on unmount / blur save
   useEffect(() => {
     return () => {
       flush();
     };
   }, [flush]);
 
-  // Save shortcut
   useEffect(() => {
     if (!editor || previewOnly) return undefined;
     const onKey = (e: KeyboardEvent) => {
@@ -208,12 +225,15 @@ export default function HaimEditor({
         flush();
         onSave?.();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setFindReplaceOpen(true);
+      }
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [editor, previewOnly, flush, onSave]);
 
-  // LLM bridge
   const registerBridge = llmAssist?.registerEditorBridge;
   useEffect(() => {
     if (previewOnly || !isActiveFile || !registerBridge || !editor) return undefined;
@@ -256,30 +276,116 @@ export default function HaimEditor({
     originRef,
   ]);
 
-  // Advanced Search actions (subset for Haim)
+  const navigateToExportPdf = useCallback(() => {
+    if (!editor) return;
+    openExportPdfSurface({
+      currentFile: currentFile
+        ? {
+            id: currentFile.id ?? null,
+            type: currentFile.type ?? null,
+            name: currentFile.name ?? undefined,
+          }
+        : null,
+      editorContent: editorToVaultMarkdown(editor, metaPrefixRef.current),
+      theme: theme === 'dark' ? 'dark' : 'light',
+      navigate,
+      openInFocusedPane: (tabId) =>
+        Boolean(
+          tabsCtx?.workspaceTabsEnabled &&
+            tabsCtx.openExportPdfInFocusedPane?.(tabId),
+        ),
+    });
+  }, [editor, currentFile, theme, navigate, tabsCtx]);
+
+  const openHeadingRemap = useCallback(() => {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) {
+      headingRemapRangeRef.current = null;
+      setHeadingRemapSelection('');
+    } else {
+      headingRemapRangeRef.current = { from, to };
+      setHeadingRemapSelection(editor.state.doc.textBetween(from, to, '\n'));
+    }
+    setHeadingRemapOpen(true);
+  }, [editor]);
+
+  const applyHeadingRemap = useCallback(
+    (nextMarkdown: string, scope: HeadingRemapScope) => {
+      if (!editor) return;
+      if (scope === 'selection' && headingRemapRangeRef.current) {
+        const { from, to } = headingRemapRangeRef.current;
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from, to })
+          .insertContentAt(from, nextMarkdown, {
+            contentType: 'markdown',
+          } as never)
+          .run();
+      } else {
+        setEditorMarkdown(editor, nextMarkdown, metaPrefixRef, { emitUpdate: true });
+        emitVault(nextMarkdown);
+      }
+      setHeadingRemapOpen(false);
+      setHeadingRemapSelection('');
+      headingRemapRangeRef.current = null;
+    },
+    [editor, emitVault],
+  );
+
+  const insertWikiPath = useCallback(
+    (path: string) => {
+      if (!editor || !path) return;
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: 'wikiImage',
+          attrs: { path, options: '', alt: path },
+        })
+        .run();
+      invalidateMarkdownCache(editor);
+    },
+    [editor],
+  );
+
+  const handleUploadFiles = useCallback(
+    async (files: File[]) => {
+      if (!onUploadImage || !files.length) return;
+      try {
+        for (const file of files) {
+          const result = await onUploadImage(file);
+          const path =
+            typeof result === 'string'
+              ? result
+              : result && typeof result === 'object' && 'path' in result
+                ? String((result as { path: string }).path)
+                : '';
+          if (path) insertWikiPath(path);
+        }
+      } catch {
+        // parent alerts
+      }
+    },
+    [onUploadImage, insertWikiPath],
+  );
+
+  const toggleInvisibleChars = useCallback(() => {
+    if (!editor) return;
+    const cmds = editor.commands as typeof editor.commands & {
+      toggleInvisibleCharacters?: () => boolean;
+    };
+    if (typeof cmds.toggleInvisibleCharacters === 'function') {
+      cmds.toggleInvisibleCharacters();
+      setInvisibleCharsVisible((v) => !v);
+    }
+  }, [editor]);
+
   useEffect(() => {
     if (previewOnly || !isSurfaceLive || !editor) return undefined;
     const run = (fn: () => unknown) => {
       fn();
-    };
-    const navigateToExportPdf = () => {
-      openExportPdfSurface({
-        currentFile: currentFile
-          ? {
-              id: currentFile.id ?? null,
-              type: currentFile.type ?? null,
-              name: currentFile.name ?? undefined,
-            }
-          : null,
-        editorContent: editorToVaultMarkdown(editor, metaPrefixRef.current),
-        theme: theme === 'dark' ? 'dark' : 'light',
-        navigate,
-        openInFocusedPane: (tabId) =>
-          Boolean(
-            tabsCtx?.workspaceTabsEnabled &&
-              tabsCtx.openExportPdfInFocusedPane?.(tabId),
-          ),
-      });
     };
     const unregister = registerEditorActions({
       'editor-bold': () => run(() => editor.chain().focus().toggleBold().run()),
@@ -335,52 +441,65 @@ export default function HaimEditor({
       'editor-h4': () =>
         run(() => editor.chain().focus().toggleHeading({ level: 4 }).run()),
       'editor-catalog': () => setTocOpen((v) => !v),
+      'editor-llm-assist': () => {
+        llmAssist?.toggleAssist?.();
+      },
+      'editor-heading-remap': () => openHeadingRemap(),
+      'editor-checklist-progress': () => {
+        const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
+        const tasks = (md.match(/^\s*[-*]\s+\[[ xX]\]/gm) || []).length;
+        const done = (md.match(/^\s*[-*]\s+\[[xX]\]/gm) || []).length;
+        setChecklistHint(
+          tasks
+            ? `체크리스트 ${done}/${tasks} 완료`
+            : '문서에 체크리스트 항목이 없습니다',
+        );
+        window.setTimeout(() => setChecklistHint(null), 3200);
+      },
+      'editor-image-upload': () => {
+        // Advanced Search: open file picker via hidden input is awkward; prompt path
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = true;
+        input.onchange = () => {
+          void handleUploadFiles(Array.from(input.files || []));
+        };
+        input.click();
+      },
+      'editor-image-clip': () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = () => {
+          const file = input.files?.[0];
+          if (file) setClipCropFile(file);
+        };
+        input.click();
+      },
     });
     return unregister;
   }, [
     editor,
     previewOnly,
     isSurfaceLive,
-    navigate,
-    tabsCtx,
     flush,
+    navigateToExportPdf,
     onRequestConvertAllImagesToWiki,
-    currentFile,
-    theme,
+    llmAssist,
+    openHeadingRemap,
+    handleUploadFiles,
   ]);
 
   useEffect(() => {
     onRegisterConvertAllImagesToWiki?.(null);
   }, [onRegisterConvertAllImagesToWiki]);
 
-  // Wiki image paste / upload hook (basic): insert wiki node after upload
   const handleUpload = useCallback(
     async (file: File) => {
-      if (!onUploadImage || !editor) return;
-      try {
-        const result = await onUploadImage(file);
-        const path =
-          typeof result === 'string'
-            ? result
-            : result && typeof result === 'object' && 'path' in result
-              ? String((result as { path: string }).path)
-              : '';
-        if (path) {
-          editor
-            .chain()
-            .focus()
-            .insertContent({
-              type: 'wikiImage',
-              attrs: { path, options: '', alt: file.name },
-            })
-            .run();
-          invalidateMarkdownCache(editor);
-        }
-      } catch {
-        // parent alerts
-      }
+      await handleUploadFiles([file]);
     },
-    [editor, onUploadImage],
+    [handleUploadFiles],
   );
 
   useEffect(() => {
@@ -405,6 +524,10 @@ export default function HaimEditor({
   }, [editor, previewOnly, handleUpload]);
 
   const providerValue = useMemo(() => ({ editor }), [editor]);
+
+  const vaultMarkdown = editor
+    ? editorToVaultMarkdown(editor, metaPrefixRef.current)
+    : value || '';
 
   if (!editor) {
     return (
@@ -437,7 +560,75 @@ export default function HaimEditor({
           tocOpen={tocOpen}
           onTocOpenChange={setTocOpen}
           {...(onSave ? { onSave } : {})}
+          appActions={{
+            onExportPdf: () => {
+              flush();
+              navigateToExportPdf();
+            },
+            onLlmAssist: () => llmAssist?.toggleAssist?.(),
+            llmAssistActive: Boolean(llmAssist?.open),
+            onHeadingRemap: openHeadingRemap,
+            onChecklistProgress: () => {
+              const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
+              const tasks = (md.match(/^\s*[-*]\s+\[[ xX]\]/gm) || []).length;
+              const done = (md.match(/^\s*[-*]\s+\[[xX]\]/gm) || []).length;
+              setChecklistHint(
+                tasks
+                  ? `체크리스트 ${done}/${tasks} 완료`
+                  : '문서에 체크리스트 항목이 없습니다',
+              );
+              window.setTimeout(() => setChecklistHint(null), 3200);
+            },
+            onImageLink: () => setImageLinkOpen(true),
+            onImageUpload: (files) => {
+              void handleUploadFiles(files);
+            },
+            onImageClip: (file) => setClipCropFile(file),
+            imageDisabled: typeof onUploadImage !== 'function',
+            onInsertMermaid: () => {
+              editor
+                .chain()
+                .focus()
+                .insertContent('```mermaid\ngraph TD\n  A-->B\n```\n', {
+                  contentType: 'markdown',
+                } as never)
+                .run();
+            },
+            onInsertKatex: () => {
+              const cmds = editor.commands as typeof editor.commands & {
+                insertBlockMath?: (opts: { latex: string }) => boolean;
+              };
+              if (typeof cmds.insertBlockMath === 'function') {
+                cmds.insertBlockMath({ latex: 'E=mc^2' });
+                return;
+              }
+              editor
+                .chain()
+                .focus()
+                .insertContent(
+                  '<div data-type="block-math" data-latex="E=mc^2"></div>',
+                )
+                .run();
+            },
+            findReplaceOpen,
+            onFindReplaceOpenChange: setFindReplaceOpen,
+            invisibleCharsVisible,
+            onInvisibleCharsToggle: toggleInvisibleChars,
+          }}
         />
+        {findReplaceOpen && !previewOnly ? (
+          <Suspense fallback={null}>
+            <HaimFindReplaceBar
+              editor={editor}
+              onClose={() => setFindReplaceOpen(false)}
+            />
+          </Suspense>
+        ) : null}
+        {checklistHint ? (
+          <div className="shrink-0 border-b border-slate-200 bg-indigo-50 px-3 py-1 text-xs text-indigo-900 dark:border-odp-borderStrong dark:bg-indigo-950/40 dark:text-indigo-100">
+            {checklistHint}
+          </div>
+        ) : null}
         <div className="relative flex min-h-0 flex-1">
           <div className="relative flex min-h-0 min-w-0 flex-1">
             {showSource ? (
@@ -459,14 +650,18 @@ export default function HaimEditor({
             {showWysiwyg ? (
               <div
                 ref={wysiwygScrollRef}
-                className={`min-h-0 overflow-auto ${
+                className={`relative min-h-0 overflow-auto ${
                   doublePane ? 'w-1/2 flex-1' : 'flex-1'
                 }`}
               >
+                {!previewOnly && isSurfaceLive ? (
+                  <Suspense fallback={null}>
+                    <HaimDragHandleLayer editor={editor} />
+                  </Suspense>
+                ) : null}
                 <EditorContent editor={editor} className="haim-editor-content h-full" />
               </div>
             ) : (
-              /* Keep TipTap mounted off-screen in source mode for sync authority */
               <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden>
                 <EditorContent editor={editor} />
               </div>
@@ -483,6 +678,41 @@ export default function HaimEditor({
           />
         </div>
       </div>
+
+      <HeadingRemapModal
+        isOpen={headingRemapOpen}
+        markdown={vaultMarkdown}
+        selectedMarkdown={headingRemapSelection}
+        onClose={() => {
+          setHeadingRemapOpen(false);
+          setHeadingRemapSelection('');
+          headingRemapRangeRef.current = null;
+        }}
+        onApply={applyHeadingRemap}
+      />
+      <ImageLinkModal
+        isOpen={imageLinkOpen}
+        onClose={() => setImageLinkOpen(false)}
+        onConfirm={({ desc, url }) => {
+          const alt = desc || url;
+          editor
+            .chain()
+            .focus()
+            .insertContent(`![${alt}](${url})\n`, {
+              contentType: 'markdown',
+            } as never)
+            .run();
+        }}
+      />
+      <ImageClipCropModal
+        isOpen={Boolean(clipCropFile)}
+        file={clipCropFile}
+        onClose={() => setClipCropFile(null)}
+        onConfirm={async (file) => {
+          setClipCropFile(null);
+          await handleUploadFiles([file]);
+        }}
+      />
     </EditorContext.Provider>
   );
 }

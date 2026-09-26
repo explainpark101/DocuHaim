@@ -1,3 +1,4 @@
+import { useRef, useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import {
   Bold,
@@ -24,8 +25,17 @@ import {
   FileCode2,
   ArrowUpDown,
   ListTree,
+  Printer,
+  Sparkles,
+  Image as ImageIcon,
+  BarChart3,
+  Heading,
+  Sigma,
+  Workflow,
+  Search,
+  Pilcrow,
 } from 'lucide-react';
-import { Switch, Tooltip } from 'radix-ui';
+import { DropdownMenu, Switch, Tooltip } from 'radix-ui';
 import {
   HAIM_VIEW_MODE_DOUBLE,
   HAIM_VIEW_MODE_OPTIONS,
@@ -34,6 +44,24 @@ import {
   type HaimViewMode,
   saveHaimViewMode,
 } from '@/utils/haimViewModeSettings';
+
+export type HaimToolbarAppActions = {
+  onExportPdf?: (() => void) | undefined;
+  onLlmAssist?: (() => void) | undefined;
+  llmAssistActive?: boolean | undefined;
+  onHeadingRemap?: (() => void) | undefined;
+  onChecklistProgress?: (() => void) | undefined;
+  onImageLink?: (() => void) | undefined;
+  onImageUpload?: ((files: File[]) => void) | undefined;
+  onImageClip?: ((file: File) => void) | undefined;
+  imageDisabled?: boolean | undefined;
+  onInsertMermaid?: (() => void) | undefined;
+  onInsertKatex?: (() => void) | undefined;
+  findReplaceOpen?: boolean | undefined;
+  onFindReplaceOpenChange?: ((open: boolean) => void) | undefined;
+  invisibleCharsVisible?: boolean | undefined;
+  onInvisibleCharsToggle?: (() => void) | undefined;
+};
 
 type Props = {
   editor: Editor | null;
@@ -46,6 +74,7 @@ type Props = {
   onScrollSyncChange?: ((enabled: boolean) => void) | undefined;
   tocOpen?: boolean | undefined;
   onTocOpenChange?: ((open: boolean) => void) | undefined;
+  appActions?: HaimToolbarAppActions | undefined;
 };
 
 function ToolBtn({
@@ -59,7 +88,7 @@ function ToolBtn({
   active?: boolean | undefined;
   disabled?: boolean | undefined;
   onClick: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <Tooltip.Root>
@@ -95,7 +124,7 @@ function ToolBtn({
 }
 
 /**
- * Haim toolbar — subscribes via useEditorState so EditorContent does not re-render.
+ * Haim toolbar — stock TipTap marks + DocuHaim defToolbar parity actions.
  */
 export default function HaimToolbar({
   editor,
@@ -107,6 +136,7 @@ export default function HaimToolbar({
   onScrollSyncChange,
   tocOpen = false,
   onTocOpenChange,
+  appActions,
 }: Props) {
   const state = useEditorState({
     editor,
@@ -162,6 +192,7 @@ export default function HaimToolbar({
   };
 
   const showScrollSync = viewMode === HAIM_VIEW_MODE_DOUBLE;
+  const a = appActions;
 
   return (
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
@@ -342,6 +373,16 @@ export default function HaimToolbar({
         >
           <Table size={14} />
         </ToolBtn>
+        {a?.onInsertMermaid ? (
+          <ToolBtn label="Mermaid" onClick={() => a.onInsertMermaid?.()}>
+            <Workflow size={14} />
+          </ToolBtn>
+        ) : null}
+        {a?.onInsertKatex ? (
+          <ToolBtn label="수식" onClick={() => a.onInsertKatex?.()}>
+            <Sigma size={14} />
+          </ToolBtn>
+        ) : null}
         <ToolBtn
           label="페이지 나눔"
           onClick={() => {
@@ -351,6 +392,60 @@ export default function HaimToolbar({
         >
           <SeparatorHorizontal size={14} />
         </ToolBtn>
+        <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-odp-borderStrong" />
+        {a?.onImageLink || a?.onImageUpload || a?.onImageClip ? (
+          <HaimImageMenu
+            disabled={Boolean(a.imageDisabled)}
+            onRequestLink={() => a.onImageLink?.()}
+            onRequestUpload={(files) => a.onImageUpload?.(files)}
+            onRequestClip={(file) => a.onImageClip?.(file)}
+          />
+        ) : null}
+        {a?.onHeadingRemap ? (
+          <ToolBtn label="제목 수준 재매핑" onClick={() => a.onHeadingRemap?.()}>
+            <Heading size={14} />
+          </ToolBtn>
+        ) : null}
+        {a?.onChecklistProgress ? (
+          <ToolBtn
+            label="체크리스트 진행률"
+            onClick={() => a.onChecklistProgress?.()}
+          >
+            <BarChart3 size={14} />
+          </ToolBtn>
+        ) : null}
+        {a?.onLlmAssist ? (
+          <ToolBtn
+            label={a.llmAssistActive ? 'AI 도우미 닫기' : 'AI 도우미'}
+            active={Boolean(a.llmAssistActive)}
+            onClick={() => a.onLlmAssist?.()}
+          >
+            <Sparkles size={14} />
+          </ToolBtn>
+        ) : null}
+        {a?.onExportPdf ? (
+          <ToolBtn label="PDF로 내보내기" onClick={() => a.onExportPdf?.()}>
+            <Printer size={14} />
+          </ToolBtn>
+        ) : null}
+        {a?.onFindReplaceOpenChange ? (
+          <ToolBtn
+            label="찾기/바꾸기"
+            active={Boolean(a.findReplaceOpen)}
+            onClick={() => a.onFindReplaceOpenChange?.(!a.findReplaceOpen)}
+          >
+            <Search size={14} />
+          </ToolBtn>
+        ) : null}
+        {a?.onInvisibleCharsToggle ? (
+          <ToolBtn
+            label="비가시 문자"
+            active={Boolean(a.invisibleCharsVisible)}
+            onClick={() => a.onInvisibleCharsToggle?.()}
+          >
+            <Pilcrow size={14} />
+          </ToolBtn>
+        ) : null}
         {showScrollSync ? (
           <>
             <span className="mx-1 h-4 w-px bg-slate-300 dark:bg-odp-borderStrong" />
@@ -363,6 +458,101 @@ export default function HaimToolbar({
         {tocToggle}
       </div>
     </Tooltip.Provider>
+  );
+}
+
+function HaimImageMenu({
+  disabled,
+  onRequestLink,
+  onRequestUpload,
+  onRequestClip,
+}: {
+  disabled: boolean;
+  onRequestLink: () => void;
+  onRequestUpload: (files: File[]) => void;
+  onRequestClip: (file: File) => void;
+}) {
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const clipRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu.Root open={open} onOpenChange={setOpen}>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <DropdownMenu.Trigger asChild>
+              <button
+                type="button"
+                aria-label="이미지"
+                disabled={disabled}
+                className="inline-flex h-7 w-7 items-center justify-center rounded border border-transparent text-gray-700 hover:bg-gray-100 disabled:opacity-40 dark:text-odp-fg dark:hover:bg-odp-bgSoft"
+              >
+                <ImageIcon size={14} />
+              </button>
+            </DropdownMenu.Trigger>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content
+              side="bottom"
+              sideOffset={6}
+              className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg"
+            >
+              이미지
+              <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            sideOffset={6}
+            className="z-100010 min-w-[10rem] rounded-md border border-gray-200 bg-white p-1 text-sm shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg"
+          >
+            <DropdownMenu.Item
+              className="cursor-pointer rounded px-2 py-1.5 outline-none hover:bg-gray-100 dark:hover:bg-odp-bgSoft"
+              onSelect={() => onRequestLink()}
+            >
+              링크 추가
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              className="cursor-pointer rounded px-2 py-1.5 outline-none hover:bg-gray-100 dark:hover:bg-odp-bgSoft"
+              onSelect={() => uploadRef.current?.click()}
+            >
+              이미지 업로드
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              className="cursor-pointer rounded px-2 py-1.5 outline-none hover:bg-gray-100 dark:hover:bg-odp-bgSoft"
+              onSelect={() => clipRef.current?.click()}
+            >
+              자르고 업로드
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+      <input
+        ref={uploadRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          e.target.value = '';
+          if (files.length) onRequestUpload(files);
+        }}
+      />
+      <input
+        ref={clipRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) onRequestClip(file);
+        }}
+      />
+    </>
   );
 }
 
@@ -434,7 +624,6 @@ function nextHaimViewMode(current: HaimViewMode): HaimViewMode {
   return next ?? HAIM_VIEW_MODE_WYSIWYG;
 }
 
-/** Icon-only control: each click cycles wysiwyg → double → source. */
 function HaimViewModeCycleButton({
   viewMode,
   onChange,
@@ -476,7 +665,6 @@ function HaimViewModeCycleButton({
   );
 }
 
-/** Far-right catalog toggle (md-editor-rt `catalog` analogue). */
 function HaimCatalogButton({
   open,
   onToggle,
