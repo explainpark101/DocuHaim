@@ -1,61 +1,100 @@
 /**
  * Image alignment driven by html[data-editor-image-align].
- * Applies to Haim WYSIWYG and md-editor-rt preview.
+ * Default (missing attr or center): centered wiki + markdown images.
  */
 
-html[data-editor-image-align='left'] .haim-editor .haim-wiki-image-wrap,
-html[data-editor-image-align='left'] .haim-editor .tiptap > img,
-html[data-editor-image-align='left'] .haim-editor .tiptap p > img:only-child,
-html[data-editor-image-align='left'] .haim-editor-prose > img,
-html[data-editor-image-align='left'] .haim-editor-prose p > img:only-child,
-html[data-editor-image-align='left'] .md-editor-preview img,
-html[data-editor-image-align='left'] .md-editor-preview figure {
+/* ---- Default / center ---- */
+.haim-editor .haim-wiki-image-wrap,
+.haim-editor-prose .haim-wiki-image-wrap,
+.md-editor-preview figure {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.haim-editor .tiptap > img,
+.haim-editor .tiptap p > img:only-child,
+.haim-editor-prose > img,
+.haim-editor-prose p > img:only-child,
+.md-editor-preview img,
+.md-editor-preview figure > img {
   display: block;
-  margin-left: 0;
+  margin-left: auto;
   margin-right: auto;
 }
 
+.haim-editor figcaption,
+.md-editor-preview figcaption {
+  text-align: center;
+}
+
 html[data-editor-image-align='center'] .haim-editor .haim-wiki-image-wrap,
+html[data-editor-image-align='center'] .haim-editor-prose .haim-wiki-image-wrap,
+html[data-editor-image-align='center'] .md-editor-preview figure {
+  display: flex;
+  justify-content: center;
+}
+
 html[data-editor-image-align='center'] .haim-editor .tiptap > img,
 html[data-editor-image-align='center'] .haim-editor .tiptap p > img:only-child,
 html[data-editor-image-align='center'] .haim-editor-prose > img,
 html[data-editor-image-align='center'] .haim-editor-prose p > img:only-child,
 html[data-editor-image-align='center'] .md-editor-preview img,
-html[data-editor-image-align='center'] .md-editor-preview figure {
+html[data-editor-image-align='center'] .md-editor-preview figure > img {
   display: block;
   margin-left: auto;
   margin-right: auto;
 }
 
+html[data-editor-image-align='center'] .haim-editor figcaption,
+html[data-editor-image-align='center'] .md-editor-preview figcaption {
+  text-align: center;
+}
+
+/* ---- Left ---- */
+html[data-editor-image-align='left'] .haim-editor .haim-wiki-image-wrap,
+html[data-editor-image-align='left'] .haim-editor-prose .haim-wiki-image-wrap,
+html[data-editor-image-align='left'] .md-editor-preview figure {
+  display: flex;
+  justify-content: flex-start;
+}
+
+html[data-editor-image-align='left'] .haim-editor .tiptap > img,
+html[data-editor-image-align='left'] .haim-editor .tiptap p > img:only-child,
+html[data-editor-image-align='left'] .haim-editor-prose > img,
+html[data-editor-image-align='left'] .haim-editor-prose p > img:only-child,
+html[data-editor-image-align='left'] .md-editor-preview img,
+html[data-editor-image-align='left'] .md-editor-preview figure > img {
+  display: block;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+html[data-editor-image-align='left'] .haim-editor figcaption,
+html[data-editor-image-align='left'] .md-editor-preview figcaption {
+  text-align: left;
+}
+
+/* ---- Right ---- */
 html[data-editor-image-align='right'] .haim-editor .haim-wiki-image-wrap,
+html[data-editor-image-align='right'] .haim-editor-prose .haim-wiki-image-wrap,
+html[data-editor-image-align='right'] .md-editor-preview figure {
+  display: flex;
+  justify-content: flex-end;
+}
+
 html[data-editor-image-align='right'] .haim-editor .tiptap > img,
 html[data-editor-image-align='right'] .haim-editor .tiptap p > img:only-child,
 html[data-editor-image-align='right'] .haim-editor-prose > img,
 html[data-editor-image-align='right'] .haim-editor-prose p > img:only-child,
 html[data-editor-image-align='right'] .md-editor-preview img,
-html[data-editor-image-align='right'] .md-editor-preview figure {
+html[data-editor-image-align='right'] .md-editor-preview figure > img {
   display: block;
   margin-left: auto;
   margin-right: 0;
 }
 
-html[data-editor-image-align='center'] .md-editor-preview figure,
-html[data-editor-image-align='left'] .md-editor-preview figure,
-html[data-editor-image-align='right'] .md-editor-preview figure {
-  text-align: inherit;
-}
-
-html[data-editor-image-align='center'] .md-editor-preview figcaption,
-html[data-editor-image-align='center'] .haim-editor figcaption {
-  text-align: center;
-}
-
-html[data-editor-image-align='left'] .md-editor-preview figcaption,
-html[data-editor-image-align='left'] .haim-editor figcaption {
-  text-align: left;
-}
-
-html[data-editor-image-align='right'] .md-editor-preview figcaption,
-html[data-editor-image-align='right'] .haim-editor figcaption {
+html[data-editor-image-align='right'] .haim-editor figcaption,
+html[data-editor-image-align='right'] .md-editor-preview figcaption {
   text-align: right;
 }
