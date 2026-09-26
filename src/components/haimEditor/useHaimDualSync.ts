@@ -30,6 +30,11 @@ type Options = {
    * cross-pane doc writes (avoids flicker on the typing pane).
    */
   suppressScrollSyncUntilRef?: React.MutableRefObject<number>;
+  /**
+   * When true, skip scheduling / applying cross-pane content sync so block
+   * drag-and-drop is not aborted by setContent / CM replace.
+   */
+  blockDragActiveRef?: React.MutableRefObject<boolean>;
 };
 
 function bumpScrollSuppress(
@@ -76,6 +81,7 @@ export function useHaimDualSync({
   onVaultChange,
   wysiwygScrollRef,
   suppressScrollSyncUntilRef,
+  blockDragActiveRef,
 }: Options): {
   originRef: React.MutableRefObject<SyncOrigin>;
   notifyCmDocChanged: () => void;
@@ -90,6 +96,8 @@ export function useHaimDualSync({
   const tipTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const composingRef = useRef(false);
+
+  const isBlockDragActive = () => Boolean(blockDragActiveRef?.current);
 
   const clearTipTapTimer = () => {
     if (tipTapTimer.current) {
@@ -163,6 +171,7 @@ export function useHaimDualSync({
 
     const applyTipTapToOther = () => {
       if (!editor) return;
+      if (isBlockDragActive()) return;
       originRef.current = 'tiptap';
       try {
         const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
@@ -180,6 +189,7 @@ export function useHaimDualSync({
     const scheduleTipTapSync = () => {
       if (originRef.current === 'cm' || originRef.current === 'external') return;
       if (composingRef.current) return;
+      if (isBlockDragActive()) return;
       // Latest author wins — drop pending CM → TipTap so we do not stomp TipTap.
       clearCmTimer();
       clearTipTapTimer();
@@ -187,6 +197,7 @@ export function useHaimDualSync({
         tipTapTimer.current = null;
         if (!editor) return;
         if (originRef.current === 'cm' || originRef.current === 'external') return;
+        if (isBlockDragActive()) return;
         applyTipTapToOther();
       }, debounceMs);
     };
@@ -217,11 +228,13 @@ export function useHaimDualSync({
     cmViewRef,
     metaPrefixRef,
     suppressScrollSyncUntilRef,
+    blockDragActiveRef,
   ]);
 
   const notifyCmDocChanged = () => {
     if (!enabled || !editor) return;
     if (originRef.current === 'tiptap' || originRef.current === 'external') return;
+    if (isBlockDragActive()) return;
     // Latest author wins — drop pending TipTap → CM so we do not stomp CM.
     clearTipTapTimer();
     clearCmTimer();
@@ -229,6 +242,7 @@ export function useHaimDualSync({
       cmTimer.current = null;
       if (!editor) return;
       if (originRef.current === 'tiptap' || originRef.current === 'external') return;
+      if (isBlockDragActive()) return;
       const cm = cmViewRef.current;
       if (!cm) return;
       originRef.current = 'cm';
