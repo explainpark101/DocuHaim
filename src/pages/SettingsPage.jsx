@@ -63,6 +63,12 @@ import {
   loadHaimFocusOutlineEnabled,
 } from '@/utils/haimFocusOutlineSettings';
 import {
+  HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT,
+  HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT,
+  loadHaimCodeLineNumbersEnabled,
+  loadHaimRawLineNumbersEnabled,
+} from '@/utils/haimWysiwygLineNumberSettings';
+import {
   BASE64_IMAGE_FOLD_CHANGED_EVENT,
   loadBase64ImageFoldEnabled,
 } from '@/utils/base64ImageFoldSettings';
@@ -238,6 +244,12 @@ export default function SettingsPage({
   const [haimFocusOutline, setHaimFocusOutlineState] = useState(() =>
     loadHaimFocusOutlineEnabled(),
   );
+  const [haimCodeLineNumbers, setHaimCodeLineNumbersState] = useState(() =>
+    loadHaimCodeLineNumbersEnabled(),
+  );
+  const [haimRawLineNumbers, setHaimRawLineNumbersState] = useState(() =>
+    loadHaimRawLineNumbersEnabled(),
+  );
   const [base64ImageFold, setBase64ImageFoldState] = useState(() =>
     loadBase64ImageFoldEnabled(),
   );
@@ -282,6 +294,10 @@ export default function SettingsPage({
         );
       } else if (id === 'settings-haim-focus-outline') {
         setHaimFocusOutlineState(enabled);
+      } else if (id === 'settings-haim-code-line-numbers') {
+        setHaimCodeLineNumbersState(enabled);
+      } else if (id === 'settings-haim-raw-line-numbers') {
+        setHaimRawLineNumbersState(enabled);
       } else if (id === 'settings-base64-image-fold') {
         setBase64ImageFoldState(enabled);
       }
@@ -343,6 +359,32 @@ export default function SettingsPage({
     window.addEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
     return () =>
       window.removeEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimCodeLineNumbersEnabled();
+      setHaimCodeLineNumbersState(enabled);
+    };
+    window.addEventListener(HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimRawLineNumbersEnabled();
+      setHaimRawLineNumbersState(enabled);
+    };
+    window.addEventListener(HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -1187,6 +1229,56 @@ export default function SettingsPage({
                     setHaimFocusOutlineState(next);
                   }}
                   aria-label="편집 블록 점선 테두리"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    코드 블록 줄 번호
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    WYSIWYG lowlight 코드 블록에 줄 번호를 표시합니다(기본 켜짐).
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimCodeLineNumbers
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimCodeLineNumbers}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-code-line-numbers', next);
+                    setHaimCodeLineNumbersState(next);
+                  }}
+                  aria-label="코드 블록 줄 번호"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    Raw 블록 줄 번호
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    WYSIWYG raw markdown 블록에 줄 번호를 표시합니다(기본 켜짐).
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimRawLineNumbers
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimRawLineNumbers}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-raw-line-numbers', next);
+                    setHaimRawLineNumbersState(next);
+                  }}
+                  aria-label="Raw 블록 줄 번호"
                 >
                   <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
                 </Switch.Root>

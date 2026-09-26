@@ -9,6 +9,11 @@
  * Image-aware: tall wiki/markdown images sit between sparse data-line
  * markers — we interpolate between neighboring markers, and re-sync when
  * images load / resize (async hydration).
+ *
+ * Bottom padding overscroll (both panes use ~50vh padding-bottom so the last
+ * lines can reach mid-viewport): once the driver scrolls past aligning the
+ * last content block, map that remaining progress onto the follower's
+ * padding region so both panes enter overscroll together.
  */
 
 import { useEffect, useRef } from 'react';
@@ -53,8 +58,12 @@ function offsetTopWithinScroller(el: HTMLElement, scroller: HTMLElement): number
   return elRect.top - scrollerRect.top + scroller.scrollTop;
 }
 
+function maxScrollTop(scroller: HTMLElement): number {
+  return Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+}
+
 function setScrollerTop(scroller: HTMLElement, top: number): void {
-  const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  const max = maxScrollTop(scroller);
   const next = Math.max(0, Math.min(max, top));
   if (Math.abs(scroller.scrollTop - next) < 0.5) return;
   scroller.scrollTop = next;
@@ -65,6 +74,59 @@ function setScrollerTop(scroller: HTMLElement, top: number): void {
 
 function detectScrollDir(prevTop: number, nextTop: number): ScrollDir {
   return nextTop >= prevTop ? 'down' : 'up';
+}
+
+/** scrollTop that places `contentBottom` on the bottom sync pad. */
+function scrollTopForBottomAlign(
+  scroller: HTMLElement,
+  contentBottom: number,
+): number {
+  return Math.max(
+    0,
+    contentBottom - (scroller.clientHeight - SCROLL_ALIGN_PAD_PX),
+  );
+}
+
+function cmContentBottom(view: EditorView): number {
+  const last = view.state.doc.line(view.state.doc.lines);
+  const block = view.lineBlockAt(last.from);
+  return block.top + block.height;
+}
+
+function markersContentBottom(markers: DataLineMarker[]): number | null {
+  const last = markers[markers.length - 1];
+  if (!last) return null;
+  return last.top + last.height;
+}
+
+/**
+ * When the driver has scrolled past last-content align into bottom padding,
+ * map that overscroll progress onto the follower's padding range.
+ * Returns true when overscroll mapping was applied (skip line sync).
+ */
+function applyBottomOverscrollFromDriver(
+  driver: HTMLElement,
+  follower: HTMLElement,
+  driverContentBottom: number,
+  followerContentBottom: number,
+): boolean {
+  const driverEnd = scrollTopForBottomAlign(driver, driverContentBottom);
+  const driverMax = maxScrollTop(driver);
+  if (driverMax <= driverEnd + 0.5) return false;
+  if (driver.scrollTop <= driverEnd + 0.5) return false;
+
+  const progress = Math.min(
+    1,
+    (driver.scrollTop - driverEnd) / (driverMax - driverEnd),
+  );
+  const followerEnd = scrollTopForBottomAlign(follower, followerContentBottom);
+  const followerMax = maxScrollTop(follower);
+  const target =
+    followerMax <= followerEnd
+      ? followerMax
+      : followerEnd + progress * (followerMax - followerEnd);
+  setScrollerTop(follower, target);
+  return true;
 }
 
 /** Viewport Y (in scroller content coords) used as the sync anchor. */
@@ -279,15 +341,29 @@ export function useHaimDoubleScrollSync({
       });
     };
 
-    /** CM scrolled → drive WYSIWYG (marker-pair interpolation). */
+    /** CM scrolled → drive WYSIWYG (marker-pair interpolation + padding overscroll). */
     const syncWysiwygFromCm = (dir: ScrollDir) => {
       const view = cmViewRef.current;
       const wysiwyg = wysiwygScrollRef.current;
       if (!view || !wysiwyg) return;
 
       const scrollDom = view.scrollDOM;
-      const y = anchorY(scrollDom, dir);
       const markers = collectDataLineMarkers(wysiwyg, wysiwyg);
+      const wysiwygBottom = markersContentBottom(markers);
+      if (
+        wysiwygBottom != null &&
+        applyBottomOverscrollFromDriver(
+          scrollDom,
+          wysiwyg,
+          cmContentBottom(view),
+          wysiwygBottom,
+        )
+      ) {
+        lastWysiwygTop = wysiwyg.scrollTop;
+        return;
+      }
+
+      const y = anchorY(scrollDom, dir);
       const contentY = mapCmYToWysiwygContentY(view, markers, y);
       if (contentY == null) return;
 
@@ -295,15 +371,29 @@ export function useHaimDoubleScrollSync({
       lastWysiwygTop = wysiwyg.scrollTop;
     };
 
-    /** WYSIWYG scrolled → drive CM (marker-pair interpolation). */
+    /** WYSIWYG scrolled → drive CM (marker-pair interpolation + padding overscroll). */
     const syncCmFromWysiwyg = (dir: ScrollDir) => {
       const view = cmViewRef.current;
       const wysiwyg = wysiwygScrollRef.current;
       if (!view || !wysiwyg) return;
 
       const scrollDom = view.scrollDOM;
-      const y = anchorY(wysiwyg, dir);
       const markers = collectDataLineMarkers(wysiwyg, wysiwyg);
+      const wysiwygBottom = markersContentBottom(markers);
+      if (
+        wysiwygBottom != null &&
+        applyBottomOverscrollFromDriver(
+          wysiwyg,
+          scrollDom,
+          wysiwygBottom,
+          cmContentBottom(view),
+        )
+      ) {
+        lastCmTop = scrollDom.scrollTop;
+        return;
+      }
+
+      const y = anchorY(wysiwyg, dir);
       const contentY = mapWysiwygYToCmContentY(view, markers, y);
       if (contentY == null) return;
 
