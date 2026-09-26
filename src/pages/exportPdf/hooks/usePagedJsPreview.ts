@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
 import { applyExportPdfCodeBlockFragmentChrome } from '@/utils/exportPdf/applyExportPdfCodeBlockFragmentChrome';
+import { normalizeHaimPreviewForExportPdf } from '@/utils/exportPdf/normalizeHaimPreviewForExportPdf';
 import { prepareExportPdfCodeBlocksForPaging } from '@/utils/exportPdf/prepareExportPdfCodeBlocksForPaging';
 import { sanitizeExportPdfPagedSource } from '@/utils/exportPdf/sanitizeExportPdfPagedSource';
 import { splitExportPdfCodeBlocksByPageHeight } from '@/utils/exportPdf/splitExportPdfCodeBlocksByPageHeight';
@@ -122,11 +123,15 @@ function buildPagedSourceFromPreview(
   wrapper.innerHTML = html;
 
   // Drop code-block / mermaid chrome (copy, pin, lang head) from the print flow.
+  // Include Haim TipTap node-view chrome when staging uses HaimMarkdownPreview.
   for (const el of wrapper.querySelectorAll(
-    '.md-editor-code-head, .md-editor-copy-button, .md-editor-code-action, .md-editor-mermaid-action',
+    '.md-editor-code-head, .md-editor-copy-button, .md-editor-code-action, .md-editor-mermaid-action, .haim-code-block__header, .haim-code-block__action, .haim-code-block__actions',
   )) {
     el.remove();
   }
+
+  // Haim TipTap → md-editor-* aliases for code-block / mermaid paging pipelines.
+  normalizeHaimPreviewForExportPdf(wrapper);
 
   prepareExportPdfCodeBlocksForPaging(wrapper);
   sanitizeExportPdfPagedSource(wrapper);
