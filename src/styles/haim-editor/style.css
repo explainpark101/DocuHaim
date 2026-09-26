@@ -169,3 +169,19 @@
 .haim-editor-prose ul[data-type='taskList'] li > label {
   margin-top: 0.2em;
 }
+
+/* Overlay TOC — glass background (md-editor-rt catalog-fixed parity) */
+.haim-toc-overlay {
+  background-color: color-mix(in srgb, var(--color-white, #ffffff) 72%, transparent);
+  backdrop-filter: blur(8px) saturate(1.25);
+  -webkit-backdrop-filter: blur(8px) saturate(1.25);
+}
+
+.haim-editor--dark .haim-toc-overlay,
+:is(.dark) .haim-toc-overlay {
+  background-color: color-mix(
+    in srgb,
+    var(--color-odp-bgSoft, #0f172a) 72%,
+    transparent
+  );
+}

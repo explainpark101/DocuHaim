@@ -23,6 +23,7 @@ import {
   Eye,
   FileCode2,
   ArrowUpDown,
+  ListTree,
 } from 'lucide-react';
 import { Switch, Tooltip } from 'radix-ui';
 import {
@@ -43,6 +44,8 @@ type Props = {
   onSave?: (() => void) | undefined;
   scrollSyncEnabled?: boolean | undefined;
   onScrollSyncChange?: ((enabled: boolean) => void) | undefined;
+  tocOpen?: boolean | undefined;
+  onTocOpenChange?: ((open: boolean) => void) | undefined;
 };
 
 function ToolBtn({
@@ -102,6 +105,8 @@ export default function HaimToolbar({
   onInsertPageBreak,
   scrollSyncEnabled = true,
   onScrollSyncChange,
+  tocOpen = false,
+  onTocOpenChange,
 }: Props) {
   const state = useEditorState({
     editor,
@@ -129,11 +134,23 @@ export default function HaimToolbar({
     },
   });
 
+  const tocToggle = onTocOpenChange ? (
+    <div className="ml-auto mr-1">
+      <HaimCatalogButton
+        open={tocOpen}
+        onToggle={() => onTocOpenChange(!tocOpen)}
+      />
+    </div>
+  ) : null;
+
   if (!editor || previewOnly) {
     return (
-      <div className="haim-toolbar flex h-9 shrink-0 items-center gap-1 border-b border-slate-300 bg-slate-50 px-2 shadow-[0_2px_6px_-1px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-[0_2px_8px_-1px_rgba(0,0,0,0.45)]">
-        <span className="text-xs text-gray-500 dark:text-odp-muted">미리보기</span>
-      </div>
+      <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+        <div className="haim-toolbar flex h-9 shrink-0 items-center gap-1 border-b border-slate-300 bg-slate-50 px-2 shadow-[0_2px_6px_-1px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-[0_2px_8px_-1px_rgba(0,0,0,0.45)]">
+          <span className="text-xs text-gray-500 dark:text-odp-muted">미리보기</span>
+          {tocToggle}
+        </div>
+      </Tooltip.Provider>
     );
   }
 
@@ -149,6 +166,8 @@ export default function HaimToolbar({
   return (
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
       <div className="haim-toolbar flex h-9 shrink-0 flex-wrap items-center gap-0.5 overflow-x-auto border-b border-slate-300 bg-slate-50 px-1 shadow-[0_2px_6px_-1px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-[0_2px_8px_-1px_rgba(0,0,0,0.45)]">
+        <HaimViewModeCycleButton viewMode={viewMode} onChange={setMode} />
+        <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-odp-borderStrong" />
         <ToolBtn
           label="실행 취소"
           disabled={Boolean(s?.canUndo) === false}
@@ -332,16 +351,16 @@ export default function HaimToolbar({
         >
           <SeparatorHorizontal size={14} />
         </ToolBtn>
-        <span className="mx-1 h-4 w-px bg-slate-300 dark:bg-odp-borderStrong" />
         {showScrollSync ? (
-          <HaimScrollSyncSwitch
-            checked={scrollSyncEnabled}
-            onChange={(next) => onScrollSyncChange?.(next)}
-          />
+          <>
+            <span className="mx-1 h-4 w-px bg-slate-300 dark:bg-odp-borderStrong" />
+            <HaimScrollSyncSwitch
+              checked={scrollSyncEnabled}
+              onChange={(next) => onScrollSyncChange?.(next)}
+            />
+          </>
         ) : null}
-        <div className="ml-auto mr-1">
-          <HaimViewModeCycleButton viewMode={viewMode} onChange={setMode} />
-        </div>
+        {tocToggle}
       </div>
     </Tooltip.Provider>
   );
@@ -450,6 +469,46 @@ function HaimViewModeCycleButton({
           className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg"
         >
           {opt?.description ?? tip}
+          <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
+/** Far-right catalog toggle (md-editor-rt `catalog` analogue). */
+function HaimCatalogButton({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const label = open ? '목차 숨기기' : '목차보기';
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={open}
+          onClick={onToggle}
+          className={`inline-flex h-7 w-7 items-center justify-center rounded border text-gray-700 dark:text-odp-fg ${
+            open
+              ? 'border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/40'
+              : 'border-transparent hover:bg-gray-100 dark:hover:bg-odp-bgSoft'
+          }`}
+        >
+          <ListTree size={14} aria-hidden />
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content
+          side="bottom"
+          sideOffset={6}
+          className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg"
+        >
+          {label}
           <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
         </Tooltip.Content>
       </Tooltip.Portal>
