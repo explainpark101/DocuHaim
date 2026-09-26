@@ -55,9 +55,8 @@ function QuizMdPreview({
         language="ko-KR"
         showCodeRowNumber={false}
         noImgZoomIn
-        // @ts-expect-error custom icons shape
         iconfontType={undefined}
-        sanitize={(html) => html}
+        sanitize={(html: string) => html}
       />
     </div>
   );
