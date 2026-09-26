@@ -55,6 +55,8 @@ export type HaimToolbarAppActions = {
   onImageLink?: (() => void) | undefined;
   onImageUpload?: ((files: File[]) => void) | undefined;
   onImageClip?: ((file: File) => void) | undefined;
+  /** Open blank whiteboard create modal (size + bg → PNG wiki image). */
+  onCreateWhiteboard?: (() => void) | undefined;
   imageDisabled?: boolean | undefined;
   onCreateQrCode?: (() => void) | undefined;
   onInsertMermaid?: (() => void) | undefined;
@@ -395,12 +397,13 @@ export default function HaimToolbar({
           <SeparatorHorizontal size={14} />
         </ToolBtn>
         <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-odp-borderStrong" />
-        {a?.onImageLink || a?.onImageUpload || a?.onImageClip ? (
+        {a?.onImageLink || a?.onImageUpload || a?.onImageClip || a?.onCreateWhiteboard ? (
           <HaimImageMenu
             disabled={Boolean(a.imageDisabled)}
             onRequestLink={() => a.onImageLink?.()}
             onRequestUpload={(files) => a.onImageUpload?.(files)}
             onRequestClip={(file) => a.onImageClip?.(file)}
+            onRequestWhiteboard={() => a.onCreateWhiteboard?.()}
           />
         ) : null}
         {a?.onCreateQrCode ? (
@@ -477,11 +480,13 @@ function HaimImageMenu({
   onRequestLink,
   onRequestUpload,
   onRequestClip,
+  onRequestWhiteboard,
 }: {
   disabled: boolean;
   onRequestLink: () => void;
   onRequestUpload: (files: File[]) => void;
   onRequestClip: (file: File) => void;
+  onRequestWhiteboard: () => void;
 }) {
   const uploadRef = useRef<HTMLInputElement>(null);
   const clipRef = useRef<HTMLInputElement>(null);
@@ -536,6 +541,12 @@ function HaimImageMenu({
               onSelect={() => clipRef.current?.click()}
             >
               자르고 업로드
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              className="cursor-pointer rounded px-2 py-1.5 outline-none hover:bg-gray-100 dark:hover:bg-odp-bgSoft"
+              onSelect={() => onRequestWhiteboard()}
+            >
+              화이트보드
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>

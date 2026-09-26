@@ -28,6 +28,7 @@ import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
 import FootnoteComposeModal from '@/components/modals/FootnoteComposeModal';
 import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
+import WhiteboardCreateModal from '@/components/modals/WhiteboardCreateModal';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import {
@@ -681,6 +682,7 @@ export default function MarkdownEditor({
     onChangeWithUndoHistoryRef.current = onChangeWithUndoHistory;
   }, [onChangeWithUndoHistory]);
   const [clipCropFile, setClipCropFile] = useState(null);
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
@@ -836,6 +838,10 @@ export default function MarkdownEditor({
         if (file) setClipCropFile(file);
       };
       input.click();
+    };
+    handlers['editor-create-whiteboard'] = () => {
+      if (typeof onUploadImage !== 'function' || isUploadingEditorImage) return;
+      setWhiteboardOpen(true);
     };
     handlers['editor-convert-all-images-to-wiki'] = () => {
       if (typeof onRequestConvertAllImagesToWiki === 'function') {
@@ -2617,6 +2623,9 @@ export default function MarkdownEditor({
         void handleToolbarImageUpload(files);
       }}
       onRequestClip={(file) => setClipCropFile(file)}
+      onRequestWhiteboard={() => {
+        if (typeof onUploadImage === 'function') setWhiteboardOpen(true);
+      }}
     />,
   ], [
     value,
@@ -2783,6 +2792,14 @@ export default function MarkdownEditor({
         file={clipCropFile}
         onClose={() => setClipCropFile(null)}
         onConfirm={handleToolbarImageClipConfirm}
+      />
+      <WhiteboardCreateModal
+        isOpen={whiteboardOpen}
+        onClose={() => setWhiteboardOpen(false)}
+        disabled={typeof onUploadImage !== 'function' || isUploadingEditorImage}
+        onConfirm={async (file) => {
+          await handleToolbarImageUpload([file]);
+        }}
       />
       <TableEditModal
         isOpen={haimTableEdit.isOpen}
