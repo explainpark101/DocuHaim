@@ -6,7 +6,8 @@
  * - useHaimDualSync debounces TipTap↔CM; origin tags block feedback loops.
  * - getCachedMarkdown skips serialize when JSON identity unchanged.
  * - vite manualChunks: vendor-tiptap separate from vendor-md-editor.
- * - Frozen panes use MarkdownPreviewSurface (no TipTap) when demoted.
+ * - Frozen panes use MarkdownPreviewSurface with engineHint="legacy" (no TipTap)
+ *   when demoted, even if the note editor type is Haim.
  */
 
 export const HAIM_PERF_CHECKLIST = [

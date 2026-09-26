@@ -64,6 +64,7 @@ function FrozenPaneMarkdownPreview({
       aria-hidden
     >
       <MarkdownPreviewSurface
+        engineHint="legacy"
         id={safeId}
         modelValue={value}
         theme={theme === 'dark' ? 'dark' : 'light'}
