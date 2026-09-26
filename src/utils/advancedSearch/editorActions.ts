@@ -34,6 +34,7 @@ export type EditorActionId =
   | 'editor-checklist-progress'
   | 'editor-image-upload'
   | 'editor-image-clip'
+  | 'editor-create-qrcode'
   | 'editor-convert-all-images-to-wiki'
   | 'editor-catalog';
 
@@ -333,6 +334,22 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     title: '이미지 잘라서 업로드',
     description: 'Cropper.js / react-easy-crop으로 자른 뒤 업로드',
     keywords: ['image', 'crop', 'clip', '자르기', '크롭', 'cropper'],
+  },
+  {
+    id: 'editor-create-qrcode',
+    title: 'QRCode 만들기',
+    description: '텍스트를 고화질 SVG QR로 만들어 wiki image로 삽입',
+    keywords: [
+      'qr',
+      'qrcode',
+      'QR',
+      'QRCode',
+      '큐알',
+      '큐알코드',
+      'barcode',
+      'svg',
+      'wiki image',
+    ],
   },
   {
     id: 'editor-convert-all-images-to-wiki',

@@ -45,6 +45,7 @@ import HeadingRemapModal, {
 } from '@/components/modals/HeadingRemapModal';
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
 import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
+import QrCodeCreateModal from '@/components/modals/QrCodeCreateModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal.jsx';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
 import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
@@ -136,6 +137,7 @@ export default function HaimEditor({
   const [headingRemapSelection, setHeadingRemapSelection] = useState('');
   const headingRemapRangeRef = useRef<{ from: number; to: number } | null>(null);
   const [imageLinkOpen, setImageLinkOpen] = useState(false);
+  const [qrCodeOpen, setQrCodeOpen] = useState(false);
   const [clipCropFile, setClipCropFile] = useState<File | null>(null);
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [invisibleCharsVisible, setInvisibleCharsVisible] = useState(false);
@@ -874,6 +876,10 @@ export default function HaimEditor({
         };
         input.click();
       },
+      'editor-create-qrcode': () => {
+        if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
+        setQrCodeOpen(true);
+      },
       'editor-table-edit': () => openHaimTableFromSelection(),
     });
     return unregister;
@@ -888,6 +894,8 @@ export default function HaimEditor({
     openHeadingRemap,
     handleUploadFiles,
     openHaimTableFromSelection,
+    onUploadImage,
+    showImageUploadOverlay,
   ]);
 
   useEffect(() => {
@@ -1005,6 +1013,7 @@ export default function HaimEditor({
             onImageClip: (file) => setClipCropFile(file),
             imageDisabled:
               typeof onUploadImage !== 'function' || showImageUploadOverlay,
+            onCreateQrCode: () => setQrCodeOpen(true),
             onInsertMermaid: () => {
               editor
                 .chain()
@@ -1157,6 +1166,16 @@ export default function HaimEditor({
               contentType: 'markdown',
             } as never)
             .run();
+        }}
+      />
+      <QrCodeCreateModal
+        isOpen={qrCodeOpen}
+        onClose={() => setQrCodeOpen(false)}
+        disabled={
+          typeof onUploadImage !== 'function' || showImageUploadOverlay
+        }
+        onConfirm={async (file) => {
+          await handleUploadFiles([file]);
         }}
       />
       <ImageClipCropModal
