@@ -4,13 +4,25 @@ import {
   EditorView,
   keymap,
   highlightActiveLine,
-  lineNumbers,
   drawSelection,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
+import {
+  applyBase64ImageFoldEnabled,
+  base64ImageFoldExtension,
+} from '@/utils/base64ImageFoldExtension';
+import { loadBase64ImageFoldEnabled } from '@/utils/base64ImageFoldSettings';
+import {
+  applyMermaidBase64FoldEnabled,
+  mermaidBase64FoldExtension,
+} from '@/utils/mermaidBase64FoldExtension';
+import {
+  createNoteCoverFoldExtension,
+  setNoteCoverFoldDocKey,
+} from '@/utils/noteCover/noteCoverFoldExtension';
 
 type Props = {
   initialValue: string;
@@ -22,11 +34,16 @@ type Props = {
   onViewReady?: (() => void) | undefined;
   /** Clipboard / OS image paste → upload as wiki images. */
   onPasteImages?: ((files: File[]) => void) | undefined;
+  /** IndexedDB key for per-document note-cover fold persistence. */
+  noteCoverFoldDocKey?: string | null | undefined;
+  /** Collapse long `data:image/...;base64,...` payloads (and mermaid fences). */
+  foldBase64Images?: boolean | undefined;
 };
 
 /**
  * Lazy-mounted markdown source pane for Haim dual mode.
  * Unmount destroys CM (clears history) — intentional for session cost.
+ * Includes note-cover + base64 image fold (same CM extensions as MarkdownEditor).
  */
 export default function HaimSourcePane({
   initialValue,
@@ -36,6 +53,8 @@ export default function HaimSourcePane({
   className = '',
   onViewReady,
   onPasteImages,
+  noteCoverFoldDocKey = null,
+  foldBase64Images = true,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const onDocChangedRef = useRef(onDocChanged);
@@ -44,13 +63,23 @@ export default function HaimSourcePane({
   onViewReadyRef.current = onViewReady;
   const onPasteImagesRef = useRef(onPasteImages);
   onPasteImagesRef.current = onPasteImages;
+  const foldDocKeyRef = useRef(noteCoverFoldDocKey);
+  foldDocKeyRef.current = noteCoverFoldDocKey;
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
+    const foldEnabled =
+      typeof foldBase64Images === 'boolean'
+        ? foldBase64Images
+        : loadBase64ImageFoldEnabled();
+
     const extensions = [
-      lineNumbers(),
+      // Includes lineNumbers + cover/heading fold gutter (do not add lineNumbers again).
+      createNoteCoverFoldExtension(),
+      base64ImageFoldExtension(foldEnabled),
+      mermaidBase64FoldExtension(foldEnabled),
       highlightActiveLine(),
       drawSelection(),
       history(),
@@ -91,6 +120,7 @@ export default function HaimSourcePane({
       }),
     });
     viewRef.current = view;
+    setNoteCoverFoldDocKey(view, foldDocKeyRef.current ?? null);
     onViewReadyRef.current?.();
     return () => {
       view.destroy();
@@ -100,6 +130,21 @@ export default function HaimSourcePane({
     // Mount once per dual session; parent pushes content via sync.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Restore / rebind note-cover fold persistence when the open file changes.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    setNoteCoverFoldDocKey(view, noteCoverFoldDocKey ?? null);
+  }, [noteCoverFoldDocKey, viewRef]);
+
+  // Toggle base64 / mermaid payload folding without remounting the view.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    applyBase64ImageFoldEnabled(view, foldBase64Images !== false);
+    applyMermaidBase64FoldEnabled(view, foldBase64Images !== false);
+  }, [foldBase64Images, viewRef]);
 
   return (
     <div

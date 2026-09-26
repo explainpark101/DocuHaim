@@ -245,3 +245,26 @@
     transparent
   );
 }
+
+/* Source pane: collapsed base64 image payload chips (parity with .md-editor) */
+.haim-editor .cm-base64-image-fold {
+  display: inline;
+  padding-block: 0;
+  padding-inline: 0.25em;
+  border-radius: 3px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--color-blue-600);
+  background-color: color-mix(in srgb, var(--color-blue-500) 12%, transparent);
+}
+
+.haim-editor--dark .cm-base64-image-fold,
+:is(.dark) .haim-editor .cm-base64-image-fold {
+  color: var(--color-odp-accentBlue, #60a5fa);
+  background-color: color-mix(
+    in srgb,
+    var(--color-odp-accentBlue, #60a5fa) 18%,
+    transparent
+  );
+}
