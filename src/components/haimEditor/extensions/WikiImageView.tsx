@@ -15,7 +15,10 @@ import {
   wikiImageMarkupFromAttrs,
 } from '@/utils/wikiImageSyntax';
 import WikiImageSizeModal from '@/components/modals/WikiImageSizeModal';
-import HaimImageLightbox from '@/components/haimEditor/HaimImageLightbox';
+import HaimImageLightbox, {
+  type HaimImageLightboxSaveMode,
+} from '@/components/haimEditor/HaimImageLightbox';
+import { uploadHaimAnnotatedImage } from '@/utils/haimImageAnnotateUpload';
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se';
 
@@ -284,6 +287,65 @@ export default function WikiImageView({
     setLightboxOpen(true);
   }, []);
 
+  const saveAnnotated = useCallback(
+    async (mode: HaimImageLightboxSaveMode, file: File) => {
+      if (!editable) return;
+      const newPath = await uploadHaimAnnotatedImage(file);
+      const pos = typeof getPos === 'function' ? getPos() : null;
+
+      if (mode === 'overwrite') {
+        const nextAttrs = {
+          path: newPath,
+          alt: newPath,
+          options: optionsFromSizeAttrs(newPath, width, height, background),
+        };
+        if (typeof pos === 'number') {
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(pos, undefined, {
+              ...node.attrs,
+              ...nextAttrs,
+            }),
+          );
+        } else {
+          updateAttributes(nextAttrs);
+        }
+        const previewUrl = URL.createObjectURL(file);
+        setLightboxSrc(previewUrl);
+        return;
+      }
+
+      // saveAs — insert a new wiki image below this node
+      if (typeof pos !== 'number') return;
+      const insertAt = pos + node.nodeSize;
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(insertAt, {
+          type: 'wikiImage',
+          attrs: {
+            path: newPath,
+            options: '',
+            alt: newPath,
+            width: null,
+            height: null,
+            background: null,
+          },
+        })
+        .run();
+    },
+    [
+      editable,
+      editor,
+      getPos,
+      updateAttributes,
+      width,
+      height,
+      background,
+      node.attrs,
+      node.nodeSize,
+    ],
+  );
+
   return (
     <NodeViewWrapper
       as="div"
@@ -349,6 +411,7 @@ export default function WikiImageView({
           setLightboxOpen(false);
           setLightboxSrc(null);
         }}
+        {...(editable ? { onSaveAnnotated: saveAnnotated } : {})}
       />
     </NodeViewWrapper>
   );

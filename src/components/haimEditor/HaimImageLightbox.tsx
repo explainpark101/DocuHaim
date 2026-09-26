@@ -14,18 +14,26 @@ import {
   X,
   Hand,
   Pencil,
+  PenLine,
+  Highlighter,
+  Flame,
   Eraser,
   Undo2,
+  Redo2,
   Trash2,
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  Save,
+  CopyPlus,
 } from 'lucide-react';
 import {
+  compositeAnnotatedImageBlob,
   isInkApiAvailable,
   requestInkPresenter,
   type DelegatedInkTrailPresenter,
 } from '@/components/haimEditor/haimImageInk';
+import { isHaimAnnotateUploadAvailable } from '@/utils/haimImageAnnotateUpload';
 
 const LIGHTBOX_EASE = [0.22, 1, 0.36, 1] as const;
 const OVERLAY_TRANSITION = { duration: 0.2, ease: LIGHTBOX_EASE };
@@ -36,6 +44,12 @@ const MAX_SCALE = 8;
 const ZOOM_STEP = 1.25;
 const DBLCLICK_ZOOM = 2;
 
+const MIN_PEN = 0.5;
+const MAX_PEN = 128;
+const LASER_FADE_MS = 4000;
+/** Cap long edge of ink buffer to avoid huge memory on multi-megapixel photos. */
+const MAX_BUFFER_EDGE = 8192;
+
 const PEN_COLORS = [
   '#111827',
   '#ef4444',
@@ -44,6 +58,14 @@ const PEN_COLORS = [
   '#3b82f6',
   '#a855f7',
   '#ffffff',
+] as const;
+
+const HIGHLIGHT_COLORS = [
+  'rgba(250, 204, 21, 0.45)',
+  'rgba(244, 114, 182, 0.45)',
+  'rgba(56, 189, 248, 0.4)',
+  'rgba(74, 222, 128, 0.4)',
+  'rgba(251, 146, 60, 0.45)',
 ] as const;
 
 const CHECKERBOARD_STYLE = {
@@ -58,76 +80,190 @@ const CHECKERBOARD_STYLE = {
   backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
 };
 
-type Tool = 'pan' | 'pen' | 'eraser';
+type Tool = 'pan' | 'pen' | 'pressure' | 'highlighter' | 'laser' | 'eraser';
 
-type Point = { x: number; y: number };
+type Point = { x: number; y: number; pressure: number };
+
+type StrokeKind = 'pen' | 'pressure' | 'highlighter' | 'laser' | 'eraser';
 
 type Stroke = {
   id: string;
-  tool: 'pen' | 'eraser';
+  seq: number;
+  kind: StrokeKind;
   color: string;
   diameter: number;
   points: Point[];
+  /** Laser: remove after this timestamp (ms). */
+  expiresAt?: number;
 };
+
+export type HaimImageLightboxSaveMode = 'overwrite' | 'saveAs';
 
 export type HaimImageLightboxProps = {
   src: string | null;
   alt?: string;
   open: boolean;
   onClose: () => void;
+  /** Persist annotated PNG into the document (wiki / stock image). */
+  onSaveAnnotated?: (
+    mode: HaimImageLightboxSaveMode,
+    file: File,
+  ) => Promise<void>;
 };
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-function drawStroke(
-  ctx: CanvasRenderingContext2D,
-  stroke: Stroke,
-  dpr: number,
-): void {
+function roundSize(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+function sizeStep(current: number): number {
+  return Math.max(0.1, roundSize(current / 10));
+}
+
+function bumpSize(current: number, direction: 1 | -1): number {
+  return roundSize(clamp(current + direction * sizeStep(current), MIN_PEN, MAX_PEN));
+}
+
+function readPressure(event: PointerEvent | ReactPointerEvent, usePressure: boolean): number {
+  if (!usePressure) return 1;
+  const p = event.pressure;
+  if (typeof p !== 'number' || Number.isNaN(p)) return 0.5;
+  // Mouse reports 0.5 while down; keep usable width.
+  if (event.pointerType === 'mouse') return 0.5;
+  return clamp(p || 0.05, 0.05, 1);
+}
+
+function strokeWidth(stroke: Stroke, pressure: number): number {
+  if (stroke.kind === 'pressure') return Math.max(0.5, stroke.diameter * pressure);
+  return stroke.diameter;
+}
+
+/** Points + diameters are stored in high-res buffer pixel space. */
+function drawStrokeOnCtx(ctx: CanvasRenderingContext2D, stroke: Stroke): void {
   if (stroke.points.length < 1) return;
   ctx.save();
-  ctx.scale(dpr, dpr);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = stroke.diameter;
-  if (stroke.tool === 'eraser') {
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.miterLimit = 2;
+
+  if (stroke.kind === 'eraser') {
     ctx.globalCompositeOperation = 'destination-out';
     ctx.strokeStyle = 'rgba(0,0,0,1)';
-  } else {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = stroke.color;
-  }
-  ctx.beginPath();
-  const first = stroke.points[0];
-  if (!first) {
+    ctx.lineWidth = stroke.diameter;
+    ctx.beginPath();
+    const first = stroke.points[0];
+    if (!first) {
+      ctx.restore();
+      return;
+    }
+    ctx.moveTo(first.x, first.y);
+    if (stroke.points.length === 1) {
+      ctx.lineTo(first.x + 0.01, first.y);
+    } else {
+      for (let i = 1; i < stroke.points.length; i += 1) {
+        const p = stroke.points[i];
+        if (p) ctx.lineTo(p.x, p.y);
+      }
+    }
+    ctx.stroke();
     ctx.restore();
     return;
   }
-  ctx.moveTo(first.x, first.y);
-  if (stroke.points.length === 1) {
-    ctx.lineTo(first.x + 0.01, first.y);
-  } else {
+
+  if (stroke.kind === 'highlighter') {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.diameter;
+    ctx.beginPath();
+    const first = stroke.points[0];
+    if (!first) {
+      ctx.restore();
+      return;
+    }
+    ctx.moveTo(first.x, first.y);
     for (let i = 1; i < stroke.points.length; i += 1) {
       const p = stroke.points[i];
       if (p) ctx.lineTo(p.x, p.y);
     }
+    if (stroke.points.length === 1) ctx.lineTo(first.x + 0.01, first.y);
+    ctx.stroke();
+    ctx.restore();
+    return;
   }
-  ctx.stroke();
+
+  // pen / pressure / laser — segment widths for pressure
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = stroke.color;
+  if (stroke.kind !== 'pressure' || stroke.points.length < 2) {
+    const p0 = stroke.points[0];
+    if (!p0) {
+      ctx.restore();
+      return;
+    }
+    ctx.lineWidth = strokeWidth(stroke, p0.pressure);
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    if (stroke.points.length === 1) {
+      ctx.lineTo(p0.x + 0.01, p0.y);
+    } else {
+      for (let i = 1; i < stroke.points.length; i += 1) {
+        const p = stroke.points[i];
+        if (p) ctx.lineTo(p.x, p.y);
+      }
+    }
+    ctx.stroke();
+  } else {
+    for (let i = 1; i < stroke.points.length; i += 1) {
+      const a = stroke.points[i - 1];
+      const b = stroke.points[i];
+      if (!a || !b) continue;
+      ctx.beginPath();
+      ctx.lineWidth = strokeWidth(stroke, (a.pressure + b.pressure) / 2);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 
-function redrawAll(
-  canvas: HTMLCanvasElement,
-  strokes: Stroke[],
-  dpr: number,
-): void {
+function redrawLayer(canvas: HTMLCanvasElement | null, strokes: Stroke[]): void {
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (const s of strokes) drawStroke(ctx, s, dpr);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  for (const s of strokes) drawStrokeOnCtx(ctx, s);
+}
+
+/**
+ * Prefer image natural pixels; never go below displayed CSS * devicePixelRatio
+ * so zoomed-in drawing stays sharp on retina.
+ */
+function resolveInkBufferSize(
+  img: HTMLImageElement,
+): { bufW: number; bufH: number; cssW: number; cssH: number } {
+  const cssW = Math.max(1, img.clientWidth);
+  const cssH = Math.max(1, img.clientHeight);
+  const natW = img.naturalWidth > 0 ? img.naturalWidth : cssW;
+  const natH = img.naturalHeight > 0 ? img.naturalHeight : cssH;
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  let bufW = Math.max(natW, Math.round(cssW * dpr));
+  let bufH = Math.max(natH, Math.round(cssH * dpr));
+  const longEdge = Math.max(bufW, bufH);
+  if (longEdge > MAX_BUFFER_EDGE) {
+    const s = MAX_BUFFER_EDGE / longEdge;
+    bufW = Math.max(1, Math.round(bufW * s));
+    bufH = Math.max(1, Math.round(bufH * s));
+  }
+  return { bufW, bufH, cssW, cssH };
 }
 
 function ToolTipBtn({
@@ -175,30 +311,44 @@ function ToolTipBtn({
 }
 
 /**
- * Fullscreen enlarge viewer: wheel/dblclick zoom, drag pan, Ink API drawing.
+ * Fullscreen enlarge viewer: wheel/dblclick zoom, drag pan, Ink drawing tools.
  */
 export default function HaimImageLightbox({
   src,
   alt = '',
   open,
   onClose,
+  onSaveAnnotated,
 }: HaimImageLightboxProps) {
   const visible = Boolean(open && src);
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<Tool>('pan');
   const [penColor, setPenColor] = useState<string>(PEN_COLORS[0]);
+  const [highlightColor, setHighlightColor] = useState<string>(HIGHLIGHT_COLORS[0]);
   const [penSize, setPenSize] = useState(4);
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [inkStrokes, setInkStrokes] = useState<Stroke[]>([]);
+  const [highlightStrokes, setHighlightStrokes] = useState<Stroke[]>([]);
+  const [laserStrokes, setLaserStrokes] = useState<Stroke[]>([]);
+  const [redoStack, setRedoStack] = useState<
+    Array<{ layer: 'ink' | 'highlight' | 'both'; stroke: Stroke }>
+  >([]);
+  const strokeSeqRef = useRef(0);
   const [inkReady, setInkReady] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const stageRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const inkCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const highlightCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const laserCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const presenterRef = useRef<DelegatedInkTrailPresenter | null>(null);
-  const strokesRef = useRef<Stroke[]>([]);
+  const inkRef = useRef<Stroke[]>([]);
+  const highlightRef = useRef<Stroke[]>([]);
+  const laserRef = useRef<Stroke[]>([]);
   const drawingRef = useRef<Stroke | null>(null);
+  const drawingLayerRef = useRef<'ink' | 'highlight' | 'laser' | null>(null);
   const panDragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -206,49 +356,82 @@ export default function HaimImageLightbox({
     originX: number;
     originY: number;
   } | null>(null);
-  const dprRef = useRef(1);
+  const bufferScaleRef = useRef(1);
   const scaleRef = useRef(scale);
+  const sizeRangeRef = useRef<HTMLLabelElement | null>(null);
+  const laserTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  strokesRef.current = strokes;
+  inkRef.current = inkStrokes;
+  highlightRef.current = highlightStrokes;
+  laserRef.current = laserStrokes;
   scaleRef.current = scale;
+
+  const canSave =
+    Boolean(onSaveAnnotated) &&
+    isHaimAnnotateUploadAvailable() &&
+    (inkStrokes.length > 0 || highlightStrokes.length > 0);
 
   const resetView = useCallback(() => {
     setScale(1);
     setPan({ x: 0, y: 0 });
   }, []);
 
-  const clearInk = useCallback(() => {
-    setStrokes([]);
-    drawingRef.current = null;
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      ctx?.clearRect(0, 0, canvas.width, canvas.height);
-    }
+  const clearLaserTimers = useCallback(() => {
+    for (const t of laserTimersRef.current.values()) clearTimeout(t);
+    laserTimersRef.current.clear();
   }, []);
 
-  // Reset session when opened / source changes.
+  const clearAllDrawings = useCallback(() => {
+    setInkStrokes([]);
+    setHighlightStrokes([]);
+    setLaserStrokes([]);
+    setRedoStack([]);
+    drawingRef.current = null;
+    drawingLayerRef.current = null;
+    clearLaserTimers();
+    for (const c of [inkCanvasRef.current, highlightCanvasRef.current, laserCanvasRef.current]) {
+      if (!c) continue;
+      const ctx = c.getContext('2d');
+      ctx?.clearRect(0, 0, c.width, c.height);
+    }
+  }, [clearLaserTimers]);
+
   useEffect(() => {
     if (!visible) return;
     resetView();
-    clearInk();
+    clearAllDrawings();
     setTool('pan');
-  }, [visible, src, resetView, clearInk]);
+    setSaveError(null);
+  }, [visible, src, resetView, clearAllDrawings]);
+
+  useEffect(() => {
+    if (visible) return;
+    clearLaserTimers();
+  }, [visible, clearLaserTimers]);
 
   const syncCanvasSize = useCallback(() => {
     const img = imgRef.current;
-    const canvas = canvasRef.current;
-    if (!img || !canvas) return;
-    const w = img.clientWidth;
-    const h = img.clientHeight;
-    if (w < 1 || h < 1) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    dprRef.current = dpr;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
-    redrawAll(canvas, strokesRef.current, dpr);
+    if (!img) return;
+    const { bufW, bufH, cssW, cssH } = resolveInkBufferSize(img);
+    if (cssW < 1 || cssH < 1) return;
+    bufferScaleRef.current = bufW / cssW;
+    for (const canvas of [
+      inkCanvasRef.current,
+      highlightCanvasRef.current,
+      laserCanvasRef.current,
+    ]) {
+      if (!canvas) continue;
+      const sizeChanged = canvas.width !== bufW || canvas.height !== bufH;
+      if (sizeChanged) {
+        canvas.width = bufW;
+        canvas.height = bufH;
+      }
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+    }
+    redrawLayer(inkCanvasRef.current, inkRef.current);
+    redrawLayer(highlightCanvasRef.current, highlightRef.current);
+    redrawLayer(laserCanvasRef.current, laserRef.current);
   }, []);
 
   useLayoutEffect(() => {
@@ -275,7 +458,7 @@ export default function HaimImageLightbox({
       return undefined;
     }
     let cancelled = false;
-    const canvas = canvasRef.current;
+    const canvas = inkCanvasRef.current;
     if (!canvas || !isInkApiAvailable()) {
       setInkReady(false);
       return undefined;
@@ -292,10 +475,19 @@ export default function HaimImageLightbox({
   }, [visible, src]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !visible) return;
-    redrawAll(canvas, strokes, dprRef.current);
-  }, [strokes, visible]);
+    if (!visible) return;
+    redrawLayer(inkCanvasRef.current, inkStrokes);
+  }, [inkStrokes, visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    redrawLayer(highlightCanvasRef.current, highlightStrokes);
+  }, [highlightStrokes, visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    redrawLayer(laserCanvasRef.current, laserStrokes);
+  }, [laserStrokes, visible]);
 
   const zoomAt = useCallback(
     (nextScale: number, clientX: number, clientY: number) => {
@@ -320,7 +512,6 @@ export default function HaimImageLightbox({
     [],
   );
 
-  // Non-passive wheel so preventDefault actually blocks page scroll.
   useLayoutEffect(() => {
     if (!visible) return undefined;
     const el = viewportRef.current;
@@ -348,17 +539,33 @@ export default function HaimImageLightbox({
     [scale, resetView, zoomAt],
   );
 
-  const canvasLocalPoint = useCallback((event: PointerEvent | ReactPointerEvent): Point | null => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width < 1 || rect.height < 1) return null;
-    // Account for CSS transform on ancestors: getBoundingClientRect is post-transform.
-    return {
-      x: ((event.clientX - rect.left) / rect.width) * (canvas.width / dprRef.current),
-      y: ((event.clientY - rect.top) / rect.height) * (canvas.height / dprRef.current),
-    };
-  }, []);
+  const canvasLocalPoint = useCallback(
+    (
+      event: PointerEvent | ReactPointerEvent,
+      usePressure: boolean,
+    ): Point | null => {
+      const canvas = inkCanvasRef.current;
+      if (!canvas) return null;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) return null;
+      // Map screen → high-res buffer pixels (natural / retina buffer).
+      return {
+        x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+        y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+        pressure: readPressure(event, usePressure),
+      };
+    },
+    [],
+  );
+
+  const cssDiameterForTool = useCallback(
+    (kind: StrokeKind): number => {
+      if (kind === 'highlighter') return Math.max(8, penSize * 3);
+      if (kind === 'laser') return Math.max(2, penSize * 0.75);
+      return penSize;
+    },
+    [penSize],
+  );
 
   const beginPan = useCallback(
     (event: ReactPointerEvent) => {
@@ -397,38 +604,109 @@ export default function HaimImageLightbox({
     }
   }, []);
 
+  const scheduleLaserExpiry = useCallback((strokeId: string) => {
+    const prev = laserTimersRef.current.get(strokeId);
+    if (prev) clearTimeout(prev);
+    const timer = setTimeout(() => {
+      laserTimersRef.current.delete(strokeId);
+      setLaserStrokes((list) => list.filter((s) => s.id !== strokeId));
+    }, LASER_FADE_MS);
+    laserTimersRef.current.set(strokeId, timer);
+  }, []);
+
   const beginDraw = useCallback(
     (event: ReactPointerEvent) => {
-      if (tool !== 'pen' && tool !== 'eraser') return;
+      if (
+        tool !== 'pen' &&
+        tool !== 'pressure' &&
+        tool !== 'highlighter' &&
+        tool !== 'laser' &&
+        tool !== 'eraser'
+      ) {
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
-      const pt = canvasLocalPoint(event);
+      const usePressure = tool === 'pressure';
+      const pt = canvasLocalPoint(event, usePressure);
       if (!pt) return;
       (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+
+      const kind: StrokeKind =
+        tool === 'eraser'
+          ? 'eraser'
+          : tool === 'highlighter'
+            ? 'highlighter'
+            : tool === 'laser'
+              ? 'laser'
+              : tool === 'pressure'
+                ? 'pressure'
+                : 'pen';
+
+      const color =
+        kind === 'laser'
+          ? '#ef4444'
+          : kind === 'highlighter'
+            ? highlightColor
+            : kind === 'eraser'
+              ? 'rgba(0,0,0,1)'
+              : penColor;
+
+      // Scale brush from CSS px → high-res buffer px so strokes stay sharp when saved.
+      const cssDia = cssDiameterForTool(kind);
+      const diameter = Math.max(0.5, cssDia * bufferScaleRef.current);
+
       const stroke: Stroke = {
         id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        tool,
-        color: penColor,
-        diameter: penSize,
+        seq: ++strokeSeqRef.current,
+        kind,
+        color,
+        diameter,
         points: [pt],
       };
       drawingRef.current = stroke;
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (ctx) drawStroke(ctx, stroke, dprRef.current);
 
-      if (tool === 'pen' && presenterRef.current && event.nativeEvent.isTrusted) {
-        try {
-          presenterRef.current.updateInkTrailStartPoint(event.nativeEvent, {
-            color: penColor,
-            diameter: Math.max(1, penSize),
-          });
-        } catch {
-          // Ink API optional
+      if (kind === 'highlighter') {
+        drawingLayerRef.current = 'highlight';
+        const ctx = highlightCanvasRef.current?.getContext('2d');
+        if (ctx) drawStrokeOnCtx(ctx, stroke);
+      } else if (kind === 'laser') {
+        drawingLayerRef.current = 'laser';
+        const ctx = laserCanvasRef.current?.getContext('2d');
+        if (ctx) drawStrokeOnCtx(ctx, stroke);
+        scheduleLaserExpiry(stroke.id);
+      } else if (kind === 'eraser') {
+        // Eraser hits ink + highlight layers.
+        drawingLayerRef.current = 'ink';
+        const inkCtx = inkCanvasRef.current?.getContext('2d');
+        const hiCtx = highlightCanvasRef.current?.getContext('2d');
+        if (inkCtx) drawStrokeOnCtx(inkCtx, stroke);
+        if (hiCtx) drawStrokeOnCtx(hiCtx, stroke);
+      } else {
+        drawingLayerRef.current = 'ink';
+        const ctx = inkCanvasRef.current?.getContext('2d');
+        if (ctx) drawStrokeOnCtx(ctx, stroke);
+        if (presenterRef.current && event.nativeEvent.isTrusted) {
+          try {
+            // Ink trail uses CSS pixels (screen), not buffer pixels.
+            presenterRef.current.updateInkTrailStartPoint(event.nativeEvent, {
+              color: penColor,
+              diameter: Math.max(1, cssDia * (kind === 'pressure' ? pt.pressure : 1)),
+            });
+          } catch {
+            // optional
+          }
         }
       }
     },
-    [tool, penColor, penSize, canvasLocalPoint],
+    [
+      tool,
+      penColor,
+      highlightColor,
+      canvasLocalPoint,
+      cssDiameterForTool,
+      scheduleLaserExpiry,
+    ],
   );
 
   const moveDraw = useCallback(
@@ -436,61 +714,97 @@ export default function HaimImageLightbox({
       const stroke = drawingRef.current;
       if (!stroke) return;
       event.preventDefault();
-      const pt = canvasLocalPoint(event);
+      const pt = canvasLocalPoint(event, stroke.kind === 'pressure');
       if (!pt) return;
+      const prev = stroke.points[stroke.points.length - 1];
       stroke.points.push(pt);
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (ctx && stroke.points.length >= 2) {
-        const a = stroke.points[stroke.points.length - 2];
-        const b = stroke.points[stroke.points.length - 1];
-        if (a && b) {
-          ctx.save();
-          ctx.scale(dprRef.current, dprRef.current);
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
+
+      const paintSegment = (canvas: HTMLCanvasElement | null) => {
+        const ctx = canvas?.getContext('2d');
+        if (!ctx || !prev) return;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        if (stroke.kind === 'eraser') {
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.strokeStyle = 'rgba(0,0,0,1)';
           ctx.lineWidth = stroke.diameter;
-          if (stroke.tool === 'eraser') {
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.strokeStyle = 'rgba(0,0,0,1)';
-          } else {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.strokeStyle = stroke.color;
-          }
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-          ctx.restore();
+        } else {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeStyle = stroke.color;
+          ctx.lineWidth = strokeWidth(stroke, (prev.pressure + pt.pressure) / 2);
         }
-      }
-      if (stroke.tool === 'pen' && presenterRef.current && event.nativeEvent.isTrusted) {
-        try {
-          presenterRef.current.updateInkTrailStartPoint(event.nativeEvent, {
-            color: stroke.color,
-            diameter: Math.max(1, stroke.diameter),
-          });
-        } catch {
-          // ignore
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(pt.x, pt.y);
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      if (stroke.kind === 'highlighter') {
+        paintSegment(highlightCanvasRef.current);
+      } else if (stroke.kind === 'laser') {
+        paintSegment(laserCanvasRef.current);
+        scheduleLaserExpiry(stroke.id);
+      } else if (stroke.kind === 'eraser') {
+        paintSegment(inkCanvasRef.current);
+        paintSegment(highlightCanvasRef.current);
+      } else {
+        paintSegment(inkCanvasRef.current);
+        if (presenterRef.current && event.nativeEvent.isTrusted) {
+          try {
+            const cssDia = stroke.diameter / Math.max(0.001, bufferScaleRef.current);
+            presenterRef.current.updateInkTrailStartPoint(event.nativeEvent, {
+              color: stroke.color,
+              diameter: Math.max(
+                1,
+                cssDia * (stroke.kind === 'pressure' ? pt.pressure : 1),
+              ),
+            });
+          } catch {
+            // ignore
+          }
         }
       }
     },
-    [canvasLocalPoint],
+    [canvasLocalPoint, scheduleLaserExpiry],
   );
 
-  const endDraw = useCallback((event: ReactPointerEvent) => {
-    const stroke = drawingRef.current;
-    if (!stroke) return;
-    drawingRef.current = null;
-    try {
-      (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
-    } catch {
-      // ignore
-    }
-    if (stroke.points.length > 0) {
-      setStrokes((prev) => [...prev, { ...stroke, points: [...stroke.points] }]);
-    }
-  }, []);
+  const endDraw = useCallback(
+    (event: ReactPointerEvent) => {
+      const stroke = drawingRef.current;
+      if (!stroke) return;
+      drawingRef.current = null;
+      drawingLayerRef.current = null;
+      try {
+        (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+      } catch {
+        // ignore
+      }
+      if (stroke.points.length === 0) return;
+
+      if (stroke.kind === 'laser') {
+        setLaserStrokes((prev) => [...prev, { ...stroke, points: [...stroke.points] }]);
+        scheduleLaserExpiry(stroke.id);
+        return;
+      }
+
+      setRedoStack([]);
+      const copy = { ...stroke, points: [...stroke.points] };
+      if (stroke.kind === 'highlighter') {
+        setHighlightStrokes((prev) => [...prev, copy]);
+      } else if (stroke.kind === 'eraser') {
+        // Store one eraser stroke on ink history; also apply visual already done.
+        setInkStrokes((prev) => [...prev, copy]);
+        setHighlightStrokes((prev) => [...prev, copy]);
+      } else {
+        setInkStrokes((prev) => [...prev, copy]);
+      }
+    },
+    [scheduleLaserExpiry],
+  );
 
   const onStagePointerDown = useCallback(
     (event: ReactPointerEvent) => {
@@ -498,9 +812,7 @@ export default function HaimImageLightbox({
         beginPan(event);
         return;
       }
-      if (tool === 'pen' || tool === 'eraser') {
-        beginDraw(event);
-      }
+      beginDraw(event);
     },
     [tool, beginPan, beginDraw],
   );
@@ -524,18 +836,164 @@ export default function HaimImageLightbox({
     [endPan, endDraw],
   );
 
-  const undoStroke = useCallback(() => {
-    setStrokes((prev) => prev.slice(0, -1));
+  const undoStrokeClean = useCallback(() => {
+    const ink = inkRef.current;
+    const hi = highlightRef.current;
+    const lastInk = ink[ink.length - 1];
+    const lastHi = hi[hi.length - 1];
+    if (!lastInk && !lastHi) return;
+
+    if (lastInk && lastHi && lastInk.id === lastHi.id && lastInk.kind === 'eraser') {
+      setRedoStack((r) => [...r, { layer: 'both', stroke: lastInk }]);
+      setInkStrokes(ink.slice(0, -1));
+      setHighlightStrokes(hi.slice(0, -1));
+      return;
+    }
+
+    const inkSeq = lastInk?.seq ?? -1;
+    const hiSeq = lastHi?.seq ?? -1;
+    if (inkSeq >= hiSeq && lastInk) {
+      setRedoStack((r) => [...r, { layer: 'ink', stroke: lastInk }]);
+      setInkStrokes(ink.slice(0, -1));
+      return;
+    }
+    if (lastHi) {
+      setRedoStack((r) => [...r, { layer: 'highlight', stroke: lastHi }]);
+      setHighlightStrokes(hi.slice(0, -1));
+    }
   }, []);
+
+  const redoStroke = useCallback(() => {
+    setRedoStack((stack) => {
+      if (!stack.length) return stack;
+      const next = stack[stack.length - 1];
+      if (!next) return stack;
+      if (next.layer === 'both' || next.stroke.kind === 'eraser') {
+        setInkStrokes((prev) => [...prev, next.stroke]);
+        setHighlightStrokes((prev) => [...prev, next.stroke]);
+      } else if (next.layer === 'ink') {
+        setInkStrokes((prev) => [...prev, next.stroke]);
+      } else {
+        setHighlightStrokes((prev) => [...prev, next.stroke]);
+      }
+      return stack.slice(0, -1);
+    });
+  }, []);
+
+  const adjustPenSize = useCallback((direction: 1 | -1) => {
+    setPenSize((s) => bumpSize(s, direction));
+  }, []);
+
+  // Non-passive wheel on brush-size control (React onWheel is often passive).
+  useLayoutEffect(() => {
+    if (!visible) return undefined;
+    const el = sizeRangeRef.current;
+    if (!el) return undefined;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      adjustPenSize(event.deltaY > 0 ? -1 : 1);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [visible, adjustPenSize]);
+
+  const runSave = useCallback(
+    async (mode: HaimImageLightboxSaveMode) => {
+      if (!onSaveAnnotated || !src || saving) return;
+      if (inkStrokes.length === 0 && highlightStrokes.length === 0) return;
+      setSaving(true);
+      setSaveError(null);
+      try {
+        const blob = await compositeAnnotatedImageBlob({
+          src,
+          inkCanvas: inkCanvasRef.current,
+          highlightCanvas: highlightCanvasRef.current,
+        });
+        const file = new File([blob], `annotated-${Date.now()}.png`, {
+          type: 'image/png',
+        });
+        await onSaveAnnotated(mode, file);
+        if (mode === 'overwrite') {
+          clearAllDrawings();
+        }
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      onSaveAnnotated,
+      src,
+      saving,
+      inkStrokes.length,
+      highlightStrokes.length,
+      clearAllDrawings,
+    ],
+  );
+
+  // Capture-phase shortcuts while lightbox is open (nested over editor undo).
+  useEffect(() => {
+    if (!visible) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const typing =
+        tag === 'input' || tag === 'textarea' || target?.isContentEditable;
+
+      const mod = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+
+      if (mod && key === 's') {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        void runSave(event.shiftKey ? 'saveAs' : 'overwrite');
+        return;
+      }
+
+      if (mod && key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        undoStrokeClean();
+        return;
+      }
+      if (mod && (key === 'y' || (key === 'z' && event.shiftKey))) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        redoStroke();
+        return;
+      }
+
+      if (typing) return;
+
+      if (event.key === '[') {
+        event.preventDefault();
+        event.stopPropagation();
+        adjustPenSize(-1);
+        return;
+      }
+      if (event.key === ']') {
+        event.preventDefault();
+        event.stopPropagation();
+        adjustPenSize(1);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [visible, runSave, undoStrokeClean, redoStroke, adjustPenSize]);
 
   const cursorClass =
     tool === 'pan'
-      ? panDragRef.current
-        ? 'cursor-grabbing'
-        : 'cursor-grab'
+      ? 'cursor-grab'
       : tool === 'eraser'
         ? 'cursor-cell'
         : 'cursor-crosshair';
+
+  const permanentCount = inkStrokes.length + highlightStrokes.length;
 
   return (
     <Dialog.Root
@@ -572,7 +1030,7 @@ export default function HaimImageLightbox({
               >
                 <Dialog.Title className="sr-only">이미지 크게 보기</Dialog.Title>
                 <Dialog.Description className="sr-only">
-                  스크롤·더블클릭으로 확대/축소, 드래그로 패닝, 하단 툴바로 그림을 그릴 수 있습니다.
+                  확대/축소, 패닝, 펜·형광펜·레이저로 그리고 저장할 수 있습니다.
                 </Dialog.Description>
 
                 <div
@@ -585,7 +1043,6 @@ export default function HaimImageLightbox({
                 >
                   {src ? (
                     <div
-                      ref={stageRef}
                       className="relative will-change-transform"
                       style={{
                         transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
@@ -606,7 +1063,17 @@ export default function HaimImageLightbox({
                           onDoubleClick={onImageDoubleClick}
                         />
                         <canvas
-                          ref={canvasRef}
+                          ref={inkCanvasRef}
+                          className="pointer-events-none absolute inset-0 h-full w-full"
+                          aria-hidden
+                        />
+                        <canvas
+                          ref={highlightCanvasRef}
+                          className="pointer-events-none absolute inset-0 h-full w-full mix-blend-multiply"
+                          aria-hidden
+                        />
+                        <canvas
+                          ref={laserCanvasRef}
                           className="pointer-events-none absolute inset-0 h-full w-full"
                           aria-hidden
                         />
@@ -622,18 +1089,39 @@ export default function HaimImageLightbox({
                   >
                     <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/15 bg-black/70 px-2.5 py-2 shadow-lg backdrop-blur-md">
                       <ToolTipBtn
-                        label="패닝 (드래그로 이동)"
+                        label="패닝"
                         active={tool === 'pan'}
                         onClick={() => setTool('pan')}
                       >
                         <Hand size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
-                        label="펜으로 그리기"
+                        label="일반 펜 (필압 없음)"
                         active={tool === 'pen'}
                         onClick={() => setTool('pen')}
                       >
                         <Pencil size={16} />
+                      </ToolTipBtn>
+                      <ToolTipBtn
+                        label="필압 펜"
+                        active={tool === 'pressure'}
+                        onClick={() => setTool('pressure')}
+                      >
+                        <PenLine size={16} />
+                      </ToolTipBtn>
+                      <ToolTipBtn
+                        label="형광펜 (오버레이)"
+                        active={tool === 'highlighter'}
+                        onClick={() => setTool('highlighter')}
+                      >
+                        <Highlighter size={16} />
+                      </ToolTipBtn>
+                      <ToolTipBtn
+                        label="레이저 포인터 (4초 후 사라짐)"
+                        active={tool === 'laser'}
+                        onClick={() => setTool('laser')}
+                      >
+                        <Flame size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
                         label="지우개"
@@ -642,53 +1130,91 @@ export default function HaimImageLightbox({
                       >
                         <Eraser size={16} />
                       </ToolTipBtn>
+
                       <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
-                      {PEN_COLORS.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          aria-label={`색상 ${c}`}
-                          onClick={() => {
-                            setPenColor(c);
-                            setTool('pen');
-                          }}
-                          className={`h-6 w-6 rounded-full border-2 ${
-                            penColor === c && tool === 'pen'
-                              ? 'border-sky-400'
-                              : 'border-white/30'
-                          }`}
-                          style={{ backgroundColor: c }}
-                        />
-                      ))}
-                      <label className="ml-1 flex items-center gap-1.5 text-[11px] text-white/80">
-                        <span className="sr-only">선 굵기</span>
+
+                      {tool === 'highlighter'
+                        ? HIGHLIGHT_COLORS.map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              aria-label={`형광펜 색상`}
+                              onClick={() => {
+                                setHighlightColor(c);
+                                setTool('highlighter');
+                              }}
+                              className={`h-6 w-6 rounded-full border-2 ${
+                                highlightColor === c ? 'border-sky-400' : 'border-white/30'
+                              }`}
+                              style={{ backgroundColor: c }}
+                            />
+                          ))
+                        : PEN_COLORS.map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              aria-label={`색상 ${c}`}
+                              onClick={() => {
+                                setPenColor(c);
+                                if (tool === 'pan' || tool === 'eraser' || tool === 'laser') {
+                                  setTool('pen');
+                                }
+                              }}
+                              className={`h-6 w-6 rounded-full border-2 ${
+                                penColor === c && (tool === 'pen' || tool === 'pressure')
+                                  ? 'border-sky-400'
+                                  : 'border-white/30'
+                              }`}
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+
+                      <label
+                        ref={sizeRangeRef}
+                        className="ml-1 flex items-center gap-1.5 text-[11px] text-white/80"
+                      >
+                        <span className="sr-only">선 굵기 ([ ] / 휠)</span>
                         <input
                           type="range"
-                          min={1}
-                          max={32}
+                          min={MIN_PEN}
+                          max={MAX_PEN}
+                          step={0.1}
                           value={penSize}
-                          onChange={(e) => setPenSize(Number(e.target.value) || 4)}
+                          onChange={(e) =>
+                            setPenSize(roundSize(Number(e.target.value) || 4))
+                          }
                           className="w-20 accent-sky-400"
                           aria-label="선 굵기"
                         />
-                        <span className="w-5 tabular-nums">{penSize}</span>
+                        <span className="w-8 tabular-nums">{penSize}</span>
                       </label>
+
                       <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
+
                       <ToolTipBtn
-                        label="실행 취소"
-                        disabled={strokes.length === 0}
-                        onClick={undoStroke}
+                        label="실행 취소 (Ctrl+Z)"
+                        disabled={permanentCount === 0}
+                        onClick={undoStrokeClean}
                       >
                         <Undo2 size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
+                        label="다시 실행 (Ctrl+Y)"
+                        disabled={redoStack.length === 0}
+                        onClick={redoStroke}
+                      >
+                        <Redo2 size={16} />
+                      </ToolTipBtn>
+                      <ToolTipBtn
                         label="그림 지우기"
-                        disabled={strokes.length === 0}
-                        onClick={clearInk}
+                        disabled={permanentCount === 0 && laserStrokes.length === 0}
+                        onClick={clearAllDrawings}
                       >
                         <Trash2 size={16} />
                       </ToolTipBtn>
+
                       <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
+
                       <ToolTipBtn
                         label="축소"
                         onClick={() => {
@@ -697,7 +1223,11 @@ export default function HaimImageLightbox({
                             setScale((s) => clamp(s / ZOOM_STEP, MIN_SCALE, MAX_SCALE));
                             return;
                           }
-                          zoomAt(scale / ZOOM_STEP, vp.left + vp.width / 2, vp.top + vp.height / 2);
+                          zoomAt(
+                            scale / ZOOM_STEP,
+                            vp.left + vp.width / 2,
+                            vp.top + vp.height / 2,
+                          );
                         }}
                       >
                         <ZoomOut size={16} />
@@ -713,7 +1243,11 @@ export default function HaimImageLightbox({
                             setScale((s) => clamp(s * ZOOM_STEP, MIN_SCALE, MAX_SCALE));
                             return;
                           }
-                          zoomAt(scale * ZOOM_STEP, vp.left + vp.width / 2, vp.top + vp.height / 2);
+                          zoomAt(
+                            scale * ZOOM_STEP,
+                            vp.left + vp.width / 2,
+                            vp.top + vp.height / 2,
+                          );
                         }}
                       >
                         <ZoomIn size={16} />
@@ -721,11 +1255,32 @@ export default function HaimImageLightbox({
                       <ToolTipBtn label="보기 초기화" onClick={resetView}>
                         <RotateCcw size={16} />
                       </ToolTipBtn>
+
+                      <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
+
+                      <ToolTipBtn
+                        label="덮어쓰기 저장 (Ctrl+S)"
+                        disabled={!canSave || saving}
+                        onClick={() => void runSave('overwrite')}
+                      >
+                        <Save size={16} />
+                      </ToolTipBtn>
+                      <ToolTipBtn
+                        label="다른 이름으로 저장 (Ctrl+Shift+S)"
+                        disabled={!canSave || saving}
+                        onClick={() => void runSave('saveAs')}
+                      >
+                        <CopyPlus size={16} />
+                      </ToolTipBtn>
                     </div>
                     <p className="max-w-xl text-center text-[10px] text-white/55">
-                      스크롤·더블클릭 확대/축소 · 패닝 드래그 · 펜/지우개로 그리기
-                      {inkReady ? ' · Ink API 저지연 스트로크 활성' : ''}
+                      [ ] 브러시 크기 · 휠 줌 · 더블클릭 줌 · Ctrl+Z/Y 실행취소
+                      {inkReady ? ' · Ink API' : ''}
+                      {saving ? ' · 저장 중…' : ''}
                     </p>
+                    {saveError ? (
+                      <p className="max-w-xl text-center text-[10px] text-red-300">{saveError}</p>
+                    ) : null}
                   </div>
                 </Tooltip.Provider>
 

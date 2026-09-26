@@ -1,6 +1,9 @@
 import { useCallback, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
-import HaimImageLightbox from '@/components/haimEditor/HaimImageLightbox';
+import HaimImageLightbox, {
+  type HaimImageLightboxSaveMode,
+} from '@/components/haimEditor/HaimImageLightbox';
+import { uploadHaimAnnotatedImage } from '@/utils/haimImageAnnotateUpload';
 
 /**
  * Stock TipTap Image node view: click = select (edit), double-click = enlarge.
@@ -10,11 +13,14 @@ export default function HaimStockImageView({
   selected,
   editor,
   getPos,
+  updateAttributes,
 }: NodeViewProps) {
   const src = String(node.attrs.src || '');
   const alt = String(node.attrs.alt || '');
   const title = String(node.attrs.title || '');
+  const editable = editor.isEditable;
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const selectForEdit = useCallback(
     (event: ReactMouseEvent) => {
@@ -34,9 +40,64 @@ export default function HaimStockImageView({
       event.preventDefault();
       event.stopPropagation();
       if (!src) return;
+      setLightboxSrc(src);
       setLightboxOpen(true);
     },
     [src],
+  );
+
+  const saveAnnotated = useCallback(
+    async (mode: HaimImageLightboxSaveMode, file: File) => {
+      if (!editable) return;
+      const newPath = await uploadHaimAnnotatedImage(file);
+      const pos = typeof getPos === 'function' ? getPos() : null;
+      const previewUrl = URL.createObjectURL(file);
+
+      if (mode === 'overwrite') {
+        // Replace stock image with a wiki image pointing at the annotated file.
+        if (typeof pos === 'number') {
+          editor
+            .chain()
+            .focus()
+            .deleteRange({ from: pos, to: pos + node.nodeSize })
+            .insertContentAt(pos, {
+              type: 'wikiImage',
+              attrs: {
+                path: newPath,
+                options: '',
+                alt: newPath,
+                width: null,
+                height: null,
+                background: null,
+              },
+            })
+            .run();
+        } else {
+          updateAttributes({ src: previewUrl });
+        }
+        setLightboxSrc(previewUrl);
+        return;
+      }
+
+      if (typeof pos !== 'number') return;
+      const insertAt = pos + node.nodeSize;
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(insertAt, {
+          type: 'wikiImage',
+          attrs: {
+            path: newPath,
+            options: '',
+            alt: newPath,
+            width: null,
+            height: null,
+            background: null,
+          },
+        })
+        .run();
+    },
+    [editable, editor, getPos, updateAttributes, node.nodeSize],
   );
 
   return (
@@ -56,10 +117,14 @@ export default function HaimStockImageView({
         draggable={false}
       />
       <HaimImageLightbox
-        src={src || null}
+        src={lightboxSrc || src || null}
         alt={alt}
         open={lightboxOpen}
-        onClose={() => setLightboxOpen(false)}
+        onClose={() => {
+          setLightboxOpen(false);
+          setLightboxSrc(null);
+        }}
+        {...(editable ? { onSaveAnnotated: saveAnnotated } : {})}
       />
     </NodeViewWrapper>
   );
