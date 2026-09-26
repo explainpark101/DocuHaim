@@ -17,6 +17,8 @@ type Props = {
   onDocChanged: () => void;
   viewRef: React.MutableRefObject<EditorView | null>;
   className?: string;
+  /** Fired after CM create and again after destroy (scroll-sync rebind). */
+  onViewReady?: (() => void) | undefined;
 };
 
 /**
@@ -29,10 +31,13 @@ export default function HaimSourcePane({
   onDocChanged,
   viewRef,
   className = '',
+  onViewReady,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const onDocChangedRef = useRef(onDocChanged);
   onDocChangedRef.current = onDocChanged;
+  const onViewReadyRef = useRef(onViewReady);
+  onViewReadyRef.current = onViewReady;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -69,9 +74,11 @@ export default function HaimSourcePane({
       }),
     });
     viewRef.current = view;
+    onViewReadyRef.current?.();
     return () => {
       view.destroy();
       viewRef.current = null;
+      onViewReadyRef.current?.();
     };
     // Mount once per dual session; parent pushes content via sync.
     // eslint-disable-next-line react-hooks/exhaustive-deps

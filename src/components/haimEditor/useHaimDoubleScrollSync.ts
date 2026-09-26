@@ -11,6 +11,11 @@ type Options = {
   wysiwygScrollRef: React.RefObject<HTMLElement | null>;
   /** CodeMirror EditorView ref (uses .cm-scroller). */
   cmViewRef: React.MutableRefObject<EditorView | null>;
+  /**
+   * Bump when the CM EditorView is created or destroyed so listeners
+   * re-bind to the live scrollDOM (SourcePane remounts without toggling enabled).
+   */
+  cmRevision?: number;
 };
 
 function maxScroll(el: HTMLElement): number {
@@ -40,6 +45,7 @@ export function useHaimDoubleScrollSync({
   enabled,
   wysiwygScrollRef,
   cmViewRef,
+  cmRevision = 0,
 }: Options): void {
   const lockRef = useRef(false);
 
@@ -49,15 +55,31 @@ export function useHaimDoubleScrollSync({
     let disposed = false;
     let detach: (() => void) | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let attachedWysiwyg: HTMLElement | null = null;
+    let attachedCm: HTMLElement | null = null;
+
+    const clearRetry = () => {
+      if (retryTimer != null) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+    };
 
     const attach = () => {
       if (disposed) return;
       const wysiwyg = wysiwygScrollRef.current;
       const cm = cmScroller(cmViewRef.current);
       if (!wysiwyg || !cm) {
+        clearRetry();
         retryTimer = setTimeout(attach, 80);
         return;
       }
+
+      // Already bound to the live nodes (e.g. duplicate attach call).
+      if (wysiwyg === attachedWysiwyg && cm === attachedCm) return;
+
+      detach?.();
+      detach = null;
 
       const syncFrom = (source: HTMLElement, target: HTMLElement) => {
         if (lockRef.current) return;
@@ -78,18 +100,34 @@ export function useHaimDoubleScrollSync({
       wysiwyg.addEventListener('scroll', onWysiwyg, { passive: true });
       cm.addEventListener('scroll', onCm, { passive: true });
 
+      attachedWysiwyg = wysiwyg;
+      attachedCm = cm;
+
       detach = () => {
         wysiwyg.removeEventListener('scroll', onWysiwyg);
         cm.removeEventListener('scroll', onCm);
+        attachedWysiwyg = null;
+        attachedCm = null;
       };
+
+      // Align once on bind (CM remount / entering double often starts mismatched).
+      lockRef.current = true;
+      try {
+        writeRatio(wysiwyg, readRatio(cm));
+      } finally {
+        requestAnimationFrame(() => {
+          lockRef.current = false;
+        });
+      }
     };
 
     attach();
 
     return () => {
       disposed = true;
-      if (retryTimer) clearTimeout(retryTimer);
+      clearRetry();
       detach?.();
+      lockRef.current = false;
     };
-  }, [enabled, wysiwygScrollRef, cmViewRef]);
+  }, [enabled, wysiwygScrollRef, cmViewRef, cmRevision]);
 }
