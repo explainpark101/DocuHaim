@@ -1,11 +1,10 @@
 import {
   useEffect,
-  type CSSProperties,
   type ReactNode,
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, motion as Motion } from 'motion/react';
+import { AnimatePresence, motion as Motion, type MotionStyle } from 'motion/react';
 import Button from '@/components/Button';
 import { IconBack, IconCheck, IconTrash } from '@/components/icons';
 import { useModalLayerKeyboard } from '@/hooks/useModalLayerKeyboard';
@@ -109,7 +108,7 @@ export function ConfirmModal({
             className={`relative z-10 flex w-full max-w-md max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl dark:bg-odp-surface dark:text-odp-fgStrong ${
               positioned ? 'max-w-none!' : ''
             }`}
-            style={positionedStyle as CSSProperties}
+            style={positionedStyle as MotionStyle}
             initial={positioned ? false : { opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
