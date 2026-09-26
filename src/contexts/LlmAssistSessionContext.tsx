@@ -24,6 +24,8 @@ export type LlmAssistEditorBridge = {
   } | null;
   onChange?: (markdown: string) => void;
   getMarkdown?: () => string;
+  /** Durable source-focus key (`storageType:path`) for demoted panes. */
+  documentKey?: string;
 };
 
 export type LlmAssistSplitWorkspaceHandlers = {

@@ -74,13 +74,18 @@ function readAnchorRect(el: HTMLElement): AnchorRect {
 
 type Props = {
   containerRef: RefObject<HTMLElement | null>;
+  /** When false, skip MutationObserver and pointer listeners (frozen panes). */
+  enabled?: boolean;
 };
 
 /**
  * Replaces native `title` tooltips on md-editor-rt toolbar items with
  * animated Radix Tooltips (built-in + custom defToolbars).
  */
-export default function MdEditorToolbarTooltips({ containerRef }: Props) {
+export default function MdEditorToolbarTooltips({
+  containerRef,
+  enabled = true,
+}: Props) {
   const [active, setActive] = useState<ActiveTip | null>(null);
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,8 +139,12 @@ export default function MdEditorToolbarTooltips({ containerRef }: Props) {
   );
 
   useEffect(() => {
+    if (!enabled) {
+      clearActive();
+      return undefined;
+    }
     const root = containerRef.current;
-    if (!root) return;
+    if (!root) return undefined;
 
     harvestNativeTitles(root);
 
@@ -241,10 +250,10 @@ export default function MdEditorToolbarTooltips({ containerRef }: Props) {
       root.removeEventListener('focusout', onFocusOut);
       root.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [clearActive, clearOpenTimer, containerRef, showTip]);
+  }, [clearActive, clearOpenTimer, containerRef, enabled, showTip]);
 
   useLayoutEffect(() => {
-    if (!active?.el) {
+    if (!enabled || !active?.el) {
       setAnchor(null);
       return;
     }
@@ -270,7 +279,7 @@ export default function MdEditorToolbarTooltips({ containerRef }: Props) {
       window.removeEventListener('scroll', sync, true);
       toolbar?.removeEventListener('scroll', sync);
     };
-  }, [active, clearActive, containerRef]);
+  }, [active, clearActive, containerRef, enabled]);
 
   const open = Boolean(active && anchor && active.text);
 

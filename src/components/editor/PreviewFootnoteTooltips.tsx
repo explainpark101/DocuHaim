@@ -63,12 +63,18 @@ type Props = {
   containerRef: RefObject<HTMLElement | null>;
   /** When the preview host is attached via callback ref, pass the live node. */
   rootEl?: HTMLElement | null;
+  /** When false, skip pointer listeners (frozen panes). */
+  enabled?: boolean;
 };
 
 /**
  * Radix Tooltip for preview footnote refs (`[^N]`), showing the source title.
  */
-export default function PreviewFootnoteTooltips({ containerRef, rootEl = null }: Props) {
+export default function PreviewFootnoteTooltips({
+  containerRef,
+  rootEl = null,
+  enabled = true,
+}: Props) {
   const [active, setActive] = useState<ActiveTip | null>(null);
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -122,6 +128,10 @@ export default function PreviewFootnoteTooltips({ containerRef, rootEl = null }:
   );
 
   useEffect(() => {
+    if (!enabled) {
+      clearActive();
+      return undefined;
+    }
     const root = rootEl ?? containerRef.current;
     if (!root) return undefined;
 
@@ -181,10 +191,10 @@ export default function PreviewFootnoteTooltips({ containerRef, rootEl = null }:
       root.removeEventListener('focusout', onFocusOut);
       root.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [clearActive, clearOpenTimer, containerRef, rootEl, showTip]);
+  }, [clearActive, clearOpenTimer, containerRef, enabled, rootEl, showTip]);
 
   useLayoutEffect(() => {
-    if (!active?.el) {
+    if (!enabled || !active?.el) {
       setAnchor(null);
       return undefined;
     }
@@ -210,7 +220,7 @@ export default function PreviewFootnoteTooltips({ containerRef, rootEl = null }:
       window.removeEventListener('scroll', sync, true);
       preview?.removeEventListener('scroll', sync);
     };
-  }, [active, clearActive, containerRef, rootEl]);
+  }, [active, clearActive, containerRef, enabled, rootEl]);
 
   const open = Boolean(active && anchor && active.text);
 

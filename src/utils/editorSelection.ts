@@ -1,12 +1,17 @@
 /**
  * Read / replace CodeMirror selection via md-editor-rt ref.
+ * When the source editor is not focused, prefer last source-focus memory
+ * (view WeakMap + durable document key) over the live CM selection.
  */
 
 import { Compartment, StateEffect } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import type { RefObject } from 'react';
 import { isMdEditorPreviewOnlyUi } from '@/utils/previewMirrorEdit';
-import { getMdEditorSourceFocus } from '@/utils/mdEditorSourceFocus';
+import {
+  getDurableMdEditorSourceFocus,
+  resolveMdEditorSourceFocus,
+} from '@/utils/mdEditorSourceFocus';
 
 type MdEditorApi = {
   root?: unknown;
@@ -58,6 +63,8 @@ export type ApplyLlmResultToEditorOptions = {
   getMarkdown?: () => string;
   /** When true, always insert at document end (ignore source-Editor focus). */
   forceAppendAtEnd?: boolean;
+  /** Durable focus key (`storageType:path`) when CM was demoted. */
+  documentKey?: string | null;
 };
 
 const VIEW_ATTACH_RETRY_MS = [50, 200, 500, 1000] as const;
@@ -85,14 +92,18 @@ function getMdEditorRootFromRef(
  */
 export function shouldAppendLlmResultAtDocEnd(
   editorRef: EditorRefLike | null | undefined,
-  { view = null }: { view?: EditorView | null } = {},
+  {
+    view = null,
+    documentKey = null,
+  }: { view?: EditorView | null; documentKey?: string | null } = {},
 ): boolean {
-  const resolvedView = view ?? getEditorSelectionFromRef(editorRef).view;
+  const resolvedView = view ?? getEditorSelectionFromRef(editorRef, { documentKey }).view;
   const root = getMdEditorRootFromRef(editorRef, resolvedView);
   if (isMdEditorPreviewOnlyUi(root)) return true;
+  const focus = resolveMdEditorSourceFocus(resolvedView, documentKey);
+  if (focus?.everFocused) return false;
   if (!resolvedView?.state) return true;
-  if (!getMdEditorSourceFocus(resolvedView)?.everFocused) return true;
-  return false;
+  return true;
 }
 
 function buildAppendInsertAtDocEnd(docText: string, chunk: string): string {
@@ -116,10 +127,28 @@ function clampRange(
   return { from: safeFrom, to: safeTo };
 }
 
+function applyViaOnChangeString(
+  docText: string,
+  from: number,
+  to: number,
+  insert: string,
+  onChange?: (markdown: string) => void,
+): boolean {
+  if (typeof onChange !== 'function') return false;
+  const clamped = clampRange(docText.length, from, to);
+  const next =
+    `${docText.slice(0, clamped.from)}${insert}${docText.slice(clamped.to)}`;
+  onChange(next);
+  return true;
+}
+
 /**
  * Apply LLM output: replace last source-Editor focus range, or append at
  * document end when preview-only, the source Editor was never focused, or
  * forceAppendAtEnd is set.
+ *
+ * When the source CM does not have keyboard focus, always use last-focus
+ * memory (not the live selection that may have collapsed after panel focus).
  */
 export function applyLlmResultToEditor({
   editorRef,
@@ -127,11 +156,12 @@ export function applyLlmResultToEditor({
   onChange,
   getMarkdown,
   forceAppendAtEnd = false,
+  documentKey = null,
 }: ApplyLlmResultToEditorOptions): boolean {
-  const snapshot = getEditorSelectionFromRef(editorRef);
+  const snapshot = getEditorSelectionFromRef(editorRef, { documentKey });
   const { view } = snapshot;
   const appendAtEnd =
-    forceAppendAtEnd || shouldAppendLlmResultAtDocEnd(editorRef, { view });
+    forceAppendAtEnd || shouldAppendLlmResultAtDocEnd(editorRef, { view, documentKey });
 
   if (appendAtEnd) {
     const docText =
@@ -149,48 +179,85 @@ export function applyLlmResultToEditor({
     return false;
   }
 
-  if (!view?.state) return false;
+  const focus = resolveMdEditorSourceFocus(view, documentKey);
+  let from = snapshot.from;
+  let to = snapshot.to;
+  const sourceHasFocus = Boolean(view?.hasFocus);
 
-  const focus = getMdEditorSourceFocus(view);
-  let { from, to } = snapshot;
-  if (from === to && focus?.everFocused) {
+  if (!sourceHasFocus && focus?.everFocused) {
+    from = focus.from;
+    to = focus.to;
+  } else if (from === to && focus?.everFocused) {
     from = focus.from;
     to = focus.to;
   }
+
   if (!focus?.everFocused && from === to && !snapshot.text.trim()) {
     return false;
   }
 
-  const docLength = view.state.doc.length;
-  const clamped = clampRange(docLength, from, to);
-  return replaceEditorRange(view, clamped.from, clamped.to, result, onChange);
+  if (view?.state) {
+    const docLength = view.state.doc.length;
+    const clamped = clampRange(docLength, from, to);
+    return replaceEditorRange(view, clamped.from, clamped.to, result, onChange);
+  }
+
+  const docText = typeof getMarkdown === 'function' ? getMarkdown() : '';
+  return applyViaOnChangeString(docText, from, to, result, onChange);
 }
 
 function readSelectionFromView(
   view: EditorView,
   api: MdEditorApi | null,
+  documentKey?: string | null,
 ): EditorSelectionSnapshot {
   const sel = view.state.selection.main;
+  const sourceHasFocus = Boolean(view.hasFocus);
+  const focus = resolveMdEditorSourceFocus(view, documentKey);
+
+  // Source CM focused: live selection wins.
+  if (sourceHasFocus) {
+    const liveText = view.state.doc.sliceString(sel.from, sel.to);
+    if (liveText) {
+      return { text: liveText, from: sel.from, to: sel.to, view };
+    }
+    if (focus?.everFocused) {
+      const docLength = view.state.doc.length;
+      const { from, to } = clampRange(docLength, focus.from, focus.to);
+      return {
+        text: view.state.doc.sliceString(from, to),
+        from,
+        to,
+        view,
+      };
+    }
+    const apiText = api?.getSelectedText?.() ?? '';
+    if (apiText) {
+      return { text: apiText, from: sel.from, to: sel.to, view };
+    }
+    return { text: '', from: sel.from, to: sel.to, view };
+  }
+
+  // Panel / other UI focused: always prefer last source-focus range.
+  if (focus?.everFocused) {
+    const docLength = view.state.doc.length;
+    const { from, to } = clampRange(docLength, focus.from, focus.to);
+    return {
+      text: view.state.doc.sliceString(from, to),
+      from,
+      to,
+      view,
+    };
+  }
+
   const liveText = view.state.doc.sliceString(sel.from, sel.to);
   if (liveText) {
     return { text: liveText, from: sel.from, to: sel.to, view };
   }
 
-  const focus = getMdEditorSourceFocus(view);
-  if (focus?.everFocused && focus.from !== focus.to) {
-    const docLength = view.state.doc.length;
-    const { from, to } = clampRange(docLength, focus.from, focus.to);
-    const focusText = view.state.doc.sliceString(from, to);
-    if (focusText) {
-      return { text: focusText, from, to, view };
-    }
-  }
-
   const apiText = api?.getSelectedText?.() ?? '';
   if (apiText) {
-    const from = focus?.everFocused ? focus.from : sel.from;
-    const to = focus?.everFocused ? focus.to : sel.to;
-    return { text: apiText, from, to, view };
+    return { text: apiText, from: sel.from, to: sel.to, view };
   }
 
   return { text: liveText, from: sel.from, to: sel.to, view };
@@ -198,12 +265,21 @@ function readSelectionFromView(
 
 export function getEditorSelectionFromRef(
   editorRef: EditorRefLike | null | undefined,
-  options?: { getEditorApi?: () => MdEditorApi | null },
+  options?: {
+    getEditorApi?: () => MdEditorApi | null;
+    documentKey?: string | null;
+  },
 ): EditorSelectionSnapshot {
+  const documentKey = options?.documentKey ?? null;
   const api = options?.getEditorApi?.() ?? resolveMdEditorApiFromRef(editorRef);
   const view = api?.getEditorView?.() ?? null;
   if (view?.state) {
-    return readSelectionFromView(view, api);
+    return readSelectionFromView(view, api, documentKey);
+  }
+
+  const durable = getDurableMdEditorSourceFocus(documentKey);
+  if (durable?.everFocused) {
+    return { text: '', from: durable.from, to: durable.to, view: null };
   }
 
   const fallbackText = api?.getSelectedText?.() ?? '';
@@ -224,15 +300,17 @@ function getEditorViewFromRef(
 export function subscribeEditorSelectionFromRef(
   editorRef: EditorRefLike | null | undefined,
   onChange: (snapshot: EditorSelectionSnapshot) => void,
+  options?: { documentKey?: string | null },
 ): () => void {
   let disposed = false;
   let attachedView: EditorView | null = null;
   let detachListener: (() => void) | null = null;
   const retryTimers: ReturnType<typeof setTimeout>[] = [];
+  const documentKey = options?.documentKey ?? null;
 
   const emit = () => {
     if (disposed) return;
-    onChange(getEditorSelectionFromRef(editorRef));
+    onChange(getEditorSelectionFromRef(editorRef, { documentKey }));
   };
 
   const detach = () => {

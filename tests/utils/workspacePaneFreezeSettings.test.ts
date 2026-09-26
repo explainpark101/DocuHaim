@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isWorkspacePaneSurfaceLive } from '@/utils/workspacePaneFreezeSettings';
+import {
+  isWorkspacePaneSurfaceLive,
+  WORKSPACE_PANE_DEMOTE_SETTLE_MS,
+  WORKSPACE_PANE_HOVER_FREEZE_MS,
+} from '@/utils/workspacePaneFreezeSettings';
 
 describe('isWorkspacePaneSurfaceLive', () => {
   it('off: always live', () => {
@@ -36,5 +40,14 @@ describe('isWorkspacePaneSurfaceLive', () => {
     expect(
       isWorkspacePaneSurfaceLive('focus', { hovered: false, focusWithin: true }),
     ).toBe(true);
+  });
+});
+
+describe('workspace pane freeze timing constants', () => {
+  it('exports positive hover debounce and demote settle delays', () => {
+    expect(WORKSPACE_PANE_HOVER_FREEZE_MS).toBeGreaterThan(0);
+    expect(WORKSPACE_PANE_DEMOTE_SETTLE_MS).toBeGreaterThanOrEqual(
+      WORKSPACE_PANE_HOVER_FREEZE_MS,
+    );
   });
 });

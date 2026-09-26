@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { EditorView } from '@codemirror/view';
 import {
+  clearAllDurableMdEditorSourceFocus,
   clearMdEditorSourceFocus,
+  getDurableMdEditorSourceFocus,
   getMdEditorSourceFocus,
   recordMdEditorSourceFocus,
 } from '@/utils/mdEditorSourceFocus';
@@ -14,6 +16,7 @@ vi.mock('@/utils/previewMirrorEdit', () => ({
 
 import {
   applyLlmResultToEditor,
+  getEditorSelectionFromRef,
   shouldAppendLlmResultAtDocEnd,
 } from '@/utils/editorSelection';
 
@@ -48,11 +51,18 @@ function createMockView(docText: string, selection = { from: 0, to: 0 }) {
       to = anchor;
     },
     focus() {
-      this.hasFocus = true;
+      view.hasFocus = true;
     },
   };
 
-  return { view: view as unknown as EditorView, dispatches, getText: () => text };
+  return {
+    view: view as unknown as EditorView,
+    setHasFocus: (next: boolean) => {
+      view.hasFocus = next;
+    },
+    dispatches,
+    getText: () => text,
+  };
 }
 
 function editorRefFor(view: EditorView | null) {
@@ -66,6 +76,7 @@ function editorRefFor(view: EditorView | null) {
 
 afterEach(() => {
   previewOnlyUi.value = false;
+  clearAllDurableMdEditorSourceFocus();
 });
 
 describe('mdEditorSourceFocus', () => {
@@ -83,6 +94,18 @@ describe('mdEditorSourceFocus', () => {
     clearMdEditorSourceFocus(view);
     expect(getMdEditorSourceFocus(view)).toBeNull();
   });
+
+  it('keeps durable focus after view WeakMap clear (demote)', () => {
+    const { view } = createMockView('hello world', { from: 0, to: 5 });
+    recordMdEditorSourceFocus(view, 0, 5, 's3:notes/a.md');
+    clearMdEditorSourceFocus(view);
+    expect(getMdEditorSourceFocus(view)).toBeNull();
+    expect(getDurableMdEditorSourceFocus('s3:notes/a.md')).toEqual({
+      from: 0,
+      to: 5,
+      everFocused: true,
+    });
+  });
 });
 
 describe('shouldAppendLlmResultAtDocEnd', () => {
@@ -97,6 +120,18 @@ describe('shouldAppendLlmResultAtDocEnd', () => {
     expect(shouldAppendLlmResultAtDocEnd(editorRefFor(view), { view })).toBe(false);
   });
 
+  it('does not append when only durable focus exists (demoted)', () => {
+    const { view } = createMockView('abc');
+    recordMdEditorSourceFocus(view, 1, 1, 's3:doc.md');
+    clearMdEditorSourceFocus(view);
+    expect(
+      shouldAppendLlmResultAtDocEnd(
+        { current: null },
+        { view: null, documentKey: 's3:doc.md' },
+      ),
+    ).toBe(false);
+  });
+
   it('appends in preview-only mode even with focus history', () => {
     const { view } = createMockView('abc');
     recordMdEditorSourceFocus(view, 1, 1);
@@ -104,7 +139,7 @@ describe('shouldAppendLlmResultAtDocEnd', () => {
     expect(shouldAppendLlmResultAtDocEnd(editorRefFor(view), { view })).toBe(true);
   });
 
-  it('appends when view is missing', () => {
+  it('appends when view is missing and no durable focus', () => {
     expect(shouldAppendLlmResultAtDocEnd({ current: null }, { view: null })).toBe(true);
   });
 });
@@ -133,8 +168,12 @@ describe('applyLlmResultToEditor', () => {
     expect(getText()).toBe('hello! world');
   });
 
-  it('replaces last focus selection range', () => {
-    const { view, dispatches, getText } = createMockView('hello world');
+  it('replaces last focus selection range when panel stole focus', () => {
+    const { view, setHasFocus, dispatches, getText } = createMockView('hello world', {
+      from: 0,
+      to: 0,
+    });
+    setHasFocus(false);
     recordMdEditorSourceFocus(view, 0, 5);
     const ok = applyLlmResultToEditor({
       editorRef: editorRefFor(view),
@@ -143,6 +182,44 @@ describe('applyLlmResultToEditor', () => {
     expect(ok).toBe(true);
     expect(dispatches).toEqual([{ from: 0, to: 5, insert: 'hi' }]);
     expect(getText()).toBe('hi world');
+  });
+
+  it('uses durable focus + onChange when view is gone (demote)', () => {
+    const { view } = createMockView('hello world');
+    recordMdEditorSourceFocus(view, 0, 5, 's3:notes/a.md');
+    clearMdEditorSourceFocus(view);
+    let nextMd = '';
+    const ok = applyLlmResultToEditor({
+      editorRef: { current: null },
+      result: 'hi',
+      documentKey: 's3:notes/a.md',
+      getMarkdown: () => 'hello world',
+      onChange: (md) => {
+        nextMd = md;
+      },
+    });
+    expect(ok).toBe(true);
+    expect(nextMd).toBe('hi world');
+  });
+
+  it('prefers live selection only while source has focus', () => {
+    const { view, setHasFocus } = createMockView('hello world', { from: 6, to: 11 });
+    setHasFocus(true);
+    recordMdEditorSourceFocus(view, 0, 5);
+    const snap = getEditorSelectionFromRef(editorRefFor(view));
+    expect(snap.text).toBe('world');
+    expect(snap.from).toBe(6);
+    expect(snap.to).toBe(11);
+  });
+
+  it('prefers last focus when source does not have focus', () => {
+    const { view, setHasFocus } = createMockView('hello world', { from: 6, to: 11 });
+    setHasFocus(false);
+    recordMdEditorSourceFocus(view, 0, 5);
+    const snap = getEditorSelectionFromRef(editorRefFor(view));
+    expect(snap.text).toBe('hello');
+    expect(snap.from).toBe(0);
+    expect(snap.to).toBe(5);
   });
 
   it('appends in preview-only even with focus history', () => {
