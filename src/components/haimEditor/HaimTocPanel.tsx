@@ -5,6 +5,7 @@ import type { ComponentType, RefObject } from 'react';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
 import { extractHaimTocItems } from '@/components/haimEditor/extractHaimTocItems';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
+import { scrollWithinContainer } from '@/utils/settingsPageScroll';
 import type { EditorView as CmEditorView } from '@codemirror/view';
 import {
   HAIM_TOC_LAYOUT_DOCK,
@@ -22,6 +23,7 @@ const TocResizeHandle = TocResizeHandleJs as unknown as ComponentType<{
 
 const HAIM_TOC_WIDTH_KEY = 's3haim_haim_editor_toc_width';
 const HAIM_TOC_DEFAULT_WIDTH = 280;
+const TOC_SCROLL_OFFSET_PX = 2;
 
 const SLIDE_EASE: [number, number, number, number] = [0.32, 0.72, 0, 1];
 
@@ -44,6 +46,7 @@ type Props = {
   onClose: () => void;
   /** When false, TipTap pane is hidden — scroll CodeMirror instead. */
   showWysiwyg: boolean;
+  wysiwygScrollRef: RefObject<HTMLElement | null>;
   cmViewRef: RefObject<CmEditorView | null>;
   layout?: HaimTocLayout | undefined;
 };
@@ -52,6 +55,17 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function smoothScrollBehavior(): ScrollBehavior {
+  if (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    return 'auto';
+  }
+  return 'smooth';
+}
+
+/** Smooth-scroll CM scroller to an ATX heading line (no instant scrollIntoView). */
 function scrollSourceToHeading(
   cm: CmEditorView,
   level: number,
@@ -64,13 +78,26 @@ function scrollSourceToHeading(
   );
   for (let i = 1; i <= doc.lines; i += 1) {
     const line = doc.line(i);
-    if (re.test(line.text)) {
-      cm.dispatch({
-        selection: { anchor: line.from },
-        scrollIntoView: true,
+    if (!re.test(line.text)) continue;
+
+    cm.dispatch({ selection: { anchor: line.from } });
+
+    const scroller = cm.scrollDOM;
+    const behavior = smoothScrollBehavior();
+    const coords = cm.coordsAtPos(line.from);
+    if (coords) {
+      const scrollerRect = scroller.getBoundingClientRect();
+      const top =
+        scroller.scrollTop + (coords.top - scrollerRect.top) - TOC_SCROLL_OFFSET_PX;
+      scroller.scrollTo({ top: Math.max(0, top), behavior });
+    } else {
+      const block = cm.lineBlockAt(line.from);
+      scroller.scrollTo({
+        top: Math.max(0, block.top - TOC_SCROLL_OFFSET_PX),
+        behavior,
       });
-      return true;
     }
+    return true;
   }
   return false;
 }
@@ -84,6 +111,7 @@ export default function HaimTocPanel({
   open,
   onClose,
   showWysiwyg,
+  wysiwygScrollRef,
   cmViewRef,
   layout = HAIM_TOC_LAYOUT_OVERLAY,
 }: Props) {
@@ -114,10 +142,22 @@ export default function HaimTocPanel({
   const navigate = (pos: number, level: number, text: string) => {
     if (showWysiwyg) {
       try {
-        editor.chain().focus().setTextSelection(pos + 1).scrollIntoView().run();
+        // Focus + caret without TipTap's instant scrollIntoView (fights smooth).
+        editor.chain().focus().setTextSelection(pos + 1).run();
         const dom = editor.view.nodeDOM(pos);
-        if (dom instanceof HTMLElement) {
-          dom.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        const heading =
+          dom instanceof HTMLElement
+            ? dom
+            : dom instanceof Node && dom.parentElement
+              ? dom.parentElement
+              : null;
+        if (!heading) return;
+        const scroller = wysiwygScrollRef.current;
+        const behavior = smoothScrollBehavior();
+        if (scroller) {
+          scrollWithinContainer(scroller, heading, { behavior });
+        } else {
+          heading.scrollIntoView({ block: 'start', behavior });
         }
       } catch {
         // ignore invalid pos after concurrent edits

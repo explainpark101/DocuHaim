@@ -71,6 +71,7 @@ export default function HaimEditor({
   );
   const [tocOpen, setTocOpen] = useState(false);
   const [tocLayout, setTocLayout] = useState<HaimTocLayout>(() => loadHaimTocLayout());
+  const [cmRevision, setCmRevision] = useState(0);
   // Mobile: double collapses to wysiwyg; source stays full-width CM.
   const effectiveMode: HaimViewMode =
     isMobileLayout && viewMode === HAIM_VIEW_MODE_DOUBLE && !previewOnly
@@ -187,6 +188,7 @@ export default function HaimEditor({
     enabled: Boolean(doublePane && scrollSyncEnabled && isSurfaceLive),
     wysiwygScrollRef,
     cmViewRef,
+    cmRevision,
   });
 
   // WYSIWYG-only: still need TipTap → vault (useHaimDualSync handles it when enabled)
@@ -450,6 +452,7 @@ export default function HaimEditor({
                   theme={theme}
                   onDocChanged={notifyCmDocChanged}
                   viewRef={cmViewRef}
+                  onViewReady={() => setCmRevision((n) => n + 1)}
                 />
               </div>
             ) : null}
@@ -474,6 +477,7 @@ export default function HaimEditor({
             open={tocOpen}
             onClose={() => setTocOpen(false)}
             showWysiwyg={showWysiwyg}
+            wysiwygScrollRef={wysiwygScrollRef}
             cmViewRef={cmViewRef}
             layout={tocLayout}
           />
