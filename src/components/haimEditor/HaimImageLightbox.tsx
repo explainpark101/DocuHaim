@@ -1426,6 +1426,29 @@ export default function HaimImageLightbox({
     ],
   );
 
+  const permanentCount =
+    inkStrokes.length + highlightStrokes.length + textObjects.length;
+  const hasDiscardableDrawings =
+    permanentCount > 0 || Boolean(liveStroke) || isDrawing;
+
+  const requestClose = useCallback(() => {
+    if (hasDiscardableDrawings) {
+      setCloseConfirmOpen(true);
+      return;
+    }
+    setCloseConfirmOpen(false);
+    onClose();
+  }, [hasDiscardableDrawings, onClose]);
+
+  const confirmCloseDiscard = useCallback(() => {
+    setCloseConfirmOpen(false);
+    onClose();
+  }, [onClose]);
+
+  const cancelCloseConfirm = useCallback(() => {
+    setCloseConfirmOpen(false);
+  }, []);
+
   useEffect(() => {
     if (!visible) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1486,19 +1509,25 @@ export default function HaimImageLightbox({
         return;
       }
 
-      // Text mode / selected or editing: Esc commits edit (do not close lightbox).
-      if (
-        event.key === 'Escape' &&
-        (tool === 'text' || selectedTextId || editingTextId)
-      ) {
+      // Text tool or active text edit: Esc commits/deselects (do not close lightbox).
+      // Any other tool: Esc closes the lightbox (via requestClose / confirm).
+      if (event.key === 'Escape') {
+        if (closeConfirmOpen) return;
+        if (tool === 'text' || editingTextId) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          if (editingTextId) {
+            finishTextEditing();
+          } else {
+            setSelectedTextId(null);
+          }
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        if (editingTextId) {
-          finishTextEditing();
-        } else {
-          setSelectedTextId(null);
-        }
+        requestClose();
         return;
       }
 
@@ -1547,6 +1576,8 @@ export default function HaimImageLightbox({
     tool,
     finishTextEditing,
     deleteSelectedText,
+    requestClose,
+    closeConfirmOpen,
   ]);
 
   const showBrushCursor =
@@ -1578,29 +1609,6 @@ export default function HaimImageLightbox({
     isDrawing && tool === 'highlighter'
       ? { mixBlendMode: highlightBlend }
       : {};
-
-  const permanentCount =
-    inkStrokes.length + highlightStrokes.length + textObjects.length;
-  const hasDiscardableDrawings =
-    permanentCount > 0 || Boolean(liveStroke) || isDrawing;
-
-  const requestClose = useCallback(() => {
-    if (hasDiscardableDrawings) {
-      setCloseConfirmOpen(true);
-      return;
-    }
-    setCloseConfirmOpen(false);
-    onClose();
-  }, [hasDiscardableDrawings, onClose]);
-
-  const confirmCloseDiscard = useCallback(() => {
-    setCloseConfirmOpen(false);
-    onClose();
-  }, [onClose]);
-
-  const cancelCloseConfirm = useCallback(() => {
-    setCloseConfirmOpen(false);
-  }, []);
 
   const colorHex = cssHexToInputValue(
     normalizeCssHexColor(activeColor) || '#111827ff',
@@ -1639,18 +1647,8 @@ export default function HaimImageLightbox({
               forceMount
               onOpenAutoFocus={(e) => e.preventDefault()}
               onEscapeKeyDown={(e) => {
-                if (closeConfirmOpen) {
-                  e.preventDefault();
-                  return;
-                }
-                if (tool === 'text' || selectedTextId || editingTextId) {
-                  e.preventDefault();
-                  if (editingTextId) finishTextEditing();
-                  else setSelectedTextId(null);
-                  return;
-                }
+                // Window capture handler owns Esc; keep Radix from double-closing.
                 e.preventDefault();
-                requestClose();
               }}
             >
               <Motion.div
