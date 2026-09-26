@@ -36,7 +36,6 @@ import {
   Pilcrow,
 } from 'lucide-react';
 import { DropdownMenu, Switch, Tooltip } from 'radix-ui';
-import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
 import {
   HAIM_VIEW_MODE_DOUBLE,
   HAIM_VIEW_MODE_OPTIONS,
@@ -73,9 +72,6 @@ type Props = {
   onSave?: (() => void) | undefined;
   scrollSyncEnabled?: boolean | undefined;
   onScrollSyncChange?: ((enabled: boolean) => void) | undefined;
-  foldBase64Images?: boolean | undefined;
-  onFoldBase64ImagesChange?: ((enabled: boolean) => void) | undefined;
-  theme?: string | undefined;
   tocOpen?: boolean | undefined;
   onTocOpenChange?: ((open: boolean) => void) | undefined;
   appActions?: HaimToolbarAppActions | undefined;
@@ -138,9 +134,6 @@ export default function HaimToolbar({
   onInsertPageBreak,
   scrollSyncEnabled = true,
   onScrollSyncChange,
-  foldBase64Images = true,
-  onFoldBase64ImagesChange,
-  theme = 'light',
   tocOpen = false,
   onTocOpenChange,
   appActions,
@@ -199,8 +192,6 @@ export default function HaimToolbar({
   };
 
   const showScrollSync = viewMode === HAIM_VIEW_MODE_DOUBLE;
-  const showSourceFold =
-    viewMode === HAIM_VIEW_MODE_SOURCE || viewMode === HAIM_VIEW_MODE_DOUBLE;
   const a = appActions;
 
   return (
@@ -454,16 +445,6 @@ export default function HaimToolbar({
           >
             <Pilcrow size={14} />
           </ToolBtn>
-        ) : null}
-        {showSourceFold && onFoldBase64ImagesChange ? (
-          <>
-            <span className="mx-1 h-4 w-px bg-slate-300 dark:bg-odp-borderStrong" />
-            <Base64ImageFoldToolbar
-              checked={foldBase64Images}
-              onChange={onFoldBase64ImagesChange}
-              theme={theme}
-            />
-          </>
         ) : null}
         {showScrollSync ? (
           <>

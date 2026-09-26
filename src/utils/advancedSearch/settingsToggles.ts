@@ -115,6 +115,10 @@ import {
   loadHaimTocDockEnabled,
   saveHaimTocDockEnabled,
 } from '@/utils/haimTocLayoutSettings';
+import {
+  loadBase64ImageFoldEnabled,
+  saveBase64ImageFoldEnabled,
+} from '@/utils/base64ImageFoldSettings';
 
 export type SettingsToggleId =
   | 'settings-alt-vim'
@@ -142,7 +146,8 @@ export type SettingsToggleId =
   | 'settings-haim-double'
   | 'settings-haim-double-scroll-sync'
   | 'settings-haim-toc-dock'
-  | 'settings-haim-focus-outline';
+  | 'settings-haim-focus-outline'
+  | 'settings-base64-image-fold';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -252,6 +257,26 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimFocusOutlineEnabled,
     save: saveHaimFocusOutlineEnabled,
+  },
+  {
+    id: 'settings-base64-image-fold',
+    enableTitle: 'base64 이미지 소스 접기 켜기',
+    disableTitle: 'base64 이미지 소스 접기 끄기',
+    description:
+      '마크다운 소스에서 긴 data:image base64를 접습니다. 칩을 클릭하면 개별 펼침',
+    keywords: [
+      'base64',
+      'image',
+      'fold',
+      'collapse',
+      '접기',
+      '이미지',
+      '소스',
+      'data-uri',
+      'mermaid',
+    ],
+    load: loadBase64ImageFoldEnabled,
+    save: saveBase64ImageFoldEnabled,
   },
   {
     id: 'settings-alt-vim',

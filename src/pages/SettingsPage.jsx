@@ -63,6 +63,10 @@ import {
   loadHaimFocusOutlineEnabled,
 } from '@/utils/haimFocusOutlineSettings';
 import {
+  BASE64_IMAGE_FOLD_CHANGED_EVENT,
+  loadBase64ImageFoldEnabled,
+} from '@/utils/base64ImageFoldSettings';
+import {
   loadAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
@@ -234,6 +238,9 @@ export default function SettingsPage({
   const [haimFocusOutline, setHaimFocusOutlineState] = useState(() =>
     loadHaimFocusOutlineEnabled(),
   );
+  const [base64ImageFold, setBase64ImageFoldState] = useState(() =>
+    loadBase64ImageFoldEnabled(),
+  );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState(
@@ -275,6 +282,8 @@ export default function SettingsPage({
         );
       } else if (id === 'settings-haim-focus-outline') {
         setHaimFocusOutlineState(enabled);
+      } else if (id === 'settings-base64-image-fold') {
+        setBase64ImageFoldState(enabled);
       }
     });
   }, []);
@@ -334,6 +343,19 @@ export default function SettingsPage({
     window.addEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
     return () =>
       window.removeEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadBase64ImageFoldEnabled();
+      setBase64ImageFoldState(enabled);
+    };
+    window.addEventListener(BASE64_IMAGE_FOLD_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(BASE64_IMAGE_FOLD_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -1171,6 +1193,32 @@ export default function SettingsPage({
               </div>
             </div>
           ) : null}
+          <div className="mt-4 flex items-start justify-between gap-3 border-t border-gray-200 pt-4 dark:border-odp-borderStrong">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                base64 이미지 소스 접기
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                마크다운 소스에서 긴 data:image base64를 접습니다(기본 켜짐). 접힌 칩을 클릭하면
+                해당 페이로드만 펼칩니다.
+              </p>
+            </div>
+            <Switch.Root
+              className={
+                base64ImageFold
+                  ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                  : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+              }
+              checked={base64ImageFold}
+              onCheckedChange={(next) => {
+                setSettingsToggle('settings-base64-image-fold', next);
+                setBase64ImageFoldState(next);
+              }}
+              aria-label="base64 이미지 소스 접기"
+            >
+              <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+            </Switch.Root>
+          </div>
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
               문서 상단 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<!-- footnotes {"v":1,"enabled":true} -->'}</code>

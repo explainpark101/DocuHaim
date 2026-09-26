@@ -127,7 +127,7 @@ export default function HaimEditor({
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(() =>
     loadHaimDoubleScrollSyncEnabled(),
   );
-  const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
+  const [foldBase64Images] = useBase64ImageFold();
   const noteCoverFoldDocKey = getNoteCoverFoldKeyFromFile(currentFile);
   const [tocOpen, setTocOpen] = useState(false);
   const [tocLayout, setTocLayout] = useState<HaimTocLayout>(() => loadHaimTocLayout());
@@ -976,9 +976,6 @@ export default function HaimEditor({
             setScrollSyncEnabled(next);
             saveHaimDoubleScrollSyncEnabled(next);
           }}
-          foldBase64Images={foldBase64Images}
-          onFoldBase64ImagesChange={setFoldBase64Images}
-          theme={theme}
           tocOpen={tocOpen}
           onTocOpenChange={setTocOpen}
           {...(onSave ? { onSave } : {})}
