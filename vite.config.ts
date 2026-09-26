@@ -627,11 +627,20 @@ function manualChunks(id: string): string | undefined {
   if (normalizedId.includes('/node_modules/katex/')) {
     return 'vendor-katex';
   }
+  // Shared by TipTap code-block and @git-diff-view. Keeping these inside
+  // vendor-tiptap while also forcing vendor-git-diff-view creates
+  // Circular chunk: vendor-tiptap <-> vendor-git-diff-view and TDZ crashes
+  // ("Cannot access 'gr' before initialization").
+  if (
+    normalizedId.includes('/node_modules/highlight.js/') ||
+    normalizedId.includes('/node_modules/lowlight/') ||
+    normalizedId.includes('/node_modules/@git-diff-view/lowlight/')
+  ) {
+    return 'vendor-highlight';
+  }
   if (
     normalizedId.includes('/node_modules/@tiptap/') ||
     normalizedId.includes('/node_modules/prosemirror-') ||
-    normalizedId.includes('/node_modules/lowlight/') ||
-    normalizedId.includes('/node_modules/highlight.js/') ||
     normalizedId.includes('/node_modules/yjs/') ||
     normalizedId.includes('/node_modules/y-protocols/') ||
     normalizedId.includes('/node_modules/lib0/')
@@ -675,7 +684,9 @@ function manualChunks(id: string): string | undefined {
     return 'vendor-monaco';
   }
   if (
-    normalizedId.includes('/node_modules/@git-diff-view/')
+    normalizedId.includes('/node_modules/@git-diff-view/core/') ||
+    normalizedId.includes('/node_modules/@git-diff-view/file/') ||
+    normalizedId.includes('/node_modules/@git-diff-view/react/')
   ) {
     return 'vendor-git-diff-view';
   }
@@ -727,6 +738,9 @@ function manualChunks(id: string): string | undefined {
     normalizedId.includes('/node_modules/react-dom/') ||
     normalizedId.includes('/node_modules/react-router/') ||
     normalizedId.includes('/node_modules/scheduler/') ||
+    // Shared by React 18+ and @git-diff-view; must not land in vendor-git-diff-view
+    // or vendor-tiptap will import that chunk and risk circular TDZ.
+    normalizedId.includes('/node_modules/use-sync-external-store/') ||
     /\/node_modules\/react\//.test(normalizedId)
   ) {
     return 'vendor-react';

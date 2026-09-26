@@ -1,4 +1,13 @@
-import { useCallback, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { WIKI_IMAGE_PLACEHOLDER_SRC } from '@/components/haimEditor/extensions/wikiImageConstants';
 import {
@@ -44,6 +53,14 @@ function roundPx(n: number): string {
   return `${Math.max(24, Math.round(n))}px`;
 }
 
+function findWysiwygScroller(from: HTMLElement | null): HTMLElement | null {
+  if (!from) return null;
+  return (
+    (from.closest('.overflow-auto') as HTMLElement | null) ||
+    (from.parentElement as HTMLElement | null)
+  );
+}
+
 /**
  * TipTap wiki-image node view: hydration target + corner resize + size modal.
  */
@@ -51,6 +68,7 @@ export default function WikiImageView({
   node,
   selected,
   editor,
+  getPos,
   updateAttributes,
 }: NodeViewProps) {
   const path = String(node.attrs.path || '');
@@ -62,11 +80,14 @@ export default function WikiImageView({
   const editable = editor.isEditable;
 
   const imgRef = useRef<HTMLImageElement | null>(null);
+  const liveSizeRef = useRef<{ width: number; height: number } | null>(null);
   const [sizeModalOpen, setSizeModalOpen] = useState(false);
   const [liveSize, setLiveSize] = useState<{
     width: number;
     height: number;
   } | null>(null);
+
+  liveSizeRef.current = liveSize;
 
   const imgStyle = useMemo(() => {
     if (liveSize) {
@@ -85,14 +106,51 @@ export default function WikiImageView({
 
   const commitSize = useCallback(
     (nextW: string | null, nextH: string | null) => {
-      updateAttributes({
+      const nextAttrs = {
         width: nextW,
         height: nextH,
         options: optionsFromSizeAttrs(path, nextW, nextH, background),
-      });
+      };
+
+      const scroller = findWysiwygScroller(editor.view.dom);
+      const savedTop = scroller?.scrollTop ?? null;
+      const pos = typeof getPos === 'function' ? getPos() : null;
+
+      if (typeof pos === 'number') {
+        const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
+          ...node.attrs,
+          ...nextAttrs,
+        });
+        // Avoid TipTap/PM scrolling the node into view (jumps to top).
+        editor.view.dispatch(tr);
+      } else {
+        updateAttributes(nextAttrs);
+      }
+
+      const restore = () => {
+        if (scroller && savedTop != null) scroller.scrollTop = savedTop;
+      };
+      restore();
+      requestAnimationFrame(restore);
+      requestAnimationFrame(() => requestAnimationFrame(restore));
     },
-    [updateAttributes, path, background],
+    [editor, getPos, updateAttributes, path, background, node.attrs],
   );
+
+  const exitSizeEditMode = useCallback(() => {
+    const cur = liveSizeRef.current;
+    if (cur) {
+      commitSize(roundPx(cur.width), roundPx(cur.height));
+      setLiveSize(null);
+      liveSizeRef.current = null;
+    }
+    const pos = typeof getPos === 'function' ? getPos() : null;
+    if (typeof pos === 'number') {
+      const after = pos + (node.nodeSize || 1);
+      editor.commands.setTextSelection(after);
+    }
+    editor.commands.blur();
+  }, [commitSize, editor, getPos, node.nodeSize]);
 
   const onResizePointerDown = useCallback(
     (corner: Corner, event: ReactPointerEvent) => {
@@ -111,7 +169,9 @@ export default function WikiImageView({
       const pointerId = event.pointerId;
       (event.target as HTMLElement).setPointerCapture?.(pointerId);
 
-      setLiveSize({ width: startW, height: startH });
+      const initial = { width: startW, height: startH };
+      liveSizeRef.current = initial;
+      setLiveSize(initial);
 
       const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - startX;
@@ -127,7 +187,6 @@ export default function WikiImageView({
         nextW = Math.max(24, nextW);
         nextH = Math.max(24, nextH);
 
-        // Shift (or touch) keeps aspect ratio
         const keepRatio = ev.shiftKey || ev.pointerType === 'touch';
         if (keepRatio) {
           if (Math.abs(dx) >= Math.abs(dy)) {
@@ -139,7 +198,9 @@ export default function WikiImageView({
           nextH = Math.max(24, nextH);
         }
 
-        setLiveSize({ width: nextW, height: nextH });
+        const next = { width: nextW, height: nextH };
+        liveSizeRef.current = next;
+        setLiveSize(next);
       };
 
       const onUp = (ev: PointerEvent) => {
@@ -152,12 +213,12 @@ export default function WikiImageView({
           // ignore
         }
 
-        setLiveSize((cur) => {
-          if (cur) {
-            commitSize(roundPx(cur.width), roundPx(cur.height));
-          }
-          return null;
-        });
+        const cur = liveSizeRef.current;
+        if (cur) {
+          commitSize(roundPx(cur.width), roundPx(cur.height));
+        }
+        liveSizeRef.current = null;
+        setLiveSize(null);
       };
 
       window.addEventListener('pointermove', onMove);
@@ -167,6 +228,28 @@ export default function WikiImageView({
     [editable, commitSize],
   );
 
+  useEffect(() => {
+    if (!selected || !editable || sizeModalOpen) return undefined;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter') return;
+      const t = event.target;
+      if (
+        t instanceof HTMLInputElement ||
+        t instanceof HTMLTextAreaElement ||
+        (t instanceof HTMLElement && t.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      exitSizeEditMode();
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [selected, editable, sizeModalOpen, exitSizeEditMode]);
+
   return (
     <NodeViewWrapper
       as="div"
@@ -174,6 +257,7 @@ export default function WikiImageView({
         liveSize ? ' is-resizing' : ''
       }`}
       data-drag-handle
+      style={{ width: 'fit-content', maxWidth: '100%' }}
       onContextMenu={(e: ReactMouseEvent) => {
         if (!editable) return;
         e.preventDefault();
@@ -181,31 +265,33 @@ export default function WikiImageView({
         setSizeModalOpen(true);
       }}
     >
-      <img
-        ref={imgRef}
-        src={WIKI_IMAGE_PLACEHOLDER_SRC}
-        alt={alt}
-        className="haim-wiki-image"
-        data-wiki-path={path}
-        {...(options ? { 'data-wiki-options': options } : {})}
-        {...(width ? { 'data-wiki-width': width } : {})}
-        {...(height ? { 'data-wiki-height': height } : {})}
-        {...(background ? { 'data-wiki-bg': background } : {})}
-        style={imgStyle}
-        draggable={false}
-      />
-      {selected && editable
-        ? CORNERS.map((corner) => (
-            <button
-              key={corner}
-              type="button"
-              className={`haim-wiki-image-resize-handle haim-wiki-image-resize-handle--${corner}`}
-              aria-label={`resize-${corner}`}
-              data-resize-handle={corner}
-              onPointerDown={(e) => onResizePointerDown(corner, e)}
-            />
-          ))
-        : null}
+      <div className="haim-wiki-image-frame">
+        <img
+          ref={imgRef}
+          src={WIKI_IMAGE_PLACEHOLDER_SRC}
+          alt={alt}
+          className="haim-wiki-image"
+          data-wiki-path={path}
+          {...(options ? { 'data-wiki-options': options } : {})}
+          {...(width ? { 'data-wiki-width': width } : {})}
+          {...(height ? { 'data-wiki-height': height } : {})}
+          {...(background ? { 'data-wiki-bg': background } : {})}
+          style={imgStyle}
+          draggable={false}
+        />
+        {selected && editable
+          ? CORNERS.map((corner) => (
+              <button
+                key={corner}
+                type="button"
+                className={`haim-wiki-image-resize-handle haim-wiki-image-resize-handle--${corner}`}
+                aria-label={`resize-${corner}`}
+                data-resize-handle={corner}
+                onPointerDown={(e) => onResizePointerDown(corner, e)}
+              />
+            ))
+          : null}
+      </div>
       <WikiImageSizeModal
         isOpen={sizeModalOpen}
         onClose={() => setSizeModalOpen(false)}

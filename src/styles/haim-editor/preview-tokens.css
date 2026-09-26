@@ -17,6 +17,7 @@
   --md-theme-border-color-inset: var(--color-gray-300, #d1d5db);
   --md-theme-bg-color: var(--color-white, #ffffff);
   --md-theme-bg-color-inset: var(--color-gray-100, #f3f4f6);
+  --md-theme-code-bg-color: var(--color-gray-100, #f3f4f6);
   --md-theme-code-active-color: var(--color-sky-500, #0ea5e9);
   --md-theme-radius-s: var(--radius-sm, 0.25rem);
   --md-theme-radius-m: 0.3125rem;
@@ -37,6 +38,7 @@
   --md-theme-border-color-inset: var(--color-gray-600, #4b5563);
   --md-theme-bg-color: var(--color-gray-800, #1f2937);
   --md-theme-bg-color-inset: var(--color-gray-700, #374151);
+  --md-theme-code-bg-color: var(--color-gray-700, #374151);
   --md-theme-code-active-color: var(--color-indigo-400, #818cf8);
 }
 

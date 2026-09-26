@@ -174,9 +174,25 @@
 .haim-wiki-image-wrap {
   position: relative;
   display: inline-block;
+  width: fit-content;
+  max-width: 100%;
   margin: 0.5em 0;
   line-height: 0;
+  vertical-align: middle;
+}
+
+/* TipTap NodeViewWrapper can stretch as a block; keep handle box = image box. */
+.haim-wiki-image-wrap[data-node-view-wrapper] {
+  width: fit-content;
   max-width: 100%;
+}
+
+.haim-wiki-image-frame {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  line-height: 0;
 }
 
 .haim-wiki-image-wrap.is-selected .haim-wiki-image {
@@ -289,7 +305,20 @@
   overflow-x: auto;
   text-align: center;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--md-theme-code-bg-color, #f1f5f9) 80%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #f1f5f9)) 80%,
+    transparent
+  );
+}
+
+.haim-editor--dark .haim-math-block,
+:is(.dark) .haim-editor .haim-math-block {
+  background: color-mix(
+    in srgb,
+    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #374151)) 80%,
+    transparent
+  );
 }
 
 .haim-math-block.is-selected,

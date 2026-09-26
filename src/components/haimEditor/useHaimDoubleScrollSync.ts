@@ -5,6 +5,10 @@
  * Scroll direction picks the viewport edge used as the sync anchor:
  * - scrolling down → newly appearing content at the bottom
  * - scrolling up   → newly appearing content at the top
+ *
+ * Image-aware: tall wiki/markdown images sit between sparse data-line
+ * markers — we interpolate between neighboring markers, and re-sync when
+ * images load / resize (async hydration).
  */
 
 import { useEffect, useRef } from 'react';
@@ -25,8 +29,18 @@ type Options = {
 
 const SCROLL_ALIGN_PAD_PX = 32;
 const SYNC_LOCK_RELEASE_MS = 32;
+/** Retries after image load / layout settle (same spirit as previewScrollFollow). */
+const IMAGE_RETRY_MS = [0, 16, 48, 120, 280, 600] as const;
 
 type ScrollDir = 'up' | 'down';
+type SyncSource = 'none' | 'cm' | 'wysiwyg';
+
+type DataLineMarker = {
+  line0: number;
+  top: number;
+  height: number;
+  el: HTMLElement;
+};
 
 function cmScroller(view: EditorView | null): HTMLElement | null {
   if (!view) return null;
@@ -100,48 +114,111 @@ function queryOutermostDataLineBlocks(root: Element): HTMLElement[] {
   return outermost.length > 0 ? outermost : all;
 }
 
-function findScrollDataLineBlock(
-  root: Element,
-  line0: number,
-): HTMLElement | null {
-  let best: HTMLElement | null = null;
-  let bestLine = -1;
-  for (const el of queryOutermostDataLineBlocks(root)) {
-    const n = Number(el.getAttribute('data-line'));
-    if (!Number.isFinite(n)) continue;
-    if (n <= line0 && n >= bestLine) {
-      best = el;
-      bestLine = n;
-    }
-  }
-  return best;
-}
-
-function findDataLineBlockAtScrollerY(
+function collectDataLineMarkers(
   root: Element,
   scroller: HTMLElement,
-  y: number,
-): { el: HTMLElement; line0: number } | null {
-  let best: HTMLElement | null = null;
-  let bestLine = -1;
-  let bestTop = -Infinity;
-
-  for (const node of queryOutermostDataLineBlocks(root)) {
-    const n = Number(node.getAttribute('data-line'));
-    if (!Number.isFinite(n)) continue;
-    const top = offsetTopWithinScroller(node, scroller);
-    if (top <= y && top >= bestTop) {
-      best = node;
-      bestLine = n;
-      bestTop = top;
-    }
+): DataLineMarker[] {
+  const markers: DataLineMarker[] = [];
+  for (const el of queryOutermostDataLineBlocks(root)) {
+    const line0 = Number(el.getAttribute('data-line'));
+    if (!Number.isFinite(line0)) continue;
+    markers.push({
+      line0,
+      top: offsetTopWithinScroller(el, scroller),
+      height: Math.max(1, el.offsetHeight),
+      el,
+    });
   }
-
-  if (!best || bestLine < 0) return null;
-  return { el: best, line0: bestLine };
+  markers.sort((a, b) => a.line0 - b.line0 || a.top - b.top);
+  return markers;
 }
 
-type SyncSource = 'none' | 'cm' | 'wysiwyg';
+function cmLineTop(view: EditorView, line0: number): number {
+  const lineNumber = Math.min(
+    Math.max(1, line0 + 1),
+    view.state.doc.lines,
+  );
+  return view.lineBlockAt(view.state.doc.line(lineNumber).from).top;
+}
+
+/**
+ * Interpolate between neighboring data-line markers so tall images (one
+ * source line, large WYSIWYG height) scroll smoothly against CM.
+ */
+function mapCmYToWysiwygContentY(
+  view: EditorView,
+  markers: DataLineMarker[],
+  cmY: number,
+): number | null {
+  if (markers.length === 0) return null;
+
+  const lineBlock = view.lineBlockAtHeight(cmY);
+  const line0 = view.state.doc.lineAt(lineBlock.from).number - 1;
+
+  let lo = 0;
+  for (let i = 0; i < markers.length; i += 1) {
+    const m = markers[i];
+    if (m && m.line0 <= line0) lo = i;
+  }
+  const a = markers[lo];
+  if (!a) return null;
+  const b = markers[lo + 1];
+
+  if (!b) {
+    // Past last marker — progress within the last block by CM line fraction.
+    const within =
+      lineBlock.height > 0
+        ? Math.max(0, Math.min(1, (cmY - lineBlock.top) / lineBlock.height))
+        : 0;
+    return a.top + a.height * within;
+  }
+
+  const aCmTop = cmLineTop(view, a.line0);
+  const bCmTop = cmLineTop(view, b.line0);
+  const span = Math.max(1, bCmTop - aCmTop);
+  const t = Math.max(0, Math.min(1, (cmY - aCmTop) / span));
+  return a.top + t * (b.top - a.top);
+}
+
+function mapWysiwygYToCmContentY(
+  view: EditorView,
+  markers: DataLineMarker[],
+  wysiwygY: number,
+): number | null {
+  if (markers.length === 0) return null;
+
+  let lo = 0;
+  for (let i = 0; i < markers.length; i += 1) {
+    const m = markers[i];
+    if (m && m.top <= wysiwygY) lo = i;
+  }
+  const a = markers[lo];
+  if (!a) return null;
+  const b = markers[lo + 1];
+
+  if (!b) {
+    const within = Math.max(
+      0,
+      Math.min(1, (wysiwygY - a.top) / a.height),
+    );
+    const block = view.lineBlockAt(
+      view.state.doc.line(
+        Math.min(Math.max(1, a.line0 + 1), view.state.doc.lines),
+      ).from,
+    );
+    return block.top + block.height * within;
+  }
+
+  const span = Math.max(1, b.top - a.top);
+  const t = Math.max(0, Math.min(1, (wysiwygY - a.top) / span));
+  const aCmTop = cmLineTop(view, a.line0);
+  const bCmTop = cmLineTop(view, b.line0);
+  return aCmTop + t * (bCmTop - aCmTop);
+}
+
+function isImageEventTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLImageElement;
+}
 
 export function useHaimDoubleScrollSync({
   enabled,
@@ -164,12 +241,21 @@ export function useHaimDoubleScrollSync({
     let wysiwygSyncRaf = 0;
     let lastCmTop = 0;
     let lastWysiwygTop = 0;
+    let lastDir: ScrollDir = 'up';
+    let lastDriver: Exclude<SyncSource, 'none'> = 'cm';
+    let imageRetryTimers: ReturnType<typeof setTimeout>[] = [];
+    let resizeObserver: ResizeObserver | null = null;
 
     const clearRetry = () => {
       if (retryTimer != null) {
         clearTimeout(retryTimer);
         retryTimer = null;
       }
+    };
+
+    const clearImageRetries = () => {
+      for (const t of imageRetryTimers) clearTimeout(t);
+      imageRetryTimers = [];
     };
 
     const clearLockTimer = () => {
@@ -193,7 +279,7 @@ export function useHaimDoubleScrollSync({
       });
     };
 
-    /** CM scrolled → drive WYSIWYG to the same edge/line. */
+    /** CM scrolled → drive WYSIWYG (marker-pair interpolation). */
     const syncWysiwygFromCm = (dir: ScrollDir) => {
       const view = cmViewRef.current;
       const wysiwyg = wysiwygScrollRef.current;
@@ -201,22 +287,15 @@ export function useHaimDoubleScrollSync({
 
       const scrollDom = view.scrollDOM;
       const y = anchorY(scrollDom, dir);
-      const lineBlock = view.lineBlockAtHeight(y);
-      const line0 = view.state.doc.lineAt(lineBlock.from).number - 1;
-      const el = findScrollDataLineBlock(wysiwyg, line0);
-      if (!el) return;
+      const markers = collectDataLineMarkers(wysiwyg, wysiwyg);
+      const contentY = mapCmYToWysiwygContentY(view, markers, y);
+      if (contentY == null) return;
 
-      const within =
-        lineBlock.height > 0
-          ? Math.max(0, Math.min(1, (y - lineBlock.top) / lineBlock.height))
-          : 0;
-      const relativeTop = offsetTopWithinScroller(el, wysiwyg);
-      const contentY = relativeTop + el.offsetHeight * within;
       scrollToAlignContentY(wysiwyg, contentY, dir);
       lastWysiwygTop = wysiwyg.scrollTop;
     };
 
-    /** WYSIWYG scrolled → drive CM to the same edge/line. */
+    /** WYSIWYG scrolled → drive CM (marker-pair interpolation). */
     const syncCmFromWysiwyg = (dir: ScrollDir) => {
       const view = cmViewRef.current;
       const wysiwyg = wysiwygScrollRef.current;
@@ -224,25 +303,38 @@ export function useHaimDoubleScrollSync({
 
       const scrollDom = view.scrollDOM;
       const y = anchorY(wysiwyg, dir);
-      const hit = findDataLineBlockAtScrollerY(wysiwyg, wysiwyg, y);
-      if (!hit) return;
+      const markers = collectDataLineMarkers(wysiwyg, wysiwyg);
+      const contentY = mapWysiwygYToCmContentY(view, markers, y);
+      if (contentY == null) return;
 
-      const { el, line0 } = hit;
-      const lineNumber = Math.min(
-        Math.max(1, line0 + 1),
-        view.state.doc.lines,
-      );
-      const line = view.state.doc.line(lineNumber);
-      const block = view.lineBlockAt(line.from);
-
-      const relativeTop = offsetTopWithinScroller(el, wysiwyg);
-      const within =
-        el.offsetHeight > 0
-          ? Math.max(0, Math.min(1, (y - relativeTop) / el.offsetHeight))
-          : 0;
-      const contentY = block.top + block.height * within;
       scrollToAlignContentY(scrollDom, contentY, dir);
       lastCmTop = scrollDom.scrollTop;
+    };
+
+    const applyDriverSync = (driver: Exclude<SyncSource, 'none'>, dir: ScrollDir) => {
+      if (disposed) return;
+      syncingFromRef.current = driver;
+      try {
+        if (driver === 'cm') syncWysiwygFromCm(dir);
+        else syncCmFromWysiwyg(dir);
+      } finally {
+        releaseSyncLock(driver);
+      }
+    };
+
+    /** After images settle, re-align using the last active driver + direction. */
+    const resyncAfterLayout = () => {
+      if (disposed) return;
+      if (syncingFromRef.current !== 'none') return;
+      applyDriverSync(lastDriver, lastDir);
+    };
+
+    const scheduleImageResync = () => {
+      if (disposed) return;
+      clearImageRetries();
+      for (const ms of IMAGE_RETRY_MS) {
+        imageRetryTimers.push(setTimeout(resyncAfterLayout, ms));
+      }
     };
 
     const onCmScroll = () => {
@@ -253,12 +345,9 @@ export function useHaimDoubleScrollSync({
       const top = view.scrollDOM.scrollTop;
       const dir = detectScrollDir(lastCmTop, top);
       lastCmTop = top;
-      syncingFromRef.current = 'cm';
-      try {
-        syncWysiwygFromCm(dir);
-      } finally {
-        releaseSyncLock('cm');
-      }
+      lastDir = dir;
+      lastDriver = 'cm';
+      applyDriverSync('cm', dir);
     };
 
     const onWysiwygScroll = () => {
@@ -269,12 +358,9 @@ export function useHaimDoubleScrollSync({
       const top = wysiwyg.scrollTop;
       const dir = detectScrollDir(lastWysiwygTop, top);
       lastWysiwygTop = top;
-      syncingFromRef.current = 'wysiwyg';
-      try {
-        syncCmFromWysiwyg(dir);
-      } finally {
-        releaseSyncLock('wysiwyg');
-      }
+      lastDir = dir;
+      lastDriver = 'wysiwyg';
+      applyDriverSync('wysiwyg', dir);
     };
 
     const requestCmSync = () => {
@@ -293,6 +379,14 @@ export function useHaimDoubleScrollSync({
         wysiwygSyncRaf = 0;
         onWysiwygScroll();
       });
+    };
+
+    const onImageSettled = (event: Event) => {
+      if (!isImageEventTarget(event.target)) return;
+      const wysiwyg = wysiwygScrollRef.current;
+      if (!wysiwyg || !(event.target instanceof Node)) return;
+      if (!wysiwyg.contains(event.target)) return;
+      scheduleImageResync();
     };
 
     const attach = () => {
@@ -315,27 +409,47 @@ export function useHaimDoubleScrollSync({
 
       wysiwyg.addEventListener('scroll', onWysiwyg, { passive: true });
       cm.addEventListener('scroll', onCm, { passive: true });
+      // Wiki / markdown images hydrate async — re-align when they settle.
+      wysiwyg.addEventListener('load', onImageSettled, true);
+      wysiwyg.addEventListener('error', onImageSettled, true);
+
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => {
+          scheduleImageResync();
+        });
+        // Observe content (not the scroller box) so image height changes fire.
+        const content =
+          wysiwyg.querySelector('.ProseMirror') ?? wysiwyg.firstElementChild;
+        if (content instanceof Element) {
+          resizeObserver.observe(content);
+        } else {
+          resizeObserver.observe(wysiwyg);
+        }
+      }
 
       attachedWysiwyg = wysiwyg;
       attachedCm = cm;
       lastCmTop = cm.scrollTop;
       lastWysiwygTop = wysiwyg.scrollTop;
+      lastDir = 'up';
+      lastDriver = 'cm';
 
       detach = () => {
         wysiwyg.removeEventListener('scroll', onWysiwyg);
         cm.removeEventListener('scroll', onCm);
+        wysiwyg.removeEventListener('load', onImageSettled, true);
+        wysiwyg.removeEventListener('error', onImageSettled, true);
+        resizeObserver?.disconnect();
+        resizeObserver = null;
         attachedWysiwyg = null;
         attachedCm = null;
       };
 
       // Align once on bind — treat as upward (top-edge) for a stable initial match.
-      syncingFromRef.current = 'cm';
-      try {
-        syncWysiwygFromCm('up');
-        lastWysiwygTop = wysiwyg.scrollTop;
-      } finally {
-        releaseSyncLock('cm');
-      }
+      applyDriverSync('cm', 'up');
+      lastWysiwygTop = wysiwyg.scrollTop;
+      // Images may still be placeholders — retry after hydration.
+      scheduleImageResync();
     };
 
     attach();
@@ -343,6 +457,7 @@ export function useHaimDoubleScrollSync({
     return () => {
       disposed = true;
       clearRetry();
+      clearImageRetries();
       clearLockTimer();
       if (cmSyncRaf) cancelAnimationFrame(cmSyncRaf);
       if (wysiwygSyncRaf) cancelAnimationFrame(wysiwygSyncRaf);

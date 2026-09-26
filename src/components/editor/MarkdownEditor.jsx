@@ -19,7 +19,6 @@ import MarkdownHeadingRemapToolbar from '@/components/MarkdownHeadingRemapToolba
 import HeadingRemapModal from '@/components/modals/HeadingRemapModal';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
-import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
 import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
 import MirrorEditToolbar from '@/components/MirrorEditToolbar';
 import ImageToolbar from '@/components/ImageToolbar';
@@ -690,7 +689,7 @@ export default function MarkdownEditor({
   const [catalogHandleBox, setCatalogHandleBox] = useState(null);
   const activeTransformRef = useRef(null);
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
-  const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
+  const [foldBase64Images] = useBase64ImageFold();
   const [autocompleteEnabled, setAutocompleteEnabled] = useEditorAutocomplete();
   const [mirrorEditPref, setMirrorEditEnabled] = useMirrorEdit();
   // Safari: skip Mirror Edit (unstable). Dual-pane scroll still uses previewScrollFollow.
@@ -2595,12 +2594,6 @@ export default function MarkdownEditor({
       onChange={setWrapTitles}
       theme={theme}
     />,
-    <Base64ImageFoldToolbar
-      key="base64-image-fold"
-      checked={foldBase64Images}
-      onChange={setFoldBase64Images}
-      theme={theme}
-    />,
     <EditorAutocompleteToolbar
       key="editor-autocomplete"
       checked={autocompleteEnabled}
@@ -2631,8 +2624,6 @@ export default function MarkdownEditor({
     currentFile,
     wrapTitles,
     setWrapTitles,
-    foldBase64Images,
-    setFoldBase64Images,
     autocompleteEnabled,
     setAutocompleteEnabled,
     safariMdEditor,
