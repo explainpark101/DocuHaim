@@ -38,11 +38,6 @@ import {
   hasStandardMarkdownImages,
 } from '@/utils/convertMarkdownImagesToWiki';
 import { copyCurrentPageAsFormattedHtml } from '@/utils/copyFormattedPageHtml';
-import {
-  collectImgbbCopyCandidates,
-  ensureMermaidSvgMarkup,
-  findMermaidHostByReplaceKey,
-} from '@/utils/imgbbCopyCandidates';
 import { uploadImageToImgbb } from '@/utils/imgbbUpload';
 import {
   batchUpsertRemoteImageComments,
@@ -396,6 +391,7 @@ export default function EditorPane({
     setCopyingFormattedHtml(true);
     try {
       quizFlushBeforeSaveRef.current?.();
+      const { collectImgbbCopyCandidates } = await import('@/utils/imgbbCopyCandidates');
       const candidates = collectImgbbCopyCandidates();
       if (candidates.length > 0) {
         setImgbbCopyCandidates(candidates);
@@ -429,6 +425,8 @@ export default function EditorPane({
       const replacements = new Map();
       /** @type {Array<{ kind: import('@/utils/remoteImageComment').RemoteImageKind, key: string, occurrence: number, url: string }>} */
       const sidecarItems = [];
+      const { ensureMermaidSvgMarkup, findMermaidHostByReplaceKey } =
+        await import('@/utils/imgbbCopyCandidates');
 
       for (const candidate of imgbbCopyCandidates) {
         const cached = await lookupRemoteImageUrl(markdown, {

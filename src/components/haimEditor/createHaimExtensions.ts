@@ -17,7 +17,6 @@ import Superscript from '@tiptap/extension-superscript';
 import Typography from '@tiptap/extension-typography';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
-import { Mathematics } from '@tiptap/extension-mathematics';
 import Youtube from '@tiptap/extension-youtube';
 import { Audio } from '@tiptap/extension-audio';
 import {
@@ -40,8 +39,13 @@ import { NoteCover } from '@/components/haimEditor/extensions/NoteCover';
 import { RawMarkdownBlock } from '@/components/haimEditor/extensions/RawMarkdownBlock';
 import { DeepHeading } from '@/components/haimEditor/extensions/DeepHeading';
 import { MathBlock } from '@/components/haimEditor/extensions/MathBlock';
+import {
+  HaimBlockMath,
+  HaimInlineMath,
+} from '@/components/haimEditor/extensions/HaimMath';
 import { HaimCodeBlock } from '@/components/haimEditor/extensions/HaimCodeBlock';
 import { HaimParagraph } from '@/components/haimEditor/extensions/HaimParagraph';
+import { HaimSourceLine } from '@/components/haimEditor/extensions/HaimSourceLine';
 import type { Extensions } from '@tiptap/core';
 
 export type HaimExtensionProfile = 'note' | 'composer';
@@ -50,6 +54,8 @@ export type CreateHaimExtensionsOptions = {
   placeholder?: string;
   /** note = full open-source set; composer = lean chat subset */
   profile?: HaimExtensionProfile;
+  /** Leading vault meta prefix for [data-line] vault line offsets. */
+  getMetaPrefix?: () => string;
 };
 
 /**
@@ -63,6 +69,7 @@ export function createHaimExtensions(
   const placeholder = options?.placeholder ?? '내용을 입력하세요…';
   const profile = options?.profile ?? 'note';
   const isNote = profile === 'note';
+  const getMetaPrefix = options?.getMetaPrefix ?? (() => '');
 
   const starterKit = isNote
     ? StarterKit.configure({
@@ -91,6 +98,7 @@ export function createHaimExtensions(
     starterKit,
     HaimParagraph,
     Markdown,
+    HaimSourceLine.configure({ getMetaPrefix }),
     Link.configure({
       openOnClick: false,
       autolink: true,
@@ -130,16 +138,14 @@ export function createHaimExtensions(
     Focus.configure({ className: 'haim-node-focused' }),
     Selection,
     TrailingNode,
-    Mathematics.configure({
-      katexOptions: {
-        throwOnError: false,
-      },
-    }),
+    HaimBlockMath,
+    HaimInlineMath,
     // DocuHaim custom
     PageBreak,
     WikiImage,
     ...(isNote ? [NoteCover] : []),
-    RawMarkdownBlock,    DeepHeading,
+    RawMarkdownBlock,
+    DeepHeading,
     MathBlock,
   ];
 

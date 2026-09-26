@@ -13,6 +13,7 @@ import {
   Link2,
   Undo2,
   Redo2,
+  Loader2,
 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { createHaimExtensions } from '@/components/haimEditor/createHaimExtensions';
@@ -202,8 +203,20 @@ export default function ChatComposerHaimEditor({
 
   if (!editor) {
     return (
-      <div className="flex h-full items-center px-2.5 text-sm text-gray-400">
-        Haim Editor 로딩 중…
+      <div
+        className="flex h-full min-h-0 flex-1 items-center gap-2 px-2.5"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <Loader2
+          size={14}
+          className="shrink-0 animate-spin text-gray-400 dark:text-gray-500"
+          aria-hidden
+        />
+        <span className="text-sm text-gray-400 dark:text-odp-muted">
+          Haim Editor 로딩 중…
+        </span>
       </div>
     );
   }

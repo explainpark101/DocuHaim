@@ -187,6 +187,7 @@ export {
   loadMessageOgSearchText,
   loadOgSearchText,
   ogDataToSearchText,
+  ensureSearchMarkdownRenderer,
 } from '@/utils/chatWithMyself/search.js';
 export { reactionsToSearchText } from '@/utils/chatWithMyself/reactionSearch.js';
 export { groupColor, isSelfGroupName } from '@/utils/chatWithMyself/groupAvatar.js';

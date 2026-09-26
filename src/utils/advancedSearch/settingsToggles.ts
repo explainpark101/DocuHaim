@@ -197,7 +197,7 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     id: 'settings-haim-double-scroll-sync',
     enableTitle: 'Haim double 스크롤 동기화 켜기',
     disableTitle: 'Haim double 스크롤 동기화 끄기',
-    description: 'double 모드에서 소스·WYSIWYG 스크롤 위치를 비율로 맞춤',
+    description: 'double 모드에서 소스·WYSIWYG를 data-line(소스 줄) 기준으로 맞춤',
     keywords: [
       'haim',
       'scroll',

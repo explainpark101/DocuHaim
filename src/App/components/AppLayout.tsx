@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ReactNode } from 'react';
-import { useCallback } from 'react';
+import { lazy, Suspense, useCallback } from 'react';
 import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight, Cloud, MessagesSquare } from 'lucide-react';
@@ -68,9 +68,10 @@ import { useMlxVlmProviderAutoSync } from '@/hooks/useMlxVlmProviderAutoSync';
 import { useLlamaCppProviderAutoSync } from '@/hooks/useLlamaCppProviderAutoSync';
 import { useMlxVlmLoadToast } from '@/hooks/useMlxVlmLoadToast';
 import { useDesktopMenuBridge } from '@/hooks/useDesktopMenuBridge';
-import LlmAssistModal from '@/components/LlmAssistModal';
 import AiSettingsDock from '@/components/settings/AiSettingsDock';
 import { useLlmAssistSession } from '@/contexts/LlmAssistSessionContext';
+
+const LlmAssistModal = lazy(() => import('@/components/LlmAssistModal'));
 
 /** Main app chrome — domain hooks + thin contexts (no AppHandlers bag). */
 export function AppLayout({ children }: { children?: ReactNode }) {
@@ -1030,10 +1031,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             />
           </Routes>
           </div>
-          <LlmAssistModal
-            llmProviderProfiles={llmProviderProfiles}
-            theme={theme}
-          />
+          {llmAssist.open ? (
+            <Suspense fallback={null}>
+              <LlmAssistModal
+                llmProviderProfiles={llmProviderProfiles}
+                theme={theme}
+              />
+            </Suspense>
+          ) : null}
           <AiSettingsDock
             profiles={llmProviderProfiles}
             onSaveProfiles={(next) =>

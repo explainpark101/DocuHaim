@@ -21,6 +21,8 @@ import {
 } from '@/utils/previewEngine';
 
 const LegacyMdPreview = lazy(async () => {
+  const { ensureMdEditorConfig } = await import('@/config/mdEditorConfig');
+  await ensureMdEditorConfig();
   const mod = await import('md-editor-rt');
   return { default: mod.MdPreview as ComponentType<Record<string, unknown>> };
 });

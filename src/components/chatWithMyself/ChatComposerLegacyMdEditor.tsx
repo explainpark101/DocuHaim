@@ -1,19 +1,14 @@
 import { useEffect, useRef } from 'react';
-import { MdEditor, config, type ExposeParam } from 'md-editor-rt';
-import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import type { ExposeParam } from 'md-editor-rt';
+import { ensureMdEditorConfig } from '@/config/mdEditorConfig';
 import MdEditorToolbarTooltips from '@/components/MdEditorToolbarTooltips';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import { CHAT_COMPOSER_MD_EDITOR_ID } from '@/utils/chatWithMyself/composerAutocompleteSettings';
 import { handleMdEditorSelectionWrapKeydown } from '@/utils/mdEditorSelectionWrap';
 import '@/styles/md-editor-rt/style.css';
 
-config({
-  editorConfig: {
-    languageUserDefined: {
-      'ko-KR': KO_KR,
-    },
-  },
-});
+await ensureMdEditorConfig();
+const { MdEditor } = await import('md-editor-rt');
 
 const CHAT_COMPOSER_TOOLBARS = [
   'bold',

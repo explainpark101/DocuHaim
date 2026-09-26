@@ -1,7 +1,7 @@
+import { ensureMdEditorConfig } from '@/config/mdEditorConfig';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
-import { MdEditor, config } from 'md-editor-rt';
 import {
   createScopedPreviewHeadingId,
   mdEditorIdFromReactId,
@@ -311,6 +311,9 @@ const ALT_VIM_NAVIGATION_KEY_BINDINGS = [
     run: (view) => runAltVimNavigation(view, cursorCharRight),
   },
 ];
+
+await ensureMdEditorConfig();
+const { MdEditor, config } = await import('md-editor-rt');
 
 config({
   editorConfig: {
