@@ -1,6 +1,7 @@
 /**
  * Bidirectional TipTap <-> CodeMirror sync with debounce + origin tags.
- * TipTap doc is the authority; CM is a derived editable view.
+ * After debounce the follower pane always receives the author's markdown;
+ * the typing pane is never rewritten (avoids caret / IME flicker).
  */
 
 import { useEffect, useRef } from 'react';
@@ -11,7 +12,8 @@ import { setEditorMarkdown } from '@/components/haimEditor/markdownIo';
 
 export type SyncOrigin = 'tiptap' | 'cm' | 'external' | null;
 
-const DEFAULT_DEBOUNCE_MS = 200;
+/** Idle debounce before cross-pane content sync. */
+export const HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS = 150;
 
 type Options = {
   editor: Editor | null;
@@ -21,15 +23,59 @@ type Options = {
   debounceMs?: number;
   /** Parent vault onChange — markdown only. */
   onVaultChange: (markdown: string) => void;
+  /** WYSIWYG overflow scroller — preserve scroll when applying CM → TipTap. */
+  wysiwygScrollRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * Timestamp (ms) until which scroll sync should ignore echo events from
+   * cross-pane doc writes (avoids flicker on the typing pane).
+   */
+  suppressScrollSyncUntilRef?: React.MutableRefObject<number>;
 };
+
+function bumpScrollSuppress(
+  ref: React.MutableRefObject<number> | undefined,
+  ms = 120,
+): void {
+  if (!ref) return;
+  ref.current = Math.max(ref.current, Date.now() + ms);
+}
+
+function replaceCmDocPreservingScroll(cm: EditorView, md: string): boolean {
+  const cur = cm.state.doc.toString();
+  if (cur === md) return false;
+  const scrollDom = cm.scrollDOM;
+  const savedTop = scrollDom.scrollTop;
+  const savedLeft = scrollDom.scrollLeft;
+  cm.dispatch({ changes: { from: 0, to: cur.length, insert: md } });
+  scrollDom.scrollTop = savedTop;
+  scrollDom.scrollLeft = savedLeft;
+  return true;
+}
+
+function replaceTipTapPreservingScroll(
+  editor: Editor,
+  md: string,
+  metaPrefixRef: React.MutableRefObject<string>,
+  wysiwygScrollEl: HTMLElement | null | undefined,
+): void {
+  const savedTop = wysiwygScrollEl?.scrollTop ?? null;
+  const savedLeft = wysiwygScrollEl?.scrollLeft ?? null;
+  setEditorMarkdown(editor, md, metaPrefixRef, { emitUpdate: false });
+  if (wysiwygScrollEl && savedTop != null) {
+    wysiwygScrollEl.scrollTop = savedTop;
+    if (savedLeft != null) wysiwygScrollEl.scrollLeft = savedLeft;
+  }
+}
 
 export function useHaimDualSync({
   editor,
   cmViewRef,
   metaPrefixRef,
   enabled,
-  debounceMs = DEFAULT_DEBOUNCE_MS,
+  debounceMs = HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
   onVaultChange,
+  wysiwygScrollRef,
+  suppressScrollSyncUntilRef,
 }: Options): {
   originRef: React.MutableRefObject<SyncOrigin>;
   notifyCmDocChanged: () => void;
@@ -45,30 +91,32 @@ export function useHaimDualSync({
   const cmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const composingRef = useRef(false);
 
-  const flush = () => {
-    if (!editor) return;
+  const clearTipTapTimer = () => {
     if (tipTapTimer.current) {
       clearTimeout(tipTapTimer.current);
       tipTapTimer.current = null;
     }
+  };
+
+  const clearCmTimer = () => {
     if (cmTimer.current) {
       clearTimeout(cmTimer.current);
       cmTimer.current = null;
     }
+  };
+
+  const flush = () => {
+    if (!editor) return;
+    clearTipTapTimer();
+    clearCmTimer();
     const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
     onVaultChangeRef.current(md);
   };
 
   /** Cancel pending debounced sync (e.g. before image upload apply). */
   const cancelPending = () => {
-    if (tipTapTimer.current) {
-      clearTimeout(tipTapTimer.current);
-      tipTapTimer.current = null;
-    }
-    if (cmTimer.current) {
-      clearTimeout(cmTimer.current);
-      cmTimer.current = null;
-    }
+    clearTipTapTimer();
+    clearCmTimer();
   };
 
   /**
@@ -82,10 +130,9 @@ export function useHaimDualSync({
     onVaultChangeRef.current(md);
     const cm = cmViewRef.current;
     if (!cm) return;
-    const cur = cm.state.doc.toString();
-    if (cur === md) return;
+    bumpScrollSuppress(suppressScrollSyncUntilRef);
     originRef.current = 'external';
-    cm.dispatch({ changes: { from: 0, to: cur.length, insert: md } });
+    replaceCmDocPreservingScroll(cm, md);
     originRef.current = null;
   };
 
@@ -97,10 +144,16 @@ export function useHaimDualSync({
     const cm = cmViewRef.current;
     if (!cm) return;
     cancelPending();
+    bumpScrollSuppress(suppressScrollSyncUntilRef);
     originRef.current = 'external';
     const md = cm.state.doc.toString();
     onVaultChangeRef.current(md);
-    setEditorMarkdown(editor, md, metaPrefixRef, { emitUpdate: false });
+    replaceTipTapPreservingScroll(
+      editor,
+      md,
+      metaPrefixRef,
+      wysiwygScrollRef?.current,
+    );
     originRef.current = null;
   };
 
@@ -108,63 +161,91 @@ export function useHaimDualSync({
   useEffect(() => {
     if (!editor || !enabled) return undefined;
 
+    const applyTipTapToOther = () => {
+      if (!editor) return;
+      originRef.current = 'tiptap';
+      try {
+        const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
+        onVaultChangeRef.current(md);
+        const cm = cmViewRef.current;
+        if (!cm) return;
+        // Always sync follower (CM) after debounce — both panes must match.
+        bumpScrollSuppress(suppressScrollSyncUntilRef);
+        replaceCmDocPreservingScroll(cm, md);
+      } finally {
+        originRef.current = null;
+      }
+    };
+
+    const scheduleTipTapSync = () => {
+      if (originRef.current === 'cm' || originRef.current === 'external') return;
+      if (composingRef.current) return;
+      // Latest author wins — drop pending CM → TipTap so we do not stomp TipTap.
+      clearCmTimer();
+      clearTipTapTimer();
+      tipTapTimer.current = setTimeout(() => {
+        tipTapTimer.current = null;
+        if (!editor) return;
+        if (originRef.current === 'cm' || originRef.current === 'external') return;
+        applyTipTapToOther();
+      }, debounceMs);
+    };
+
     const onCompositionStart = () => {
       composingRef.current = true;
     };
     const onCompositionEnd = () => {
       composingRef.current = false;
+      // IME commit may not emit another update — force cross-pane sync.
+      scheduleTipTapSync();
     };
     const dom = editor.view.dom;
     dom.addEventListener('compositionstart', onCompositionStart);
     dom.addEventListener('compositionend', onCompositionEnd);
 
-    const handleUpdate = () => {
-      if (originRef.current === 'cm' || originRef.current === 'external') return;
-      if (composingRef.current) return;
-      if (tipTapTimer.current) clearTimeout(tipTapTimer.current);
-      tipTapTimer.current = setTimeout(() => {
-        tipTapTimer.current = null;
-        if (!editor) return;
-        originRef.current = 'tiptap';
-        const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-        onVaultChangeRef.current(md);
-        const cm = cmViewRef.current;
-        if (cm && !cm.hasFocus) {
-          const cur = cm.state.doc.toString();
-          if (cur !== md) {
-            cm.dispatch({
-              changes: { from: 0, to: cur.length, insert: md },
-            });
-          }
-        }
-        originRef.current = null;
-      }, debounceMs);
-    };
-
-    editor.on('update', handleUpdate);
+    editor.on('update', scheduleTipTapSync);
     return () => {
-      editor.off('update', handleUpdate);
+      editor.off('update', scheduleTipTapSync);
       dom.removeEventListener('compositionstart', onCompositionStart);
       dom.removeEventListener('compositionend', onCompositionEnd);
-      if (tipTapTimer.current) clearTimeout(tipTapTimer.current);
+      clearTipTapTimer();
     };
-  }, [editor, enabled, debounceMs, cmViewRef, metaPrefixRef]);
+  }, [
+    editor,
+    enabled,
+    debounceMs,
+    cmViewRef,
+    metaPrefixRef,
+    suppressScrollSyncUntilRef,
+  ]);
 
   const notifyCmDocChanged = () => {
     if (!enabled || !editor) return;
     if (originRef.current === 'tiptap' || originRef.current === 'external') return;
-    if (cmTimer.current) clearTimeout(cmTimer.current);
+    // Latest author wins — drop pending TipTap → CM so we do not stomp CM.
+    clearTipTapTimer();
+    clearCmTimer();
     cmTimer.current = setTimeout(() => {
       cmTimer.current = null;
+      if (!editor) return;
+      if (originRef.current === 'tiptap' || originRef.current === 'external') return;
       const cm = cmViewRef.current;
-      if (!cm || !editor) return;
+      if (!cm) return;
       originRef.current = 'cm';
-      const md = cm.state.doc.toString();
-      onVaultChangeRef.current(md);
-      if (!editor.isFocused) {
-        setEditorMarkdown(editor, md, metaPrefixRef, { emitUpdate: false });
+      try {
+        const md = cm.state.doc.toString();
+        onVaultChangeRef.current(md);
+        // Always sync follower (TipTap) after debounce — both panes must match.
+        bumpScrollSuppress(suppressScrollSyncUntilRef);
+        replaceTipTapPreservingScroll(
+          editor,
+          md,
+          metaPrefixRef,
+          wysiwygScrollRef?.current,
+        );
+      } finally {
+        originRef.current = null;
       }
-      originRef.current = null;
     }, debounceMs);
   };
 

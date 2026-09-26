@@ -14,6 +14,9 @@
  * lines can reach mid-viewport): once the driver scrolls past aligning the
  * last content block, map that remaining progress onto the follower's
  * padding region so both panes enter overscroll together.
+ *
+ * While a pane has focus (typing), never write its scrollTop — cross-pane
+ * content sync + layout echoes must not flicker the active editor.
  */
 
 import { useEffect, useRef } from 'react';
@@ -30,6 +33,11 @@ type Options = {
    * re-bind to the live scrollDOM (SourcePane remounts without toggling enabled).
    */
   cmRevision?: number;
+  /**
+   * Ignore scroll/layout-driven sync until this timestamp (ms since epoch).
+   * Set by dual content sync around doc replaces.
+   */
+  suppressScrollSyncUntilRef?: React.MutableRefObject<number>;
 };
 
 const SCROLL_ALIGN_PAD_PX = 32;
@@ -282,11 +290,28 @@ function isImageEventTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLImageElement;
 }
 
+function isWysiwygFocused(wysiwyg: HTMLElement): boolean {
+  const ae = document.activeElement;
+  return ae instanceof Node && wysiwyg.contains(ae);
+}
+
+function isCmFocused(view: EditorView): boolean {
+  return view.hasFocus;
+}
+
+function isScrollSyncSuppressed(
+  untilRef: React.MutableRefObject<number> | undefined,
+): boolean {
+  if (!untilRef) return false;
+  return Date.now() < untilRef.current;
+}
+
 export function useHaimDoubleScrollSync({
   enabled,
   wysiwygScrollRef,
   cmViewRef,
   cmRevision = 0,
+  suppressScrollSyncUntilRef,
 }: Options): void {
   const syncingFromRef = useRef<SyncSource>('none');
   const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -346,6 +371,8 @@ export function useHaimDoubleScrollSync({
       const view = cmViewRef.current;
       const wysiwyg = wysiwygScrollRef.current;
       if (!view || !wysiwyg) return;
+      // Never move the pane the user is typing in.
+      if (isWysiwygFocused(wysiwyg)) return;
 
       const scrollDom = view.scrollDOM;
       const markers = collectDataLineMarkers(wysiwyg, wysiwyg);
@@ -376,6 +403,8 @@ export function useHaimDoubleScrollSync({
       const view = cmViewRef.current;
       const wysiwyg = wysiwygScrollRef.current;
       if (!view || !wysiwyg) return;
+      // Never move the pane the user is typing in.
+      if (isCmFocused(view)) return;
 
       const scrollDom = view.scrollDOM;
       const markers = collectDataLineMarkers(wysiwyg, wysiwyg);
@@ -403,6 +432,7 @@ export function useHaimDoubleScrollSync({
 
     const applyDriverSync = (driver: Exclude<SyncSource, 'none'>, dir: ScrollDir) => {
       if (disposed) return;
+      if (isScrollSyncSuppressed(suppressScrollSyncUntilRef)) return;
       syncingFromRef.current = driver;
       try {
         if (driver === 'cm') syncWysiwygFromCm(dir);
@@ -416,6 +446,7 @@ export function useHaimDoubleScrollSync({
     const resyncAfterLayout = () => {
       if (disposed) return;
       if (syncingFromRef.current !== 'none') return;
+      if (isScrollSyncSuppressed(suppressScrollSyncUntilRef)) return;
       applyDriverSync(lastDriver, lastDir);
     };
 
@@ -435,6 +466,8 @@ export function useHaimDoubleScrollSync({
       const top = view.scrollDOM.scrollTop;
       const dir = detectScrollDir(lastCmTop, top);
       lastCmTop = top;
+      // Still track position during suppress / focused-target skips.
+      if (isScrollSyncSuppressed(suppressScrollSyncUntilRef)) return;
       lastDir = dir;
       lastDriver = 'cm';
       applyDriverSync('cm', dir);
@@ -448,6 +481,7 @@ export function useHaimDoubleScrollSync({
       const top = wysiwyg.scrollTop;
       const dir = detectScrollDir(lastWysiwygTop, top);
       lastWysiwygTop = top;
+      if (isScrollSyncSuppressed(suppressScrollSyncUntilRef)) return;
       lastDir = dir;
       lastDriver = 'wysiwyg';
       applyDriverSync('wysiwyg', dir);
@@ -554,5 +588,5 @@ export function useHaimDoubleScrollSync({
       detach?.();
       syncingFromRef.current = 'none';
     };
-  }, [enabled, wysiwygScrollRef, cmViewRef, cmRevision]);
+  }, [enabled, wysiwygScrollRef, cmViewRef, cmRevision, suppressScrollSyncUntilRef]);
 }

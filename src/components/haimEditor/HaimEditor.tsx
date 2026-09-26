@@ -12,7 +12,10 @@ import { invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import HaimToolbar from '@/components/haimEditor/HaimToolbar';
 import HaimSourcePane from '@/components/haimEditor/HaimSourcePane';
 import HaimTocPanel from '@/components/haimEditor/HaimTocPanel';
-import { useHaimDualSync } from '@/components/haimEditor/useHaimDualSync';
+import {
+  HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
+  useHaimDualSync,
+} from '@/components/haimEditor/useHaimDualSync';
 import { useHaimDoubleScrollSync } from '@/components/haimEditor/useHaimDoubleScrollSync';
 import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
@@ -256,6 +259,8 @@ export default function HaimEditor({
     if (md !== valueRef.current) onChangeRef.current(md);
   }, []);
 
+  const suppressScrollSyncUntilRef = useRef(0);
+
   const {
     notifyCmDocChanged,
     flush,
@@ -268,12 +273,10 @@ export default function HaimEditor({
     cmViewRef,
     metaPrefixRef,
     enabled: Boolean(editor) && isSurfaceLive && !previewOnly,
-    debounceMs:
-      effectiveMode === HAIM_VIEW_MODE_DOUBLE ||
-      effectiveMode === HAIM_VIEW_MODE_SOURCE
-        ? 200
-        : 160,
+    debounceMs: HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
     onVaultChange: emitVault,
+    wysiwygScrollRef,
+    suppressScrollSyncUntilRef,
   });
 
   useHaimDoubleScrollSync({
@@ -281,6 +284,7 @@ export default function HaimEditor({
     wysiwygScrollRef,
     cmViewRef,
     cmRevision,
+    suppressScrollSyncUntilRef,
   });
 
   const resolveWikiUrl = useCallback(
