@@ -3,7 +3,7 @@
  *
  * - NoteEditorSurface must lazy-import only the selected engine.
  * - Dual mode mounts HaimSourcePane only when viewMode === dual.
- * - useHaimDualSync debounces TipTap↔CM; origin tags block feedback loops.
+ * - useHaimDualSync debounces TipTap↔CM (150ms); origin tags block feedback loops.
  * - getCachedMarkdown skips serialize when JSON identity unchanged.
  * - vite manualChunks: vendor-tiptap separate from vendor-md-editor.
  * - Frozen panes use MarkdownPreviewSurface with engineHint="legacy" (no TipTap)
