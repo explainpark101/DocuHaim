@@ -1,5 +1,5 @@
 import { useRef, type ReactNode, type RefObject } from 'react';
-import { MdPreview } from 'md-editor-rt';
+import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import '@/styles/md-editor-rt/style.css';
 import CoverSlide from '@/components/noteCover/CoverSlide';
 import PrintPreviewStage from '@/components/print/PrintPreviewStage';
@@ -216,7 +216,7 @@ export function ExportPdfBodyPreview({
               }}
               aria-hidden
             />
-            <MdPreview
+            <MarkdownPreviewSurface
               key={`footnotes-${previewFootnotesRenderKey}`}
               id={EDITOR_ID}
               theme="light"

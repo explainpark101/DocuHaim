@@ -422,6 +422,12 @@ function manualChunks(id: string): string | undefined {
   if (!normalizedId.includes('/node_modules/')) return;
 
   if (
+    normalizedId.includes('/node_modules/@tiptap/') ||
+    normalizedId.includes('/node_modules/prosemirror-')
+  ) {
+    return 'vendor-tiptap';
+  }
+  if (
     normalizedId.includes('/node_modules/md-editor-rt/') ||
     normalizedId.includes('/node_modules/@vavt/')
   ) {

@@ -1,6 +1,7 @@
 import { memo, useLayoutEffect, useMemo, useRef } from 'react';
-import { MdPreview, config } from 'md-editor-rt';
+import { config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import { sanitizeMdEditorIdFragment } from '@/utils/mdEditorInstanceId';
@@ -62,7 +63,7 @@ function FrozenPaneMarkdownPreview({
       inert
       aria-hidden
     >
-      <MdPreview
+      <MarkdownPreviewSurface
         id={safeId}
         modelValue={value}
         theme={theme === 'dark' ? 'dark' : 'light'}
@@ -72,9 +73,8 @@ function FrozenPaneMarkdownPreview({
         showCodeRowNumber={false}
         noImgZoomIn
         noMermaid
-        // @ts-expect-error custom icons shape
         iconfontType={undefined}
-        sanitize={(html) => html}
+        sanitize={(html: string) => html}
       />
     </div>
   );

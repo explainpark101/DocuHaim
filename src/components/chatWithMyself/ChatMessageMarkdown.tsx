@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
-import { MdPreview, config } from 'md-editor-rt';
+import { config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import {
   chatAttachmentsToMarkdown,
@@ -109,7 +110,7 @@ export default function ChatMessageMarkdown({
     >
       {hasMd ? (
         <div className="chat-message-markdown__preview md-editor-preview-wrapper [&_.md-editor]:bg-transparent! [&_.md-editor-preview]:bg-transparent! [&_.md-editor-preview]:p-0! [&_.md-editor-preview]:text-[inherit]! [&_.md-editor-preview-wrapper]:p-0! [&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_blockquote]:my-1">
-          <MdPreview
+          <MarkdownPreviewSurface
             id={previewId}
             value={mdText}
             theme={resolvedTheme}

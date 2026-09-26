@@ -359,9 +359,19 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'settings-editor',
     title: '설정 · 마크다운 에디터',
-    description: 'md-editor-rt 및 각주 표기 설정',
+    description: '기존 에디터 / Haim Editor 및 각주 표기 설정',
     path: '/settings#settings-editor',
-    keywords: ['에디터', 'editor', 'markdown', '마크다운', '각주', 'footnote'],
+    keywords: [
+      '에디터',
+      'editor',
+      'markdown',
+      '마크다운',
+      '각주',
+      'footnote',
+      'haim',
+      'tiptap',
+      '기존 에디터',
+    ],
   },
   {
     id: 'settings-navigation',
