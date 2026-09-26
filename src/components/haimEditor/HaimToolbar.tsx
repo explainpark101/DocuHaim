@@ -34,6 +34,7 @@ import {
   Workflow,
   Search,
   Pilcrow,
+  QrCode,
 } from 'lucide-react';
 import { DropdownMenu, Switch, Tooltip } from 'radix-ui';
 import {
@@ -55,6 +56,7 @@ export type HaimToolbarAppActions = {
   onImageUpload?: ((files: File[]) => void) | undefined;
   onImageClip?: ((file: File) => void) | undefined;
   imageDisabled?: boolean | undefined;
+  onCreateQrCode?: (() => void) | undefined;
   onInsertMermaid?: (() => void) | undefined;
   onInsertKatex?: (() => void) | undefined;
   findReplaceOpen?: boolean | undefined;
@@ -400,6 +402,15 @@ export default function HaimToolbar({
             onRequestUpload={(files) => a.onImageUpload?.(files)}
             onRequestClip={(file) => a.onImageClip?.(file)}
           />
+        ) : null}
+        {a?.onCreateQrCode ? (
+          <ToolBtn
+            label="QRCode 만들기"
+            disabled={Boolean(a.imageDisabled)}
+            onClick={() => a.onCreateQrCode?.()}
+          >
+            <QrCode size={14} />
+          </ToolBtn>
         ) : null}
         {a?.onHeadingRemap ? (
           <ToolBtn label="제목 수준 재매핑" onClick={() => a.onHeadingRemap?.()}>
