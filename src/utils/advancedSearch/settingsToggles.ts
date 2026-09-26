@@ -91,6 +91,16 @@ import {
   saveQuizSettings,
 } from '@/utils/quiz/quizSettingsStore';
 import { advancedSearchEngine } from '@/utils/advancedSearch/engine';
+import {
+  HAIM_VIEW_MODE_DOUBLE,
+  HAIM_VIEW_MODE_WYSIWYG,
+  loadHaimViewMode,
+  saveHaimViewMode,
+} from '@/utils/haimViewModeSettings';
+import {
+  loadHaimDoubleScrollSyncEnabled,
+  saveHaimDoubleScrollSyncEnabled,
+} from '@/utils/haimDoubleScrollSyncSettings';
 
 export type SettingsToggleId =
   | 'settings-alt-vim'
@@ -114,7 +124,9 @@ export type SettingsToggleId =
   | 'settings-cover-place-preview'
   | 'settings-orphan-image-auto'
   | 'settings-tauri-download-save-dialog'
-  | 'settings-quiz-dock-width-spring';
+  | 'settings-quiz-dock-width-spring'
+  | 'settings-haim-double'
+  | 'settings-haim-double-scroll-sync';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -143,6 +155,45 @@ function notify(id: SettingsToggleId, enabled: boolean): void {
 }
 
 export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
+  {
+    id: 'settings-haim-double',
+    enableTitle: 'Haim double(소스+WYSIWYG) 켜기',
+    disableTitle: 'Haim double(소스+WYSIWYG) 끄기',
+    description:
+      'Haim Editor에서 마크다운 소스와 TipTap을 나란히 양방향 동기화 (비용 큼)',
+    keywords: [
+      'haim',
+      'tiptap',
+      'double',
+      'dual',
+      '듀얼',
+      '소스',
+      'wysiwyg',
+      'source',
+      '동시',
+      'markdown',
+    ],
+    load: () => loadHaimViewMode() === HAIM_VIEW_MODE_DOUBLE,
+    save: (enabled) =>
+      saveHaimViewMode(enabled ? HAIM_VIEW_MODE_DOUBLE : HAIM_VIEW_MODE_WYSIWYG),
+  },
+  {
+    id: 'settings-haim-double-scroll-sync',
+    enableTitle: 'Haim double 스크롤 동기화 켜기',
+    disableTitle: 'Haim double 스크롤 동기화 끄기',
+    description: 'double 모드에서 소스·WYSIWYG 스크롤 위치를 비율로 맞춤',
+    keywords: [
+      'haim',
+      'scroll',
+      '스크롤',
+      '동기화',
+      'sync',
+      'double',
+      'follow',
+    ],
+    load: loadHaimDoubleScrollSyncEnabled,
+    save: saveHaimDoubleScrollSyncEnabled,
+  },
   {
     id: 'settings-alt-vim',
     enableTitle: 'Alt+Vim 커서 이동 켜기',

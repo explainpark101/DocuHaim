@@ -32,6 +32,19 @@ import {
   FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT,
 } from '@/utils/previewFootnotesSettings';
 import {
+  EDITOR_TYPE_CHANGED_EVENT,
+  EDITOR_TYPE_HAIM,
+  EDITOR_TYPE_OPTIONS,
+  loadEditorType,
+  saveEditorType,
+} from '@/utils/editorTypeSettings';
+import {
+  HAIM_VIEW_MODE_CHANGED_EVENT,
+  HAIM_VIEW_MODE_OPTIONS,
+  loadHaimViewMode,
+  saveHaimViewMode,
+} from '@/utils/haimViewModeSettings';
+import {
   loadAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
@@ -136,8 +149,8 @@ export default function SettingsPage({
   onSaveSnippetConfig,
   isSavingSnippets = false,
   snippetConfigLoaded = false,
-  editorType: _editorTypeProp,
-  onEditorTypeChange: _onEditorTypeChange,
+  editorType: editorTypeProp,
+  onEditorTypeChange,
   storageMode = STORAGE_MODE_S3,
   onStorageModeChange,
   localFolderName = '',
@@ -192,6 +205,10 @@ export default function SettingsPage({
   const [footnoteDisplayMode, setFootnoteDisplayModeState] = useState(() =>
     loadFootnoteDisplayMode(),
   );
+  const [editorType, setEditorTypeState] = useState(
+    () => editorTypeProp ?? loadEditorType(),
+  );
+  const [haimViewMode, setHaimViewModeState] = useState(() => loadHaimViewMode());
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState(
@@ -239,6 +256,22 @@ export default function SettingsPage({
     return () => {
       window.removeEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnoteDisplay);
     };
+  }, []);
+
+  useEffect(() => {
+    if (editorTypeProp) setEditorTypeState(editorTypeProp);
+  }, [editorTypeProp]);
+
+  useEffect(() => {
+    const sync = () => setEditorTypeState(loadEditorType());
+    window.addEventListener(EDITOR_TYPE_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(EDITOR_TYPE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setHaimViewModeState(loadHaimViewMode());
+    window.addEventListener(HAIM_VIEW_MODE_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_VIEW_MODE_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -967,13 +1000,64 @@ export default function SettingsPage({
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">마크다운 에디터</h3>
-          <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
-            .md 파일은 <span className="font-semibold text-gray-700 dark:text-odp-fg">md-editor-rt</span>로
-            편집합니다. 미리보기, 위키 이미지{' '}
-            <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code> /{' '}
-            <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path|w=50%]]</code>,
-            스니펫 단축키가 이 구성에 맞춰져 있습니다.
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+            .md 파일 편집 엔진을 고릅니다. 저장 포맷은 항상 마크다운 소스입니다.
           </p>
+          <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">에디터 종류</p>
+          <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg mb-4">
+            {EDITOR_TYPE_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="editorType"
+                  value={opt.value}
+                  checked={editorType === opt.value}
+                  onChange={() => {
+                    setEditorTypeState(opt.value);
+                    saveEditorType(opt.value);
+                    onEditorTypeChange?.(opt.value);
+                  }}
+                  className="mt-0.5 shrink-0"
+                />
+                <span>
+                  <span className="font-semibold">{opt.label}</span>
+                  <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                    {opt.description}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {editorType === EDITOR_TYPE_HAIM ? (
+            <div className="mb-4 rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderStrong dark:bg-odp-bgSoft/40">
+              <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
+                Haim Editor 보기 모드
+              </p>
+              <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+                {HAIM_VIEW_MODE_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="haimViewMode"
+                      value={opt.value}
+                      checked={haimViewMode === opt.value}
+                      onChange={() => {
+                        setHaimViewModeState(opt.value);
+                        saveHaimViewMode(opt.value);
+                      }}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span>
+                      <span className="font-semibold">{opt.label}</span>
+                      <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                        {opt.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
               문서 상단 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<!-- footnotes {"v":1,"enabled":true} -->'}</code>

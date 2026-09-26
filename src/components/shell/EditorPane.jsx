@@ -69,7 +69,9 @@ import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { patchFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
 
-const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
+const NoteEditorSurface = lazy(
+  () => import('@/components/editor/surface/NoteEditorSurface'),
+);
 const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
 const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
 const QuizPane = lazy(() => import('@/components/quiz/QuizPane'));
@@ -143,7 +145,7 @@ export default function EditorPane({
   onResolveWikiImageUrl,
   onOpenViewPath,
   snippetConfig = { snippets: [] },
-  editorType: _editorType,
+  editorType,
   hideRecordingCompanions = false,
   llmProviderProfiles = [],
   getImgbbApiKey,
@@ -1251,7 +1253,12 @@ export default function EditorPane({
               ) : (
                 <Suspense fallback={<EditorPaneSuspenseFallback message="에디터 로딩 중…" />}>
                   {markdownEditorMounted ? (
-                    <MarkdownEditor
+                    <NoteEditorSurface
+                      engine={
+                        editorType === 'haim' || editorType === 'md-editor-rt'
+                          ? editorType
+                          : undefined
+                      }
                       value={editorContent}
                       onChange={onChangeEditor}
                       onSave={onSave}

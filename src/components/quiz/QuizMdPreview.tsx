@@ -1,6 +1,7 @@
 import { memo, useMemo, useRef } from 'react';
-import { MdPreview, config } from 'md-editor-rt';
+import { config } from 'md-editor-rt';
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { useQuizImageHydration } from '@/components/quiz/QuizImageHydrationContext';
@@ -45,7 +46,7 @@ function QuizMdPreview({
 
   return (
     <div ref={rootRef} className={`quiz-md-preview markdown-content ${className}`}>
-      <MdPreview
+      <MarkdownPreviewSurface
         id={previewId}
         modelValue={value}
         theme={theme === 'dark' ? 'dark' : 'light'}

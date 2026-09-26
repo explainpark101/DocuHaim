@@ -95,7 +95,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     id: 'app',
     title: '앱',
     sections: [
-      { id: 'settings-tauri-download', label: '데스크톱 앱 다운로드', visible: () => isTauriDesktopPlatform() },
+      { id: 'settings-tauri-download', label: '파일 다운로드', visible: () => isTauriDesktopPlatform() },
       { id: 'settings-app-update', label: '앱 업데이트' },
     ],
   },

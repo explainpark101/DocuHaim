@@ -30,7 +30,7 @@ import {
   CornerLeftDown,
   ZoomIn,
 } from 'lucide-react';
-import { MdPreview } from 'md-editor-rt';
+import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import { Tooltip } from 'radix-ui';
 import '@/styles/md-editor-rt/style.css';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
@@ -790,7 +790,7 @@ export default function LlmAssistPanel({
             className="min-h-32 max-h-64 overflow-auto rounded border border-gray-200 bg-gray-50 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
           >
             {result ? (
-              <MdPreview
+              <MarkdownPreviewSurface
                 id={RESULT_PREVIEW_ID}
                 theme={theme === 'dark' ? 'dark' : 'light'}
                 language="ko-KR"
