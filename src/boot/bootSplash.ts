@@ -1,6 +1,7 @@
 /**
  * Boot splash progress UI — runs before the main app graph finishes loading.
- * Uses build-time `#boot-manifest` (bytes per critical asset) for a stable bar.
+ * Production: build-time `#boot-manifest` byte budget for a stable bar.
+ * Dev: grow budget dynamically from observed resources (fastest visual feedback).
  */
 
 import {
@@ -10,11 +11,16 @@ import {
   type BootManifest,
   type BootManifestAsset,
 } from '@/boot/bootManifest';
+import {
+  BOOT_SPLASH_TIP_INTERVAL_MS,
+  BOOT_SPLASH_TIPS,
+} from '@/boot/bootSplashTips';
 
 export type BootSplashApi = {
+  /** Updates the detail row (loading specifics). Tip row rotates separately. */
   setStatus: (status: string, detail?: string) => void;
   setProgress: (ratio: number) => void;
-  markResource: (url: string) => void;
+  markResource: (url: string, transferBytes?: number) => void;
   complete: () => void;
 };
 
@@ -24,9 +30,23 @@ declare global {
   }
 }
 
+const DEV_DEFAULT_CHUNK_BYTES = 48_000;
+const DEV_HEADROOM_BYTES = 180_000;
+const DEV_CREEP_CAP = 0.86;
+const DEV_CREEP_STEP = 0.012;
+const DEV_CREEP_MS = 400;
+
 function clamp01(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.min(1, Math.max(0, n));
+}
+
+function isDevMode(): boolean {
+  try {
+    return Boolean(import.meta.env?.DEV);
+  } catch {
+    return false;
+  }
 }
 
 function readEmbeddedManifest(): BootManifest | null {
@@ -35,6 +55,7 @@ function readEmbeddedManifest(): BootManifest | null {
   try {
     const parsed = JSON.parse(el.textContent) as BootManifest;
     if (parsed?.version !== 1 || !Array.isArray(parsed.assets)) return null;
+    if (!(parsed.totalBytes > 0) || parsed.assets.length === 0) return null;
     return parsed;
   } catch {
     return null;
@@ -58,11 +79,27 @@ function matchManifestAsset(
   const key = urlToAssetKey(rawUrl);
   const direct = byFile.get(key);
   if (direct) return direct;
-  // BASE_URL prefix / trailing variants
   for (const asset of byFile.values()) {
     if (key.endsWith(asset.file) || key.endsWith(`/${asset.file}`)) return asset;
   }
   return undefined;
+}
+
+function isTrackableResourceUrl(rawUrl: string): boolean {
+  const pathOnly = (rawUrl.split('?')[0] || rawUrl).toLowerCase();
+  if (/\.(js|mjs|css|wasm|tsx?|jsx?)(\?|$)/i.test(pathOnly)) return true;
+  if (pathOnly.includes('/assets/') || pathOnly.includes('/src/')) return true;
+  if (pathOnly.includes('/node_modules/') || pathOnly.includes('/@fs/')) return true;
+  if (pathOnly.includes('/@id/') || pathOnly.includes('/@vite/')) return true;
+  return false;
+}
+
+function estimateTransferBytes(rawUrl: string, hinted?: number): number {
+  if (typeof hinted === 'number' && hinted > 0) return hinted;
+  const path = (rawUrl.split('?')[0] || rawUrl).toLowerCase();
+  if (path.endsWith('.css')) return 24_000;
+  if (path.includes('/src/')) return 16_000;
+  return DEV_DEFAULT_CHUNK_BYTES;
 }
 
 export function initBootSplash(): BootSplashApi {
@@ -75,62 +112,85 @@ export function initBootSplash(): BootSplashApi {
   const fillEl = document.getElementById('boot-splash-bar-fill');
   const barEl = document.getElementById('boot-splash-bar');
 
-  const manifest = readEmbeddedManifest();
+  const isDev = isDevMode();
+  const manifest = isDev ? null : readEmbeddedManifest();
   const byFile = new Map<string, BootManifestAsset>();
   for (const asset of manifest?.assets || []) {
     byFile.set(asset.file.replace(/^\//, ''), asset);
   }
 
   const useByteBudget = Boolean(manifest && manifest.totalBytes > 0 && byFile.size > 0);
-  const totalBytes = useByteBudget ? manifest!.totalBytes : 0;
+  const useDynamicDev = isDev || !useByteBudget;
 
-  const seen = new Set<string>();
+  let totalBytes = useByteBudget ? manifest!.totalBytes : 0;
   let loadedBytes = 0;
   let loadedCount = 0;
-  let expectedCount = useByteBudget ? byFile.size : 0;
   let floor = 0.04;
   let completed = false;
   let lastLabel = '';
+  let tipIndex = 0;
+  let tipTimer: ReturnType<typeof setInterval> | null = null;
+  let creepTimer: ReturnType<typeof setInterval> | null = null;
+  const seen = new Set<string>();
 
-  if (!useByteBudget) {
-    expectedCount = document.querySelectorAll(
-      'link[rel="modulepreload"], link[rel="stylesheet"][href], script[type="module"][src]',
-    ).length;
-  }
+  const paintTip = () => {
+    if (completed || !statusEl || BOOT_SPLASH_TIPS.length === 0) return;
+    statusEl.textContent = BOOT_SPLASH_TIPS[tipIndex % BOOT_SPLASH_TIPS.length] || '';
+  };
 
-  const render = (status?: string, detail?: string) => {
+  const paintBar = () => {
     if (completed) return;
     let ratio: number;
     if (useByteBudget) {
-      ratio = clamp01(Math.max(floor, loadedBytes / totalBytes));
+      ratio = clamp01(Math.max(floor, totalBytes > 0 ? loadedBytes / totalBytes : floor));
     } else {
-      ratio = clamp01(
-        Math.max(floor, expectedCount > 0 ? loadedCount / expectedCount : floor),
-      );
+      // Dev / no manifest: loaded vs growing headroom budget.
+      const denom = Math.max(totalBytes, loadedBytes + DEV_HEADROOM_BYTES, 1);
+      ratio = clamp01(Math.max(floor, loadedBytes / denom));
     }
     const pct = Math.round(ratio * 100);
     if (fillEl) fillEl.style.width = `${pct}%`;
     if (barEl) barEl.setAttribute('aria-valuenow', String(pct));
-    if (status != null && statusEl) statusEl.textContent = status;
-    if (detail != null && detailEl) {
-      detailEl.textContent = detail;
-    } else if (detailEl && useByteBudget) {
-      detailEl.textContent =
-        `${formatBootBytes(loadedBytes)} / ${formatBootBytes(totalBytes)} · ${pct}%`;
-    } else if (detailEl && expectedCount > 0) {
-      detailEl.textContent = `${loadedCount} / ${expectedCount} · ${pct}%`;
-    }
+    return pct;
   };
 
-  const markResource = (rawUrl: string) => {
+  const paintDetail = (explicit?: string) => {
+    if (completed || !detailEl) return;
+    if (explicit != null) {
+      detailEl.textContent = explicit;
+      return;
+    }
+    const pct = paintBar() ?? 0;
+    if (useByteBudget) {
+      const label = lastLabel ? ` · ${lastLabel}` : '';
+      detailEl.textContent =
+        `${formatBootBytes(loadedBytes)} / ${formatBootBytes(totalBytes)} · ${pct}%${label}`;
+      return;
+    }
+    if (loadedCount > 0) {
+      const label = lastLabel ? ` · ${lastLabel}` : '';
+      const budget = Math.max(totalBytes, loadedBytes + DEV_HEADROOM_BYTES);
+      detailEl.textContent =
+        `${formatBootBytes(loadedBytes)} / ~${formatBootBytes(budget)} · ${pct}%${label}`;
+      return;
+    }
+    detailEl.textContent = '모듈을 불러오는 중…';
+  };
+
+  const render = (detail?: string) => {
+    if (completed) return;
+    paintBar();
+    paintDetail(detail);
+  };
+
+  const markResource = (rawUrl: string, transferBytes?: number) => {
     if (completed || !rawUrl) return;
 
     if (useByteBudget) {
       const asset = matchManifestAsset(rawUrl, byFile);
       if (!asset) {
-        // Outside critical budget (lazy chunks) — update label only.
         lastLabel = labelForBootFile(rawUrl);
-        render(`로딩 중: ${lastLabel}`);
+        render();
         return;
       }
       if (seen.has(asset.file)) return;
@@ -138,9 +198,11 @@ export function initBootSplash(): BootSplashApi {
       loadedBytes += asset.bytes;
       loadedCount += 1;
       lastLabel = asset.label || labelForBootFile(asset.file);
-      render(`로딩 중: ${lastLabel}`);
+      render();
       return;
     }
+
+    if (!isTrackableResourceUrl(rawUrl)) return;
 
     let url = rawUrl;
     try {
@@ -149,27 +211,34 @@ export function initBootSplash(): BootSplashApi {
       // keep raw
     }
     if (seen.has(url)) return;
-    const pathOnly = url.split('?')[0] || url;
-    if (
-      !/\.(js|mjs|css|wasm)(\?|$)/i.test(pathOnly) &&
-      !pathOnly.includes('/assets/') &&
-      !pathOnly.includes('/src/')
-    ) {
-      return;
-    }
     seen.add(url);
+
+    const bytes = estimateTransferBytes(rawUrl, transferBytes);
+    loadedBytes += bytes;
     loadedCount += 1;
-    if (loadedCount > expectedCount) expectedCount = loadedCount;
+    // Keep a moving ceiling so the bar advances immediately but never hits 100% early.
+    totalBytes = Math.max(totalBytes, loadedBytes) + DEV_HEADROOM_BYTES;
     lastLabel = labelForBootFile(url);
-    render(
-      `로딩 중: ${lastLabel}`,
-      `${loadedCount} / ${Math.max(expectedCount, loadedCount)}`,
-    );
+    // Soft floor so sparse marks still feel lively.
+    floor = Math.max(floor, clamp01(1 - Math.exp(-loadedCount * 0.11)) * 0.72);
+    render();
+  };
+
+  const stopTimers = () => {
+    if (tipTimer != null) {
+      clearInterval(tipTimer);
+      tipTimer = null;
+    }
+    if (creepTimer != null) {
+      clearInterval(creepTimer);
+      creepTimer = null;
+    }
   };
 
   const api: BootSplashApi = {
     setStatus(status, detail) {
-      render(status, detail);
+      // Tip row is owned by the rotator; callers update the detail row.
+      render(detail ?? status);
     },
     setProgress(ratio) {
       floor = Math.max(floor, clamp01(ratio));
@@ -178,8 +247,13 @@ export function initBootSplash(): BootSplashApi {
     markResource,
     complete() {
       completed = true;
+      stopTimers();
       floor = 1;
-      loadedBytes = useByteBudget ? totalBytes : loadedBytes;
+      if (useByteBudget) {
+        loadedBytes = totalBytes;
+      } else {
+        totalBytes = Math.max(totalBytes, loadedBytes);
+      }
       if (fillEl) fillEl.style.width = '100%';
       if (barEl) barEl.setAttribute('aria-valuenow', '100');
       if (statusEl) statusEl.textContent = '거의 완료…';
@@ -191,13 +265,26 @@ export function initBootSplash(): BootSplashApi {
     },
   };
 
-  if (useByteBudget) {
-    render(
-      '앱을 준비하는 중…',
-      `0 B / ${formatBootBytes(totalBytes)} · 0%`,
-    );
+  tipIndex = Math.floor(Math.random() * BOOT_SPLASH_TIPS.length);
+  paintTip();
+  tipTimer = setInterval(() => {
+    tipIndex = (tipIndex + 1) % BOOT_SPLASH_TIPS.length;
+    paintTip();
+  }, BOOT_SPLASH_TIP_INTERVAL_MS);
+
+  if (useDynamicDev) {
+    render('모듈을 불러오는 중…');
+    creepTimer = setInterval(() => {
+      if (completed) return;
+      floor = Math.min(DEV_CREEP_CAP, floor + DEV_CREEP_STEP);
+      // Slowly eat headroom so a quiet network still inches forward.
+      if (totalBytes > loadedBytes + 8_000) {
+        totalBytes = Math.max(loadedBytes + 8_000, totalBytes - 12_000);
+      }
+      render();
+    }, DEV_CREEP_MS);
   } else {
-    render('앱을 준비하는 중…', expectedCount > 0 ? `0 / ${expectedCount}` : '');
+    render(`0 B / ${formatBootBytes(totalBytes)} · 0%`);
   }
 
   document.querySelectorAll('link[rel="modulepreload"], link[rel="stylesheet"][href]').forEach((node) => {
@@ -212,7 +299,14 @@ export function initBootSplash(): BootSplashApi {
   try {
     const obs = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        markResource(entry.name);
+        const res = entry as PerformanceResourceTiming;
+        const transfer =
+          typeof res.transferSize === 'number' && res.transferSize > 0
+            ? res.transferSize
+            : typeof res.encodedBodySize === 'number' && res.encodedBodySize > 0
+              ? res.encodedBodySize
+              : undefined;
+        markResource(entry.name, transfer);
       }
     });
     obs.observe({ type: 'resource', buffered: true });
@@ -222,7 +316,14 @@ export function initBootSplash(): BootSplashApi {
 
   try {
     for (const entry of performance.getEntriesByType('resource')) {
-      markResource(entry.name);
+      const res = entry as PerformanceResourceTiming;
+      const transfer =
+        typeof res.transferSize === 'number' && res.transferSize > 0
+          ? res.transferSize
+          : typeof res.encodedBodySize === 'number' && res.encodedBodySize > 0
+            ? res.encodedBodySize
+            : undefined;
+      markResource(entry.name, transfer);
     }
   } catch {
     // ignore

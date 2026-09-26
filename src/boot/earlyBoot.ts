@@ -6,7 +6,7 @@ import { initBootSplash } from '@/boot/bootSplash';
 import { markTauriMainWindowRevealed } from '@/utils/revealTauriMainWindow';
 
 const splash = initBootSplash();
-splash.setStatus('시작 화면 준비…');
+splash.setStatus('시작 화면 준비 중…');
 
 async function showTauriWindowEarly(): Promise<void> {
   const w = window as Window & {
