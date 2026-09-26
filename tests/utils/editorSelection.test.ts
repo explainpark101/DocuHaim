@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { EditorView } from '@codemirror/view';
-import { recordMdEditorSourceFocus } from '@/utils/mdEditorSourceFocus';
+import {
+  clearAllDurableMdEditorSourceFocus,
+  recordMdEditorSourceFocus,
+} from '@/utils/mdEditorSourceFocus';
 import {
   getEditorSelectionFromRef,
   resolveMdEditorApiFromRef,
@@ -12,6 +15,7 @@ function createMockView(docText: string, selection = { from: 0, to: 0 }) {
   let from = selection.from;
   let to = selection.to;
   const view = {
+    hasFocus: true,
     dom: { closest: () => null },
     get state() {
       return {
@@ -41,6 +45,9 @@ function createMockView(docText: string, selection = { from: 0, to: 0 }) {
 
   return {
     view: view as unknown as EditorView,
+    setHasFocus: (next: boolean) => {
+      view.hasFocus = next;
+    },
     getText: () => text,
   };
 }
@@ -57,6 +64,7 @@ function editorRefFor(view: EditorView | null, apiExtras: Record<string, unknown
 
 afterEach(() => {
   vi.useRealTimers();
+  clearAllDurableMdEditorSourceFocus();
 });
 
 describe('getEditorSelectionFromRef', () => {
@@ -89,8 +97,9 @@ describe('getEditorSelectionFromRef', () => {
     expect(snap.view).toBe(view);
   });
 
-  it('prefers live non-empty selection over focus history', () => {
-    const { view } = createMockView('hello world', { from: 6, to: 11 });
+  it('prefers live non-empty selection over focus history while focused', () => {
+    const { view, setHasFocus } = createMockView('hello world', { from: 6, to: 11 });
+    setHasFocus(true);
     recordMdEditorSourceFocus(view, 0, 5);
     const snap = getEditorSelectionFromRef(editorRefFor(view));
     expect(snap.text).toBe('world');
@@ -98,8 +107,19 @@ describe('getEditorSelectionFromRef', () => {
     expect(snap.to).toBe(11);
   });
 
+  it('prefers focus history when source does not have focus', () => {
+    const { view, setHasFocus } = createMockView('hello world', { from: 6, to: 11 });
+    setHasFocus(false);
+    recordMdEditorSourceFocus(view, 0, 5);
+    const snap = getEditorSelectionFromRef(editorRefFor(view));
+    expect(snap.text).toBe('hello');
+    expect(snap.from).toBe(0);
+    expect(snap.to).toBe(5);
+  });
+
   it('falls back to md-editor getSelectedText when live selection is empty', () => {
-    const { view } = createMockView('hello world', { from: 0, to: 0 });
+    const { view, setHasFocus } = createMockView('hello world', { from: 0, to: 0 });
+    setHasFocus(true);
     const snap = getEditorSelectionFromRef(
       editorRefFor(view, { getSelectedText: () => 'hello' }),
     );
@@ -123,6 +143,15 @@ describe('getEditorSelectionFromRef', () => {
       }),
     });
     expect(snap.text).toBe('override');
+  });
+
+  it('reads durable range when view is missing', () => {
+    const { view } = createMockView('hello world', { from: 0, to: 5 });
+    recordMdEditorSourceFocus(view, 0, 5, 's3:a.md');
+    const snap = getEditorSelectionFromRef(null, { documentKey: 's3:a.md' });
+    expect(snap.from).toBe(0);
+    expect(snap.to).toBe(5);
+    expect(snap.view).toBeNull();
   });
 });
 

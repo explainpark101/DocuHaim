@@ -8,34 +8,38 @@ alwaysApply: false
 
 The **「선택된 텍스트」** field in `LlmAssistPanel` must stay in sync with the active markdown editor, including after focus moves to the LLM panel / dock / popout chrome.
 
+**Apply / insert** must target the **last source-Editor caret or selection**, not the live CM selection while focus is outside the source pane (panel, other split leaf, etc.).
+
 ## Single source of truth
 
 | Layer | Module | Responsibility |
 |-------|--------|----------------|
 | Read / replace | `src/utils/editorSelection.ts` | `getEditorSelectionFromRef`, `subscribeEditorSelectionFromRef`, `applyLlmResultToEditor` |
-| Focus memory | `src/utils/mdEditorSourceFocus.ts` | Last source-Editor caret/selection while CM had focus |
+| Focus memory | `src/utils/mdEditorSourceFocus.ts` | Last source-Editor caret/selection (view WeakMap + durable `storageType:path`) |
 | Host state | `src/components/llm/LlmAssistModal.tsx` | `selectedText`, `refreshSelection`, subscription lifecycle |
-| Bridge | `MarkdownEditor.jsx` + `LlmAssistSessionContext` | `registerEditorBridge({ editorRef, onChange, getMarkdown })` for the active file |
+| Bridge | `MarkdownEditor.jsx` / demoted `EditorPane` + `LlmAssistSessionContext` | `registerEditorBridge({ editorRef, onChange, getMarkdown, documentKey })` |
 
 Do **not** read CodeMirror selection inline in panel/modal code. Always go through `editorSelection.ts`.
 
-## Read order (`getEditorSelectionFromRef`)
+## Read / apply order
 
-1. **Live CodeMirror range** when `sliceString(from, to)` is non-empty.
-2. **`getMdEditorSourceFocus(view)`** when live selection is collapsed but focus history has `from !== to`.
-3. **`api.getSelectedText()`** as last resort (view missing or md-editor API still has text).
-4. Apply / replace still uses focus memory via `applyLlmResultToEditor` — keep read + apply aligned.
+1. If source CM **has keyboard focus** → use live selection.
+2. Else → use `resolveMdEditorSourceFocus(view, documentKey)` (view map, then durable key).
+3. Collapsed caret insert uses last-focus caret (not doc end) when `everFocused`.
+4. Preview-only / never focused / `forceAppendAtEnd` → append at document end.
+5. Demoted pane (no view) → durable range + `getMarkdown`/`onChange` string splice.
 
 ## Host wiring checklist
 
-1. Active `MarkdownEditor` registers `registerEditorBridge` when `isActiveFile && !previewOnly`.
-2. `AppLayout` must pass `isActiveFile` into `editorPaneProps` (keep-alive tabs).
-3. Bridge includes `getEditorApi()` — do not read `editorRef.current?.value` blindly.
-4. `LlmAssistModal` resolves `editorRef` from `session.editorBridge` (not a stale local ref).
-5. On open / bridge change → `refreshSelection()`; while open → `subscribeEditorSelectionFromRef` + polling fallback.
-6. Docked mode must not leave `hidden=true` from floating minimize (blocks selection sync).
-7. `refreshSelection` must **not** clear `selectedText` when `editorRef` is temporarily missing.
-8. Popout sync includes `selectedText` + `selectionRange` from the same helpers.
+1. Active `MarkdownEditor` registers `registerEditorBridge` when `isActiveFile && !previewOnly` (including frozen settle before demote).
+2. Demoted `EditorPane` registers a content-only bridge with `documentKey` + `getMarkdown`/`onChange`.
+3. `AppLayout` must pass `isActiveFile` into `editorPaneProps` (keep-alive tabs).
+4. Bridge includes `getEditorApi()` and `documentKey` when available.
+5. `LlmAssistModal` resolves `editorRef` from `session.editorBridge` and passes `documentKey` into apply/read.
+6. On open / bridge change → `refreshSelection()`; while open → `subscribeEditorSelectionFromRef` + polling fallback.
+7. Docked mode must not leave `hidden=true` from floating minimize (blocks selection sync).
+8. `refreshSelection` must **not** clear `selectedText` when `editorRef` is temporarily missing.
+9. Popout sync includes `selectedText` + `selectionRange` from the same helpers.
 
 ## Subscription implementation
 
@@ -45,41 +49,18 @@ Do **not** read CodeMirror selection inline in panel/modal code. Always go throu
 
 Update `tests/utils/editorSelection.test.ts` (and `mdEditorSourceFocus.test.ts` if apply behavior changes):
 
-- live CM selection
-- collapsed live selection + focus-history fallback
-- live selection preferred over stale focus history
-- `getSelectedText` fallback
+- live CM selection when source focused
+- panel focus → last-focus range for read and apply
+- durable key survives view teardown (demote)
+- live selection preferred over focus history only while source has focus
 - subscribe retry until view mounts
 
 ```text
+❌ BAD — apply uses live collapsed selection after panel steals focus
+❌ BAD — demote clears focus with no durable documentKey map
 ❌ BAD — LlmAssistModal reads editorRef.current.getEditorView() directly
-❌ BAD — refreshSelection clears selectedText when editorBridge is briefly null
-❌ BAD — getEditorSelectionFromRef ignores mdEditorSourceFocus (breaks after panel focus)
-❌ BAD — selection listener uses compartment.reconfigure without appendConfig first
-✅ GOOD — getEditorSelectionFromRef + subscribeEditorSelectionFromRef + tests
-✅ GOOD — MarkdownEditor keeps attachMdEditorSourceFocusTracking on the source view
-✅ GOOD — registerEditorBridge only for active, non-preview editor tab
+✅ GOOD — applyLlmResultToEditor + resolveMdEditorSourceFocus + documentKey
+✅ GOOD — attachMdEditorSourceFocusTracking(view, documentKey)
 ```
 
 Prefer **English** in new code comments if Korean Unicode might corrupt.
-
-## Streaming (`onChunk` contract)
-
-All LLM transform clients (`geminiClient`, `openaiCompatibleClient`, `mlxVlmRuntime`) must call `onChunk` with **accumulated** output text, never a bare delta.
-
-| Provider | Accumulation site |
-|----------|-------------------|
-| Gemini / OpenAI compatible | client (`accumulated += delta` before `onChunk`) |
-| MLX-VLM worker | `mlx_vlm_generate_worker.py` (`accumulated += segment`) |
-| MLX-VLM bridge | `mergeMlxVlmStreamChunk` in `mlxVlmRuntime.ts` (defense in depth) |
-
-`LlmAssistModal` passes `setResult` directly to `onChunk` — do not append again in the panel.
-
-When adding a new streaming provider, add a unit test that multi-chunk output grows monotonically.
-
-```text
-❌ BAD — onChunk(delta) while UI does setResult(chunk)
-❌ BAD — worker emits chunk.text = latest token only without accumulation
-✅ GOOD — onChunk(accumulated); UI setResult(accumulated)
-✅ GOOD — mergeMlxVlmStreamChunk test for delta + accumulated payloads
-```
