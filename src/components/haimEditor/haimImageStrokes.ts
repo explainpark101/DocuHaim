@@ -43,9 +43,9 @@ export function strokeRefDiameter(stroke: AnnotateStroke): number {
 }
 
 /**
- * Solid brushes with unequal W×H need stamps along the path.
- * Stamps are oriented to the path tangent (not axis-aligned) so the
- * stroke stays a ribbon instead of flooding the trajectory bounding box.
+ * Solid brushes with unequal W×H stamp tip shapes along the path.
+ * Stamps are oriented to the path tangent so they form a ribbon, not an
+ * axis-aligned flood of the trajectory bounding box.
  */
 export function usesStampBrush(stroke: AnnotateStroke): boolean {
   return (
@@ -66,7 +66,7 @@ export function clampStrokeDiameter(
   bufW: number,
   bufH: number,
 ): number {
-  const cap = Math.max(4, Math.min(bufW, bufH) * 0.28);
+  const cap = Math.max(4, Math.min(96, Math.min(bufW, bufH) * 0.08));
   return clamp(diameter, 0.5, cap);
 }
 
@@ -287,7 +287,8 @@ function applyStrokeStyle(
 ): void {
   ctx.lineCap = lineCapFor(stroke.shape);
   ctx.lineJoin = lineJoinFor(stroke.shape);
-  ctx.lineWidth = width;
+  ctx.miterLimit = 2;
+  ctx.lineWidth = Math.max(0.5, width);
   ctx.globalAlpha = clamp(stroke.opacity, 0.02, 1);
   const dash = dashArrayFor(stroke);
   if (dash) {
@@ -302,11 +303,10 @@ function paintStampOnCtx(
   stroke: AnnotateStroke,
   pt: StrokePoint,
   angle: number,
-  scale = 1,
+  tipScale = 1,
 ): void {
-  // diameterX = along path, diameterY = perpendicular (tip cross-section).
-  const hx = Math.max(0.25, (stroke.diameterX * scale) / 2);
-  const hy = Math.max(0.25, (stroke.diameterY * scale) / 2);
+  const hx = Math.max(0.25, (stroke.diameterX * tipScale) / 2);
+  const hy = Math.max(0.25, (stroke.diameterY * tipScale) / 2);
   ctx.save();
   ctx.translate(pt.x, pt.y);
   ctx.rotate(angle);
@@ -326,16 +326,18 @@ function strokePathOnCtx(ctx: CanvasRenderingContext2D, stroke: AnnotateStroke):
   ctx.globalAlpha = clamp(stroke.opacity, 0.02, 1);
 
   if (usesStampBrush(stroke)) {
-    // Spacing along the shorter tip axis keeps a continuous ribbon without flooding.
-    const spacing =
-      Math.max(0.75, Math.min(stroke.diameterX, stroke.diameterY) * 0.4);
+    const spacing = Math.max(
+      0.75,
+      Math.min(stroke.diameterX, stroke.diameterY) * 0.4,
+    );
     const stamps = sampleStampCenters(stroke.points, spacing);
     for (let i = 0; i < stamps.length; i += 1) {
       const pt = stamps[i]!;
-      // Approximate source index for tangent.
       const srcIdx = Math.min(
         stroke.points.length - 1,
-        Math.round((i / Math.max(1, stamps.length - 1)) * (stroke.points.length - 1)),
+        Math.round(
+          (i / Math.max(1, stamps.length - 1)) * (stroke.points.length - 1),
+        ),
       );
       const angle = stampTangentAngle(stroke.points, srcIdx);
       const tipScale = stroke.kind === 'pressure' ? pt.pressure : 1;
@@ -373,6 +375,38 @@ function strokePathOnCtx(ctx: CanvasRenderingContext2D, stroke: AnnotateStroke):
     }
   }
   ctx.stroke();
+}
+
+/**
+ * Canvas 2d strokeStyle/fillStyle from `#rgb` / `#rrggbb` / `#rrggbbaa`.
+ * Prefer rgba() — some engines ignore 8-digit hex on canvas.
+ */
+export function cssColorToCanvasStyle(
+  raw: string,
+  alphaMul = 1,
+): string {
+  const hex = String(raw ?? '').trim().replace(/^#/, '');
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let a = 1;
+  if (hex.length === 3 || hex.length === 4) {
+    r = parseInt(hex.charAt(0) + hex.charAt(0), 16);
+    g = parseInt(hex.charAt(1) + hex.charAt(1), 16);
+    b = parseInt(hex.charAt(2) + hex.charAt(2), 16);
+    if (hex.length === 4) {
+      a = parseInt(hex.charAt(3) + hex.charAt(3), 16) / 255;
+    }
+  } else if (hex.length === 6 || hex.length === 8) {
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+    if (hex.length === 8) a = parseInt(hex.slice(6, 8), 16) / 255;
+  } else {
+    return raw;
+  }
+  if ([r, g, b, a].some((n) => Number.isNaN(n))) return raw;
+  return `rgba(${r},${g},${b},${clamp(a * alphaMul, 0, 1)})`;
 }
 
 /** Paint one stroke onto an existing 2d context (live preview / export helpers). */
@@ -444,12 +478,10 @@ export function rasterizeInkLayer(
     if (stroke.kind === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
       ctx.strokeStyle = 'rgba(0,0,0,1)';
-      ctx.fillStyle = 'rgba(0,0,0,1)';
       ctx.globalAlpha = 1;
     } else {
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = stroke.color;
-      ctx.fillStyle = stroke.color;
     }
     strokePathOnCtx(ctx, stroke);
     ctx.restore();
@@ -475,12 +507,10 @@ export function rasterizeHighlightLayer(
     if (stroke.kind === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
       ctx.strokeStyle = 'rgba(0,0,0,1)';
-      ctx.fillStyle = 'rgba(0,0,0,1)';
       ctx.globalAlpha = 1;
     } else {
       ctx.globalCompositeOperation = canvasBlendFor(stroke.blend);
       ctx.strokeStyle = stroke.color;
-      ctx.fillStyle = stroke.color;
     }
     strokePathOnCtx(ctx, stroke);
     ctx.restore();
