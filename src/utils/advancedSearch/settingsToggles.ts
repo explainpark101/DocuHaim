@@ -101,6 +101,10 @@ import {
   loadHaimDoubleScrollSyncEnabled,
   saveHaimDoubleScrollSyncEnabled,
 } from '@/utils/haimDoubleScrollSyncSettings';
+import {
+  loadHaimTocDockEnabled,
+  saveHaimTocDockEnabled,
+} from '@/utils/haimTocLayoutSettings';
 
 export type SettingsToggleId =
   | 'settings-alt-vim'
@@ -126,7 +130,8 @@ export type SettingsToggleId =
   | 'settings-tauri-download-save-dialog'
   | 'settings-quiz-dock-width-spring'
   | 'settings-haim-double'
-  | 'settings-haim-double-scroll-sync';
+  | 'settings-haim-double-scroll-sync'
+  | 'settings-haim-toc-dock';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -193,6 +198,27 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimDoubleScrollSyncEnabled,
     save: saveHaimDoubleScrollSyncEnabled,
+  },
+  {
+    id: 'settings-haim-toc-dock',
+    enableTitle: 'Haim 목차 사이드 패널(공간 차지) 켜기',
+    disableTitle: 'Haim 목차 오버레이(덮기)로 전환',
+    description:
+      '켜면 목차가 편집 영역 옆 자리를 차지합니다. 끄면 위에 덮는 오버레이(기본)입니다.',
+    keywords: [
+      'haim',
+      'toc',
+      'catalog',
+      '목차',
+      '오버레이',
+      'overlay',
+      'dock',
+      '사이드',
+      '패널',
+      '공간',
+    ],
+    load: loadHaimTocDockEnabled,
+    save: saveHaimTocDockEnabled,
   },
   {
     id: 'settings-alt-vim',

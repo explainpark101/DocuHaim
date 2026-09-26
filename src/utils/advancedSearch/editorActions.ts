@@ -34,7 +34,8 @@ export type EditorActionId =
   | 'editor-checklist-progress'
   | 'editor-image-upload'
   | 'editor-image-clip'
-  | 'editor-convert-all-images-to-wiki';
+  | 'editor-convert-all-images-to-wiki'
+  | 'editor-catalog';
 
 export type EditorActionHandler = (payload?: unknown) => void | Promise<void>;
 
@@ -348,5 +349,11 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
       '위키',
       'wiki image',
     ],
+  },
+  {
+    id: 'editor-catalog',
+    title: '목차보기',
+    description: '에디터 제목 목차 패널 보이기/숨기기',
+    keywords: ['toc', 'catalog', '목차', '목차보기', 'outline', 'heading'],
   },
 ] as const;

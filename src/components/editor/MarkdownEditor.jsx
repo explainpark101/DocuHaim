@@ -840,6 +840,36 @@ export default function MarkdownEditor({
         onRequestConvertAllImagesToWiki();
       }
     };
+    handlers['editor-catalog'] = () => {
+      const root = containerRef.current;
+      if (!root) return;
+      const byAria = root.querySelector(
+        [
+          '.md-editor-toolbar-item[aria-label="카탈로그"]',
+          '.md-editor-toolbar-item[aria-label="catalog"]',
+          '.md-editor-toolbar-item[aria-label="目录"]',
+          '.md-editor-toolbar-item[data-md-tip="카탈로그"]',
+          '.md-editor-toolbar-item[data-md-tip="catalog"]',
+          '.md-editor-toolbar-item[data-md-tip="目录"]',
+        ].join(', '),
+      );
+      if (byAria instanceof HTMLElement) {
+        byAria.click();
+        return;
+      }
+      const items = root.querySelectorAll('.md-editor-toolbar-item');
+      for (const el of items) {
+        const tip =
+          el.getAttribute('aria-label') ||
+          el.getAttribute('data-md-tip') ||
+          el.getAttribute('title') ||
+          '';
+        if (/카탈로그|catalog|目录|목차/i.test(tip)) {
+          if (el instanceof HTMLElement) el.click();
+          break;
+        }
+      }
+    };
     handlers['editor-insert-footnote'] = () => {
       requestOpenAdvancedSearch({ mode: 'footnote-insert' });
     };

@@ -45,6 +45,14 @@ import {
   saveHaimViewMode,
 } from '@/utils/haimViewModeSettings';
 import {
+  HAIM_TOC_LAYOUT_CHANGED_EVENT,
+  HAIM_TOC_LAYOUT_DOCK,
+  HAIM_TOC_LAYOUT_OPTIONS,
+  HAIM_TOC_LAYOUT_OVERLAY,
+  loadHaimTocLayout,
+  saveHaimTocLayout,
+} from '@/utils/haimTocLayoutSettings';
+import {
   loadAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
@@ -209,6 +217,7 @@ export default function SettingsPage({
     () => editorTypeProp ?? loadEditorType(),
   );
   const [haimViewMode, setHaimViewModeState] = useState(() => loadHaimViewMode());
+  const [haimTocLayout, setHaimTocLayoutState] = useState(() => loadHaimTocLayout());
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState(
@@ -244,6 +253,11 @@ export default function SettingsPage({
       else if (id === 'settings-composer-helper') setComposerHelperTextVisible(enabled);
       else if (id === 'settings-composer-autocomplete') setComposerAutocompleteEnabled(enabled);
       else if (id === 'settings-as-animation') setAdvancedSearchUiAnimation(enabled);
+      else if (id === 'settings-haim-toc-dock') {
+        setHaimTocLayoutState(
+          enabled ? HAIM_TOC_LAYOUT_DOCK : HAIM_TOC_LAYOUT_OVERLAY,
+        );
+      }
     });
   }, []);
 
@@ -272,6 +286,12 @@ export default function SettingsPage({
     const sync = () => setHaimViewModeState(loadHaimViewMode());
     window.addEventListener(HAIM_VIEW_MODE_CHANGED_EVENT, sync);
     return () => window.removeEventListener(HAIM_VIEW_MODE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setHaimTocLayoutState(loadHaimTocLayout());
+    window.addEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -1044,6 +1064,32 @@ export default function SettingsPage({
                       onChange={() => {
                         setHaimViewModeState(opt.value);
                         saveHaimViewMode(opt.value);
+                      }}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span>
+                      <span className="font-semibold">{opt.label}</span>
+                      <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                        {opt.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-3 text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
+                Haim Editor 목차 레이아웃
+              </p>
+              <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+                {HAIM_TOC_LAYOUT_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="haimTocLayout"
+                      value={opt.value}
+                      checked={haimTocLayout === opt.value}
+                      onChange={() => {
+                        setHaimTocLayoutState(opt.value);
+                        saveHaimTocLayout(opt.value);
                       }}
                       className="mt-0.5 shrink-0"
                     />

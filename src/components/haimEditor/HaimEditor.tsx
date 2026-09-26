@@ -10,6 +10,7 @@ import {
 import { invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import HaimToolbar from '@/components/haimEditor/HaimToolbar';
 import HaimSourcePane from '@/components/haimEditor/HaimSourcePane';
+import HaimTocPanel from '@/components/haimEditor/HaimTocPanel';
 import { useHaimDualSync } from '@/components/haimEditor/useHaimDualSync';
 import { useHaimDoubleScrollSync } from '@/components/haimEditor/useHaimDoubleScrollSync';
 import {
@@ -25,6 +26,11 @@ import {
   loadHaimDoubleScrollSyncEnabled,
   saveHaimDoubleScrollSyncEnabled,
 } from '@/utils/haimDoubleScrollSyncSettings';
+import {
+  HAIM_TOC_LAYOUT_CHANGED_EVENT,
+  loadHaimTocLayout,
+  type HaimTocLayout,
+} from '@/utils/haimTocLayoutSettings';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import { registerEditorActions } from '@/utils/advancedSearch/editorActions';
 import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
@@ -63,6 +69,8 @@ export default function HaimEditor({
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(() =>
     loadHaimDoubleScrollSyncEnabled(),
   );
+  const [tocOpen, setTocOpen] = useState(false);
+  const [tocLayout, setTocLayout] = useState<HaimTocLayout>(() => loadHaimTocLayout());
   // Mobile: double collapses to wysiwyg; source stays full-width CM.
   const effectiveMode: HaimViewMode =
     isMobileLayout && viewMode === HAIM_VIEW_MODE_DOUBLE && !previewOnly
@@ -93,6 +101,12 @@ export default function HaimEditor({
     window.addEventListener(HAIM_DOUBLE_SCROLL_SYNC_CHANGED_EVENT, onEvt);
     return () =>
       window.removeEventListener(HAIM_DOUBLE_SCROLL_SYNC_CHANGED_EVENT, onEvt);
+  }, []);
+
+  useEffect(() => {
+    const onEvt = () => setTocLayout(loadHaimTocLayout());
+    window.addEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, onEvt);
+    return () => window.removeEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, onEvt);
   }, []);
 
   const extensions = useMemo(
@@ -318,6 +332,7 @@ export default function HaimEditor({
         run(() => editor.chain().focus().toggleHeading({ level: 3 }).run()),
       'editor-h4': () =>
         run(() => editor.chain().focus().toggleHeading({ level: 4 }).run()),
+      'editor-catalog': () => setTocOpen((v) => !v),
     });
     return unregister;
   }, [
@@ -417,39 +432,51 @@ export default function HaimEditor({
             setScrollSyncEnabled(next);
             saveHaimDoubleScrollSyncEnabled(next);
           }}
+          tocOpen={tocOpen}
+          onTocOpenChange={setTocOpen}
           {...(onSave ? { onSave } : {})}
         />
         <div className="relative flex min-h-0 flex-1">
-          {showSource ? (
-            <div
-              className={`min-h-0 shrink-0 ${
-                doublePane ? 'w-1/2' : 'w-full'
-              }`}
-            >
-              <HaimSourcePane
-                key={`haim-source-${currentFile?.id || 'untitled'}`}
-                initialValue={value || ''}
-                theme={theme}
-                onDocChanged={notifyCmDocChanged}
-                viewRef={cmViewRef}
-              />
-            </div>
-          ) : null}
-          {showWysiwyg ? (
-            <div
-              ref={wysiwygScrollRef}
-              className={`min-h-0 overflow-auto ${
-                doublePane ? 'w-1/2 flex-1' : 'flex-1'
-              }`}
-            >
-              <EditorContent editor={editor} className="haim-editor-content h-full" />
-            </div>
-          ) : (
-            /* Keep TipTap mounted off-screen in source mode for sync authority */
-            <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden>
-              <EditorContent editor={editor} />
-            </div>
-          )}
+          <div className="relative flex min-h-0 min-w-0 flex-1">
+            {showSource ? (
+              <div
+                className={`min-h-0 shrink-0 ${
+                  doublePane ? 'w-1/2' : 'w-full'
+                }`}
+              >
+                <HaimSourcePane
+                  key={`haim-source-${currentFile?.id || 'untitled'}`}
+                  initialValue={value || ''}
+                  theme={theme}
+                  onDocChanged={notifyCmDocChanged}
+                  viewRef={cmViewRef}
+                />
+              </div>
+            ) : null}
+            {showWysiwyg ? (
+              <div
+                ref={wysiwygScrollRef}
+                className={`min-h-0 overflow-auto ${
+                  doublePane ? 'w-1/2 flex-1' : 'flex-1'
+                }`}
+              >
+                <EditorContent editor={editor} className="haim-editor-content h-full" />
+              </div>
+            ) : (
+              /* Keep TipTap mounted off-screen in source mode for sync authority */
+              <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden>
+                <EditorContent editor={editor} />
+              </div>
+            )}
+          </div>
+          <HaimTocPanel
+            editor={editor}
+            open={tocOpen}
+            onClose={() => setTocOpen(false)}
+            showWysiwyg={showWysiwyg}
+            cmViewRef={cmViewRef}
+            layout={tocLayout}
+          />
         </div>
       </div>
     </EditorContext.Provider>
