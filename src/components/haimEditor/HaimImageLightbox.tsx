@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import FontFamilyInput from '@/components/FontFamilyInput';
 import { getModKeyLabel } from '@/components/Kbd';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
   compositeAnnotatedImageBlob,
   isInkApiAvailable,
@@ -46,14 +47,12 @@ import {
   drawAnnotateTextsOnCanvas,
   lineCapFor,
   lineJoinFor,
-  liveStrokeNeedsFullRepaint,
-  paintAnnotateStrokeIncremental,
-  paintAnnotateStrokeOnCtx,
   pointsToSvgPath,
   rasterizeHighlightLayer,
   rasterizeInkLayer,
   resolveInkBufferSize,
   sampleStampCenters,
+  stampTangentAngle,
   strokeRefDiameter,
   usesStampBrush,
   type AnnotateStroke,
@@ -68,7 +67,6 @@ import {
   clamp,
   clampStrokeDiameter,
   followPointerTip,
-  stampTangentAngle,
 } from '@/components/haimEditor/haimImageStrokes';
 import { isHaimAnnotateUploadAvailable } from '@/utils/haimImageAnnotateUpload';
 import {
@@ -294,8 +292,10 @@ function StrokePath({
     : { opacity: baseOpacity };
 
   if (usesStampBrush(stroke)) {
-    const spacing =
-      Math.max(0.75, Math.min(stroke.diameterX, stroke.diameterY) * 0.4);
+    const spacing = Math.max(
+      0.75,
+      Math.min(stroke.diameterX, stroke.diameterY) * 0.4,
+    );
     const stamps = sampleStampCenters(stroke.points, spacing);
     return (
       <g style={fadeStyle}>
@@ -358,11 +358,13 @@ function StrokePath({
               strokeWidth={w}
               strokeLinecap={lineCapFor(stroke.shape)}
               strokeLinejoin={lineJoinFor(stroke.shape)}
+              strokeMiterlimit={2}
               strokeDasharray={dashArrayFor({
                 ...stroke,
                 diameterX: w,
                 diameterY: w,
               })}
+              style={{ fill: 'none' }}
             />
           );
         })}
@@ -380,8 +382,9 @@ function StrokePath({
       strokeWidth={refD}
       strokeLinecap={lineCapFor(stroke.shape)}
       strokeLinejoin={lineJoinFor(stroke.shape)}
+      strokeMiterlimit={2}
       strokeDasharray={dashArrayFor(stroke)}
-      style={fadeStyle}
+      style={{ ...fadeStyle, fill: 'none' }}
     />
   );
 }
@@ -422,10 +425,8 @@ export default function HaimImageLightbox({
   const [textFontWeight, setTextFontWeight] = useState('400');
   const [textFontStyle, setTextFontStyle] = useState<'normal' | 'italic'>('normal');
   const [fadingLaserIds, setFadingLaserIds] = useState<Set<string>>(() => new Set());
-  /** Eraser-only React live preview (needs SVG masks). Other tools use live canvas. */
-  const [liveEraserStroke, setLiveEraserStroke] = useState<AnnotateStroke | null>(
-    null,
-  );
+  /** Live in-progress stroke (SVG) — shown while drawing so ink is not mouseup-only. */
+  const [liveStroke, setLiveStroke] = useState<AnnotateStroke | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [redoStack, setRedoStack] = useState<HistoryEntry[]>([]);
   const [bufSize, setBufSize] = useState({ w: 1, h: 1 });
@@ -437,6 +438,7 @@ export default function HaimImageLightbox({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [paletteExpanded, setPaletteExpanded] = useState(false);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -517,7 +519,7 @@ export default function HaimImageLightbox({
     setFadingLaserIds(new Set());
     setRedoStack([]);
     deletedTextUndoRef.current = [];
-    setLiveEraserStroke(null);
+    setLiveStroke(null);
     setIsDrawing(false);
     drawingRef.current = null;
     strokeTipRef.current = null;
@@ -555,6 +557,7 @@ export default function HaimImageLightbox({
 
   useEffect(() => {
     if (visible) return;
+    setCloseConfirmOpen(false);
     clearLaserTimers();
     wheelCleanupRef.current?.();
     wheelCleanupRef.current = null;
@@ -769,28 +772,6 @@ export default function HaimImageLightbox({
     laserTimersRef.current.set(strokeId, timer);
   }, []);
 
-  const ensureLiveCtx = useCallback((): CanvasRenderingContext2D | null => {
-    const canvas = liveCanvasRef.current;
-    if (!canvas) return null;
-    if (
-      canvas.width !== bufSize.w ||
-      canvas.height !== bufSize.h
-    ) {
-      canvas.width = Math.max(1, bufSize.w);
-      canvas.height = Math.max(1, bufSize.h);
-      liveCtxRef.current = null;
-      livePaintedLenRef.current = 0;
-    }
-    if (!liveCtxRef.current) {
-      liveCtxRef.current = canvas.getContext('2d', { alpha: true });
-      if (liveCtxRef.current) {
-        liveCtxRef.current.imageSmoothingEnabled = true;
-        liveCtxRef.current.imageSmoothingQuality = 'high';
-      }
-    }
-    return liveCtxRef.current;
-  }, [bufSize.w, bufSize.h]);
-
   const clearLiveCanvas = useCallback(() => {
     const canvas = liveCanvasRef.current;
     const ctx = liveCtxRef.current ?? canvas?.getContext('2d');
@@ -800,49 +781,16 @@ export default function HaimImageLightbox({
     livePaintedLenRef.current = 0;
   }, []);
 
-  /** Paint live stroke on canvas — no React re-render (main latency win). */
-  const paintLiveCanvas = useCallback(() => {
-    const stroke = drawingRef.current;
-    if (!stroke || stroke.kind === 'eraser') return;
-    const ctx = ensureLiveCtx();
-    const canvas = liveCanvasRef.current;
-    if (!ctx || !canvas) return;
-
-    if (
-      liveStrokeNeedsFullRepaint(stroke) ||
-      livePaintedLenRef.current === 0
-    ) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.save();
-      ctx.strokeStyle = stroke.color;
-      ctx.fillStyle = stroke.color;
-      paintAnnotateStrokeOnCtx(ctx, stroke);
-      ctx.restore();
-      livePaintedLenRef.current = stroke.points.length;
-      return;
-    }
-
-    ctx.save();
-    ctx.strokeStyle = stroke.color;
-    ctx.fillStyle = stroke.color;
-    livePaintedLenRef.current = paintAnnotateStrokeIncremental(
-      ctx,
-      stroke,
-      livePaintedLenRef.current,
-    );
-    ctx.restore();
-  }, [ensureLiveCtx]);
-
-  const flushLiveEraser = useCallback(() => {
+  const flushLiveStroke = useCallback(() => {
     if (liveRafRef.current != null) return;
     liveRafRef.current = requestAnimationFrame(() => {
       liveRafRef.current = null;
       const stroke = drawingRef.current;
-      if (!stroke || stroke.kind !== 'eraser') {
-        setLiveEraserStroke(null);
+      if (!stroke) {
+        setLiveStroke(null);
         return;
       }
-      setLiveEraserStroke({ ...stroke, points: stroke.points.slice() });
+      setLiveStroke({ ...stroke, points: stroke.points.slice() });
     });
   }, []);
 
@@ -948,25 +896,10 @@ export default function HaimImageLightbox({
       strokeTipRef.current = { ...pt };
       setIsDrawing(true);
       livePaintedLenRef.current = 0;
-
-      if (kind === 'eraser') {
-        clearLiveCanvas();
-        setLiveEraserStroke({ ...stroke, points: [...stroke.points] });
-      } else {
-        setLiveEraserStroke(null);
-        clearLiveCanvas();
-        // Sync paint first point immediately.
-        const ctx = ensureLiveCtx();
-        if (ctx && liveCanvasRef.current) {
-          ctx.clearRect(0, 0, liveCanvasRef.current.width, liveCanvasRef.current.height);
-          ctx.save();
-          ctx.strokeStyle = stroke.color;
-          ctx.fillStyle = stroke.color;
-          paintAnnotateStrokeOnCtx(ctx, stroke);
-          ctx.restore();
-          livePaintedLenRef.current = stroke.points.length;
-        }
-      }
+      // Always mirror live ink in SVG (stamps + continuous). Canvas live used
+      // #rrggbbaa which many engines ignore — keep canvas cleared while drawing.
+      setLiveStroke({ ...stroke, points: [...stroke.points] });
+      clearLiveCanvas();
 
       if (kind === 'laser') scheduleLaserExpiry(stroke.id);
 
@@ -1002,7 +935,7 @@ export default function HaimImageLightbox({
       cssBrushForTool,
       scheduleLaserExpiry,
       clearLiveCanvas,
-      ensureLiveCtx,
+      flushLiveStroke,
     ],
   );
 
@@ -1018,13 +951,7 @@ export default function HaimImageLightbox({
       const tip = strokeTipRef.current ?? stroke.points[stroke.points.length - 1];
       if (!tip) return;
       strokeTipRef.current = appendSmoothedPoints(stroke.points, tip, raws);
-
-      if (stroke.kind === 'eraser') {
-        flushLiveEraser();
-      } else {
-        // Paint synchronously for lowest input→pixel latency.
-        paintLiveCanvas();
-      }
+      flushLiveStroke();
 
       if (stroke.kind === 'laser') scheduleLaserExpiry(stroke.id);
 
@@ -1049,12 +976,7 @@ export default function HaimImageLightbox({
         }
       }
     },
-    [
-      collectRawPoints,
-      flushLiveEraser,
-      paintLiveCanvas,
-      scheduleLaserExpiry,
-    ],
+    [collectRawPoints, flushLiveStroke, scheduleLaserExpiry],
   );
 
   const endDraw = useCallback(
@@ -1081,18 +1003,12 @@ export default function HaimImageLightbox({
         strokeTipRef.current = snapped;
       }
 
-      // Final live paint includes snap before we hand off to SVG.
-      if (stroke.kind !== 'eraser') {
-        paintLiveCanvas();
-      }
-
       drawingRef.current = null;
       strokeTipRef.current = null;
       if (liveRafRef.current != null) {
         cancelAnimationFrame(liveRafRef.current);
         liveRafRef.current = null;
       }
-      setLiveEraserStroke(null);
       setIsDrawing(false);
       try {
         (event.currentTarget as HTMLElement).releasePointerCapture?.(
@@ -1102,6 +1018,7 @@ export default function HaimImageLightbox({
         // ignore
       }
       if (stroke.points.length === 0) {
+        setLiveStroke(null);
         clearLiveCanvas();
         return;
       }
@@ -1110,8 +1027,8 @@ export default function HaimImageLightbox({
       if (stroke.kind === 'laser') {
         setLaserStrokes((prev) => [...prev, copy]);
         scheduleLaserExpiry(stroke.id);
-        // Keep canvas until SVG commits to avoid a blank frame.
-        requestAnimationFrame(() => clearLiveCanvas());
+        setLiveStroke(null);
+        clearLiveCanvas();
         return;
       }
 
@@ -1121,19 +1038,16 @@ export default function HaimImageLightbox({
       } else if (stroke.kind === 'eraser') {
         setInkStrokes((prev) => [...prev, copy]);
         setHighlightStrokes((prev) => [...prev, copy]);
+        setLiveStroke(null);
         clearLiveCanvas();
         return;
       } else {
         setInkStrokes((prev) => [...prev, copy]);
       }
-      requestAnimationFrame(() => clearLiveCanvas());
+      setLiveStroke(null);
+      clearLiveCanvas();
     },
-    [
-      collectRawPoints,
-      scheduleLaserExpiry,
-      clearLiveCanvas,
-      paintLiveCanvas,
-    ],
+    [collectRawPoints, scheduleLaserExpiry, clearLiveCanvas],
   );
 
   const updateSelectedText = useCallback(
@@ -1619,6 +1533,27 @@ export default function HaimImageLightbox({
 
   const permanentCount =
     inkStrokes.length + highlightStrokes.length + textObjects.length;
+  const hasDiscardableDrawings =
+    permanentCount > 0 || Boolean(liveStroke) || isDrawing;
+
+  const requestClose = useCallback(() => {
+    if (hasDiscardableDrawings) {
+      setCloseConfirmOpen(true);
+      return;
+    }
+    setCloseConfirmOpen(false);
+    onClose();
+  }, [hasDiscardableDrawings, onClose]);
+
+  const confirmCloseDiscard = useCallback(() => {
+    setCloseConfirmOpen(false);
+    onClose();
+  }, [onClose]);
+
+  const cancelCloseConfirm = useCallback(() => {
+    setCloseConfirmOpen(false);
+  }, []);
+
   const colorHex = cssHexToInputValue(
     normalizeCssHexColor(activeColor) || '#111827ff',
   );
@@ -1632,10 +1567,11 @@ export default function HaimImageLightbox({
   );
 
   return (
+    <>
     <Dialog.Root
       open={visible}
       onOpenChange={(next) => {
-        if (!next) onClose();
+        if (!next) requestClose();
       }}
     >
       <AnimatePresence>
@@ -1655,13 +1591,18 @@ export default function HaimImageLightbox({
               forceMount
               onOpenAutoFocus={(e) => e.preventDefault()}
               onEscapeKeyDown={(e) => {
+                if (closeConfirmOpen) {
+                  e.preventDefault();
+                  return;
+                }
                 if (tool === 'text' || selectedTextId || editingTextId) {
                   e.preventDefault();
                   if (editingTextId) finishTextEditing();
                   else setSelectedTextId(null);
                   return;
                 }
-                onClose();
+                e.preventDefault();
+                requestClose();
               }}
             >
               <Motion.div
@@ -1719,7 +1660,7 @@ export default function HaimImageLightbox({
                           onDoubleClick={onImageDoubleClick}
                         />
                         <svg
-                          className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+                          className="pointer-events-none absolute inset-0 h-full w-full overflow-visible [&_path]:fill-none"
                           viewBox={`0 0 ${bufSize.w} ${bufSize.h}`}
                           preserveAspectRatio="none"
                           aria-hidden
@@ -1736,8 +1677,8 @@ export default function HaimImageLightbox({
                               {inkErasers.map((s) => (
                                 <StrokePath key={`em-${s.id}`} stroke={s} />
                               ))}
-                              {liveEraserStroke ? (
-                                <StrokePath stroke={liveEraserStroke} />
+                              {liveStroke?.kind === 'eraser' ? (
+                                <StrokePath stroke={liveStroke} />
                               ) : null}
                             </mask>
                             <mask id="haim-hi-erase-mask">
@@ -1751,8 +1692,8 @@ export default function HaimImageLightbox({
                               {hiErasers.map((s) => (
                                 <StrokePath key={`hem-${s.id}`} stroke={s} />
                               ))}
-                              {liveEraserStroke ? (
-                                <StrokePath stroke={liveEraserStroke} />
+                              {liveStroke?.kind === 'eraser' ? (
+                                <StrokePath stroke={liveStroke} />
                               ) : null}
                             </mask>
                           </defs>
@@ -1761,6 +1702,11 @@ export default function HaimImageLightbox({
                             {inkDraw.map((s) => (
                               <StrokePath key={s.id} stroke={s} />
                             ))}
+                            {liveStroke &&
+                            (liveStroke.kind === 'pen' ||
+                              liveStroke.kind === 'pressure') ? (
+                              <StrokePath stroke={liveStroke} />
+                            ) : null}
                           </g>
 
                           <g
@@ -1777,6 +1723,16 @@ export default function HaimImageLightbox({
                                 <StrokePath stroke={s} />
                               </g>
                             ))}
+                            {liveStroke?.kind === 'highlighter' ? (
+                              <g
+                                style={{
+                                  mixBlendMode:
+                                    liveStroke.blend || highlightBlend,
+                                }}
+                              >
+                                <StrokePath stroke={liveStroke} />
+                              </g>
+                            ) : null}
                           </g>
 
                           <g>
@@ -1787,6 +1743,9 @@ export default function HaimImageLightbox({
                                 fading={fadingLaserIds.has(s.id)}
                               />
                             ))}
+                            {liveStroke?.kind === 'laser' ? (
+                              <StrokePath stroke={liveStroke} />
+                            ) : null}
                           </g>
                         </svg>
 
@@ -2669,20 +2628,32 @@ export default function HaimImageLightbox({
                   </div>
                 </Tooltip.Provider>
 
-                <Dialog.Close asChild>
-                  <button
-                    type="button"
-                    className="absolute right-3 top-3 z-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                    aria-label="닫기"
-                  >
-                    <X size={20} />
-                  </button>
-                </Dialog.Close>
+                <button
+                  type="button"
+                  className="absolute right-3 top-3 z-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                  aria-label="닫기"
+                  onClick={requestClose}
+                >
+                  <X size={20} />
+                </button>
               </Motion.div>
             </Dialog.Content>
           </Dialog.Portal>
         ) : null}
       </AnimatePresence>
     </Dialog.Root>
+
+    <ConfirmModal
+      isOpen={closeConfirmOpen}
+      title="그린 내용 버리기"
+      message="저장하지 않은 그리기·하이라이트·텍스트가 있습니다. 닫으면 사라집니다."
+      confirmLabel="버리고 닫기"
+      cancelLabel="계속 편집"
+      variant="danger"
+      overlayClassName="z-100070"
+      onConfirm={confirmCloseDiscard}
+      onCancel={cancelCloseConfirm}
+    />
+    </>
   );
 }

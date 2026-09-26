@@ -32,6 +32,7 @@ function isDangerConfirm(variant, confirmLabel) {
  * @param {import('react').ReactNode} [props.children]
  * @param {boolean} [props.confirmDisabled]
  * @param {boolean} [props.resizable]
+ * @param {string} [props.overlayClassName] — root fixed layer (z-index); default `z-100000`
  */
 export function ConfirmModal({
   isOpen,
@@ -47,6 +48,7 @@ export function ConfirmModal({
   children,
   confirmDisabled = false,
   resizable = true,
+  overlayClassName = 'z-100000',
 }) {
   const hasDiscard = discardLabel && typeof onDiscard === 'function';
   const danger = isDangerConfirm(variant, confirmLabel);
@@ -74,7 +76,7 @@ export function ConfirmModal({
       {isOpen ? (
         <Motion.div
           key="confirm-modal"
-          className={`fixed inset-0 z-100000 ${positioned ? '' : 'flex items-center justify-center p-4'}`}
+          className={`fixed inset-0 ${overlayClassName} ${positioned ? '' : 'flex items-center justify-center p-4'}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
