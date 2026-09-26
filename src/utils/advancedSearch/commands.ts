@@ -28,10 +28,12 @@ import {
   getWorkspaceTabsAutoSaveCommands,
   getWorkspacePaneFreezeCommands,
   getFootnoteDisplayModeCommands,
+  getEditorImageAlignCommands,
   type SettingsToggleId,
   type WorkspaceTabsAutoSaveCommandId,
   type WorkspacePaneFreezeCommandId,
   type FootnoteDisplayModeCommandId,
+  type EditorImageAlignCommandId,
   type StatusBarClockFormatCommandId,
   getStatusBarClockFormatCommands,
 } from '@/utils/advancedSearch/settingsToggles';
@@ -119,6 +121,7 @@ export type AppCommandId =
   | WorkspaceTabsAutoSaveCommandId
   | WorkspacePaneFreezeCommandId
   | FootnoteDisplayModeCommandId
+  | EditorImageAlignCommandId
   | StatusBarClockFormatCommandId
   | FootnoteInsertCommandId
   | CircleNumberInsertCommandId
@@ -1149,6 +1152,16 @@ function getFootnoteDisplayModeAppCommands(): AppCommand[] {
   }));
 }
 
+function getEditorImageAlignAppCommands(): AppCommand[] {
+  return getEditorImageAlignCommands().map((cmd) => ({
+    id: cmd.id,
+    title: cmd.title,
+    description: cmd.description,
+    path: '',
+    keywords: cmd.keywords,
+  }));
+}
+
 function getStatusBarClockFormatAppCommands(): AppCommand[] {
   return getStatusBarClockFormatCommands().map((cmd) => ({
     id: cmd.id,
@@ -1282,6 +1295,7 @@ export function matchAppCommandsRanked(
   const tabsAutoSave = getWorkspaceTabsAutoSaveAppCommands();
   const paneFreeze = getWorkspacePaneFreezeAppCommands();
   const footnoteDisplay = getFootnoteDisplayModeAppCommands();
+  const imageAlign = getEditorImageAlignAppCommands();
   const statusBarClockFormat = getStatusBarClockFormatAppCommands();
   const seen = new Set<string>();
   const ranked: RankedAppCommand[] = [];
@@ -1293,6 +1307,7 @@ export function matchAppCommandsRanked(
     ...tabsAutoSave,
     ...paneFreeze,
     ...footnoteDisplay,
+    ...imageAlign,
     ...statusBarClockFormat,
   ]) {
     if (seen.has(command.id)) continue;

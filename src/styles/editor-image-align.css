@@ -1,0 +1,61 @@
+/**
+ * Image alignment driven by html[data-editor-image-align].
+ * Applies to Haim WYSIWYG and md-editor-rt preview.
+ */
+
+html[data-editor-image-align='left'] .haim-editor .haim-wiki-image-wrap,
+html[data-editor-image-align='left'] .haim-editor .tiptap > img,
+html[data-editor-image-align='left'] .haim-editor .tiptap p > img:only-child,
+html[data-editor-image-align='left'] .haim-editor-prose > img,
+html[data-editor-image-align='left'] .haim-editor-prose p > img:only-child,
+html[data-editor-image-align='left'] .md-editor-preview img,
+html[data-editor-image-align='left'] .md-editor-preview figure {
+  display: block;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+html[data-editor-image-align='center'] .haim-editor .haim-wiki-image-wrap,
+html[data-editor-image-align='center'] .haim-editor .tiptap > img,
+html[data-editor-image-align='center'] .haim-editor .tiptap p > img:only-child,
+html[data-editor-image-align='center'] .haim-editor-prose > img,
+html[data-editor-image-align='center'] .haim-editor-prose p > img:only-child,
+html[data-editor-image-align='center'] .md-editor-preview img,
+html[data-editor-image-align='center'] .md-editor-preview figure {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html[data-editor-image-align='right'] .haim-editor .haim-wiki-image-wrap,
+html[data-editor-image-align='right'] .haim-editor .tiptap > img,
+html[data-editor-image-align='right'] .haim-editor .tiptap p > img:only-child,
+html[data-editor-image-align='right'] .haim-editor-prose > img,
+html[data-editor-image-align='right'] .haim-editor-prose p > img:only-child,
+html[data-editor-image-align='right'] .md-editor-preview img,
+html[data-editor-image-align='right'] .md-editor-preview figure {
+  display: block;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+html[data-editor-image-align='center'] .md-editor-preview figure,
+html[data-editor-image-align='left'] .md-editor-preview figure,
+html[data-editor-image-align='right'] .md-editor-preview figure {
+  text-align: inherit;
+}
+
+html[data-editor-image-align='center'] .md-editor-preview figcaption,
+html[data-editor-image-align='center'] .haim-editor figcaption {
+  text-align: center;
+}
+
+html[data-editor-image-align='left'] .md-editor-preview figcaption,
+html[data-editor-image-align='left'] .haim-editor figcaption {
+  text-align: left;
+}
+
+html[data-editor-image-align='right'] .md-editor-preview figcaption,
+html[data-editor-image-align='right'] .haim-editor figcaption {
+  text-align: right;
+}

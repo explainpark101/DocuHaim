@@ -207,6 +207,12 @@
   height: 100%;
 }
 
+/* Match md-editor-rt / Haim WYSIWYG: allow scrolling last lines to ~viewport center */
+.haim-source-pane .cm-scroller .cm-content {
+  padding-bottom: 50vh;
+  padding-bottom: 50dvh;
+}
+
 /* Task list */
 .haim-editor-prose ul[data-type='taskList'] {
   list-style: none;

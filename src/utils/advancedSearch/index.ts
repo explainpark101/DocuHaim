@@ -161,6 +161,10 @@ export {
   getFootnoteDisplayModeCommands,
   applyFootnoteDisplayModeCommand,
   footnoteDisplayModeFromCommandId,
+  isEditorImageAlignCommandId,
+  getEditorImageAlignCommands,
+  applyEditorImageAlignCommand,
+  editorImageAlignFromCommandId,
   isStatusBarClockFormatCommandId,
   getStatusBarClockFormatCommands,
   applyStatusBarClockFormatCommand,
@@ -172,6 +176,7 @@ export type {
   WorkspaceTabsAutoSaveCommandId,
   WorkspacePaneFreezeCommandId,
   FootnoteDisplayModeCommandId,
+  EditorImageAlignCommandId,
   StatusBarClockFormatCommandId,
 } from '@/utils/advancedSearch/settingsToggles';
 export {

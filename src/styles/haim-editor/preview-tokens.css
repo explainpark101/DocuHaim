@@ -120,10 +120,14 @@
   border-color: var(--md-theme-border-color);
 }
 
-/* Focus / selection helpers from @tiptap/extensions */
+/* Focus / selection helpers from @tiptap/extensions — toggle via settings */
 .haim-editor .tiptap .haim-node-focused {
   outline: 1px dashed var(--md-theme-code-active-color);
   outline-offset: 2px;
+}
+
+html[data-haim-focus-outline='0'] .haim-editor .tiptap .haim-node-focused {
+  outline: none;
 }
 
 /* Drag handle portal target */
