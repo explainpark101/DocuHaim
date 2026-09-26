@@ -6,6 +6,7 @@ import {
 } from '@tiptap/react';
 import { Check, ChevronDown, ChevronUp, Code2, Copy, Eye } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
+import HaimLineNumberGutter from '@/components/haimEditor/HaimLineNumberGutter';
 import { renderMermaidSourceToSvg } from '@/utils/lazyMermaid';
 
 function isMermaidLanguage(language: unknown): boolean {
@@ -252,12 +253,18 @@ export default function HaimCodeBlockView({
           {isMermaid && error ? (
             <div className="haim-mermaid-block__error">Mermaid 렌더 실패</div>
           ) : null}
-          <pre className={language ? `language-${language}` : undefined}>
-            <NodeViewContent
-              as={'code' as 'div'}
-              {...(language ? { className: `language-${language}` } : {})}
+          <div className="haim-code-block__body">
+            <HaimLineNumberGutter
+              text={source}
+              className="haim-code-block__line-numbers"
             />
-          </pre>
+            <pre className={language ? `language-${language}` : undefined}>
+              <NodeViewContent
+                as={'code' as 'div'}
+                {...(language ? { className: `language-${language}` } : {})}
+              />
+            </pre>
+          </div>
         </>
       )}
     </NodeViewWrapper>

@@ -262,17 +262,52 @@
 }
 
 .haim-raw-md {
-  white-space: pre-wrap;
+  display: flex;
+  align-items: stretch;
+  white-space: normal;
   font-size: 12px;
+  margin: 0.75em 0;
+  border: 1px solid var(--haim-code-border, #e5e7eb);
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(
+    in srgb,
+    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #f1f5f9)) 80%,
+    transparent
+  );
+}
+
+.haim-raw-md.is-selected {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+}
+
+.haim-raw-md__pre {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0.75em 1em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: inherit;
+  font-family: D2Coding, ui-monospace, monospace;
+  line-height: 1.55;
   opacity: 0.85;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow-x: auto;
 }
 
 .haim-raw-md--haim-table {
+  display: block;
   white-space: normal;
   font-size: inherit;
-  opacity: 1;
   margin: 0.75em 0;
   overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .haim-raw-md--haim-table.is-selected {

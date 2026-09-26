@@ -266,6 +266,17 @@ html[data-haim-focus-outline='1'] .haim-editor .tiptap .haim-node-focused {
   border-radius: 6px;
 }
 
+.haim-editor .haim-code-block__body {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.haim-editor .haim-code-block__body pre {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .haim-editor .haim-code-block pre {
   margin: 0;
   padding: 0.75em 1em;
@@ -278,6 +289,52 @@ html[data-haim-focus-outline='1'] .haim-editor .tiptap .haim-node-focused {
 .haim-editor .haim-code-block code {
   background: transparent;
   padding: 0;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+/* Shared gutter — visibility via html[data-haim-*-line-numbers] */
+.haim-editor .haim-line-numbers {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 0.75em 0.55em 0.75em 0.75em;
+  margin: 0;
+  user-select: none;
+  pointer-events: none;
+  font-family: D2Coding, ui-monospace, monospace;
+  font-size: inherit;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--md-theme-color, #64748b) 55%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #f1f5f9)) 70%,
+    transparent
+  );
+  border-right: 1px solid var(--haim-code-border, #e5e7eb);
+  min-width: 2.25em;
+  box-sizing: border-box;
+}
+
+.haim-editor--dark .haim-line-numbers,
+:is(.dark) .haim-editor .haim-line-numbers {
+  border-right-color: var(--haim-code-border, #374151);
+  color: color-mix(in srgb, var(--md-theme-color, #94a3b8) 50%, transparent);
+}
+
+.haim-editor .haim-line-numbers__n {
+  display: block;
+  text-align: right;
+  white-space: nowrap;
+}
+
+html[data-haim-code-line-numbers='0'] .haim-editor .haim-code-block__line-numbers {
+  display: none;
+}
+
+html[data-haim-raw-line-numbers='0'] .haim-editor .haim-raw-md__line-numbers {
+  display: none;
 }
 
 /* Mermaid chart node view */

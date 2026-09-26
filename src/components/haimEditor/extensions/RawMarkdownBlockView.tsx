@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
+import HaimLineNumberGutter from '@/components/haimEditor/HaimLineNumberGutter';
 import { haimTableToHtml } from '@/utils/haimTable';
 import { parseHaimTableRawText } from '@/components/haimEditor/haimTableRawText';
 import { dispatchHaimTableEditRequest } from '@/components/haimEditor/haimTableEditEvents';
@@ -58,13 +59,14 @@ export default function RawMarkdownBlockView({
 
   return (
     <NodeViewWrapper
-      as="pre"
+      as="div"
       className={`haim-raw-md${selected ? ' is-selected' : ''}`}
       data-haim-raw-md="1"
       data-kind={kind}
       contentEditable={false}
     >
-      {text}
+      <HaimLineNumberGutter text={text} className="haim-raw-md__line-numbers" />
+      <pre className="haim-raw-md__pre">{text}</pre>
     </NodeViewWrapper>
   );
 }

@@ -112,6 +112,12 @@ import {
   saveHaimFocusOutlineEnabled,
 } from '@/utils/haimFocusOutlineSettings';
 import {
+  loadHaimCodeLineNumbersEnabled,
+  loadHaimRawLineNumbersEnabled,
+  saveHaimCodeLineNumbersEnabled,
+  saveHaimRawLineNumbersEnabled,
+} from '@/utils/haimWysiwygLineNumberSettings';
+import {
   loadHaimTocDockEnabled,
   saveHaimTocDockEnabled,
 } from '@/utils/haimTocLayoutSettings';
@@ -147,6 +153,8 @@ export type SettingsToggleId =
   | 'settings-haim-double-scroll-sync'
   | 'settings-haim-toc-dock'
   | 'settings-haim-focus-outline'
+  | 'settings-haim-code-line-numbers'
+  | 'settings-haim-raw-line-numbers'
   | 'settings-base64-image-fold';
 
 export type SettingsToggleDef = {
@@ -257,6 +265,51 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimFocusOutlineEnabled,
     save: saveHaimFocusOutlineEnabled,
+  },
+  {
+    id: 'settings-haim-code-line-numbers',
+    enableTitle: 'Haim 코드 블록 줄 번호 켜기',
+    disableTitle: 'Haim 코드 블록 줄 번호 끄기',
+    description:
+      'WYSIWYG lowlight 코드 블록에 줄 번호를 표시합니다 (기본 켜짐)',
+    keywords: [
+      'haim',
+      'code',
+      'codeblock',
+      '코드',
+      '줄번호',
+      '줄 번호',
+      'line',
+      'number',
+      'linenumber',
+      'lowlight',
+      'hljs',
+      'wysiwyg',
+    ],
+    load: loadHaimCodeLineNumbersEnabled,
+    save: saveHaimCodeLineNumbersEnabled,
+  },
+  {
+    id: 'settings-haim-raw-line-numbers',
+    enableTitle: 'Haim raw 블록 줄 번호 켜기',
+    disableTitle: 'Haim raw 블록 줄 번호 끄기',
+    description:
+      'WYSIWYG raw markdown 블록에 줄 번호를 표시합니다 (기본 켜짐)',
+    keywords: [
+      'haim',
+      'raw',
+      'rawblock',
+      '로우',
+      '줄번호',
+      '줄 번호',
+      'line',
+      'number',
+      'linenumber',
+      'markdown',
+      'wysiwyg',
+    ],
+    load: loadHaimRawLineNumbersEnabled,
+    save: saveHaimRawLineNumbersEnabled,
   },
   {
     id: 'settings-base64-image-fold',
