@@ -327,12 +327,17 @@ function createNoteCoverFoldPersistPlugin(): Extension {
         this.lastKey = key;
         const cover = findNoteCoverDocRange(this.view.state.doc);
         this.hadCover = Boolean(cover);
-        if (!key || !cover) return;
+        if (!cover) return;
+        // No document key yet (untitled) — still collapse by default.
+        if (!key) {
+          applyFoldState(this.view, true);
+          return;
+        }
         const gen = ++this.loadGen;
         void getNoteCoverFoldCollapsed(key).then((collapsed) => {
           if (gen !== this.loadGen) return;
-          if (collapsed == null) return;
-          applyFoldState(this.view, collapsed);
+          // Default collapsed when the user has never toggled this document.
+          applyFoldState(this.view, collapsed !== false);
         });
       }
     },
