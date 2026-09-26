@@ -141,7 +141,7 @@ html[data-haim-focus-outline='1'] .haim-editor .tiptap .haim-node-focused {
   margin-left: -0.15rem;
 }
 
-.haim-drag-handle button {
+.haim-drag-handle__grip {
   width: 1.5rem;
   height: 1.75rem;
 }

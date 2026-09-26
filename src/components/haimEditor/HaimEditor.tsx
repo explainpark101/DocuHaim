@@ -237,6 +237,7 @@ export default function HaimEditor({
 
   useEffect(() => {
     if (!editor) return;
+    if (blockDragActiveRef.current) return;
     const current = editorToVaultMarkdown(editor, metaPrefixRef.current);
     if (current === (value || '')) return;
     setEditorMarkdown(editor, value || '', metaPrefixRef, { emitUpdate: false });
@@ -260,6 +261,7 @@ export default function HaimEditor({
   }, []);
 
   const suppressScrollSyncUntilRef = useRef(0);
+  const blockDragActiveRef = useRef(false);
 
   const {
     notifyCmDocChanged,
@@ -277,6 +279,7 @@ export default function HaimEditor({
     onVaultChange: emitVault,
     wysiwygScrollRef,
     suppressScrollSyncUntilRef,
+    blockDragActiveRef,
   });
 
   useHaimDoubleScrollSync({
@@ -1124,7 +1127,13 @@ export default function HaimEditor({
               >
                 {!previewOnly && isSurfaceLive ? (
                   <Suspense fallback={null}>
-                    <HaimDragHandleLayer editor={editor} />
+                    <HaimDragHandleLayer
+                      editor={editor}
+                      onDraggingChange={(dragging) => {
+                        blockDragActiveRef.current = dragging;
+                        if (dragging) cancelPending();
+                      }}
+                    />
                   </Suspense>
                 ) : null}
                 <EditorContent editor={editor} className="haim-editor-content h-full" />
