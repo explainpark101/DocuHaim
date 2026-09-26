@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import Button from '@/components/Button';
 import { IconBack, IconCheck, IconTrash } from '@/components/icons';
@@ -42,6 +43,7 @@ function isDangerConfirm(
 
 /**
  * Yes/no (and optional discard) confirm dialog with Motion open/close.
+ * Portaled to document.body so z-index stacks above Radix Dialog overlays.
  */
 export function ConfirmModal({
   isOpen,
@@ -80,7 +82,9 @@ export function ConfirmModal({
     if (!isOpen) resetBox();
   }, [isOpen, resetBox]);
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen ? (
         <Motion.div
@@ -149,6 +153,7 @@ export function ConfirmModal({
           </Motion.div>
         </Motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
