@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import Button from '@/components/Button';
 import { IconBack, IconCheck, IconTrash } from '@/components/icons';
@@ -9,30 +9,39 @@ import {
 } from '@/components/modals/modalCornerResize';
 
 const OVERLAY_TRANSITION = { duration: 0.18 };
-const PANEL_TRANSITION = { type: 'spring', stiffness: 420, damping: 32 };
+const PANEL_TRANSITION = { type: 'spring' as const, stiffness: 420, damping: 32 };
 
-function isDangerConfirm(variant, confirmLabel) {
+export type ConfirmModalVariant = 'default' | 'danger';
+
+export type ConfirmModalProps = {
+  isOpen: boolean;
+  title?: string;
+  message?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  discardLabel?: string;
+  variant?: ConfirmModalVariant;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+  onDiscard?: () => void;
+  children?: ReactNode;
+  confirmDisabled?: boolean;
+  resizable?: boolean;
+  /** Root fixed layer (z-index); default `z-100000`. */
+  overlayClassName?: string;
+};
+
+function isDangerConfirm(
+  variant: ConfirmModalVariant | undefined,
+  confirmLabel: string | undefined,
+): boolean {
   if (variant === 'danger') return true;
   const label = String(confirmLabel ?? '');
   return /삭제|비우기/.test(label);
 }
 
 /**
- * @param {object} props
- * @param {boolean} props.isOpen
- * @param {string} [props.title]
- * @param {string} [props.message]
- * @param {string} [props.confirmLabel]
- * @param {string} [props.cancelLabel]
- * @param {string} [props.discardLabel]
- * @param {'default' | 'danger'} [props.variant]
- * @param {() => void} [props.onConfirm]
- * @param {() => void} [props.onCancel]
- * @param {() => void} [props.onDiscard]
- * @param {import('react').ReactNode} [props.children]
- * @param {boolean} [props.confirmDisabled]
- * @param {boolean} [props.resizable]
- * @param {string} [props.overlayClassName] — root fixed layer (z-index); default `z-100000`
+ * Yes/no (and optional discard) confirm dialog with Motion open/close.
  */
 export function ConfirmModal({
   isOpen,
@@ -49,8 +58,8 @@ export function ConfirmModal({
   confirmDisabled = false,
   resizable = true,
   overlayClassName = 'z-100000',
-}) {
-  const hasDiscard = discardLabel && typeof onDiscard === 'function';
+}: ConfirmModalProps) {
+  const hasDiscard = Boolean(discardLabel && onDiscard);
   const danger = isDangerConfirm(variant, confirmLabel);
   const {
     panelRef,
@@ -98,30 +107,30 @@ export function ConfirmModal({
             transition={PANEL_TRANSITION}
           >
             <div className="overflow-y-auto p-6">
-              {title && (
+              {title ? (
                 <h2
                   id="confirm-modal-title"
                   className="mb-2 text-lg font-bold text-gray-800 dark:text-odp-fgStrong"
                 >
                   {title}
                 </h2>
-              )}
-              {message && (
+              ) : null}
+              {message ? (
                 <p className="mb-4 whitespace-pre-line text-sm text-gray-600 dark:text-gray-400">
                   {message}
                 </p>
-              )}
+              ) : null}
               {children ? <div className="mb-4">{children}</div> : null}
               <div className="flex flex-wrap justify-end gap-2">
                 <Button type="button" variant="secondary" size="md" onClick={onCancel}>
                   <IconBack size={16} />
                   {cancelLabel}
                 </Button>
-                {hasDiscard && (
+                {hasDiscard ? (
                   <Button type="button" variant="secondary" size="md" onClick={onDiscard}>
                     {discardLabel}
                   </Button>
-                )}
+                ) : null}
                 <Button
                   type="button"
                   variant={danger ? 'danger' : 'primary'}

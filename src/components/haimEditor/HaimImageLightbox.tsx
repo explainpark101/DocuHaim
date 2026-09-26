@@ -440,6 +440,8 @@ export default function HaimImageLightbox({
   const [paletteExpanded, setPaletteExpanded] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
+  /** Last non-eraser brush size — eraser defaults to 5× this (square). */
+  const lastNonEraserSizeRef = useRef({ w: 4, h: 4 });
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const stageHitRef = useRef<HTMLDivElement | null>(null);
@@ -708,6 +710,54 @@ export default function HaimImageLightbox({
       return { w: s, h: s };
     },
     [penSizeW, penSizeH],
+  );
+
+  // Remember brush size while not on eraser (eraser uses a 5× default).
+  useEffect(() => {
+    if (tool === 'eraser') return;
+    if (
+      tool === 'pen' ||
+      tool === 'pressure' ||
+      tool === 'highlighter' ||
+      tool === 'laser'
+    ) {
+      lastNonEraserSizeRef.current = { w: penSizeW, h: penSizeH };
+    }
+  }, [tool, penSizeW, penSizeH]);
+
+  const restoreLastBrushSize = useCallback(() => {
+    const last = lastNonEraserSizeRef.current;
+    setPenSizeW(last.w);
+    setPenSizeH(last.h);
+  }, []);
+
+  const selectEraser = useCallback(() => {
+    const last = lastNonEraserSizeRef.current;
+    const base = Math.max(last.w, last.h);
+    const next = roundSize(clamp(base * 5, MIN_PEN, MAX_PEN));
+    setPenSizeW(next);
+    setPenSizeH(next);
+    setTool('eraser');
+  }, []);
+
+  const selectTool = useCallback(
+    (next: Tool) => {
+      if (tool === 'eraser' && next !== 'eraser') {
+        restoreLastBrushSize();
+      }
+      if (next === 'eraser') {
+        selectEraser();
+        return;
+      }
+      if (next === 'highlighter') {
+        setTool('highlighter');
+        setBrushDash('solid');
+        setBrushShape('square');
+        return;
+      }
+      setTool(next);
+    },
+    [tool, restoreLastBrushSize, selectEraser],
   );
 
   const beginPan = useCallback(
@@ -1322,10 +1372,8 @@ export default function HaimImageLightbox({
   }, []);
 
   const selectHighlighter = useCallback(() => {
-    setTool('highlighter');
-    setBrushDash('solid');
-    setBrushShape('square');
-  }, []);
+    selectTool('highlighter');
+  }, [selectTool]);
 
   const runSave = useCallback(
     async (mode: HaimImageLightboxSaveMode) => {
@@ -1791,7 +1839,7 @@ export default function HaimImageLightbox({
                                 if (tool !== 'text' && tool !== 'pan') return;
                                 e.stopPropagation();
                                 e.preventDefault();
-                                setTool('text');
+                                selectTool('text');
                                 // Select only — do not enter edit (Del can delete object).
                                 if (editingTextId && editingTextId !== t.id) {
                                   finishTextEditing();
@@ -1817,7 +1865,7 @@ export default function HaimImageLightbox({
                               onDoubleClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
-                                setTool('text');
+                                selectTool('text');
                                 setSelectedTextId(t.id);
                                 setEditingTextId(t.id);
                                 setTextFontFamily(t.fontFamily);
@@ -2058,21 +2106,21 @@ export default function HaimImageLightbox({
                       <ToolTipBtn
                         label="패닝"
                         active={tool === 'pan'}
-                        onClick={() => setTool('pan')}
+                        onClick={() => selectTool('pan')}
                       >
                         <Hand size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
                         label="일반 펜"
                         active={tool === 'pen'}
-                        onClick={() => setTool('pen')}
+                        onClick={() => selectTool('pen')}
                       >
                         <Pencil size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
                         label="필압 펜"
                         active={tool === 'pressure'}
-                        onClick={() => setTool('pressure')}
+                        onClick={() => selectTool('pressure')}
                       >
                         <PenLine size={16} />
                       </ToolTipBtn>
@@ -2086,21 +2134,21 @@ export default function HaimImageLightbox({
                       <ToolTipBtn
                         label="레이저 (4초 후 페이드)"
                         active={tool === 'laser'}
-                        onClick={() => setTool('laser')}
+                        onClick={() => selectTool('laser')}
                       >
                         <Flame size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
                         label="지우개"
                         active={tool === 'eraser'}
-                        onClick={() => setTool('eraser')}
+                        onClick={() => selectTool('eraser')}
                       >
                         <Eraser size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
                         label="텍스트"
                         active={tool === 'text'}
-                        onClick={() => setTool('text')}
+                        onClick={() => selectTool('text')}
                       >
                         <Type size={16} />
                       </ToolTipBtn>
@@ -2175,7 +2223,7 @@ export default function HaimImageLightbox({
                                           tool === 'eraser' ||
                                           tool === 'laser'
                                         ) {
-                                          setTool('pen');
+                                          selectTool('pen');
                                         }
                                       }
                                       setPaletteExpanded(false);
@@ -2247,7 +2295,7 @@ export default function HaimImageLightbox({
                                       tool === 'eraser' ||
                                       tool === 'laser'
                                     ) {
-                                      setTool('pen');
+                                      selectTool('pen');
                                     }
                                   }
                                 }}
