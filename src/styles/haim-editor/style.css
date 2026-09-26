@@ -382,7 +382,7 @@
 :is(.dark) .haim-editor .haim-math-block {
   background: color-mix(
     in srgb,
-    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #374151)) 80%,
+    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #374151)) 15%,
     transparent
   );
 }

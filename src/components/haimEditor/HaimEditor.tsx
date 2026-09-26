@@ -18,6 +18,10 @@ import {
 } from '@/components/haimEditor/useHaimDualSync';
 import { useHaimDoubleScrollSync } from '@/components/haimEditor/useHaimDoubleScrollSync';
 import {
+  registerHaimAnnotateUpload,
+  normalizeUploadResult,
+} from '@/utils/haimImageAnnotateUpload';
+import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
   HAIM_VIEW_MODE_DOUBLE,
   HAIM_VIEW_MODE_SOURCE,
@@ -769,6 +773,19 @@ export default function HaimEditor({
       pushEditorMarkdownToCmNow,
     ],
   );
+
+  // Bridge for lightbox annotate save (wiki / stock image node views).
+  useEffect(() => {
+    if (previewOnly || typeof onUploadImage !== 'function') {
+      registerHaimAnnotateUpload(null);
+      return () => registerHaimAnnotateUpload(null);
+    }
+    registerHaimAnnotateUpload(async (files) => {
+      const result = await onUploadImage(files);
+      return normalizeUploadResult(result);
+    });
+    return () => registerHaimAnnotateUpload(null);
+  }, [onUploadImage, previewOnly]);
 
   const showImageUploadOverlay =
     Boolean(isUploadingEditorImage) || localImageUploading;
