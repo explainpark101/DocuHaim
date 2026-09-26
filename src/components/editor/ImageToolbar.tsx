@@ -9,17 +9,20 @@ type Props = {
   onRequestUpload: (files: File[]) => void;
   /** Pick one image then open crop → upload flow. */
   onRequestClip: (file: File) => void;
+  /** Open blank whiteboard create modal. */
+  onRequestWhiteboard?: () => void;
   disabled?: boolean;
 };
 
 /**
  * Replaces md-editor-rt built-in `image` toolbar (which embeds Cropper.js 1 clip).
- * Menu: link / upload / crop-and-upload (project Cropper.js 2 + react-easy-crop modal).
+ * Menu: link / upload / crop-and-upload / whiteboard.
  */
 export default function ImageToolbar({
   onRequestLink,
   onRequestUpload,
   onRequestClip,
+  onRequestWhiteboard,
   disabled = false,
 }: Props) {
   const [visible, setVisible] = useState(false);
@@ -83,6 +86,22 @@ export default function ImageToolbar({
             >
               잘라서 업로드
             </li>
+            {typeof onRequestWhiteboard === 'function' ? (
+              <li
+                className="md-editor-menu-item md-editor-menu-item-image"
+                role="menuitem"
+                tabIndex={0}
+                onClick={() => onRequestWhiteboard()}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onRequestWhiteboard();
+                  }
+                }}
+              >
+                화이트보드
+              </li>
+            ) : null}
           </ul>
         )}
       >

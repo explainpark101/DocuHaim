@@ -53,6 +53,11 @@ import HeadingRemapModal, {
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
 import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
 import QrCodeCreateModal from '@/components/modals/QrCodeCreateModal';
+import WhiteboardCreateModal from '@/components/modals/WhiteboardCreateModal';
+import HaimImageLightbox, {
+  type HaimImageLightboxSaveMode,
+} from '@/components/haimEditor/HaimImageLightbox';
+import { uploadHaimAnnotatedImage } from '@/utils/haimImageAnnotateUpload';
 import { ConfirmModal } from '@/components/modals/ConfirmModal.jsx';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
 import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
@@ -145,6 +150,11 @@ export default function HaimEditor({
   const headingRemapRangeRef = useRef<{ from: number; to: number } | null>(null);
   const [imageLinkOpen, setImageLinkOpen] = useState(false);
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
+  const [whiteboardLightbox, setWhiteboardLightbox] = useState<{
+    src: string;
+    wikiPath: string;
+  } | null>(null);
   const [clipCropFile, setClipCropFile] = useState<File | null>(null);
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [invisibleCharsVisible, setInvisibleCharsVisible] = useState(false);
@@ -681,9 +691,9 @@ export default function HaimEditor({
    * when the upload started (paste / toolbar), not after async wait.
    */
   const handleUploadFiles = useCallback(
-    async (files: File[]) => {
-      if (!onUploadImage || !files.length || !editor) return;
-      if (imageUploadingRef.current || isUploadingEditorImage) return;
+    async (files: File[]): Promise<string[]> => {
+      if (!onUploadImage || !files.length || !editor) return [];
+      if (imageUploadingRef.current || isUploadingEditorImage) return [];
 
       // Snapshot cursor/selection BEFORE await — paste-time position.
       const cmAtStart = cmViewRef.current;
@@ -713,14 +723,14 @@ export default function HaimEditor({
           : typeof result === 'string' && result.trim()
             ? [result.trim()]
             : [];
-        if (!paths.length) return;
+        if (!paths.length) return [];
 
         cancelPending();
         const markup = `${paths.map((p) => `![[${p}]]`).join('\n\n')}\n\n`;
 
         if (insertTarget.surface === 'cm') {
           const cm = cmViewRef.current;
-          if (!cm) return;
+          if (!cm) return paths;
           const docLen = cm.state.doc.length;
           const from = Math.max(0, Math.min(insertTarget.from, docLen));
           const to = Math.max(from, Math.min(insertTarget.to, docLen));
@@ -753,8 +763,10 @@ export default function HaimEditor({
           pushEditorMarkdownToCmNow();
           originRef.current = null;
         }
+        return paths;
       } catch {
         // parent alerts
+        return [];
       } finally {
         imageUploadingRef.current = false;
         setLocalImageUploading(false);
@@ -943,6 +955,10 @@ export default function HaimEditor({
         if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
         setQrCodeOpen(true);
       },
+      'editor-create-whiteboard': () => {
+        if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
+        setWhiteboardOpen(true);
+      },
       'editor-table-edit': () => openHaimTableFromSelection(),
     });
     return unregister;
@@ -1076,6 +1092,7 @@ export default function HaimEditor({
             imageDisabled:
               typeof onUploadImage !== 'function' || showImageUploadOverlay,
             onCreateQrCode: () => setQrCodeOpen(true),
+            onCreateWhiteboard: () => setWhiteboardOpen(true),
             onInsertMermaid: () => {
               editor
                 .chain()
@@ -1244,6 +1261,103 @@ export default function HaimEditor({
         }
         onConfirm={async (file) => {
           await handleUploadFiles([file]);
+        }}
+      />
+      <WhiteboardCreateModal
+        isOpen={whiteboardOpen}
+        onClose={() => setWhiteboardOpen(false)}
+        disabled={
+          typeof onUploadImage !== 'function' || showImageUploadOverlay
+        }
+        onConfirm={async (file) => {
+          const preview = URL.createObjectURL(file);
+          const paths = await handleUploadFiles([file]);
+          const wikiPath = paths[0];
+          if (!wikiPath) {
+            URL.revokeObjectURL(preview);
+            return;
+          }
+          setWhiteboardLightbox({ src: preview, wikiPath });
+        }}
+      />
+      <HaimImageLightbox
+        src={whiteboardLightbox?.src ?? null}
+        alt={whiteboardLightbox?.wikiPath ?? 'whiteboard'}
+        open={Boolean(whiteboardLightbox)}
+        onClose={() => {
+          if (whiteboardLightbox?.src?.startsWith('blob:')) {
+            URL.revokeObjectURL(whiteboardLightbox.src);
+          }
+          setWhiteboardLightbox(null);
+        }}
+        onSaveAnnotated={async (mode: HaimImageLightboxSaveMode, file: File) => {
+          if (!editor || !whiteboardLightbox) return;
+          const newPath = await uploadHaimAnnotatedImage(file);
+          const targetPath = whiteboardLightbox.wikiPath;
+          if (mode === 'overwrite') {
+            let foundPos: number | null = null;
+            editor.state.doc.descendants((node, pos) => {
+              if (foundPos != null) return false;
+              if (
+                node.type.name === 'wikiImage' &&
+                String(node.attrs.path || '') === targetPath
+              ) {
+                foundPos = pos;
+                return false;
+              }
+              return undefined;
+            });
+            if (foundPos != null) {
+              const node = editor.state.doc.nodeAt(foundPos);
+              editor.view.dispatch(
+                editor.state.tr.setNodeMarkup(foundPos, undefined, {
+                  ...(node?.attrs || {}),
+                  path: newPath,
+                  alt: newPath,
+                }),
+              );
+            }
+            const preview = URL.createObjectURL(file);
+            if (whiteboardLightbox.src.startsWith('blob:')) {
+              URL.revokeObjectURL(whiteboardLightbox.src);
+            }
+            setWhiteboardLightbox({ src: preview, wikiPath: newPath });
+            return;
+          }
+          // saveAs — insert another wiki image after the target
+          let foundPos: number | null = null;
+          let nodeSize = 1;
+          editor.state.doc.descendants((node, pos) => {
+            if (foundPos != null) return false;
+            if (
+              node.type.name === 'wikiImage' &&
+              String(node.attrs.path || '') === targetPath
+            ) {
+              foundPos = pos;
+              nodeSize = node.nodeSize;
+              return false;
+            }
+            return undefined;
+          });
+          const insertAt =
+            foundPos != null
+              ? foundPos + nodeSize
+              : editor.state.doc.content.size;
+          editor
+            .chain()
+            .focus()
+            .insertContentAt(insertAt, {
+              type: 'wikiImage',
+              attrs: {
+                path: newPath,
+                options: '',
+                alt: newPath,
+                width: null,
+                height: null,
+                background: null,
+              },
+            })
+            .run();
         }}
       />
       <ImageClipCropModal

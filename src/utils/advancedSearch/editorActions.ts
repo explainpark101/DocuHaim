@@ -35,6 +35,7 @@ export type EditorActionId =
   | 'editor-image-upload'
   | 'editor-image-clip'
   | 'editor-create-qrcode'
+  | 'editor-create-whiteboard'
   | 'editor-convert-all-images-to-wiki'
   | 'editor-catalog';
 
@@ -348,6 +349,22 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
       '큐알코드',
       'barcode',
       'svg',
+      'wiki image',
+    ],
+  },
+  {
+    id: 'editor-create-whiteboard',
+    title: '화이트보드 만들기',
+    description: '크기·배경색으로 빈 캔버스를 만들어 wiki image로 삽입',
+    keywords: [
+      'whiteboard',
+      '화이트보드',
+      '캔버스',
+      'canvas',
+      'blank',
+      '빈 이미지',
+      '그리기',
+      'ink',
       'wiki image',
     ],
   },
