@@ -58,7 +58,7 @@ import HaimImageLightbox, {
   type HaimImageLightboxSaveMode,
 } from '@/components/haimEditor/HaimImageLightbox';
 import { uploadHaimAnnotatedImage } from '@/utils/haimImageAnnotateUpload';
-import { ConfirmModal } from '@/components/modals/ConfirmModal.jsx';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { TableEditModal } from '@/components/haimTable/TableEditModal';
 import { PreviewTableContextMenu } from '@/components/haimTable/PreviewTableContextMenu';
 import { HaimTableBoxResizeLayer } from '@/components/haimTable/HaimTableBoxResizeLayer';
