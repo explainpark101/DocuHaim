@@ -50,6 +50,7 @@ import {
 } from '@/utils/noteCover/hydrateNoteCoverPreview';
 import '@/styles/haim-editor/style.css';
 import '@/styles/haim-editor/code-hljs-themes.css';
+import '@/styles/editor-image-align.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
 import 'katex/dist/katex.min.css';
 

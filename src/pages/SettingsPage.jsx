@@ -32,6 +32,12 @@ import {
   FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT,
 } from '@/utils/previewFootnotesSettings';
 import {
+  EDITOR_IMAGE_ALIGN_CHANGED_EVENT,
+  EDITOR_IMAGE_ALIGN_OPTIONS,
+  loadEditorImageAlign,
+  setEditorImageAlign,
+} from '@/utils/editorImageAlignSettings';
+import {
   EDITOR_TYPE_CHANGED_EVENT,
   EDITOR_TYPE_HAIM,
   EDITOR_TYPE_OPTIONS,
@@ -52,6 +58,10 @@ import {
   loadHaimTocLayout,
   saveHaimTocLayout,
 } from '@/utils/haimTocLayoutSettings';
+import {
+  HAIM_FOCUS_OUTLINE_CHANGED_EVENT,
+  loadHaimFocusOutlineEnabled,
+} from '@/utils/haimFocusOutlineSettings';
 import {
   loadAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
@@ -98,7 +108,7 @@ import {
   syncLegacyLlmCredsFromProfiles,
 } from '@/utils/llmProviderProfiles';
 import { getLocalAppBuildId } from '@/utils/pwaUpdate';
-import { RadioGroup } from 'radix-ui';
+import { RadioGroup, Switch } from 'radix-ui';
 import {
   advancedSearchEngine,
   loadAdvancedSearchUiAnimationEnabled,
@@ -213,11 +223,17 @@ export default function SettingsPage({
   const [footnoteDisplayMode, setFootnoteDisplayModeState] = useState(() =>
     loadFootnoteDisplayMode(),
   );
+  const [editorImageAlign, setEditorImageAlignState] = useState(() =>
+    loadEditorImageAlign(),
+  );
   const [editorType, setEditorTypeState] = useState(
     () => editorTypeProp ?? loadEditorType(),
   );
   const [haimViewMode, setHaimViewModeState] = useState(() => loadHaimViewMode());
   const [haimTocLayout, setHaimTocLayoutState] = useState(() => loadHaimTocLayout());
+  const [haimFocusOutline, setHaimFocusOutlineState] = useState(() =>
+    loadHaimFocusOutlineEnabled(),
+  );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState(
@@ -257,6 +273,8 @@ export default function SettingsPage({
         setHaimTocLayoutState(
           enabled ? HAIM_TOC_LAYOUT_DOCK : HAIM_TOC_LAYOUT_OVERLAY,
         );
+      } else if (id === 'settings-haim-focus-outline') {
+        setHaimFocusOutlineState(enabled);
       }
     });
   }, []);
@@ -269,6 +287,17 @@ export default function SettingsPage({
     window.addEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnoteDisplay);
     return () => {
       window.removeEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnoteDisplay);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onAlign = (event) => {
+      const align = event?.detail?.align ?? loadEditorImageAlign();
+      setEditorImageAlignState(align);
+    };
+    window.addEventListener(EDITOR_IMAGE_ALIGN_CHANGED_EVENT, onAlign);
+    return () => {
+      window.removeEventListener(EDITOR_IMAGE_ALIGN_CHANGED_EVENT, onAlign);
     };
   }, []);
 
@@ -292,6 +321,19 @@ export default function SettingsPage({
     const sync = () => setHaimTocLayoutState(loadHaimTocLayout());
     window.addEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, sync);
     return () => window.removeEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimFocusOutlineEnabled();
+      setHaimFocusOutlineState(enabled);
+    };
+    window.addEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -1102,6 +1144,31 @@ export default function SettingsPage({
                   </label>
                 ))}
               </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    편집 블록 점선 테두리
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    WYSIWYG에서 현재 편집 중인 블록을 dashed border로 표시합니다.
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimFocusOutline
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimFocusOutline}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-focus-outline', next);
+                    setHaimFocusOutlineState(next);
+                  }}
+                  aria-label="편집 블록 점선 테두리"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
             </div>
           ) : null}
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
@@ -1134,6 +1201,43 @@ export default function SettingsPage({
                 </label>
               ))}
             </div>
+          </div>
+        </div>
+
+        <div
+          id="settings-image-align"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">
+            이미지 정렬
+          </h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+            에디터 미리보기·WYSIWYG에서 위키 이미지와 마크다운 이미지를 가로로 어떻게 배치할지 고릅니다.
+            기본값은 가운데입니다.
+          </p>
+          <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+            {EDITOR_IMAGE_ALIGN_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="editorImageAlign"
+                  value={opt.value}
+                  checked={editorImageAlign === opt.value}
+                  onChange={() => {
+                    setEditorImageAlign(opt.value);
+                    setEditorImageAlignState(opt.value);
+                  }}
+                  className="mt-0.5 shrink-0"
+                />
+                <span>
+                  <span className="font-semibold">{opt.label}</span>
+                  <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                    {opt.description}
+                  </span>
+                </span>
+              </label>
+            ))}
           </div>
         </div>
 

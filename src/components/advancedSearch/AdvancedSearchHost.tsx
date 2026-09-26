@@ -75,10 +75,12 @@ import {
   toggleMirrorEditEnabled,
 } from '@/utils/mirrorEditSettings';
 import {
+  applyEditorImageAlignCommand,
   applyFootnoteDisplayModeCommand,
   applyStatusBarClockFormatCommand,
   applyWorkspacePaneFreezeCommand,
   applyWorkspaceTabsAutoSaveCommand,
+  isEditorImageAlignCommandId,
   isFootnoteDisplayModeCommandId,
   isSettingsToggleId,
   isStatusBarClockFormatCommandId,
@@ -659,6 +661,11 @@ export default function AdvancedSearchHost({
 
         if (isFootnoteDisplayModeCommandId(commandId)) {
           applyFootnoteDisplayModeCommand(commandId);
+          return;
+        }
+
+        if (isEditorImageAlignCommandId(commandId)) {
+          applyEditorImageAlignCommand(commandId);
           return;
         }
 

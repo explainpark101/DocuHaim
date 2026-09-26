@@ -69,6 +69,12 @@ import {
   type FootnoteDisplayMode,
 } from '@/utils/previewFootnotesSettings';
 import {
+  EDITOR_IMAGE_ALIGN_OPTIONS,
+  loadEditorImageAlign,
+  setEditorImageAlign,
+  type EditorImageAlign,
+} from '@/utils/editorImageAlignSettings';
+import {
   loadOrphanImageAutoDeleteEnabled,
   saveOrphanImageAutoDeleteEnabled,
 } from '@/utils/orphanImageCleanupSettings';
@@ -102,6 +108,10 @@ import {
   saveHaimDoubleScrollSyncEnabled,
 } from '@/utils/haimDoubleScrollSyncSettings';
 import {
+  loadHaimFocusOutlineEnabled,
+  saveHaimFocusOutlineEnabled,
+} from '@/utils/haimFocusOutlineSettings';
+import {
   loadHaimTocDockEnabled,
   saveHaimTocDockEnabled,
 } from '@/utils/haimTocLayoutSettings';
@@ -131,7 +141,8 @@ export type SettingsToggleId =
   | 'settings-quiz-dock-width-spring'
   | 'settings-haim-double'
   | 'settings-haim-double-scroll-sync'
-  | 'settings-haim-toc-dock';
+  | 'settings-haim-toc-dock'
+  | 'settings-haim-focus-outline';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -219,6 +230,28 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimTocDockEnabled,
     save: saveHaimTocDockEnabled,
+  },
+  {
+    id: 'settings-haim-focus-outline',
+    enableTitle: 'Haim 편집 블록 점선 테두리 켜기',
+    disableTitle: 'Haim 편집 블록 점선 테두리 끄기',
+    description:
+      'WYSIWYG에서 현재 편집 중인 블록을 dashed border로 표시합니다',
+    keywords: [
+      'haim',
+      'focus',
+      'outline',
+      'border',
+      'dash',
+      'dashed',
+      '점선',
+      '테두리',
+      '편집',
+      '블록',
+      'wysiwyg',
+    ],
+    load: loadHaimFocusOutlineEnabled,
+    save: saveHaimFocusOutlineEnabled,
   },
   {
     id: 'settings-alt-vim',
@@ -742,6 +775,74 @@ export function applyFootnoteDisplayModeCommand(
   id: FootnoteDisplayModeCommandId,
 ): void {
   setFootnoteDisplayMode(footnoteDisplayModeFromCommandId(id));
+}
+
+export type EditorImageAlignCommandId =
+  | 'settings-image-align-left'
+  | 'settings-image-align-center'
+  | 'settings-image-align-right';
+
+const EDITOR_IMAGE_ALIGN_COMMAND_BY_MODE = {
+  left: 'settings-image-align-left',
+  center: 'settings-image-align-center',
+  right: 'settings-image-align-right',
+} as const;
+
+export function isEditorImageAlignCommandId(
+  id: string | undefined | null,
+): id is EditorImageAlignCommandId {
+  return (
+    id === 'settings-image-align-left' ||
+    id === 'settings-image-align-center' ||
+    id === 'settings-image-align-right'
+  );
+}
+
+export function editorImageAlignFromCommandId(
+  id: EditorImageAlignCommandId,
+): EditorImageAlign {
+  if (id === 'settings-image-align-left') return 'left';
+  if (id === 'settings-image-align-right') return 'right';
+  return 'center';
+}
+
+/** Situational: only alignments other than the current one. */
+export function getEditorImageAlignCommands(): Array<{
+  id: EditorImageAlignCommandId;
+  title: string;
+  description: string;
+  keywords: string[];
+}> {
+  const current = loadEditorImageAlign();
+  return EDITOR_IMAGE_ALIGN_OPTIONS.filter((opt) => opt.value !== current).map(
+    (opt) => ({
+      id: EDITOR_IMAGE_ALIGN_COMMAND_BY_MODE[opt.value],
+      title: `이미지 정렬: ${opt.label}`,
+      description: opt.description,
+      keywords: [
+        'image',
+        'align',
+        'alignment',
+        '이미지',
+        '정렬',
+        '가운데',
+        '왼쪽',
+        '오른쪽',
+        'center',
+        'left',
+        'right',
+        'wiki',
+        opt.value,
+        opt.label,
+      ],
+    }),
+  );
+}
+
+export function applyEditorImageAlignCommand(
+  id: EditorImageAlignCommandId,
+): void {
+  setEditorImageAlign(editorImageAlignFromCommandId(id));
 }
 
 export type StatusBarClockFormatCommandId =

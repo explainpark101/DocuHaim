@@ -12,6 +12,8 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
+import { initEditorImageAlignDom } from '@/utils/editorImageAlignSettings'
+import { initHaimFocusOutlineDom } from '@/utils/haimFocusOutlineSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
 import { initDesktopViewport } from '@/utils/initDesktopViewport'
@@ -23,6 +25,8 @@ import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
 import { initUiFontSettings } from '@/utils/uiFontSettings'
 
 initEditorAutocompleteDomFlag()
+initEditorImageAlignDom()
+initHaimFocusOutlineDom()
 initTouchLongPressHaptics()
 initDesktopViewport()
 initDesktopWindowCloseGuard()

@@ -17,6 +17,7 @@ import { loadEditorAutocompleteEnabled } from '@/utils/editorAutocompleteSetting
 import { HLJS_ATOM_ONE_DARK_CSS, HLJS_ATOM_ONE_LIGHT_CSS } from '@/utils/mdEditorCodeTheme';
 import '@/styles/md-editor-rt/chat-saved-note.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
+import '@/styles/editor-image-align.css';
 import '@/styles/md-editor-rt/plan-frontmatter.css';
 import '@/styles/md-editor-rt/preview-heading-fold.css';
 import '@/styles/md-editor-rt/mermaid-base64-fold.css';
