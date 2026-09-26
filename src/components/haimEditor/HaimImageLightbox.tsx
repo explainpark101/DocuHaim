@@ -1,15 +1,16 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
+  type CSSProperties,
 } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
-import { Dialog, Tooltip } from 'radix-ui';
+import { Dialog, Select, Tooltip } from 'radix-ui';
+import { HexAlphaColorPicker, HexColorInput } from 'react-colorful';
 import {
   X,
   Hand,
@@ -26,14 +27,55 @@ import {
   RotateCcw,
   Save,
   CopyPlus,
+  Circle,
+  Square,
+  Type,
 } from 'lucide-react';
+import FontFamilyInput from '@/components/FontFamilyInput';
+import { getModKeyLabel } from '@/components/Kbd';
 import {
   compositeAnnotatedImageBlob,
   isInkApiAvailable,
   requestInkPresenter,
   type DelegatedInkTrailPresenter,
 } from '@/components/haimEditor/haimImageInk';
+import {
+  FONT_WEIGHT_OPTIONS,
+  HIGHLIGHT_BLEND_OPTIONS,
+  dashArrayFor,
+  drawAnnotateTextsOnCanvas,
+  lineCapFor,
+  lineJoinFor,
+  liveStrokeNeedsFullRepaint,
+  paintAnnotateStrokeIncremental,
+  paintAnnotateStrokeOnCtx,
+  pointsToSvgPath,
+  rasterizeHighlightLayer,
+  rasterizeInkLayer,
+  resolveInkBufferSize,
+  sampleStampCenters,
+  strokeRefDiameter,
+  usesStampBrush,
+  type AnnotateStroke,
+  type AnnotateText,
+  type BrushDash,
+  type BrushShape,
+  type HighlightBlendMode,
+  type StrokeKind,
+  type StrokePoint,
+  appendSmoothedPoints,
+  bufferScaleFromCss,
+  clamp,
+  clampStrokeDiameter,
+  followPointerTip,
+  stampTangentAngle,
+} from '@/components/haimEditor/haimImageStrokes';
 import { isHaimAnnotateUploadAvailable } from '@/utils/haimImageAnnotateUpload';
+import {
+  CSS_HEX_CHECKER_STYLE,
+  cssHexToInputValue,
+  normalizeCssHexColor,
+} from '@/utils/cssColor';
 
 const LIGHTBOX_EASE = [0.22, 1, 0.36, 1] as const;
 const OVERLAY_TRANSITION = { duration: 0.2, ease: LIGHTBOX_EASE };
@@ -47,8 +89,7 @@ const DBLCLICK_ZOOM = 2;
 const MIN_PEN = 0.5;
 const MAX_PEN = 128;
 const LASER_FADE_MS = 4000;
-/** Cap long edge of ink buffer to avoid huge memory on multi-megapixel photos. */
-const MAX_BUFFER_EDGE = 8192;
+const LASER_FADE_OUT_MS = 450;
 
 const PEN_COLORS = [
   '#111827',
@@ -61,11 +102,11 @@ const PEN_COLORS = [
 ] as const;
 
 const HIGHLIGHT_COLORS = [
-  'rgba(250, 204, 21, 0.45)',
-  'rgba(244, 114, 182, 0.45)',
-  'rgba(56, 189, 248, 0.4)',
-  'rgba(74, 222, 128, 0.4)',
-  'rgba(251, 146, 60, 0.45)',
+  '#facc15',
+  '#f472b6',
+  '#38bdf8',
+  '#4ade80',
+  '#fb923c',
 ] as const;
 
 const CHECKERBOARD_STYLE = {
@@ -80,22 +121,11 @@ const CHECKERBOARD_STYLE = {
   backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
 };
 
-type Tool = 'pan' | 'pen' | 'pressure' | 'highlighter' | 'laser' | 'eraser';
+type Tool = 'pan' | 'pen' | 'pressure' | 'highlighter' | 'laser' | 'eraser' | 'text';
 
-type Point = { x: number; y: number; pressure: number };
-
-type StrokeKind = 'pen' | 'pressure' | 'highlighter' | 'laser' | 'eraser';
-
-type Stroke = {
-  id: string;
-  seq: number;
-  kind: StrokeKind;
-  color: string;
-  diameter: number;
-  points: Point[];
-  /** Laser: remove after this timestamp (ms). */
-  expiresAt?: number;
-};
+type HistoryEntry =
+  | { layer: 'ink' | 'highlight' | 'both'; stroke: AnnotateStroke }
+  | { layer: 'text'; text: AnnotateText };
 
 export type HaimImageLightboxSaveMode = 'overwrite' | 'saveAs';
 
@@ -104,16 +134,11 @@ export type HaimImageLightboxProps = {
   alt?: string;
   open: boolean;
   onClose: () => void;
-  /** Persist annotated PNG into the document (wiki / stock image). */
   onSaveAnnotated?: (
     mode: HaimImageLightboxSaveMode,
     file: File,
   ) => Promise<void>;
 };
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
-}
 
 function roundSize(n: number): number {
   return Math.round(n * 10) / 10;
@@ -127,158 +152,60 @@ function bumpSize(current: number, direction: 1 | -1): number {
   return roundSize(clamp(current + direction * sizeStep(current), MIN_PEN, MAX_PEN));
 }
 
-function readPressure(event: PointerEvent | ReactPointerEvent, usePressure: boolean): number {
+const MIN_FONT_PX = 8;
+const MAX_FONT_PX = 400;
+
+function isApplePlatform(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const platform = navigator.platform || '';
+  const ua = navigator.userAgent || '';
+  return /Mac|iPhone|iPad|iPod/i.test(platform) || /Mac OS/i.test(ua);
+}
+
+const IS_APPLE = isApplePlatform();
+const MOD_LABEL = getModKeyLabel();
+const REDO_SHORTCUT = IS_APPLE ? `${MOD_LABEL}+Shift+Z` : `${MOD_LABEL}+Y`;
+
+function bumpFontSize(current: number, direction: 1 | -1): number {
+  const step = Math.max(1, Math.round(current / 10));
+  return clamp(Math.round(current + direction * step), MIN_FONT_PX, MAX_FONT_PX);
+}
+
+function readPressure(
+  event: PointerEvent | ReactPointerEvent,
+  usePressure: boolean,
+): number {
   if (!usePressure) return 1;
   const p = event.pressure;
   if (typeof p !== 'number' || Number.isNaN(p)) return 0.5;
-  // Mouse reports 0.5 while down; keep usable width.
   if (event.pointerType === 'mouse') return 0.5;
   return clamp(p || 0.05, 0.05, 1);
-}
-
-function strokeWidth(stroke: Stroke, pressure: number): number {
-  if (stroke.kind === 'pressure') return Math.max(0.5, stroke.diameter * pressure);
-  return stroke.diameter;
-}
-
-/** Points + diameters are stored in high-res buffer pixel space. */
-function drawStrokeOnCtx(ctx: CanvasRenderingContext2D, stroke: Stroke): void {
-  if (stroke.points.length < 1) return;
-  ctx.save();
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.miterLimit = 2;
-
-  if (stroke.kind === 'eraser') {
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.strokeStyle = 'rgba(0,0,0,1)';
-    ctx.lineWidth = stroke.diameter;
-    ctx.beginPath();
-    const first = stroke.points[0];
-    if (!first) {
-      ctx.restore();
-      return;
-    }
-    ctx.moveTo(first.x, first.y);
-    if (stroke.points.length === 1) {
-      ctx.lineTo(first.x + 0.01, first.y);
-    } else {
-      for (let i = 1; i < stroke.points.length; i += 1) {
-        const p = stroke.points[i];
-        if (p) ctx.lineTo(p.x, p.y);
-      }
-    }
-    ctx.stroke();
-    ctx.restore();
-    return;
-  }
-
-  if (stroke.kind === 'highlighter') {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.diameter;
-    ctx.beginPath();
-    const first = stroke.points[0];
-    if (!first) {
-      ctx.restore();
-      return;
-    }
-    ctx.moveTo(first.x, first.y);
-    for (let i = 1; i < stroke.points.length; i += 1) {
-      const p = stroke.points[i];
-      if (p) ctx.lineTo(p.x, p.y);
-    }
-    if (stroke.points.length === 1) ctx.lineTo(first.x + 0.01, first.y);
-    ctx.stroke();
-    ctx.restore();
-    return;
-  }
-
-  // pen / pressure / laser — segment widths for pressure
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.strokeStyle = stroke.color;
-  if (stroke.kind !== 'pressure' || stroke.points.length < 2) {
-    const p0 = stroke.points[0];
-    if (!p0) {
-      ctx.restore();
-      return;
-    }
-    ctx.lineWidth = strokeWidth(stroke, p0.pressure);
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    if (stroke.points.length === 1) {
-      ctx.lineTo(p0.x + 0.01, p0.y);
-    } else {
-      for (let i = 1; i < stroke.points.length; i += 1) {
-        const p = stroke.points[i];
-        if (p) ctx.lineTo(p.x, p.y);
-      }
-    }
-    ctx.stroke();
-  } else {
-    for (let i = 1; i < stroke.points.length; i += 1) {
-      const a = stroke.points[i - 1];
-      const b = stroke.points[i];
-      if (!a || !b) continue;
-      ctx.beginPath();
-      ctx.lineWidth = strokeWidth(stroke, (a.pressure + b.pressure) / 2);
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
-
-function redrawLayer(canvas: HTMLCanvasElement | null, strokes: Stroke[]): void {
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  for (const s of strokes) drawStrokeOnCtx(ctx, s);
-}
-
-/**
- * Prefer image natural pixels; never go below displayed CSS * devicePixelRatio
- * so zoomed-in drawing stays sharp on retina.
- */
-function resolveInkBufferSize(
-  img: HTMLImageElement,
-): { bufW: number; bufH: number; cssW: number; cssH: number } {
-  const cssW = Math.max(1, img.clientWidth);
-  const cssH = Math.max(1, img.clientHeight);
-  const natW = img.naturalWidth > 0 ? img.naturalWidth : cssW;
-  const natH = img.naturalHeight > 0 ? img.naturalHeight : cssH;
-  const dpr = Math.min(3, window.devicePixelRatio || 1);
-  let bufW = Math.max(natW, Math.round(cssW * dpr));
-  let bufH = Math.max(natH, Math.round(cssH * dpr));
-  const longEdge = Math.max(bufW, bufH);
-  if (longEdge > MAX_BUFFER_EDGE) {
-    const s = MAX_BUFFER_EDGE / longEdge;
-    bufW = Math.max(1, Math.round(bufW * s));
-    bufH = Math.max(1, Math.round(bufH * s));
-  }
-  return { bufW, bufH, cssW, cssH };
 }
 
 function ToolTipBtn({
   label,
   active = false,
   disabled = false,
+  tone = 'default',
   onClick,
   children,
 }: {
   label: string;
   active?: boolean;
   disabled?: boolean;
+  tone?: 'default' | 'save' | 'saveAs';
   onClick: () => void;
   children: ReactNode;
 }) {
+  const toneClass =
+    tone === 'save'
+      ? 'border-emerald-400/60 bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40'
+      : tone === 'saveAs'
+        ? 'border-violet-400/60 bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40'
+        : active
+          ? 'border-sky-400 bg-sky-500/30 text-white'
+          : 'border-white/15 bg-white/10 text-white hover:bg-white/20 disabled:opacity-40';
+
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
@@ -287,11 +214,7 @@ function ToolTipBtn({
           aria-label={label}
           disabled={disabled}
           onClick={onClick}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border text-white transition-colors disabled:opacity-40 ${
-            active
-              ? 'border-sky-400 bg-sky-500/30'
-              : 'border-white/15 bg-white/10 hover:bg-white/20'
-          }`}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${toneClass}`}
         >
           {children}
         </button>
@@ -310,8 +233,161 @@ function ToolTipBtn({
   );
 }
 
+const RAINBOW_SWATCH_STYLE = {
+  backgroundImage:
+    'conic-gradient(from 0deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)',
+} as const;
+
+function SolidLineIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M2 8h12"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function DashedLineIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M2 8h3M7 8h3M12 8h2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function StrokePath({
+  stroke,
+  fading = false,
+}: {
+  stroke: AnnotateStroke;
+  fading?: boolean;
+}) {
+  const isEraser = stroke.kind === 'eraser';
+  const paint = isEraser ? '#000' : stroke.color;
+  const baseOpacity = isEraser ? 1 : stroke.opacity;
+  const fadeStyle = fading
+    ? {
+        opacity: 0,
+        transition: `opacity ${LASER_FADE_OUT_MS}ms ease-out`,
+      }
+    : { opacity: baseOpacity };
+
+  if (usesStampBrush(stroke)) {
+    const spacing =
+      Math.max(0.75, Math.min(stroke.diameterX, stroke.diameterY) * 0.4);
+    const stamps = sampleStampCenters(stroke.points, spacing);
+    return (
+      <g style={fadeStyle}>
+        {stamps.map((pt, i) => {
+          const srcIdx = Math.min(
+            stroke.points.length - 1,
+            Math.round(
+              (i / Math.max(1, stamps.length - 1)) *
+                (stroke.points.length - 1),
+            ),
+          );
+          const angleDeg =
+            (stampTangentAngle(stroke.points, srcIdx) * 180) / Math.PI;
+          const tipScale = stroke.kind === 'pressure' ? pt.pressure : 1;
+          const hx = Math.max(0.25, (stroke.diameterX * tipScale) / 2);
+          const hy = Math.max(0.25, (stroke.diameterY * tipScale) / 2);
+          if (stroke.shape === 'square') {
+            return (
+              <rect
+                key={`${stroke.id}-st-${i}`}
+                x={-hx}
+                y={-hy}
+                width={hx * 2}
+                height={hy * 2}
+                fill={paint}
+                transform={`translate(${pt.x} ${pt.y}) rotate(${angleDeg})`}
+              />
+            );
+          }
+          return (
+            <ellipse
+              key={`${stroke.id}-st-${i}`}
+              cx={0}
+              cy={0}
+              rx={hx}
+              ry={hy}
+              fill={paint}
+              transform={`translate(${pt.x} ${pt.y}) rotate(${angleDeg})`}
+            />
+          );
+        })}
+      </g>
+    );
+  }
+
+  const refD = strokeRefDiameter(stroke);
+
+  if (stroke.kind === 'pressure' && stroke.points.length >= 2) {
+    return (
+      <g style={fadeStyle}>
+        {stroke.points.slice(1).map((b, i) => {
+          const a = stroke.points[i]!;
+          const w = Math.max(0.5, refD * ((a.pressure + b.pressure) / 2));
+          return (
+            <path
+              key={`${stroke.id}-p-${i}`}
+              d={`M ${a.x} ${a.y} L ${b.x} ${b.y}`}
+              fill="none"
+              stroke={paint}
+              strokeWidth={w}
+              strokeLinecap={lineCapFor(stroke.shape)}
+              strokeLinejoin={lineJoinFor(stroke.shape)}
+              strokeDasharray={dashArrayFor({
+                ...stroke,
+                diameterX: w,
+                diameterY: w,
+              })}
+            />
+          );
+        })}
+      </g>
+    );
+  }
+
+  const d = pointsToSvgPath(stroke.points);
+  if (!d) return null;
+  return (
+    <path
+      d={d}
+      fill="none"
+      stroke={paint}
+      strokeWidth={refD}
+      strokeLinecap={lineCapFor(stroke.shape)}
+      strokeLinejoin={lineJoinFor(stroke.shape)}
+      strokeDasharray={dashArrayFor(stroke)}
+      style={fadeStyle}
+    />
+  );
+}
+
 /**
- * Fullscreen enlarge viewer: wheel/dblclick zoom, drag pan, Ink drawing tools.
+ * Fullscreen enlarge viewer: vector ink, wheel zoom, brush cursor, annotate save.
  */
 export default function HaimImageLightbox({
   src,
@@ -324,31 +400,68 @@ export default function HaimImageLightbox({
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<Tool>('pan');
-  const [penColor, setPenColor] = useState<string>(PEN_COLORS[0]);
-  const [highlightColor, setHighlightColor] = useState<string>(HIGHLIGHT_COLORS[0]);
-  const [penSize, setPenSize] = useState(4);
-  const [inkStrokes, setInkStrokes] = useState<Stroke[]>([]);
-  const [highlightStrokes, setHighlightStrokes] = useState<Stroke[]>([]);
-  const [laserStrokes, setLaserStrokes] = useState<Stroke[]>([]);
-  const [redoStack, setRedoStack] = useState<
-    Array<{ layer: 'ink' | 'highlight' | 'both'; stroke: Stroke }>
-  >([]);
-  const strokeSeqRef = useRef(0);
+  const [penColor, setPenColor] = useState<string>('#111827ff');
+  const [highlightColor, setHighlightColor] = useState<string>('#facc15ff');
+  const [penSizeW, setPenSizeW] = useState(4);
+  const [penSizeH, setPenSizeH] = useState(4);
+  const [penOpacity, setPenOpacity] = useState(1);
+  const [highlightOpacity, setHighlightOpacity] = useState(0.45);
+  const [highlightBlend, setHighlightBlend] =
+    useState<HighlightBlendMode>('multiply');
+  const [brushShape, setBrushShape] = useState<BrushShape>('circle');
+  const [brushDash, setBrushDash] = useState<BrushDash>('solid');
+  const [inkStrokes, setInkStrokes] = useState<AnnotateStroke[]>([]);
+  const [highlightStrokes, setHighlightStrokes] = useState<AnnotateStroke[]>([]);
+  const [laserStrokes, setLaserStrokes] = useState<AnnotateStroke[]>([]);
+  const [textObjects, setTextObjects] = useState<AnnotateText[]>([]);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  /** Actively editing in a textarea (subset of selected). */
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [textFontFamily, setTextFontFamily] = useState('Paperozi, sans-serif');
+  const [textFontSizePx, setTextFontSizePx] = useState(24);
+  const [textFontWeight, setTextFontWeight] = useState('400');
+  const [textFontStyle, setTextFontStyle] = useState<'normal' | 'italic'>('normal');
+  const [fadingLaserIds, setFadingLaserIds] = useState<Set<string>>(() => new Set());
+  /** Eraser-only React live preview (needs SVG masks). Other tools use live canvas. */
+  const [liveEraserStroke, setLiveEraserStroke] = useState<AnnotateStroke | null>(
+    null,
+  );
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [redoStack, setRedoStack] = useState<HistoryEntry[]>([]);
+  const [bufSize, setBufSize] = useState({ w: 1, h: 1 });
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const [inkReady, setInkReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
+  const [paletteExpanded, setPaletteExpanded] = useState(false);
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const inkCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const highlightCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const laserCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const stageHitRef = useRef<HTMLDivElement | null>(null);
   const presenterRef = useRef<DelegatedInkTrailPresenter | null>(null);
-  const inkRef = useRef<Stroke[]>([]);
-  const highlightRef = useRef<Stroke[]>([]);
-  const laserRef = useRef<Stroke[]>([]);
-  const drawingRef = useRef<Stroke | null>(null);
-  const drawingLayerRef = useRef<'ink' | 'highlight' | 'laser' | null>(null);
+  const inkRef = useRef<AnnotateStroke[]>([]);
+  const highlightRef = useRef<AnnotateStroke[]>([]);
+  const textsRef = useRef<AnnotateText[]>([]);
+  const drawingRef = useRef<AnnotateStroke | null>(null);
+  const strokeTipRef = useRef<StrokePoint | null>(null);
+  const liveCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const liveCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const livePaintedLenRef = useRef(0);
+  const liveRafRef = useRef<number | null>(null);
+  const cursorRafRef = useRef<number | null>(null);
+  const cursorSmoothRef = useRef<{ x: number; y: number } | null>(null);
+  const textDragRef = useRef<{
+    id: string;
+    pointerId: number;
+    startClientX: number;
+    startClientY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
+  const textEditRef = useRef<HTMLTextAreaElement | null>(null);
   const panDragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -358,18 +471,31 @@ export default function HaimImageLightbox({
   } | null>(null);
   const bufferScaleRef = useRef(1);
   const scaleRef = useRef(scale);
-  const sizeRangeRef = useRef<HTMLLabelElement | null>(null);
-  const laserTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const strokeSeqRef = useRef(0);
+  const laserTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
+  /** Texts removed via Del/Backspace — restored by undo before stroke undo. */
+  const deletedTextUndoRef = useRef<AnnotateText[]>([]);
+  const wheelCleanupRef = useRef<(() => void) | null>(null);
 
   inkRef.current = inkStrokes;
   highlightRef.current = highlightStrokes;
-  laserRef.current = laserStrokes;
+  textsRef.current = textObjects;
   scaleRef.current = scale;
 
   const canSave =
     Boolean(onSaveAnnotated) &&
     isHaimAnnotateUploadAvailable() &&
-    (inkStrokes.length > 0 || highlightStrokes.length > 0);
+    (inkStrokes.length > 0 ||
+      highlightStrokes.length > 0 ||
+      textObjects.some((t) => t.text.trim().length > 0));
+
+  const selectedText =
+    textObjects.find((t) => t.id === selectedTextId) ?? null;
+
+  const activeColor = tool === 'highlighter' ? highlightColor : penColor;
+  const activeOpacity = tool === 'highlighter' ? highlightOpacity : penOpacity;
 
   const resetView = useCallback(() => {
     setScale(1);
@@ -385,71 +511,84 @@ export default function HaimImageLightbox({
     setInkStrokes([]);
     setHighlightStrokes([]);
     setLaserStrokes([]);
+    setTextObjects([]);
+    setSelectedTextId(null);
+    setEditingTextId(null);
+    setFadingLaserIds(new Set());
     setRedoStack([]);
+    deletedTextUndoRef.current = [];
+    setLiveEraserStroke(null);
+    setIsDrawing(false);
     drawingRef.current = null;
-    drawingLayerRef.current = null;
-    clearLaserTimers();
-    for (const c of [inkCanvasRef.current, highlightCanvasRef.current, laserCanvasRef.current]) {
-      if (!c) continue;
-      const ctx = c.getContext('2d');
-      ctx?.clearRect(0, 0, c.width, c.height);
+    strokeTipRef.current = null;
+    livePaintedLenRef.current = 0;
+    const liveCtx = liveCtxRef.current;
+    const liveCanvas = liveCanvasRef.current;
+    if (liveCtx && liveCanvas) {
+      liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
     }
+    if (liveRafRef.current != null) {
+      cancelAnimationFrame(liveRafRef.current);
+      liveRafRef.current = null;
+    }
+    textDragRef.current = null;
+    clearLaserTimers();
   }, [clearLaserTimers]);
 
+  const prevVisibleRef = useRef(false);
+
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      prevVisibleRef.current = false;
+      return;
+    }
+    const justOpened = !prevVisibleRef.current;
+    prevVisibleRef.current = true;
+    // Keep strokes/tool when src refreshes after save; only reset on open.
+    if (!justOpened) return;
     resetView();
     clearAllDrawings();
     setTool('pan');
     setSaveError(null);
+    setCursorPos(null);
   }, [visible, src, resetView, clearAllDrawings]);
 
   useEffect(() => {
     if (visible) return;
     clearLaserTimers();
+    wheelCleanupRef.current?.();
+    wheelCleanupRef.current = null;
   }, [visible, clearLaserTimers]);
 
-  const syncCanvasSize = useCallback(() => {
+  const syncBufferSize = useCallback(() => {
     const img = imgRef.current;
     if (!img) return;
-    const { bufW, bufH, cssW, cssH } = resolveInkBufferSize(img);
-    if (cssW < 1 || cssH < 1) return;
-    bufferScaleRef.current = bufW / cssW;
-    for (const canvas of [
-      inkCanvasRef.current,
-      highlightCanvasRef.current,
-      laserCanvasRef.current,
-    ]) {
-      if (!canvas) continue;
-      const sizeChanged = canvas.width !== bufW || canvas.height !== bufH;
-      if (sizeChanged) {
-        canvas.width = bufW;
-        canvas.height = bufH;
-      }
-      canvas.style.width = `${cssW}px`;
-      canvas.style.height = `${cssH}px`;
-    }
-    redrawLayer(inkCanvasRef.current, inkRef.current);
-    redrawLayer(highlightCanvasRef.current, highlightRef.current);
-    redrawLayer(laserCanvasRef.current, laserRef.current);
+    const { bufW, bufH, cssW } = resolveInkBufferSize(img);
+    // Skip bogus layouts (hidden / not measured) so scale does not explode.
+    if (cssW < 8 || img.clientHeight < 8) return;
+    bufferScaleRef.current = bufferScaleFromCss(bufW, cssW);
+    setBufSize({ w: bufW, h: bufH });
   }, []);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!visible) return undefined;
-    syncCanvasSize();
+    syncBufferSize();
     const img = imgRef.current;
     if (!img) return undefined;
-    const onLoad = () => syncCanvasSize();
+    const onLoad = () => syncBufferSize();
     img.addEventListener('load', onLoad);
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncCanvasSize) : null;
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(syncBufferSize)
+        : null;
     ro?.observe(img);
-    window.addEventListener('resize', syncCanvasSize);
+    window.addEventListener('resize', syncBufferSize);
     return () => {
       img.removeEventListener('load', onLoad);
       ro?.disconnect();
-      window.removeEventListener('resize', syncCanvasSize);
+      window.removeEventListener('resize', syncBufferSize);
     };
-  }, [visible, src, syncCanvasSize]);
+  }, [visible, src, syncBufferSize]);
 
   useEffect(() => {
     if (!visible) {
@@ -458,12 +597,12 @@ export default function HaimImageLightbox({
       return undefined;
     }
     let cancelled = false;
-    const canvas = inkCanvasRef.current;
-    if (!canvas || !isInkApiAvailable()) {
+    const area = stageHitRef.current;
+    if (!area || !isInkApiAvailable()) {
       setInkReady(false);
       return undefined;
     }
-    void requestInkPresenter(canvas).then((presenter) => {
+    void requestInkPresenter(area).then((presenter) => {
       if (cancelled) return;
       presenterRef.current = presenter;
       setInkReady(Boolean(presenter));
@@ -472,22 +611,7 @@ export default function HaimImageLightbox({
       cancelled = true;
       presenterRef.current = null;
     };
-  }, [visible, src]);
-
-  useEffect(() => {
-    if (!visible) return;
-    redrawLayer(inkCanvasRef.current, inkStrokes);
-  }, [inkStrokes, visible]);
-
-  useEffect(() => {
-    if (!visible) return;
-    redrawLayer(highlightCanvasRef.current, highlightStrokes);
-  }, [highlightStrokes, visible]);
-
-  useEffect(() => {
-    if (!visible) return;
-    redrawLayer(laserCanvasRef.current, laserStrokes);
-  }, [laserStrokes, visible]);
+  }, [visible, src, bufSize.w]);
 
   const zoomAt = useCallback(
     (nextScale: number, clientX: number, clientY: number) => {
@@ -512,19 +636,26 @@ export default function HaimImageLightbox({
     [],
   );
 
-  useLayoutEffect(() => {
-    if (!visible) return undefined;
-    const el = viewportRef.current;
-    if (!el) return undefined;
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const direction = event.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
-      zoomAt(scaleRef.current * direction, event.clientX, event.clientY);
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [visible, zoomAt]);
+  /** Callback ref so wheel binds after Dialog portal mounts (fixes missed zoom). */
+  const setViewportNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      wheelCleanupRef.current?.();
+      wheelCleanupRef.current = null;
+      viewportRef.current = node;
+      if (!node) return;
+      const onWheel = (event: WheelEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const direction = event.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
+        zoomAt(scaleRef.current * direction, event.clientX, event.clientY);
+      };
+      node.addEventListener('wheel', onWheel, { passive: false, capture: true });
+      wheelCleanupRef.current = () => {
+        node.removeEventListener('wheel', onWheel, true);
+      };
+    },
+    [zoomAt],
+  );
 
   const onImageDoubleClick = useCallback(
     (event: ReactMouseEvent) => {
@@ -539,32 +670,41 @@ export default function HaimImageLightbox({
     [scale, resetView, zoomAt],
   );
 
-  const canvasLocalPoint = useCallback(
+  const bufferPoint = useCallback(
     (
       event: PointerEvent | ReactPointerEvent,
       usePressure: boolean,
-    ): Point | null => {
-      const canvas = inkCanvasRef.current;
-      if (!canvas) return null;
-      const rect = canvas.getBoundingClientRect();
+    ): StrokePoint | null => {
+      const hit = stageHitRef.current;
+      if (!hit) return null;
+      const rect = hit.getBoundingClientRect();
       if (rect.width < 1 || rect.height < 1) return null;
-      // Map screen → high-res buffer pixels (natural / retina buffer).
       return {
-        x: ((event.clientX - rect.left) / rect.width) * canvas.width,
-        y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+        x: ((event.clientX - rect.left) / rect.width) * bufSize.w,
+        y: ((event.clientY - rect.top) / rect.height) * bufSize.h,
         pressure: readPressure(event, usePressure),
       };
     },
-    [],
+    [bufSize.w, bufSize.h],
   );
 
-  const cssDiameterForTool = useCallback(
-    (kind: StrokeKind): number => {
-      if (kind === 'highlighter') return Math.max(8, penSize * 3);
-      if (kind === 'laser') return Math.max(2, penSize * 0.75);
-      return penSize;
+  const cssBrushForTool = useCallback(
+    (kind: StrokeKind): { w: number; h: number } => {
+      // Highlighter W/H are already tip sizes in CSS px — do not multiply
+      // (old ×3 made stamps flood the trajectory bounding box).
+      const scaleFor = kind === 'laser' ? 0.75 : 1;
+      const minAxis = kind === 'highlighter' ? 4 : kind === 'laser' ? 2 : MIN_PEN;
+      if (kind === 'highlighter') {
+        return {
+          w: Math.max(minAxis, penSizeW * scaleFor),
+          h: Math.max(minAxis, penSizeH * scaleFor),
+        };
+      }
+      // Pens / pressure / laser / eraser: square aspect (1:1).
+      const s = Math.max(minAxis, penSizeW * scaleFor);
+      return { w: s, h: s };
     },
-    [penSize],
+    [penSizeW, penSizeH],
   );
 
   const beginPan = useCallback(
@@ -598,7 +738,9 @@ export default function HaimImageLightbox({
     if (!drag || drag.pointerId !== event.pointerId) return;
     panDragRef.current = null;
     try {
-      (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+      (event.currentTarget as HTMLElement).releasePointerCapture?.(
+        event.pointerId,
+      );
     } catch {
       // ignore
     }
@@ -608,11 +750,126 @@ export default function HaimImageLightbox({
     const prev = laserTimersRef.current.get(strokeId);
     if (prev) clearTimeout(prev);
     const timer = setTimeout(() => {
-      laserTimersRef.current.delete(strokeId);
-      setLaserStrokes((list) => list.filter((s) => s.id !== strokeId));
+      setFadingLaserIds((s) => {
+        const next = new Set(s);
+        next.add(strokeId);
+        return next;
+      });
+      const removeTimer = setTimeout(() => {
+        laserTimersRef.current.delete(strokeId);
+        setFadingLaserIds((s) => {
+          const next = new Set(s);
+          next.delete(strokeId);
+          return next;
+        });
+        setLaserStrokes((list) => list.filter((st) => st.id !== strokeId));
+      }, LASER_FADE_OUT_MS);
+      laserTimersRef.current.set(strokeId, removeTimer);
     }, LASER_FADE_MS);
     laserTimersRef.current.set(strokeId, timer);
   }, []);
+
+  const ensureLiveCtx = useCallback((): CanvasRenderingContext2D | null => {
+    const canvas = liveCanvasRef.current;
+    if (!canvas) return null;
+    if (
+      canvas.width !== bufSize.w ||
+      canvas.height !== bufSize.h
+    ) {
+      canvas.width = Math.max(1, bufSize.w);
+      canvas.height = Math.max(1, bufSize.h);
+      liveCtxRef.current = null;
+      livePaintedLenRef.current = 0;
+    }
+    if (!liveCtxRef.current) {
+      liveCtxRef.current = canvas.getContext('2d', { alpha: true });
+      if (liveCtxRef.current) {
+        liveCtxRef.current.imageSmoothingEnabled = true;
+        liveCtxRef.current.imageSmoothingQuality = 'high';
+      }
+    }
+    return liveCtxRef.current;
+  }, [bufSize.w, bufSize.h]);
+
+  const clearLiveCanvas = useCallback(() => {
+    const canvas = liveCanvasRef.current;
+    const ctx = liveCtxRef.current ?? canvas?.getContext('2d');
+    if (canvas && ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    livePaintedLenRef.current = 0;
+  }, []);
+
+  /** Paint live stroke on canvas — no React re-render (main latency win). */
+  const paintLiveCanvas = useCallback(() => {
+    const stroke = drawingRef.current;
+    if (!stroke || stroke.kind === 'eraser') return;
+    const ctx = ensureLiveCtx();
+    const canvas = liveCanvasRef.current;
+    if (!ctx || !canvas) return;
+
+    if (
+      liveStrokeNeedsFullRepaint(stroke) ||
+      livePaintedLenRef.current === 0
+    ) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.strokeStyle = stroke.color;
+      ctx.fillStyle = stroke.color;
+      paintAnnotateStrokeOnCtx(ctx, stroke);
+      ctx.restore();
+      livePaintedLenRef.current = stroke.points.length;
+      return;
+    }
+
+    ctx.save();
+    ctx.strokeStyle = stroke.color;
+    ctx.fillStyle = stroke.color;
+    livePaintedLenRef.current = paintAnnotateStrokeIncremental(
+      ctx,
+      stroke,
+      livePaintedLenRef.current,
+    );
+    ctx.restore();
+  }, [ensureLiveCtx]);
+
+  const flushLiveEraser = useCallback(() => {
+    if (liveRafRef.current != null) return;
+    liveRafRef.current = requestAnimationFrame(() => {
+      liveRafRef.current = null;
+      const stroke = drawingRef.current;
+      if (!stroke || stroke.kind !== 'eraser') {
+        setLiveEraserStroke(null);
+        return;
+      }
+      setLiveEraserStroke({ ...stroke, points: stroke.points.slice() });
+    });
+  }, []);
+
+  const collectRawPoints = useCallback(
+    (
+      event: ReactPointerEvent,
+      usePressure: boolean,
+    ): StrokePoint[] => {
+      const native = event.nativeEvent;
+      const coalesced =
+        typeof native.getCoalescedEvents === 'function'
+          ? native.getCoalescedEvents()
+          : [];
+      const sources = coalesced.length > 0 ? coalesced : [native];
+      const out: StrokePoint[] = [];
+      for (const ev of sources) {
+        const pt = bufferPoint(ev, usePressure);
+        if (pt) out.push(pt);
+      }
+      if (out.length === 0) {
+        const fallback = bufferPoint(event, usePressure);
+        if (fallback) out.push(fallback);
+      }
+      return out;
+    },
+    [bufferPoint],
+  );
 
   const beginDraw = useCallback(
     (event: ReactPointerEvent) => {
@@ -628,7 +885,8 @@ export default function HaimImageLightbox({
       event.preventDefault();
       event.stopPropagation();
       const usePressure = tool === 'pressure';
-      const pt = canvasLocalPoint(event, usePressure);
+      const raws = collectRawPoints(event, usePressure);
+      const pt = raws[raws.length - 1];
       if (!pt) return;
       (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 
@@ -649,53 +907,85 @@ export default function HaimImageLightbox({
           : kind === 'highlighter'
             ? highlightColor
             : kind === 'eraser'
-              ? 'rgba(0,0,0,1)'
+              ? '#000000'
               : penColor;
 
-      // Scale brush from CSS px → high-res buffer px so strokes stay sharp when saved.
-      const cssDia = cssDiameterForTool(kind);
-      const diameter = Math.max(0.5, cssDia * bufferScaleRef.current);
+      const cssBrush = cssBrushForTool(kind);
+      const liveScale = clamp(bufferScaleRef.current, 0.25, 12);
+      const diameterX = clampStrokeDiameter(
+        Math.max(0.5, cssBrush.w * liveScale),
+        bufSize.w,
+        bufSize.h,
+      );
+      const diameterY = clampStrokeDiameter(
+        Math.max(0.5, cssBrush.h * liveScale),
+        bufSize.w,
+        bufSize.h,
+      );
+      const opacity =
+        kind === 'eraser'
+          ? 1
+          : kind === 'laser'
+            ? 0.9
+            : kind === 'highlighter'
+              ? highlightOpacity
+              : penOpacity;
 
-      const stroke: Stroke = {
+      const stroke: AnnotateStroke = {
         id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         seq: ++strokeSeqRef.current,
         kind,
         color,
-        diameter,
+        diameterX,
+        diameterY,
         points: [pt],
+        shape: brushShape,
+        dash: brushDash,
+        opacity,
+        ...(kind === 'highlighter' ? { blend: highlightBlend } : {}),
       };
       drawingRef.current = stroke;
+      strokeTipRef.current = { ...pt };
+      setIsDrawing(true);
+      livePaintedLenRef.current = 0;
 
-      if (kind === 'highlighter') {
-        drawingLayerRef.current = 'highlight';
-        const ctx = highlightCanvasRef.current?.getContext('2d');
-        if (ctx) drawStrokeOnCtx(ctx, stroke);
-      } else if (kind === 'laser') {
-        drawingLayerRef.current = 'laser';
-        const ctx = laserCanvasRef.current?.getContext('2d');
-        if (ctx) drawStrokeOnCtx(ctx, stroke);
-        scheduleLaserExpiry(stroke.id);
-      } else if (kind === 'eraser') {
-        // Eraser hits ink + highlight layers.
-        drawingLayerRef.current = 'ink';
-        const inkCtx = inkCanvasRef.current?.getContext('2d');
-        const hiCtx = highlightCanvasRef.current?.getContext('2d');
-        if (inkCtx) drawStrokeOnCtx(inkCtx, stroke);
-        if (hiCtx) drawStrokeOnCtx(hiCtx, stroke);
+      if (kind === 'eraser') {
+        clearLiveCanvas();
+        setLiveEraserStroke({ ...stroke, points: [...stroke.points] });
       } else {
-        drawingLayerRef.current = 'ink';
-        const ctx = inkCanvasRef.current?.getContext('2d');
-        if (ctx) drawStrokeOnCtx(ctx, stroke);
-        if (presenterRef.current && event.nativeEvent.isTrusted) {
-          try {
-            // Ink trail uses CSS pixels (screen), not buffer pixels.
-            presenterRef.current.updateInkTrailStartPoint(event.nativeEvent, {
-              color: penColor,
-              diameter: Math.max(1, cssDia * (kind === 'pressure' ? pt.pressure : 1)),
-            });
-          } catch {
-            // optional
-          }
+        setLiveEraserStroke(null);
+        clearLiveCanvas();
+        // Sync paint first point immediately.
+        const ctx = ensureLiveCtx();
+        if (ctx && liveCanvasRef.current) {
+          ctx.clearRect(0, 0, liveCanvasRef.current.width, liveCanvasRef.current.height);
+          ctx.save();
+          ctx.strokeStyle = stroke.color;
+          ctx.fillStyle = stroke.color;
+          paintAnnotateStrokeOnCtx(ctx, stroke);
+          ctx.restore();
+          livePaintedLenRef.current = stroke.points.length;
+        }
+      }
+
+      if (kind === 'laser') scheduleLaserExpiry(stroke.id);
+
+      if (
+        (kind === 'pen' || kind === 'pressure') &&
+        presenterRef.current &&
+        event.nativeEvent.isTrusted
+      ) {
+        try {
+          const trailDia = Math.max(cssBrush.w, cssBrush.h);
+          presenterRef.current.updateInkTrailStartPoint(event.nativeEvent, {
+            color: penColor,
+            diameter: Math.max(
+              1,
+              trailDia * (kind === 'pressure' ? pt.pressure : 1),
+            ),
+          });
+        } catch {
+          // optional
         }
       }
     },
@@ -703,9 +993,16 @@ export default function HaimImageLightbox({
       tool,
       penColor,
       highlightColor,
-      canvasLocalPoint,
-      cssDiameterForTool,
+      highlightOpacity,
+      penOpacity,
+      highlightBlend,
+      brushShape,
+      brushDash,
+      collectRawPoints,
+      cssBrushForTool,
       scheduleLaserExpiry,
+      clearLiveCanvas,
+      ensureLiveCtx,
     ],
   );
 
@@ -714,96 +1011,177 @@ export default function HaimImageLightbox({
       const stroke = drawingRef.current;
       if (!stroke) return;
       event.preventDefault();
-      const pt = canvasLocalPoint(event, stroke.kind === 'pressure');
-      if (!pt) return;
-      const prev = stroke.points[stroke.points.length - 1];
-      stroke.points.push(pt);
+      const usePressure = stroke.kind === 'pressure';
+      const raws = collectRawPoints(event, usePressure);
+      if (!raws.length) return;
 
-      const paintSegment = (canvas: HTMLCanvasElement | null) => {
-        const ctx = canvas?.getContext('2d');
-        if (!ctx || !prev) return;
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        if (stroke.kind === 'eraser') {
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.strokeStyle = 'rgba(0,0,0,1)';
-          ctx.lineWidth = stroke.diameter;
-        } else {
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.strokeStyle = stroke.color;
-          ctx.lineWidth = strokeWidth(stroke, (prev.pressure + pt.pressure) / 2);
-        }
-        ctx.beginPath();
-        ctx.moveTo(prev.x, prev.y);
-        ctx.lineTo(pt.x, pt.y);
-        ctx.stroke();
-        ctx.restore();
-      };
+      const tip = strokeTipRef.current ?? stroke.points[stroke.points.length - 1];
+      if (!tip) return;
+      strokeTipRef.current = appendSmoothedPoints(stroke.points, tip, raws);
 
-      if (stroke.kind === 'highlighter') {
-        paintSegment(highlightCanvasRef.current);
-      } else if (stroke.kind === 'laser') {
-        paintSegment(laserCanvasRef.current);
-        scheduleLaserExpiry(stroke.id);
-      } else if (stroke.kind === 'eraser') {
-        paintSegment(inkCanvasRef.current);
-        paintSegment(highlightCanvasRef.current);
+      if (stroke.kind === 'eraser') {
+        flushLiveEraser();
       } else {
-        paintSegment(inkCanvasRef.current);
-        if (presenterRef.current && event.nativeEvent.isTrusted) {
-          try {
-            const cssDia = stroke.diameter / Math.max(0.001, bufferScaleRef.current);
-            presenterRef.current.updateInkTrailStartPoint(event.nativeEvent, {
-              color: stroke.color,
-              diameter: Math.max(
-                1,
-                cssDia * (stroke.kind === 'pressure' ? pt.pressure : 1),
-              ),
-            });
-          } catch {
-            // ignore
-          }
+        // Paint synchronously for lowest input→pixel latency.
+        paintLiveCanvas();
+      }
+
+      if (stroke.kind === 'laser') scheduleLaserExpiry(stroke.id);
+
+      if (
+        (stroke.kind === 'pen' || stroke.kind === 'pressure') &&
+        presenterRef.current &&
+        event.nativeEvent.isTrusted
+      ) {
+        try {
+          const last = strokeTipRef.current;
+          const refBuf = strokeRefDiameter(stroke);
+          const cssDia = refBuf / Math.max(0.001, bufferScaleRef.current);
+          presenterRef.current.updateInkTrailStartPoint(event.nativeEvent, {
+            color: stroke.color,
+            diameter: Math.max(
+              1,
+              cssDia * (stroke.kind === 'pressure' ? last?.pressure ?? 1 : 1),
+            ),
+          });
+        } catch {
+          // ignore
         }
       }
     },
-    [canvasLocalPoint, scheduleLaserExpiry],
+    [
+      collectRawPoints,
+      flushLiveEraser,
+      paintLiveCanvas,
+      scheduleLaserExpiry,
+    ],
   );
 
   const endDraw = useCallback(
     (event: ReactPointerEvent) => {
       const stroke = drawingRef.current;
       if (!stroke) return;
+
+      // Snap tip to final pointer so the stroke lands on the cursor.
+      const usePressure = stroke.kind === 'pressure';
+      const raws = collectRawPoints(event, usePressure);
+      const lastRaw = raws[raws.length - 1];
+      if (lastRaw && strokeTipRef.current) {
+        const snapped = followPointerTip(strokeTipRef.current, lastRaw, 1);
+        const last = stroke.points[stroke.points.length - 1];
+        if (
+          !last ||
+          last.x !== snapped.x ||
+          last.y !== snapped.y
+        ) {
+          stroke.points.push(snapped);
+        } else {
+          last.pressure = snapped.pressure;
+        }
+        strokeTipRef.current = snapped;
+      }
+
+      // Final live paint includes snap before we hand off to SVG.
+      if (stroke.kind !== 'eraser') {
+        paintLiveCanvas();
+      }
+
       drawingRef.current = null;
-      drawingLayerRef.current = null;
+      strokeTipRef.current = null;
+      if (liveRafRef.current != null) {
+        cancelAnimationFrame(liveRafRef.current);
+        liveRafRef.current = null;
+      }
+      setLiveEraserStroke(null);
+      setIsDrawing(false);
       try {
-        (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+        (event.currentTarget as HTMLElement).releasePointerCapture?.(
+          event.pointerId,
+        );
       } catch {
         // ignore
       }
-      if (stroke.points.length === 0) return;
+      if (stroke.points.length === 0) {
+        clearLiveCanvas();
+        return;
+      }
+      const copy = { ...stroke, points: [...stroke.points] };
 
       if (stroke.kind === 'laser') {
-        setLaserStrokes((prev) => [...prev, { ...stroke, points: [...stroke.points] }]);
+        setLaserStrokes((prev) => [...prev, copy]);
         scheduleLaserExpiry(stroke.id);
+        // Keep canvas until SVG commits to avoid a blank frame.
+        requestAnimationFrame(() => clearLiveCanvas());
         return;
       }
 
       setRedoStack([]);
-      const copy = { ...stroke, points: [...stroke.points] };
       if (stroke.kind === 'highlighter') {
         setHighlightStrokes((prev) => [...prev, copy]);
       } else if (stroke.kind === 'eraser') {
-        // Store one eraser stroke on ink history; also apply visual already done.
         setInkStrokes((prev) => [...prev, copy]);
         setHighlightStrokes((prev) => [...prev, copy]);
+        clearLiveCanvas();
+        return;
       } else {
         setInkStrokes((prev) => [...prev, copy]);
       }
+      requestAnimationFrame(() => clearLiveCanvas());
     },
-    [scheduleLaserExpiry],
+    [
+      collectRawPoints,
+      scheduleLaserExpiry,
+      clearLiveCanvas,
+      paintLiveCanvas,
+    ],
+  );
+
+  const updateSelectedText = useCallback(
+    (patch: Partial<AnnotateText>) => {
+      if (!selectedTextId) return;
+      setTextObjects((list) =>
+        list.map((t) => (t.id === selectedTextId ? { ...t, ...patch } : t)),
+      );
+    },
+    [selectedTextId],
+  );
+
+  const placeOrSelectText = useCallback(
+    (event: ReactPointerEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const pt = bufferPoint(event, false);
+      if (!pt) return;
+
+      const id = `t-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const next: AnnotateText = {
+        id,
+        seq: ++strokeSeqRef.current,
+        x: pt.x,
+        y: pt.y,
+        text: '',
+        color: penColor,
+        opacity: penOpacity,
+        fontSizePx: textFontSizePx,
+        fontFamily: textFontFamily,
+        fontWeight: textFontWeight,
+        fontStyle: textFontStyle,
+      };
+      setRedoStack([]);
+      setTextObjects((prev) => [...prev, next]);
+      setSelectedTextId(id);
+      setEditingTextId(id);
+      window.setTimeout(() => textEditRef.current?.focus(), 30);
+    },
+    [
+      bufferPoint,
+      penColor,
+      penOpacity,
+      textFontSizePx,
+      textFontFamily,
+      textFontWeight,
+      textFontStyle,
+    ],
   );
 
   const onStagePointerDown = useCallback(
@@ -812,52 +1190,170 @@ export default function HaimImageLightbox({
         beginPan(event);
         return;
       }
+      if (tool === 'text') {
+        // Empty canvas click → finish current edit, then place new text.
+        setEditingTextId(null);
+        placeOrSelectText(event);
+        return;
+      }
+      setSelectedTextId(null);
+      setEditingTextId(null);
       beginDraw(event);
     },
-    [tool, beginPan, beginDraw],
+    [tool, beginPan, beginDraw, placeOrSelectText],
   );
 
   const onStagePointerMove = useCallback(
     (event: ReactPointerEvent) => {
+      // Skip brush-cursor React updates while drawing (cursor is hidden anyway).
+      if (!drawingRef.current) {
+        const rawCursor = { x: event.clientX, y: event.clientY };
+        const prev = cursorSmoothRef.current;
+        if (!prev) {
+          cursorSmoothRef.current = rawCursor;
+          setCursorPos(rawCursor);
+        } else {
+          // Snappier cursor follow when idle.
+          cursorSmoothRef.current = {
+            x: prev.x + (rawCursor.x - prev.x) * 0.72,
+            y: prev.y + (rawCursor.y - prev.y) * 0.72,
+          };
+          if (cursorRafRef.current == null) {
+            cursorRafRef.current = requestAnimationFrame(() => {
+              cursorRafRef.current = null;
+              if (cursorSmoothRef.current) {
+                setCursorPos({ ...cursorSmoothRef.current });
+              }
+            });
+          }
+        }
+      }
+
+      const drag = textDragRef.current;
+      if (drag && drag.pointerId === event.pointerId) {
+        event.preventDefault();
+        const hit = stageHitRef.current;
+        if (!hit) return;
+        const rect = hit.getBoundingClientRect();
+        const dx =
+          ((event.clientX - drag.startClientX) / Math.max(1, rect.width)) *
+          bufSize.w;
+        const dy =
+          ((event.clientY - drag.startClientY) / Math.max(1, rect.height)) *
+          bufSize.h;
+        setTextObjects((list) =>
+          list.map((t) =>
+            t.id === drag.id
+              ? { ...t, x: drag.originX + dx, y: drag.originY + dy }
+              : t,
+          ),
+        );
+        return;
+      }
       if (panDragRef.current) {
         movePan(event);
         return;
       }
       if (drawingRef.current) moveDraw(event);
     },
-    [movePan, moveDraw],
+    [movePan, moveDraw, bufSize.w, bufSize.h],
   );
 
   const onStagePointerUp = useCallback(
     (event: ReactPointerEvent) => {
+      if (textDragRef.current?.pointerId === event.pointerId) {
+        textDragRef.current = null;
+        try {
+          (event.currentTarget as HTMLElement).releasePointerCapture?.(
+            event.pointerId,
+          );
+        } catch {
+          // ignore
+        }
+      }
       if (panDragRef.current) endPan(event);
       if (drawingRef.current) endDraw(event);
     },
     [endPan, endDraw],
   );
 
+  const finishTextEditing = useCallback(() => {
+    const id = editingTextId ?? selectedTextId;
+    try {
+      textEditRef.current?.blur();
+    } catch {
+      // ignore
+    }
+    if (id) {
+      const t = textsRef.current.find((x) => x.id === id);
+      if (t && !t.text.trim()) {
+        setTextObjects((list) => list.filter((x) => x.id !== id));
+        setSelectedTextId(null);
+      }
+    }
+    // Leave object selected (completed look) unless it was removed as empty.
+    setEditingTextId(null);
+  }, [editingTextId, selectedTextId]);
+
+  const deleteSelectedText = useCallback(() => {
+    const id = selectedTextId;
+    if (!id) return;
+    const t = textsRef.current.find((x) => x.id === id);
+    if (!t) return;
+    deletedTextUndoRef.current.push({ ...t });
+    setRedoStack([]);
+    setTextObjects((list) => list.filter((x) => x.id !== id));
+    setSelectedTextId(null);
+    setEditingTextId(null);
+  }, [selectedTextId]);
+
   const undoStrokeClean = useCallback(() => {
+    const restored = deletedTextUndoRef.current.pop();
+    if (restored) {
+      setTextObjects((prev) => [...prev, restored]);
+      setSelectedTextId(restored.id);
+      setEditingTextId(null);
+      return;
+    }
+
     const ink = inkRef.current;
     const hi = highlightRef.current;
+    const texts = textsRef.current;
     const lastInk = ink[ink.length - 1];
     const lastHi = hi[hi.length - 1];
-    if (!lastInk && !lastHi) return;
+    const lastText = texts[texts.length - 1];
+    const inkSeq = lastInk?.seq ?? -1;
+    const hiSeq = lastHi?.seq ?? -1;
+    const textSeq = lastText?.seq ?? -1;
+    const maxSeq = Math.max(inkSeq, hiSeq, textSeq);
+    if (maxSeq < 0) return;
 
-    if (lastInk && lastHi && lastInk.id === lastHi.id && lastInk.kind === 'eraser') {
+    if (textSeq === maxSeq && lastText) {
+      setRedoStack((r) => [...r, { layer: 'text', text: lastText }]);
+      setTextObjects(texts.slice(0, -1));
+      setSelectedTextId((id) => (id === lastText.id ? null : id));
+      return;
+    }
+
+    if (
+      lastInk &&
+      lastHi &&
+      lastInk.id === lastHi.id &&
+      lastInk.kind === 'eraser' &&
+      lastInk.seq === maxSeq
+    ) {
       setRedoStack((r) => [...r, { layer: 'both', stroke: lastInk }]);
       setInkStrokes(ink.slice(0, -1));
       setHighlightStrokes(hi.slice(0, -1));
       return;
     }
 
-    const inkSeq = lastInk?.seq ?? -1;
-    const hiSeq = lastHi?.seq ?? -1;
-    if (inkSeq >= hiSeq && lastInk) {
+    if (inkSeq >= hiSeq && lastInk && inkSeq === maxSeq) {
       setRedoStack((r) => [...r, { layer: 'ink', stroke: lastInk }]);
       setInkStrokes(ink.slice(0, -1));
       return;
     }
-    if (lastHi) {
+    if (lastHi && hiSeq === maxSeq) {
       setRedoStack((r) => [...r, { layer: 'highlight', stroke: lastHi }]);
       setHighlightStrokes(hi.slice(0, -1));
     }
@@ -868,7 +1364,9 @@ export default function HaimImageLightbox({
       if (!stack.length) return stack;
       const next = stack[stack.length - 1];
       if (!next) return stack;
-      if (next.layer === 'both' || next.stroke.kind === 'eraser') {
+      if (next.layer === 'text') {
+        setTextObjects((prev) => [...prev, next.text]);
+      } else if (next.layer === 'both' || next.stroke.kind === 'eraser') {
         setInkStrokes((prev) => [...prev, next.stroke]);
         setHighlightStrokes((prev) => [...prev, next.stroke]);
       } else if (next.layer === 'ink') {
@@ -881,42 +1379,73 @@ export default function HaimImageLightbox({
   }, []);
 
   const adjustPenSize = useCallback((direction: 1 | -1) => {
-    setPenSize((s) => bumpSize(s, direction));
+    setPenSizeW((s) => bumpSize(s, direction));
+    setPenSizeH((s) => bumpSize(s, direction));
   }, []);
 
-  // Non-passive wheel on brush-size control (React onWheel is often passive).
-  useLayoutEffect(() => {
-    if (!visible) return undefined;
-    const el = sizeRangeRef.current;
-    if (!el) return undefined;
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      adjustPenSize(event.deltaY > 0 ? -1 : 1);
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [visible, adjustPenSize]);
+  const adjustTextFontSize = useCallback(
+    (direction: 1 | -1) => {
+      const id = selectedTextId;
+      const current =
+        (id
+          ? textsRef.current.find((t) => t.id === id)?.fontSizePx
+          : null) ?? textFontSizePx;
+      const next = bumpFontSize(current, direction);
+      setTextFontSizePx(next);
+      if (id) {
+        setTextObjects((list) =>
+          list.map((t) => (t.id === id ? { ...t, fontSizePx: next } : t)),
+        );
+      }
+    },
+    [selectedTextId, textFontSizePx],
+  );
+
+  const setUniformPenSize = useCallback((n: number) => {
+    const v = roundSize(clamp(n, MIN_PEN, MAX_PEN));
+    setPenSizeW(v);
+    setPenSizeH(v);
+  }, []);
+
+  const selectHighlighter = useCallback(() => {
+    setTool('highlighter');
+    setBrushDash('solid');
+    setBrushShape('square');
+  }, []);
 
   const runSave = useCallback(
     async (mode: HaimImageLightboxSaveMode) => {
       if (!onSaveAnnotated || !src || saving) return;
-      if (inkStrokes.length === 0 && highlightStrokes.length === 0) return;
+      const hasText = textObjects.some((t) => t.text.trim().length > 0);
+      if (inkStrokes.length === 0 && highlightStrokes.length === 0 && !hasText) {
+        return;
+      }
       setSaving(true);
       setSaveError(null);
       try {
+        const inkCanvas = rasterizeInkLayer(bufSize.w, bufSize.h, inkStrokes);
+        const inkCtx = inkCanvas.getContext('2d');
+        if (inkCtx) {
+          drawAnnotateTextsOnCanvas(
+            inkCtx,
+            textObjects,
+            bufferScaleRef.current,
+          );
+        }
+        const highlightCanvas = rasterizeHighlightLayer(
+          bufSize.w,
+          bufSize.h,
+          highlightStrokes,
+        );
         const blob = await compositeAnnotatedImageBlob({
           src,
-          inkCanvas: inkCanvasRef.current,
-          highlightCanvas: highlightCanvasRef.current,
+          inkCanvas,
+          highlightCanvas,
         });
         const file = new File([blob], `annotated-${Date.now()}.png`, {
           type: 'image/png',
         });
         await onSaveAnnotated(mode, file);
-        if (mode === 'overwrite') {
-          clearAllDrawings();
-        }
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -927,13 +1456,14 @@ export default function HaimImageLightbox({
       onSaveAnnotated,
       src,
       saving,
-      inkStrokes.length,
-      highlightStrokes.length,
-      clearAllDrawings,
+      inkStrokes,
+      highlightStrokes,
+      textObjects,
+      bufSize.w,
+      bufSize.h,
     ],
   );
 
-  // Capture-phase shortcuts while lightbox is open (nested over editor undo).
   useEffect(() => {
     if (!visible) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -942,8 +1472,9 @@ export default function HaimImageLightbox({
       const typing =
         tag === 'input' || tag === 'textarea' || target?.isContentEditable;
 
-      const mod = event.metaKey || event.ctrlKey;
+      const mod = IS_APPLE ? event.metaKey : event.ctrlKey;
       const key = event.key.toLowerCase();
+      const code = event.code;
 
       if (mod && key === 's') {
         event.preventDefault();
@@ -952,7 +1483,6 @@ export default function HaimImageLightbox({
         void runSave(event.shiftKey ? 'saveAs' : 'overwrite');
         return;
       }
-
       if (mod && key === 'z' && !event.shiftKey) {
         event.preventDefault();
         event.stopPropagation();
@@ -968,15 +1498,74 @@ export default function HaimImageLightbox({
         return;
       }
 
-      if (typing) return;
+      const textFontTarget = Boolean(selectedTextId) || tool === 'text';
+      const fontDec =
+        mod &&
+        ((event.shiftKey &&
+          (event.key === '<' ||
+            event.key === ',' ||
+            code === 'Comma')) ||
+          (!event.shiftKey &&
+            (event.key === '[' || code === 'BracketLeft')));
+      const fontInc =
+        mod &&
+        ((event.shiftKey &&
+          (event.key === '>' ||
+            event.key === '.' ||
+            code === 'Period')) ||
+          (!event.shiftKey &&
+            (event.key === ']' || code === 'BracketRight')));
 
-      if (event.key === '[') {
+      if (textFontTarget && (fontDec || fontInc)) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        adjustTextFontSize(fontDec ? -1 : 1);
+        return;
+      }
+
+      // Text mode / selected or editing: Esc commits edit (do not close lightbox).
+      if (
+        event.key === 'Escape' &&
+        (tool === 'text' || selectedTextId || editingTextId)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        if (editingTextId) {
+          finishTextEditing();
+        } else {
+          setSelectedTextId(null);
+        }
+        return;
+      }
+
+      // Selected text (not typing chars): Del / Backspace removes the object.
+      if (
+        selectedTextId &&
+        !mod &&
+        (key === 'backspace' || key === 'delete')
+      ) {
+        // While caret-editing with content, let the textarea handle the key.
+        if (editingTextId && typing && tag === 'textarea') {
+          const ta = target as HTMLTextAreaElement;
+          if (ta.value.length > 0) return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        deleteSelectedText();
+        return;
+      }
+
+      if (typing) return;
+      if (!mod && event.key === '[') {
         event.preventDefault();
         event.stopPropagation();
         adjustPenSize(-1);
         return;
       }
-      if (event.key === ']') {
+      if (!mod && event.key === ']') {
         event.preventDefault();
         event.stopPropagation();
         adjustPenSize(1);
@@ -984,16 +1573,63 @@ export default function HaimImageLightbox({
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [visible, runSave, undoStrokeClean, redoStroke, adjustPenSize]);
+  }, [
+    visible,
+    runSave,
+    undoStrokeClean,
+    redoStroke,
+    adjustPenSize,
+    adjustTextFontSize,
+    selectedTextId,
+    editingTextId,
+    tool,
+    finishTextEditing,
+    deleteSelectedText,
+  ]);
 
-  const cursorClass =
-    tool === 'pan'
-      ? 'cursor-grab'
-      : tool === 'eraser'
-        ? 'cursor-cell'
-        : 'cursor-crosshair';
+  const showBrushCursor =
+    tool !== 'pan' &&
+    tool !== 'text' &&
+    cursorPos != null &&
+    !panDragRef.current &&
+    !isDrawing;
+  const brushCss = cssBrushForTool(
+    tool === 'eraser'
+      ? 'eraser'
+      : tool === 'highlighter'
+        ? 'highlighter'
+        : tool === 'laser'
+          ? 'laser'
+          : tool === 'pressure'
+            ? 'pressure'
+            : 'pen',
+  );
+  const brushScreenW = Math.max(4, brushCss.w * scale);
+  const brushScreenH = Math.max(4, brushCss.h * scale);
 
-  const permanentCount = inkStrokes.length + highlightStrokes.length;
+  const inkErasers = inkStrokes.filter((s) => s.kind === 'eraser');
+  const inkDraw = inkStrokes.filter((s) => s.kind !== 'eraser');
+  const hiErasers = highlightStrokes.filter((s) => s.kind === 'eraser');
+  const hiDraw = highlightStrokes.filter((s) => s.kind !== 'eraser');
+
+  const liveCanvasStyle: CSSProperties =
+    isDrawing && tool === 'highlighter'
+      ? { mixBlendMode: highlightBlend }
+      : {};
+
+  const permanentCount =
+    inkStrokes.length + highlightStrokes.length + textObjects.length;
+  const colorHex = cssHexToInputValue(
+    normalizeCssHexColor(activeColor) || '#111827ff',
+  );
+
+  const selectTriggerClass =
+    'inline-flex h-8 max-w-[7.5rem] items-center justify-center gap-1 rounded-lg border border-white/15 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20';
+  const selectContentClass =
+    'z-100070 overflow-hidden rounded-md border border-white/20 bg-neutral-900 text-white shadow';
+  const [selectPortalEl, setSelectPortalEl] = useState<HTMLElement | null>(
+    null,
+  );
 
   return (
     <Dialog.Root
@@ -1018,9 +1654,18 @@ export default function HaimImageLightbox({
               asChild
               forceMount
               onOpenAutoFocus={(e) => e.preventDefault()}
-              onEscapeKeyDown={() => onClose()}
+              onEscapeKeyDown={(e) => {
+                if (tool === 'text' || selectedTextId || editingTextId) {
+                  e.preventDefault();
+                  if (editingTextId) finishTextEditing();
+                  else setSelectedTextId(null);
+                  return;
+                }
+                onClose();
+              }}
             >
               <Motion.div
+                ref={setSelectPortalEl}
                 className="fixed inset-0 z-100061 flex flex-col outline-none"
                 aria-label="이미지 크게 보기"
                 initial={{ opacity: 0, scale: 0.98 }}
@@ -1030,16 +1675,26 @@ export default function HaimImageLightbox({
               >
                 <Dialog.Title className="sr-only">이미지 크게 보기</Dialog.Title>
                 <Dialog.Description className="sr-only">
-                  확대/축소, 패닝, 펜·형광펜·레이저로 그리고 저장할 수 있습니다.
+                  벡터 펜으로 그리고 확대/축소·저장할 수 있습니다.
                 </Dialog.Description>
 
                 <div
-                  ref={viewportRef}
-                  className={`relative z-1 flex min-h-0 min-w-0 flex-1 touch-none items-center justify-center overflow-hidden p-3 sm:p-6 ${cursorClass}`}
+                  ref={setViewportNode}
+                  className={`relative z-1 flex min-h-0 min-w-0 flex-1 touch-none items-center justify-center overflow-hidden p-3 sm:p-6 ${
+                    tool === 'pan'
+                      ? 'cursor-grab'
+                      : tool === 'text'
+                        ? 'cursor-text'
+                        : 'cursor-none'
+                  }`}
                   onPointerDown={onStagePointerDown}
                   onPointerMove={onStagePointerMove}
                   onPointerUp={onStagePointerUp}
                   onPointerCancel={onStagePointerUp}
+                  onPointerLeave={() => {
+                    setCursorPos(null);
+                    cursorSmoothRef.current = null;
+                  }}
                 >
                   {src ? (
                     <div
@@ -1051,6 +1706,7 @@ export default function HaimImageLightbox({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div
+                        ref={stageHitRef}
                         className="relative inline-block max-h-[min(78vh,100%)] max-w-[min(92vw,100%)] overflow-hidden shadow-2xl"
                         style={CHECKERBOARD_STYLE}
                       >
@@ -1062,25 +1718,377 @@ export default function HaimImageLightbox({
                           draggable={false}
                           onDoubleClick={onImageDoubleClick}
                         />
+                        <svg
+                          className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+                          viewBox={`0 0 ${bufSize.w} ${bufSize.h}`}
+                          preserveAspectRatio="none"
+                          aria-hidden
+                        >
+                          <defs>
+                            <mask id="haim-ink-erase-mask">
+                              <rect
+                                x="0"
+                                y="0"
+                                width={bufSize.w}
+                                height={bufSize.h}
+                                fill="#fff"
+                              />
+                              {inkErasers.map((s) => (
+                                <StrokePath key={`em-${s.id}`} stroke={s} />
+                              ))}
+                              {liveEraserStroke ? (
+                                <StrokePath stroke={liveEraserStroke} />
+                              ) : null}
+                            </mask>
+                            <mask id="haim-hi-erase-mask">
+                              <rect
+                                x="0"
+                                y="0"
+                                width={bufSize.w}
+                                height={bufSize.h}
+                                fill="#fff"
+                              />
+                              {hiErasers.map((s) => (
+                                <StrokePath key={`hem-${s.id}`} stroke={s} />
+                              ))}
+                              {liveEraserStroke ? (
+                                <StrokePath stroke={liveEraserStroke} />
+                              ) : null}
+                            </mask>
+                          </defs>
+
+                          <g mask="url(#haim-ink-erase-mask)">
+                            {inkDraw.map((s) => (
+                              <StrokePath key={s.id} stroke={s} />
+                            ))}
+                          </g>
+
+                          <g
+                            mask="url(#haim-hi-erase-mask)"
+                            style={{ mixBlendMode: highlightBlend }}
+                          >
+                            {hiDraw.map((s) => (
+                              <g
+                                key={s.id}
+                                style={{
+                                  mixBlendMode: s.blend || highlightBlend,
+                                }}
+                              >
+                                <StrokePath stroke={s} />
+                              </g>
+                            ))}
+                          </g>
+
+                          <g>
+                            {laserStrokes.map((s) => (
+                              <StrokePath
+                                key={s.id}
+                                stroke={s}
+                                fading={fadingLaserIds.has(s.id)}
+                              />
+                            ))}
+                          </g>
+                        </svg>
+
                         <canvas
-                          ref={inkCanvasRef}
+                          ref={liveCanvasRef}
                           className="pointer-events-none absolute inset-0 h-full w-full"
+                          width={bufSize.w}
+                          height={bufSize.h}
+                          style={liveCanvasStyle}
                           aria-hidden
                         />
-                        <canvas
-                          ref={highlightCanvasRef}
-                          className="pointer-events-none absolute inset-0 h-full w-full mix-blend-multiply"
-                          aria-hidden
-                        />
-                        <canvas
-                          ref={laserCanvasRef}
-                          className="pointer-events-none absolute inset-0 h-full w-full"
-                          aria-hidden
-                        />
+
+                        {/* HTML text layer (editable, scales with stage transform). */}
+                        {textObjects.map((t) => {
+                          const selected = t.id === selectedTextId;
+                          const editing = t.id === editingTextId;
+                          const leftPct = (t.x / Math.max(1, bufSize.w)) * 100;
+                          const topPct = (t.y / Math.max(1, bufSize.h)) * 100;
+                          return (
+                            <div
+                              key={t.id}
+                              className={`absolute z-1 min-w-8 max-w-[90%] ${
+                                selected
+                                  ? 'ring-2 ring-sky-400 ring-offset-1 ring-offset-transparent'
+                                  : ''
+                              }`}
+                              style={{
+                                left: `${leftPct}%`,
+                                top: `${topPct}%`,
+                                color: t.color,
+                                opacity: t.opacity,
+                                fontFamily: t.fontFamily,
+                                fontSize: `${t.fontSizePx}px`,
+                                fontWeight: t.fontWeight,
+                                fontStyle: t.fontStyle,
+                                lineHeight: 1.3,
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                cursor: tool === 'text' || selected ? 'move' : 'default',
+                                pointerEvents: tool === 'text' || selected ? 'auto' : 'none',
+                              }}
+                              onPointerDown={(e) => {
+                                if (tool !== 'text' && tool !== 'pan') return;
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setTool('text');
+                                // Select only — do not enter edit (Del can delete object).
+                                if (editingTextId && editingTextId !== t.id) {
+                                  finishTextEditing();
+                                }
+                                setEditingTextId(null);
+                                setSelectedTextId(t.id);
+                                setTextFontFamily(t.fontFamily);
+                                setTextFontSizePx(t.fontSizePx);
+                                setTextFontWeight(t.fontWeight);
+                                setTextFontStyle(t.fontStyle);
+                                textDragRef.current = {
+                                  id: t.id,
+                                  pointerId: e.pointerId,
+                                  startClientX: e.clientX,
+                                  startClientY: e.clientY,
+                                  originX: t.x,
+                                  originY: t.y,
+                                };
+                                (e.currentTarget as HTMLElement).setPointerCapture?.(
+                                  e.pointerId,
+                                );
+                              }}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setTool('text');
+                                setSelectedTextId(t.id);
+                                setEditingTextId(t.id);
+                                setTextFontFamily(t.fontFamily);
+                                setTextFontSizePx(t.fontSizePx);
+                                setTextFontWeight(t.fontWeight);
+                                setTextFontStyle(t.fontStyle);
+                                window.setTimeout(() => textEditRef.current?.focus(), 20);
+                              }}
+                            >
+                              {editing ? (
+                                <textarea
+                                  ref={textEditRef}
+                                  value={t.text}
+                                  rows={Math.max(1, t.text.split('\n').length)}
+                                  placeholder="텍스트 입력"
+                                  className="block w-full min-w-24 resize-none border-0 bg-transparent p-0 text-inherit outline-none placeholder:text-white/40"
+                                  style={{
+                                    fontFamily: 'inherit',
+                                    fontSize: 'inherit',
+                                    fontWeight: 'inherit',
+                                    fontStyle: 'inherit',
+                                    lineHeight: 'inherit',
+                                    color: 'inherit',
+                                    fieldSizing: 'content',
+                                  } as CSSProperties}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setTextObjects((list) =>
+                                      list.map((item) =>
+                                        item.id === t.id
+                                          ? { ...item, text: value }
+                                          : item,
+                                      ),
+                                    );
+                                  }}
+                                  onBlur={() => {
+                                    // Commit edit when focus leaves the field.
+                                    if (editingTextId === t.id) {
+                                      finishTextEditing();
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      finishTextEditing();
+                                      return;
+                                    }
+                                    if (
+                                      (e.key === 'Backspace' ||
+                                        e.key === 'Delete') &&
+                                      e.currentTarget.value.length === 0
+                                    ) {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      deleteSelectedText();
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span className="block">
+                                  {t.text || '텍스트'}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : null}
                 </div>
+
+                {showBrushCursor && cursorPos ? (
+                  <div
+                    className="pointer-events-none fixed z-100065 border border-white/80 bg-white/10 shadow"
+                    style={{
+                      left: cursorPos.x - brushScreenW / 2,
+                      top: cursorPos.y - brushScreenH / 2,
+                      width: brushScreenW,
+                      height: brushScreenH,
+                      borderRadius: brushShape === 'circle' ? '9999px' : '2px',
+                      borderStyle: brushDash === 'dashed' ? 'dashed' : 'solid',
+                      opacity: clamp(activeOpacity, 0.25, 0.85),
+                      backgroundColor:
+                        tool === 'eraser'
+                          ? 'transparent'
+                          : normalizeCssHexColor(activeColor) || undefined,
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+
+                {(tool === 'text' || selectedText) && (
+                  <aside
+                    className="absolute right-3 top-14 z-100062 flex w-64 flex-col gap-3 rounded-xl border border-white/15 bg-black/80 p-3 text-white shadow-xl backdrop-blur-md"
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white/90">
+                      <Type size={14} aria-hidden />
+                      텍스트 스타일
+                    </div>
+                    <label className="flex flex-col gap-1 text-[11px] text-white/70">
+                      <span>Font family</span>
+                      <FontFamilyInput
+                        value={
+                          selectedText?.fontFamily ?? textFontFamily
+                        }
+                        onChange={(v) => {
+                          setTextFontFamily(v);
+                          updateSelectedText({ fontFamily: v });
+                        }}
+                        className="w-full"
+                        inputClassName="!bg-neutral-900 !text-white !border-white/20 !text-xs"
+                        allowAddWebfont
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-white/70">
+                      <span>Font size</span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={MIN_FONT_PX}
+                          max={MAX_FONT_PX}
+                          step={1}
+                          value={selectedText?.fontSizePx ?? textFontSizePx}
+                          onChange={(e) => {
+                            const v = clamp(
+                              Math.round(Number(e.target.value) || 24),
+                              MIN_FONT_PX,
+                              MAX_FONT_PX,
+                            );
+                            setTextFontSizePx(v);
+                            updateSelectedText({ fontSizePx: v });
+                          }}
+                          className="w-full rounded border border-white/20 bg-black/40 px-2 py-1.5 text-right tabular-nums text-white"
+                          aria-label="Font size (px)"
+                        />
+                        <span className="shrink-0 text-white/60">px</span>
+                      </div>
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-white/70">
+                      <span>Font weight</span>
+                      <Select.Root
+                        value={selectedText?.fontWeight ?? textFontWeight}
+                        onValueChange={(v) => {
+                          setTextFontWeight(v);
+                          updateSelectedText({ fontWeight: v });
+                        }}
+                      >
+                        <Select.Trigger
+                          className="inline-flex h-8 w-full items-center justify-between rounded-lg border border-white/15 bg-white/10 px-2 text-[11px] text-white"
+                          aria-label="Font weight"
+                        >
+                          <Select.Value />
+                        </Select.Trigger>
+                        <Select.Portal container={selectPortalEl}>
+                          <Select.Content
+                            className={selectContentClass}
+                            position="popper"
+                            side="bottom"
+                            sideOffset={6}
+                            onCloseAutoFocus={(e) => e.preventDefault()}
+                          >
+                            <Select.Viewport className="p-1">
+                              {FONT_WEIGHT_OPTIONS.map((opt) => (
+                                <Select.Item
+                                  key={opt.value}
+                                  value={opt.value}
+                                  className="cursor-pointer rounded px-2 py-1.5 text-xs outline-none data-highlighted:bg-white/15"
+                                >
+                                  <Select.ItemText>{opt.label}</Select.ItemText>
+                                </Select.Item>
+                              ))}
+                            </Select.Viewport>
+                          </Select.Content>
+                        </Select.Portal>
+                      </Select.Root>
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-white/70">
+                      <span>Font style</span>
+                      <Select.Root
+                        value={selectedText?.fontStyle ?? textFontStyle}
+                        onValueChange={(v) => {
+                          const style = v === 'italic' ? 'italic' : 'normal';
+                          setTextFontStyle(style);
+                          updateSelectedText({ fontStyle: style });
+                        }}
+                      >
+                        <Select.Trigger
+                          className="inline-flex h-8 w-full items-center justify-between rounded-lg border border-white/15 bg-white/10 px-2 text-[11px] text-white"
+                          aria-label="Font style"
+                        >
+                          <Select.Value />
+                        </Select.Trigger>
+                        <Select.Portal container={selectPortalEl}>
+                          <Select.Content
+                            className={selectContentClass}
+                            position="popper"
+                            side="bottom"
+                            sideOffset={6}
+                            onCloseAutoFocus={(e) => e.preventDefault()}
+                          >
+                            <Select.Viewport className="p-1">
+                              <Select.Item
+                                value="normal"
+                                className="cursor-pointer rounded px-2 py-1.5 text-xs outline-none data-highlighted:bg-white/15"
+                              >
+                                <Select.ItemText>Normal</Select.ItemText>
+                              </Select.Item>
+                              <Select.Item
+                                value="italic"
+                                className="cursor-pointer rounded px-2 py-1.5 text-xs outline-none data-highlighted:bg-white/15"
+                              >
+                                <Select.ItemText>Italic</Select.ItemText>
+                              </Select.Item>
+                            </Select.Viewport>
+                          </Select.Content>
+                        </Select.Portal>
+                      </Select.Root>
+                    </label>
+                    <p className="text-[10px] leading-4 text-white/45">
+                      클릭으로 텍스트 추가 · 더블클릭 편집 · 드래그 이동
+                      <br />
+                      Esc 편집 완료 · 선택 후 Del/Backspace 삭제 · 더블클릭 편집
+                      <br />
+                      {MOD_LABEL}+[ ] / {MOD_LABEL}+Shift+&lt;&gt; 글자 크기
+                    </p>
+                  </aside>
+                )}
 
                 <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
                   <div
@@ -1096,7 +2104,7 @@ export default function HaimImageLightbox({
                         <Hand size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
-                        label="일반 펜 (필압 없음)"
+                        label="일반 펜"
                         active={tool === 'pen'}
                         onClick={() => setTool('pen')}
                       >
@@ -1110,14 +2118,14 @@ export default function HaimImageLightbox({
                         <PenLine size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
-                        label="형광펜 (오버레이)"
+                        label="형광펜"
                         active={tool === 'highlighter'}
-                        onClick={() => setTool('highlighter')}
+                        onClick={selectHighlighter}
                       >
                         <Highlighter size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
-                        label="레이저 포인터 (4초 후 사라짐)"
+                        label="레이저 (4초 후 페이드)"
                         active={tool === 'laser'}
                         onClick={() => setTool('laser')}
                       >
@@ -1130,76 +2138,442 @@ export default function HaimImageLightbox({
                       >
                         <Eraser size={16} />
                       </ToolTipBtn>
+                      <ToolTipBtn
+                        label="텍스트"
+                        active={tool === 'text'}
+                        onClick={() => setTool('text')}
+                      >
+                        <Type size={16} />
+                      </ToolTipBtn>
 
                       <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
 
-                      {tool === 'highlighter'
-                        ? HIGHLIGHT_COLORS.map((c) => (
-                            <button
-                              key={c}
-                              type="button"
-                              aria-label={`형광펜 색상`}
-                              onClick={() => {
-                                setHighlightColor(c);
-                                setTool('highlighter');
+                      <div className="relative flex items-center">
+                        {/* Collapsed: current color only. Expanded: stack upward. */}
+                        <button
+                          type="button"
+                          aria-label="펜 색상"
+                          aria-expanded={paletteExpanded}
+                          onClick={() => {
+                            setPaletteExpanded((v) => {
+                              if (v) setColorPopoverOpen(false);
+                              return !v;
+                            });
+                          }}
+                          className="relative z-1 h-7 w-7 rounded-full border-2 border-white/50 shadow"
+                          style={{
+                            backgroundColor:
+                              normalizeCssHexColor(activeColor) || '#111827',
+                          }}
+                        />
+
+                        <AnimatePresence mode="popLayout">
+                          {paletteExpanded ? (
+                            <Motion.div
+                              key="haim-color-palette"
+                              initial={{ opacity: 0, y: 16, scale: 0.85 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 12, scale: 0.9 }}
+                              transition={{
+                                type: 'spring',
+                                stiffness: 420,
+                                damping: 28,
+                                mass: 0.7,
                               }}
-                              className={`h-6 w-6 rounded-full border-2 ${
-                                highlightColor === c ? 'border-sky-400' : 'border-white/30'
-                              }`}
-                              style={{ backgroundColor: c }}
+                              className="absolute bottom-full left-1/2 z-2 mb-2 flex -translate-x-1/2 flex-col-reverse items-center gap-1.5 rounded-2xl border border-white/20 bg-neutral-950/95 p-2.5 shadow-2xl backdrop-blur-md"
+                            >
+                              {(tool === 'highlighter'
+                                ? HIGHLIGHT_COLORS
+                                : PEN_COLORS
+                              ).map((c, i, arr) => {
+                                const selected =
+                                  (normalizeCssHexColor(activeColor) || '')
+                                    .slice(0, 7)
+                                    .toLowerCase() === c.toLowerCase();
+                                // flex-col-reverse: pop from trigger upward (last DOM item first)
+                                const delay = 0.03 * (arr.length - i);
+                                return (
+                                  <Motion.button
+                                    key={c}
+                                    type="button"
+                                    aria-label={`색상 ${c}`}
+                                    initial={{ opacity: 0, y: 8, scale: 0.5 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{
+                                      type: 'spring',
+                                      stiffness: 500,
+                                      damping: 30,
+                                      delay,
+                                    }}
+                                    onClick={() => {
+                                      setColorPopoverOpen(false);
+                                      if (tool === 'highlighter') {
+                                        setHighlightColor(`${c}ff`);
+                                      } else {
+                                        setPenColor(`${c}ff`);
+                                        if (
+                                          tool === 'pan' ||
+                                          tool === 'eraser' ||
+                                          tool === 'laser'
+                                        ) {
+                                          setTool('pen');
+                                        }
+                                      }
+                                      setPaletteExpanded(false);
+                                    }}
+                                    className={`h-7 w-7 rounded-full border-2 shadow ${
+                                      selected
+                                        ? 'border-sky-300 scale-110'
+                                        : 'border-white/40'
+                                    }`}
+                                    style={{ backgroundColor: c }}
+                                  />
+                                );
+                              })}
+                              <Motion.button
+                                type="button"
+                                aria-label="사용자 색상"
+                                aria-pressed={colorPopoverOpen}
+                                initial={{ opacity: 0, y: 8, scale: 0.5 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{
+                                  type: 'spring',
+                                  stiffness: 500,
+                                  damping: 30,
+                                  delay: 0,
+                                }}
+                                onClick={() => setColorPopoverOpen((v) => !v)}
+                                className={`h-7 w-7 rounded-full border-2 shadow ${
+                                  colorPopoverOpen
+                                    ? 'border-sky-300 scale-110'
+                                    : 'border-white/50'
+                                }`}
+                                style={RAINBOW_SWATCH_STYLE}
+                              />
+                            </Motion.div>
+                          ) : null}
+                        </AnimatePresence>
+
+                        <AnimatePresence>
+                          {paletteExpanded && colorPopoverOpen ? (
+                            <Motion.div
+                              key="haim-color-picker"
+                              initial={{ opacity: 0, x: -6, scale: 0.96 }}
+                              animate={{ opacity: 1, x: 0, scale: 1 }}
+                              exit={{ opacity: 0, x: -4, scale: 0.96 }}
+                              transition={{ duration: 0.18, ease: LIGHTBOX_EASE }}
+                              className="absolute bottom-0 left-[calc(100%+0.5rem)] z-3 w-56 rounded-xl border border-white/20 bg-neutral-900/95 p-3 shadow-xl backdrop-blur-md"
+                            >
+                            <div
+                              className="mb-2 h-8 w-full rounded border border-white/20"
+                              style={{
+                                ...CSS_HEX_CHECKER_STYLE,
+                                backgroundColor: activeColor,
+                              }}
                             />
-                          ))
-                        : PEN_COLORS.map((c) => (
-                            <button
-                              key={c}
-                              type="button"
-                              aria-label={`색상 ${c}`}
-                              onClick={() => {
-                                setPenColor(c);
-                                if (tool === 'pan' || tool === 'eraser' || tool === 'laser') {
-                                  setTool('pen');
+                            <div className="[&_.react-colorful]:h-36 [&_.react-colorful]:w-full">
+                              <HexAlphaColorPicker
+                                color={colorHex}
+                                onChange={(next) => {
+                                  const color = normalizeCssHexColor(
+                                    next.startsWith('#') ? next : `#${next}`,
+                                  );
+                                  if (!color) return;
+                                  if (tool === 'highlighter') {
+                                    setHighlightColor(color);
+                                  } else {
+                                    setPenColor(color);
+                                    if (
+                                      tool === 'pan' ||
+                                      tool === 'eraser' ||
+                                      tool === 'laser'
+                                    ) {
+                                      setTool('pen');
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                            <HexColorInput
+                              alpha
+                              prefixed
+                              color={colorHex}
+                              onChange={(next) => {
+                                const color = normalizeCssHexColor(
+                                  next.startsWith('#') ? next : `#${next}`,
+                                );
+                                if (!color) return;
+                                if (tool === 'highlighter') {
+                                  setHighlightColor(color);
+                                } else {
+                                  setPenColor(color);
                                 }
                               }}
-                              className={`h-6 w-6 rounded-full border-2 ${
-                                penColor === c && (tool === 'pen' || tool === 'pressure')
-                                  ? 'border-sky-400'
-                                  : 'border-white/30'
-                              }`}
-                              style={{ backgroundColor: c }}
+                              className="mt-2 w-full rounded border border-white/20 bg-black/40 px-2 py-1 font-mono text-xs text-white"
                             />
-                          ))}
+                            </Motion.div>
+                          ) : null}
+                        </AnimatePresence>
+                      </div>
 
-                      <label
-                        ref={sizeRangeRef}
-                        className="ml-1 flex items-center gap-1.5 text-[11px] text-white/80"
-                      >
-                        <span className="sr-only">선 굵기 ([ ] / 휠)</span>
+                      <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
+
+                      {tool === 'highlighter' ? (
+                        <div className="flex items-center gap-1 text-[11px] text-white/80">
+                          <label className="flex items-center gap-0.5">
+                            <span className="opacity-70">W</span>
+                            <span className="sr-only">브러시 가로 (px)</span>
+                            <input
+                              type="number"
+                              min={MIN_PEN}
+                              max={MAX_PEN}
+                              step={0.1}
+                              value={penSizeW}
+                              onChange={(e) =>
+                                setPenSizeW(
+                                  roundSize(
+                                    clamp(
+                                      Number(e.target.value) || 1,
+                                      MIN_PEN,
+                                      MAX_PEN,
+                                    ),
+                                  ),
+                                )
+                              }
+                              className="w-12 rounded border border-white/20 bg-black/40 px-1 py-1 text-right tabular-nums text-white"
+                              aria-label="브러시 가로 (px)"
+                            />
+                          </label>
+                          <span className="opacity-50" aria-hidden>
+                            ×
+                          </span>
+                          <label className="flex items-center gap-0.5">
+                            <span className="opacity-70">H</span>
+                            <span className="sr-only">브러시 세로 (px)</span>
+                            <input
+                              type="number"
+                              min={MIN_PEN}
+                              max={MAX_PEN}
+                              step={0.1}
+                              value={penSizeH}
+                              onChange={(e) =>
+                                setPenSizeH(
+                                  roundSize(
+                                    clamp(
+                                      Number(e.target.value) || 1,
+                                      MIN_PEN,
+                                      MAX_PEN,
+                                    ),
+                                  ),
+                                )
+                              }
+                              className="w-12 rounded border border-white/20 bg-black/40 px-1 py-1 text-right tabular-nums text-white"
+                              aria-label="브러시 세로 (px)"
+                            />
+                          </label>
+                          <span className="tabular-nums text-white/60" aria-hidden>
+                            px
+                          </span>
+                        </div>
+                      ) : (
+                        <label className="flex items-center gap-1 text-[11px] text-white/80">
+                          <span className="sr-only">브러시 크기 (px)</span>
+                          <input
+                            type="number"
+                            min={MIN_PEN}
+                            max={MAX_PEN}
+                            step={0.1}
+                            value={penSizeW}
+                            onChange={(e) =>
+                              setUniformPenSize(Number(e.target.value) || 1)
+                            }
+                            className="w-14 rounded border border-white/20 bg-black/40 px-1.5 py-1 text-right tabular-nums text-white"
+                            aria-label="브러시 크기 (px)"
+                          />
+                          <span className="tabular-nums text-white/60" aria-hidden>
+                            px
+                          </span>
+                        </label>
+                      )}
+
+                      <label className="flex items-center gap-1 text-[11px] text-white/80">
+                        <span className="opacity-70">흐름</span>
                         <input
-                          type="range"
-                          min={MIN_PEN}
-                          max={MAX_PEN}
-                          step={0.1}
-                          value={penSize}
-                          onChange={(e) =>
-                            setPenSize(roundSize(Number(e.target.value) || 4))
-                          }
-                          className="w-20 accent-sky-400"
-                          aria-label="선 굵기"
+                          type="number"
+                          min={5}
+                          max={100}
+                          step={5}
+                          value={Math.round(
+                            (tool === 'highlighter'
+                              ? highlightOpacity
+                              : penOpacity) * 100,
+                          )}
+                          onChange={(e) => {
+                            const pct = clamp(
+                              Number(e.target.value) || 5,
+                              5,
+                              100,
+                            );
+                            const v = pct / 100;
+                            if (tool === 'highlighter') setHighlightOpacity(v);
+                            else setPenOpacity(v);
+                          }}
+                          className="w-12 rounded border border-white/20 bg-black/40 px-1.5 py-1 text-right tabular-nums text-white"
+                          aria-label="흐름 (%)"
                         />
-                        <span className="w-8 tabular-nums">{penSize}</span>
+                        <span className="tabular-nums text-white/60" aria-hidden>
+                          %
+                        </span>
                       </label>
+
+                      <Select.Root
+                        value={brushShape}
+                        onValueChange={(v) => setBrushShape(v as BrushShape)}
+                      >
+                        <Select.Trigger
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white hover:bg-white/20"
+                          aria-label={
+                            brushShape === 'circle' ? '원' : '네모'
+                          }
+                        >
+                          {brushShape === 'circle' ? (
+                            <Circle size={16} />
+                          ) : (
+                            <Square size={16} />
+                          )}
+                        </Select.Trigger>
+                        <Select.Portal container={selectPortalEl}>
+                          <Select.Content
+                            className={selectContentClass}
+                            position="popper"
+                            side="top"
+                            sideOffset={6}
+                            onCloseAutoFocus={(e) => e.preventDefault()}
+                          >
+                            <Select.Viewport className="p-1">
+                              <Select.Item
+                                value="circle"
+                                className="flex cursor-pointer items-center justify-center rounded px-2 py-1.5 outline-none data-highlighted:bg-white/15"
+                                aria-label="원"
+                              >
+                                <Circle size={16} />
+                                <Select.ItemText className="sr-only">
+                                  원
+                                </Select.ItemText>
+                              </Select.Item>
+                              <Select.Item
+                                value="square"
+                                className="flex cursor-pointer items-center justify-center rounded px-2 py-1.5 outline-none data-highlighted:bg-white/15"
+                                aria-label="네모"
+                              >
+                                <Square size={16} />
+                                <Select.ItemText className="sr-only">
+                                  네모
+                                </Select.ItemText>
+                              </Select.Item>
+                            </Select.Viewport>
+                          </Select.Content>
+                        </Select.Portal>
+                      </Select.Root>
+
+                      <Select.Root
+                        value={brushDash}
+                        onValueChange={(v) => setBrushDash(v as BrushDash)}
+                      >
+                        <Select.Trigger
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white hover:bg-white/20"
+                          aria-label={
+                            brushDash === 'dashed' ? 'Dashed' : 'Solid'
+                          }
+                        >
+                          {brushDash === 'dashed' ? (
+                            <DashedLineIcon size={16} />
+                          ) : (
+                            <SolidLineIcon size={16} />
+                          )}
+                        </Select.Trigger>
+                        <Select.Portal container={selectPortalEl}>
+                          <Select.Content
+                            className={selectContentClass}
+                            position="popper"
+                            side="top"
+                            sideOffset={6}
+                            onCloseAutoFocus={(e) => e.preventDefault()}
+                          >
+                            <Select.Viewport className="p-1">
+                              <Select.Item
+                                value="solid"
+                                className="flex cursor-pointer items-center justify-center rounded px-2 py-1.5 outline-none data-highlighted:bg-white/15"
+                                aria-label="Solid"
+                              >
+                                <SolidLineIcon size={16} />
+                                <Select.ItemText className="sr-only">
+                                  Solid
+                                </Select.ItemText>
+                              </Select.Item>
+                              <Select.Item
+                                value="dashed"
+                                className="flex cursor-pointer items-center justify-center rounded px-2 py-1.5 outline-none data-highlighted:bg-white/15"
+                                aria-label="Dashed"
+                              >
+                                <DashedLineIcon size={16} />
+                                <Select.ItemText className="sr-only">
+                                  Dashed
+                                </Select.ItemText>
+                              </Select.Item>
+                            </Select.Viewport>
+                          </Select.Content>
+                        </Select.Portal>
+                      </Select.Root>
+
+                      {tool === 'highlighter' ? (
+                        <Select.Root
+                          value={highlightBlend}
+                          onValueChange={(v) =>
+                            setHighlightBlend(v as HighlightBlendMode)
+                          }
+                        >
+                          <Select.Trigger
+                            className={selectTriggerClass}
+                            aria-label="형광펜 블렌드"
+                          >
+                            <Select.Value placeholder="Blend" />
+                          </Select.Trigger>
+                          <Select.Portal container={selectPortalEl}>
+                            <Select.Content
+                              className={`${selectContentClass} max-h-56 overflow-auto`}
+                              position="popper"
+                              side="top"
+                              sideOffset={6}
+                              onCloseAutoFocus={(e) => e.preventDefault()}
+                            >
+                              <Select.Viewport className="p-1">
+                                {HIGHLIGHT_BLEND_OPTIONS.map((opt) => (
+                                  <Select.Item
+                                    key={opt.value}
+                                    value={opt.value}
+                                    className="cursor-pointer rounded px-2 py-1.5 text-xs outline-none data-highlighted:bg-white/15"
+                                  >
+                                    <Select.ItemText>{opt.label}</Select.ItemText>
+                                  </Select.Item>
+                                ))}
+                              </Select.Viewport>
+                            </Select.Content>
+                          </Select.Portal>
+                        </Select.Root>
+                      ) : null}
 
                       <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
 
                       <ToolTipBtn
-                        label="실행 취소 (Ctrl+Z)"
+                        label={`실행 취소 (${MOD_LABEL}+Z)`}
                         disabled={permanentCount === 0}
                         onClick={undoStrokeClean}
                       >
                         <Undo2 size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
-                        label="다시 실행 (Ctrl+Y)"
+                        label={`다시 실행 (${REDO_SHORTCUT})`}
                         disabled={redoStack.length === 0}
                         onClick={redoStroke}
                       >
@@ -1207,7 +2581,9 @@ export default function HaimImageLightbox({
                       </ToolTipBtn>
                       <ToolTipBtn
                         label="그림 지우기"
-                        disabled={permanentCount === 0 && laserStrokes.length === 0}
+                        disabled={
+                          permanentCount === 0 && laserStrokes.length === 0
+                        }
                         onClick={clearAllDrawings}
                       >
                         <Trash2 size={16} />
@@ -1220,7 +2596,9 @@ export default function HaimImageLightbox({
                         onClick={() => {
                           const vp = viewportRef.current?.getBoundingClientRect();
                           if (!vp) {
-                            setScale((s) => clamp(s / ZOOM_STEP, MIN_SCALE, MAX_SCALE));
+                            setScale((s) =>
+                              clamp(s / ZOOM_STEP, MIN_SCALE, MAX_SCALE),
+                            );
                             return;
                           }
                           zoomAt(
@@ -1240,7 +2618,9 @@ export default function HaimImageLightbox({
                         onClick={() => {
                           const vp = viewportRef.current?.getBoundingClientRect();
                           if (!vp) {
-                            setScale((s) => clamp(s * ZOOM_STEP, MIN_SCALE, MAX_SCALE));
+                            setScale((s) =>
+                              clamp(s * ZOOM_STEP, MIN_SCALE, MAX_SCALE),
+                            );
                             return;
                           }
                           zoomAt(
@@ -1259,14 +2639,16 @@ export default function HaimImageLightbox({
                       <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
 
                       <ToolTipBtn
-                        label="덮어쓰기 저장 (Ctrl+S)"
+                        label={`덮어쓰기 저장 (${MOD_LABEL}+S)`}
+                        tone="save"
                         disabled={!canSave || saving}
                         onClick={() => void runSave('overwrite')}
                       >
                         <Save size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
-                        label="다른 이름으로 저장 (Ctrl+Shift+S)"
+                        label={`다른 이름으로 저장 (${MOD_LABEL}+Shift+S)`}
+                        tone="saveAs"
                         disabled={!canSave || saving}
                         onClick={() => void runSave('saveAs')}
                       >
@@ -1274,12 +2656,15 @@ export default function HaimImageLightbox({
                       </ToolTipBtn>
                     </div>
                     <p className="max-w-xl text-center text-[10px] text-white/55">
-                      [ ] 브러시 크기 · 휠 줌 · 더블클릭 줌 · Ctrl+Z/Y 실행취소
+                      휠 줌 · [ ] 펜 크기 · {MOD_LABEL}+[ ] / {MOD_LABEL}+Shift+&lt;&gt;
+                      글자 크기 · {MOD_LABEL}+Z / {REDO_SHORTCUT}
                       {inkReady ? ' · Ink API' : ''}
                       {saving ? ' · 저장 중…' : ''}
                     </p>
                     {saveError ? (
-                      <p className="max-w-xl text-center text-[10px] text-red-300">{saveError}</p>
+                      <p className="max-w-xl text-center text-[10px] text-red-300">
+                        {saveError}
+                      </p>
                     ) : null}
                   </div>
                 </Tooltip.Provider>
