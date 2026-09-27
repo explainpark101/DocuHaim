@@ -19,7 +19,9 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
-import ChatComposerRaw from '@/components/chatWithMyself/ChatComposer';
+import ChatComposer, {
+  type ChatComposerHandle,
+} from '@/components/chatWithMyself/ChatComposer';
 import ChatComposerDockRaw from '@/components/chatWithMyself/ChatComposerDock';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
 import ChatDatePanelRaw from '@/components/chatWithMyself/ChatDatePanel';
@@ -47,7 +49,6 @@ import {
 import type { ChatStorageCtx } from '@/utils/chatWithMyself/backends';
 
 /** Untyped JSX child panels — cast until those modules are migrated. */
-const ChatComposer = ChatComposerRaw as any;
 const ChatComposerDock = ChatComposerDockRaw as any;
 const ChatDatePanel = ChatDatePanelRaw as any;
 const ChatGroupPanel = ChatGroupPanelRaw as any;
@@ -594,7 +595,7 @@ export default function ChatWithMyselfPane({
   const loadingNewerRef = useRef(false);
   /** @type {React.MutableRefObject<import('@/utils/chatWithMyself/scrollToMessage').ChatMessageListHandle | null>} */
   const messageListRef = useRef<any>(null);
-  const composerRef = useRef<any>(null);
+  const composerRef = useRef<ChatComposerHandle | null>(null);
 
   const noteLocalDayWrite = useCallback((dateStr: string) => {
     if (dateStr) syncApiRef.current?.invalidateDay(dateStr);

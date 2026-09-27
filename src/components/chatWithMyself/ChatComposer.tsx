@@ -10,6 +10,10 @@ import {
   useRef,
   useState,
 } from 'react';
+import type {
+  ChatAttachmentKind,
+  ChatAttachmentMarkdownItem,
+} from '@/utils/chatWithMyself/attachments';
 import { Check, Paperclip, Pencil, Send, X, FileText, Folder } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { Compartment, StateEffect } from '@codemirror/state';
@@ -63,8 +67,274 @@ const COMPOSER_MAX_H = 200;
 const EDITOR_HEIGHT_CSS_TRANSITION =
   'height 0.28s cubic-bezier(0.22, 1, 0.36, 1)';
 
-function imageBackgroundsFromQueue(queue) {
-  const out = {};
+export type ChatComposerGroup = {
+  id: string;
+  name: string;
+  iconPath?: string;
+  aliases?: string[];
+};
+
+export type ChatComposerReplyTarget = {
+  id: string;
+  group: string;
+  body: string;
+  snippet?: string;
+  dateStr?: string;
+  at?: string;
+};
+
+export type ChatComposerEditTarget = ChatComposerReplyTarget & {
+  markdown?: boolean;
+  encrypted?: boolean;
+};
+
+export type ChatComposerShareEnqueueItem = {
+  kind: 'note' | 'folder';
+  path: string;
+  name?: string;
+};
+
+export type ChatComposerQueueItem = {
+  id: string;
+  kind: ChatAttachmentKind;
+  file?: File | null;
+  previewUrl: string | null;
+  path?: string;
+  name?: string;
+  size?: number | null;
+  background?: string | null;
+  existing?: boolean;
+};
+
+export type ChatComposerOutgoingFileAttachment = {
+  file: File;
+  background: string | null;
+};
+
+export type ChatComposerSendOptions = {
+  markdown?: boolean;
+  encryptPassword?: string;
+};
+
+export type ChatComposerSaveEditOptions = {
+  existingMarkdown?: string;
+  removedPaths?: string[];
+  markdown?: boolean;
+};
+
+export type ChatComposerSeedBody = {
+  id: string;
+  body: string;
+};
+
+export type ChatComposerGetPresignedUrl = (
+  path: string,
+) => Promise<string | null | undefined> | string | null | undefined;
+
+export type ChatImageLightboxOpenOptions = {
+  alt?: string;
+  backgroundColor?: string | null;
+  onBackgroundColorChange?: (next: string | null) => void;
+};
+
+export type ChatImageLightboxOpener = (
+  url: string,
+  options?: ChatImageLightboxOpenOptions,
+) => void;
+
+export type ChatComposerHandle = {
+  enqueueFiles: (fileList: FileList | File[] | null | undefined) => Promise<void>;
+  enqueueShareItems: (
+    items: ChatComposerShareEnqueueItem[] | null | undefined,
+  ) => void;
+};
+
+export type ChatComposerProps = {
+  groups?: ChatComposerGroup[];
+  selectedGroup?: string;
+  onSelectedGroupChange?: (groupId: string) => void;
+  onAddGroup?: (
+    name: string,
+  ) => Promise<ChatComposerGroup[] | void> | ChatComposerGroup[] | void;
+  onSend?: (
+    body: string,
+    group: string,
+    replyTo: ChatComposerReplyTarget | null,
+    imageFiles: ChatComposerOutgoingFileAttachment[],
+    options: ChatComposerSendOptions,
+  ) => void;
+  /** Unused; kept for API compatibility. */
+  _sending?: boolean;
+  /** Passed from pane; unused (see `_sending`). */
+  sending?: boolean;
+  theme?: 'light' | 'dark';
+  replyTo?: ChatComposerReplyTarget | null;
+  onClearReply?: () => void;
+  editTarget?: ChatComposerEditTarget | null;
+  onClearEdit?: () => void;
+  onSaveEdit?: (
+    body: string,
+    group: string,
+    target: ChatComposerEditTarget,
+    imageFiles: ChatComposerOutgoingFileAttachment[],
+    options: ChatComposerSaveEditOptions,
+  ) => void | Promise<void>;
+  ogStorage?: object | null;
+  timeZone?: string;
+  getPresignedUrl?: ChatComposerGetPresignedUrl | undefined;
+  bare?: boolean;
+  showToolbar?: boolean;
+  showLineNumbers?: boolean;
+  lightweight?: boolean;
+  isMobileLayout?: boolean;
+  seedBody?: ChatComposerSeedBody | null;
+  onSeedConsumed?: () => void;
+  fillParent?: boolean;
+  draftScope?: string;
+  autoFocusOnMount?: boolean;
+};
+
+type DoSendOptions = {
+  encryptPassword?: string;
+};
+
+type ChatLinkedTextMinimalProps = {
+  text: string;
+  className?: string;
+  getPresignedUrl?: ChatComposerGetPresignedUrl;
+};
+
+/** Typed boundary over the JS ChatLinkedText module (note/folder hooks optional here). */
+function ChatLinkedTextMinimal(props: ChatLinkedTextMinimalProps) {
+  return (
+    <ChatLinkedText
+      text={props.text}
+      className={props.className ?? ''}
+      getPresignedUrl={props.getPresignedUrl}
+      onOpenViewPath={undefined}
+      noteExists={undefined}
+      folderExists={undefined}
+      listFolderFiles={undefined}
+    />
+  );
+}
+
+type DraftLoaderRow = {
+  id: string;
+  file: File;
+  previewUrl: string;
+  kind?: 'image' | 'file';
+};
+
+function isDraftLoaderRow(value: unknown): value is DraftLoaderRow {
+  if (!value || typeof value !== 'object') return false;
+  if (!('id' in value) || !('file' in value) || !('previewUrl' in value)) {
+    return false;
+  }
+  if (typeof value.id !== 'string') return false;
+  if (!(value.file instanceof File)) return false;
+  if (typeof value.previewUrl !== 'string') return false;
+  if ('kind' in value) {
+    const kind = value.kind;
+    if (kind !== undefined && kind !== 'image' && kind !== 'file') return false;
+  }
+  return true;
+}
+
+function draftRowToQueueItem(row: DraftLoaderRow): ChatComposerQueueItem {
+  return {
+    id: row.id,
+    file: row.file,
+    previewUrl: row.previewUrl,
+    kind: row.kind === 'file' ? 'file' : 'image',
+  };
+}
+
+async function loadDraftQueueItems(
+  scope: string,
+  imageIds: string[],
+): Promise<ChatComposerQueueItem[]> {
+  const rows: unknown = await loadComposerDraftImageQueue(scope, imageIds);
+  if (!Array.isArray(rows)) return [];
+  return rows.filter(isDraftLoaderRow).map(draftRowToQueueItem);
+}
+
+function draftSyncFileQueue(
+  queue: ChatComposerQueueItem[],
+): Array<{ id: string; file: File }> {
+  const out: Array<{ id: string; file: File }> = [];
+  for (const item of queue) {
+    if (item.id && item.file instanceof File) {
+      out.push({ id: item.id, file: item.file });
+    }
+  }
+  return out;
+}
+
+function toAsyncPresignedUrl(
+  fn: ChatComposerGetPresignedUrl | undefined,
+): ((path: string) => Promise<string | null | undefined>) | null {
+  if (!fn) return null;
+  return async (path: string) => {
+    const result = await Promise.resolve(fn(path));
+    return result ?? null;
+  };
+}
+
+function toWikiPresignedUrl(
+  fn: ChatComposerGetPresignedUrl,
+): (path: string) => Promise<string | null> {
+  return async (path: string) => {
+    const result = await Promise.resolve(fn(path));
+    return result ?? null;
+  };
+}
+
+function focusHtmlElement(el: Element | null | undefined): void {
+  if (el instanceof HTMLElement) {
+    el.focus();
+  }
+}
+
+function stagedShareMarkdownItems(
+  queue: ChatComposerQueueItem[],
+): ChatAttachmentMarkdownItem[] {
+  const out: ChatAttachmentMarkdownItem[] = [];
+  for (const q of queue) {
+    if (q.file || !q.path || q.existing) continue;
+    if (q.kind !== 'note' && q.kind !== 'folder') continue;
+    const item: ChatAttachmentMarkdownItem = {
+      kind: q.kind,
+      path: q.path,
+      size: null,
+    };
+    if (q.name) item.name = q.name;
+    out.push(item);
+  }
+  return out;
+}
+
+function existingAttachmentMarkdownItems(
+  queue: ChatComposerQueueItem[],
+): ChatAttachmentMarkdownItem[] {
+  const out: ChatAttachmentMarkdownItem[] = [];
+  for (const q of queue) {
+    if (!q.existing || !q.path) continue;
+    out.push({
+      kind: q.kind,
+      path: q.path,
+      name: q.name ?? '',
+      size: q.size ?? null,
+      background: q.background ?? null,
+    });
+  }
+  return out;
+}
+
+function imageBackgroundsFromQueue(
+  queue: ChatComposerQueueItem[] | null | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = {};
   for (const item of queue || []) {
     if (!item?.id || !item.background) continue;
     out[item.id] = item.background;
@@ -72,15 +342,20 @@ function imageBackgroundsFromQueue(queue) {
   return out;
 }
 
-function applyDraftBackgrounds(items, backgrounds) {
-  if (!backgrounds || typeof backgrounds !== 'object') return items;
+function applyDraftBackgrounds(
+  items: ChatComposerQueueItem[] | null | undefined,
+  backgrounds: Record<string, string> | null | undefined,
+): ChatComposerQueueItem[] {
+  if (!backgrounds || typeof backgrounds !== 'object') {
+    return items ? [...items] : [];
+  }
   return (items || []).map((item) => ({
     ...item,
     background: backgrounds[item.id] || item.background || null,
   }));
 }
 
-function getComposerContentMaxH({ editing = false } = {}) {
+function getComposerContentMaxH({ editing = false }: { editing?: boolean } = {}): number {
   if (typeof window === 'undefined') {
     return editing ? 480 : COMPOSER_MAX_H;
   }
@@ -104,12 +379,15 @@ function isApplePlatform() {
   return false;
 }
 
-function measureComposerHeight(root, contentMaxH = COMPOSER_MAX_H) {
+function measureComposerHeight(
+  root: HTMLElement | null,
+  contentMaxH: number = COMPOSER_MAX_H,
+): number {
   if (!root) return COMPOSER_MIN_H;
   const textarea = root.querySelector(
     'textarea[data-chat-composer-textarea]',
   );
-  if (textarea) {
+  if (textarea instanceof HTMLTextAreaElement) {
     const prev = textarea.style.height;
     textarea.style.height = 'auto';
     const contentH = Math.min(
@@ -122,9 +400,12 @@ function measureComposerHeight(root, contentMaxH = COMPOSER_MAX_H) {
   const toolbar =
     root.querySelector('.md-editor-toolbar-wrapper') ||
     root.querySelector('.md-editor-toolbar');
-  const toolbarH = toolbar?.offsetHeight || 0;
+  const toolbarH =
+    toolbar instanceof HTMLElement ? toolbar.offsetHeight : 0;
   const content = root.querySelector('.cm-content');
-  if (!content) return Math.max(COMPOSER_MIN_H, toolbarH + COMPOSER_MIN_H);
+  if (!(content instanceof HTMLElement)) {
+    return Math.max(COMPOSER_MIN_H, toolbarH + COMPOSER_MIN_H);
+  }
   const scroller = root.querySelector('.cm-scroller');
   const padY = scroller
     ? Math.max(
@@ -140,56 +421,42 @@ function measureComposerHeight(root, contentMaxH = COMPOSER_MAX_H) {
   return toolbarH + contentH;
 }
 
-function makeQueueId() {
+function makeQueueId(): string {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/**
- * @typedef {{
- *   enqueueFiles: (fileList: FileList | File[] | null | undefined) => Promise<void>,
- *   enqueueShareItems: (items: Array<{ kind: 'note'|'folder', path: string, name?: string }> | null | undefined) => void,
- * }} ChatComposerHandle
- */
-
-const ChatComposer = forwardRef(function ChatComposer(
-  {
-    groups = [],
-    selectedGroup,
-    onSelectedGroupChange,
-    onAddGroup,
-    onSend,
-    _sending = false,
-    theme,
-    replyTo = null,
-    onClearReply,
-    editTarget = null,
-    onClearEdit,
-    onSaveEdit,
-    ogStorage = null,
-    timeZone,
-    getPresignedUrl,
-    /** When true, outer bar has no bg (parent paints full-bleed). */
-    bare = false,
-    showToolbar = true,
-    showLineNumbers = false,
-    /** Prefer native textarea over MdEditor/CodeMirror (perf). */
-    lightweight = false,
-    /** App mobile layout (narrow / phone shell) — always use native textarea. */
-    isMobileLayout = false,
-    /** Share-target (or similar) seed: replace compose body once consumed. */
-    seedBody = null,
-    onSeedConsumed,
-    /** Fill parent height (resizable dock); editor expands to remaining space. */
-    fillParent = false,
-    /** Storage-backend scope so drafts never cross S3 / Local / WebDAV. */
-    draftScope = '',
-    /** Focus the message input once when the chat composer becomes ready. */
-    autoFocusOnMount = true,
-  },
-  ref,
-) {
+const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
+  function ChatComposer(
+    {
+      groups = [],
+      selectedGroup,
+      onSelectedGroupChange,
+      onAddGroup,
+      onSend,
+      theme,
+      replyTo = null,
+      onClearReply,
+      editTarget = null,
+      onClearEdit,
+      onSaveEdit,
+      ogStorage = null,
+      timeZone,
+      getPresignedUrl,
+      bare = false,
+      showToolbar = true,
+      showLineNumbers = false,
+      lightweight = false,
+      isMobileLayout = false,
+      seedBody = null,
+      onSeedConsumed,
+      fillParent = false,
+      draftScope = '',
+      autoFocusOnMount = true,
+    },
+    ref,
+  ) {
   const [value, setValue] = useState('');
   const [markdownEnabled, setMarkdownEnabled] = useState(false);
   const [inlineAddOpen, setInlineAddOpen] = useState(false);
@@ -199,28 +466,34 @@ const ChatComposer = forwardRef(function ChatComposer(
   const [contentMaxH, setContentMaxH] = useState(() =>
     getComposerContentMaxH({ editing: Boolean(editTarget) }),
   );
-  const [imageQueue, setImageQueue] = useState([]);
+  const [imageQueue, setImageQueue] = useState<ChatComposerQueueItem[]>([]);
   const [draftReady, setDraftReady] = useState(false);
   const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
   const [encryptPromptOpen, setEncryptPromptOpen] = useState(false);
-  const openChatImage = useChatImageLightbox();
-  const wrapRef = useRef(null);
-  const textareaRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const inlineGroupInputRef = useRef(null);
+  const openChatImageRaw: unknown = useChatImageLightbox();
+  const openChatImage: ChatImageLightboxOpener | null =
+    typeof openChatImageRaw === 'function'
+      ? (url, options) => {
+          Reflect.apply(openChatImageRaw, null, [url, options]);
+        }
+      : null;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const inlineGroupInputRef = useRef<HTMLInputElement | null>(null);
   const valueRef = useRef(value);
   const markdownEnabledRef = useRef(markdownEnabled);
   /** When user turns Markdown off while markup remains, skip auto-enable until markup clears. */
   const markdownUserOffRef = useRef(false);
   /** Safari + lightweight: defer textarea→MdEditor until Space/Enter after markdown is detected. */
   const safariDeferMdEditor = lightweight && isSafariBrowser();
-  const wasLightweightEditorRef = useRef(null);
+  const wasLightweightEditorRef = useRef<boolean | null>(null);
   const imageQueueRef = useRef(imageQueue);
   const prevEditTargetRef = useRef(editTarget);
   const didAutofocusOnMountRef = useRef(false);
-  const removedExistingPathsRef = useRef([]);
-  const lineNumbersCompartmentRef = useRef(null);
-  const lineNumbersViewsRef = useRef(new WeakSet());
+  const removedExistingPathsRef = useRef<string[]>([]);
+  const lineNumbersCompartmentRef = useRef<Compartment | null>(null);
+  const lineNumbersViewsRef = useRef<WeakSet<EditorView>>(new WeakSet());
   const appTheme = useDocumentTheme();
   const resolvedTheme = theme || appTheme;
   const isMobile = useIsCoarsePointer();
@@ -241,17 +514,25 @@ const ChatComposer = forwardRef(function ChatComposer(
     ? `${formatMessageDateLabel(replyTo.at, tz)} ${formatMessageTime(replyTo.at, tz)}`
     : '';
 
-  const groupOptions = useMemo(
-    () => [
-      { value: SELF_GROUP, label: SELF_GROUP },
-      ...sortedGroups.map((g) => ({
+  const groupOptions = useMemo(() => {
+    const fromGroups = sortedGroups.map((g) => {
+      const option: { value: string; label: string; iconPath?: string } = {
         value: g.id,
         label: g.name,
-        iconPath: g.iconPath,
-      })),
+      };
+      if (g.iconPath) option.iconPath = g.iconPath;
+      return option;
+    });
+    return [
+      { value: SELF_GROUP, label: SELF_GROUP },
+      ...fromGroups,
       { value: ADD_GROUP_VALUE, label: '직접추가' },
-    ],
-    [sortedGroups],
+    ];
+  }, [sortedGroups]);
+
+  const selectPresignedUrl = useMemo(
+    () => toAsyncPresignedUrl(getPresignedUrl),
+    [getPresignedUrl],
   );
 
   const groupSelectValue = inlineAddOpen
@@ -266,13 +547,13 @@ const ChatComposer = forwardRef(function ChatComposer(
     markdownEnabledRef.current = markdownEnabled;
   }, [markdownEnabled]);
 
-  const setMarkdownFromUser = useCallback((next) => {
+  const setMarkdownFromUser = useCallback((next: boolean) => {
     const enabled = Boolean(next);
     markdownUserOffRef.current = !enabled;
     setMarkdownEnabled(enabled);
   }, []);
 
-  const applyComposerValue = useCallback((next) => {
+  const applyComposerValue = useCallback((next: string) => {
     const text = String(next ?? '');
     setValue(text);
     if (looksLikeMarkdown(text)) {
@@ -293,7 +574,7 @@ const ChatComposer = forwardRef(function ChatComposer(
   // Keep helper text in sync if settings (or another tab) changes the pref.
   useEffect(() => {
     const sync = () => setShowHelperText(getComposerHelperTextVisible());
-    const onStorage = (event) => {
+    const onStorage = (event: StorageEvent) => {
       if (event.key == null || event.key.includes('composer_helper_text')) sync();
     };
     window.addEventListener('storage', onStorage);
@@ -318,7 +599,7 @@ const ChatComposer = forwardRef(function ChatComposer(
         setMarkdownEnabled(looksLikeMarkdown(meta?.body));
         markdownUserOffRef.current = false;
         if (meta?.imageIds?.length) {
-          const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
+          const imgs = await loadDraftQueueItems(draftScope, meta.imageIds);
           if (!cancelled && imgs.length) {
             setImageQueue(applyDraftBackgrounds(imgs, meta.imageBackgrounds));
           }
@@ -358,7 +639,9 @@ const ChatComposer = forwardRef(function ChatComposer(
     applyComposerValue,
   ]);
 
-  const getPresignedUrlRef = useRef(getPresignedUrl);
+  const getPresignedUrlRef = useRef<ChatComposerGetPresignedUrl | undefined>(
+    getPresignedUrl,
+  );
   getPresignedUrlRef.current = getPresignedUrl;
 
   useEffect(() => {
@@ -366,7 +649,7 @@ const ChatComposer = forwardRef(function ChatComposer(
     let cancelled = false;
     removedExistingPathsRef.current = [];
     const { text, attachments } = extractChatBodyAttachments(editTarget.body || '');
-    const items = attachments.map((a, i) => ({
+    const items: ChatComposerQueueItem[] = attachments.map((a, i) => ({
       id: `existing-${a.path}-${i}`,
       kind: a.kind,
       path: a.path,
@@ -395,7 +678,10 @@ const ChatComposer = forwardRef(function ChatComposer(
       for (const item of items) {
         if (item.kind !== 'image' || !item.path) continue;
         try {
-          const url = await resolveWikiImageUrl(item.path, resolver);
+          const url = await resolveWikiImageUrl(
+            item.path,
+            toWikiPresignedUrl(resolver),
+          );
           if (cancelled || !url) continue;
           setImageQueue((prev) =>
             prev.map((p) => (p.id === item.id ? { ...p, previewUrl: url } : p)),
@@ -420,9 +706,10 @@ const ChatComposer = forwardRef(function ChatComposer(
 
     const focusComposer = () => {
       const cmEl = root.querySelector('.cm-editor');
-      const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
+      const view =
+        cmEl instanceof HTMLElement ? EditorView.findFromDOM(cmEl) : null;
       if (view) view.focus();
-      else root.querySelector('.cm-content')?.focus?.();
+      else focusHtmlElement(root.querySelector('.cm-content'));
     };
 
     const onWindowBlur = () => {
@@ -458,7 +745,7 @@ const ChatComposer = forwardRef(function ChatComposer(
         return [];
       });
       if (meta?.imageIds?.length) {
-        const imgs = await loadComposerDraftImageQueue(draftScope, meta.imageIds);
+        const imgs = await loadDraftQueueItems(draftScope, meta.imageIds);
         if (!cancelled && imgs.length) {
           setImageQueue(applyDraftBackgrounds(imgs, meta?.imageBackgrounds));
         }
@@ -499,7 +786,7 @@ const ChatComposer = forwardRef(function ChatComposer(
         imageBackgrounds: imageBackgroundsFromQueue(imageQueue),
         markdown: markdownEnabled,
       });
-      void syncComposerDraftImages(draftScope, imageQueue);
+      void syncComposerDraftImages(draftScope, draftSyncFileQueue(imageQueue));
     }, 280);
     return () => window.clearTimeout(t);
   }, [draftReady, editTarget, value, imageQueue, selectedGroup, replyTo, draftScope, markdownEnabled]);
@@ -526,7 +813,10 @@ const ChatComposer = forwardRef(function ChatComposer(
         imageBackgrounds: imageBackgroundsFromQueue(imageQueueRef.current),
         markdown: markdownEnabledRef.current,
       });
-      void syncComposerDraftImages(draftScope, imageQueueRef.current);
+      void syncComposerDraftImages(
+        draftScope,
+        draftSyncFileQueue(imageQueueRef.current),
+      );
     };
     const onVis = () => {
       if (document.visibilityState === 'hidden') flush();
@@ -599,17 +889,14 @@ const ChatComposer = forwardRef(function ChatComposer(
       const root = wrapRef.current;
       if (!root) return;
       const cmEl = root.querySelector('.cm-editor');
-      const view = cmEl ? EditorView.findFromDOM(cmEl) : null;
+      const view =
+        cmEl instanceof HTMLElement ? EditorView.findFromDOM(cmEl) : null;
       if (view) {
         view.focus();
       } else {
-        const tiptap = root.querySelector('.ProseMirror');
-        if (tiptap) {
-          tiptap.focus?.();
-        } else {
-          // Editor chunk still loading — focus the Suspense textarea fallback.
-          root.querySelector('textarea[data-chat-composer-textarea]')?.focus?.();
-        }
+        focusHtmlElement(root.querySelector('.ProseMirror'));
+        // Editor chunk still loading — focus the Suspense textarea fallback.
+        focusHtmlElement(root.querySelector('textarea[data-chat-composer-textarea]'));
       }
     }
     // Undo mobile browser scroll-into-view that pushes chat chrome off-screen.
@@ -679,11 +966,12 @@ const ChatComposer = forwardRef(function ChatComposer(
     if (!lineNumbersCompartmentRef.current) {
       lineNumbersCompartmentRef.current = new Compartment();
     }
+    const lineNumbersCompartment = lineNumbersCompartmentRef.current;
 
     const install = () => {
       if (cancelled) return;
       const cmEl = root.querySelector('.cm-editor');
-      if (!cmEl) return;
+      if (!(cmEl instanceof HTMLElement)) return;
       const view = EditorView.findFromDOM(cmEl);
       if (!view) return;
       if (lineNumbersViewsRef.current.has(view)) return;
@@ -694,7 +982,7 @@ const ChatComposer = forwardRef(function ChatComposer(
       }
       view.dispatch({
         effects: StateEffect.appendConfig.of(
-          lineNumbersCompartmentRef.current.of(lineNumbers()),
+          lineNumbersCompartment.of(lineNumbers()),
         ),
       });
       lineNumbersViewsRef.current.add(view);
@@ -735,10 +1023,10 @@ const ChatComposer = forwardRef(function ChatComposer(
     });
   }, []);
 
-  const enqueueFiles = useCallback(async (fileList) => {
+  const enqueueFiles = useCallback(async (fileList: FileList | File[] | null | undefined) => {
     const files = [...(fileList || [])];
     if (!files.length) return;
-    const accepted = [];
+    const accepted: ChatComposerQueueItem[] = [];
     for (const file of files) {
       if (!file) continue;
       try {
@@ -763,10 +1051,11 @@ const ChatComposer = forwardRef(function ChatComposer(
     setImageQueue((prev) => [...prev, ...accepted]);
   }, []);
 
-  const enqueueShareItems = useCallback((items) => {
+  const enqueueShareItems = useCallback(
+    (items: ChatComposerShareEnqueueItem[] | null | undefined) => {
     const list = Array.isArray(items) ? items : [];
     if (!list.length) return;
-    const accepted = [];
+    const accepted: ChatComposerQueueItem[] = [];
     for (const item of list) {
       if (!item) continue;
       const kind = item.kind === 'folder' ? 'folder' : item.kind === 'note' ? 'note' : null;
@@ -797,7 +1086,8 @@ const ChatComposer = forwardRef(function ChatComposer(
       const next = accepted.filter((a) => !seen.has(`${a.kind}:${a.path}`));
       return next.length ? [...prev, ...next] : prev;
     });
-  }, []);
+  },
+  []);
 
   useImperativeHandle(
     ref,
@@ -808,7 +1098,7 @@ const ChatComposer = forwardRef(function ChatComposer(
     [enqueueFiles, enqueueShareItems],
   );
 
-  const removeQueuedImage = useCallback((id) => {
+  const removeQueuedImage = useCallback((id: string) => {
     setImageQueue((prev) => {
       const target = prev.find((p) => p.id === id);
       // Only chat-uploaded image/file keys are safe to delete from storage.
@@ -830,46 +1120,25 @@ const ChatComposer = forwardRef(function ChatComposer(
     });
   }, []);
 
-  const doSend = useCallback(async (options = {}) => {
+  const doSend = useCallback(async (options: DoSendOptions = {}) => {
     const encryptPassword =
       typeof options.encryptPassword === 'string' ? options.encryptPassword.trim() : '';
     const body = valueRef.current.trim();
     const queued = imageQueueRef.current;
     const markdown = Boolean(markdownEnabledRef.current);
     if (!body && queued.length === 0) return;
-    const newAttachments = queued
-      .filter((q) => q.file)
+    const newAttachments: ChatComposerOutgoingFileAttachment[] = queued
+      .filter((q): q is ChatComposerQueueItem & { file: File } => Boolean(q.file))
       .map((q) => ({
         file: q.file,
         background: q.kind === 'image' ? q.background || null : null,
       }));
     const stagedShareMarkdown = chatAttachmentsToMarkdown(
-      queued
-        .filter(
-          (q) =>
-            !q.file &&
-            q.path &&
-            (q.kind === 'note' || q.kind === 'folder') &&
-            !q.existing,
-        )
-        .map((q) => ({
-          kind: q.kind,
-          path: q.path,
-          name: q.name,
-          size: null,
-        })),
+      stagedShareMarkdownItems(queued),
     );
     if (editTarget) {
       const existingMarkdown = chatAttachmentsToMarkdown(
-        queued
-          .filter((q) => q.existing && q.path)
-          .map((q) => ({
-            kind: q.kind,
-            path: q.path,
-            name: q.name,
-            size: q.size,
-            background: q.background || null,
-          })),
+        existingAttachmentMarkdownItems(queued),
       );
       // New note/folder shares staged during edit join existing attachment markdown.
       const mergedExisting = [existingMarkdown, stagedShareMarkdown]
@@ -927,9 +1196,10 @@ const ChatComposer = forwardRef(function ChatComposer(
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.isComposing) return;
-      if (!el.contains(e.target)) return;
+      const eventTarget = e.target;
+      if (!(eventTarget instanceof Node) || !el.contains(eventTarget)) return;
 
       // Ctrl+M toggles Markdown (Ctrl on Mac too — not Cmd).
       if (
@@ -1029,7 +1299,7 @@ const ChatComposer = forwardRef(function ChatComposer(
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
-    const onPaste = (e) => {
+    const onPaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.files;
       if (!items?.length) return;
       e.preventDefault();
@@ -1040,7 +1310,7 @@ const ChatComposer = forwardRef(function ChatComposer(
     return () => el.removeEventListener('paste', onPaste, true);
   }, [enqueueFiles]);
 
-  const handleGroupChange = (next) => {
+  const handleGroupChange = (next: string) => {
     if (next === ADD_GROUP_VALUE) {
       setInlineAddOpen(true);
       setInlineGroupName('');
@@ -1160,15 +1430,20 @@ const ChatComposer = forwardRef(function ChatComposer(
                 <X size={14} />
               </button>
             </div>
-            <ChatLinkedText
+            <ChatLinkedTextMinimal
               text={replyTo.body || replyTo.snippet || ''}
               className="mt-1 line-clamp-3 overflow-hidden whitespace-pre-wrap wrap-anywhere text-xs text-gray-700 dark:text-gray-200"
-              getPresignedUrl={getPresignedUrl}
+              {...(getPresignedUrl ? { getPresignedUrl } : {})}
             />
             {replyUrls.length > 0 ? (
               <div className="mt-1 space-y-1">
                 {replyUrls.map((u) => (
-                  <ChatOgCard key={u} url={u} ogStorage={ogStorage} compact />
+                  <ChatOgCard
+                    key={u}
+                    url={u}
+                    {...(ogStorage ? { ogStorage } : {})}
+                    compact
+                  />
                 ))}
               </div>
             ) : null}
@@ -1261,7 +1536,9 @@ const ChatComposer = forwardRef(function ChatComposer(
                         src={item.previewUrl}
                         alt=""
                         className="h-full w-full object-cover"
-                        style={item.background ? { backgroundColor: item.background } : undefined}
+                        {...(item.background
+                          ? { style: { backgroundColor: item.background } }
+                          : {})}
                       />
                     ) : (
                       <div className="h-full w-full animate-pulse bg-black/10 dark:bg-white/10" />
@@ -1324,7 +1601,7 @@ const ChatComposer = forwardRef(function ChatComposer(
                   onValueChange={handleGroupChange}
                   options={groupOptions}
                   showGroupAvatars
-                  getPresignedUrl={getPresignedUrl}
+                  getPresignedUrl={selectPresignedUrl}
                   triggerClassName="w-full max-w-full"
                   className="min-w-0 flex-1"
                 />
@@ -1375,7 +1652,7 @@ const ChatComposer = forwardRef(function ChatComposer(
                 onValueChange={handleGroupChange}
                 options={groupOptions}
                 showGroupAvatars
-                getPresignedUrl={getPresignedUrl}
+                getPresignedUrl={selectPresignedUrl}
                 triggerClassName="max-w-full"
                 className={inlineAddOpen ? 'min-w-0 max-w-[42%]' : 'min-w-0 flex-1'}
               />
@@ -1567,6 +1844,7 @@ const ChatComposer = forwardRef(function ChatComposer(
       />
     </div>
   );
-});
+  },
+);
 
 export default ChatComposer;

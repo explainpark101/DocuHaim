@@ -23,7 +23,7 @@ export default function FirstNoteWelcomeModal({
       resizable={false}
       contentClassName="max-w-md max-h-[90vh]"
     >
-      <div className="space-y-4 p-1">
+      <div className="space-y-4 p-6">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-base font-bold text-gray-800 dark:text-odp-fgStrong">
             IDB Haim으로 시작하기
