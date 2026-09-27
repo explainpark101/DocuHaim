@@ -49,6 +49,16 @@
   text-underline-offset: 2px;
 }
 
+/* Editable: caret by default; Ctrl/Cmd held → pointer (open affordance). */
+.haim-editor:not([data-haim-preview-only]) .haim-editor-content .tiptap a[href] {
+  cursor: text;
+}
+
+.haim-editor .tiptap.haim-mod-held a[href],
+.haim-editor:not([data-haim-preview-only]) .haim-editor-content .tiptap.haim-mod-held a[href] {
+  cursor: pointer;
+}
+
 .haim-editor .tiptap a:hover,
 .haim-editor-prose a:hover {
   color: var(--md-theme-link-hover-color);

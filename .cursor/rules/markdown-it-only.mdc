@@ -1,0 +1,43 @@
+---
+description: Use markdown-it for all app Markdown — never marked
+alwaysApply: true
+---
+
+# Markdown engine: markdown-it only
+
+All **application-owned** Markdown parse/render must use **markdown-it**.
+
+Do **not** import or call `marked` / `marked.parse` / `marked.parseInline` from `src/` or `tests/`.
+
+## Prefer shared helpers
+
+| Need | Use |
+|---|---|
+| Full preview HTML | `getAppMarkdownIt('preview')` / `renderAppMarkdown` (`src/utils/createAppMarkdownIt.ts`) |
+| Inline snippet (captions, short strings) | `renderAppMarkdownInline` / `getAppMarkdownIt('inline')` |
+| Custom rules / plugins | `src/utils/*MarkdownIt*.ts` + register in `appMarkdownItPlugins.ts` when preview needs them |
+
+```ts
+// ❌ BAD
+import { marked } from 'marked';
+marked.parseInline(caption);
+
+// ✅ GOOD
+import { renderAppMarkdownInline } from '@/utils/createAppMarkdownIt';
+renderAppMarkdownInline(caption);
+```
+
+## TipTap / third-party
+
+`@tiptap/markdown`, Mermaid, Monaco may pull `marked` **transitively**. That is vendor-internal only.
+
+- Do not re-export or wrap `marked` for app features.
+- Do not add `marked` as a **direct** `package.json` dependency.
+- New TipTap serialize/protect helpers we own still go through markdown-it (or TipTap APIs), not `marked`.
+
+## Checklist
+
+1. New Markdown HTML? → markdown-it helper / plugin, not marked.
+2. No `import … from 'marked'` in app code.
+3. Direct `marked` dep stays absent from `package.json`.
+4. Prefer **English** in new code comments if Korean Unicode might corrupt.

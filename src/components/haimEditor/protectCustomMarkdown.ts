@@ -17,6 +17,7 @@ import {
   wikiImageMarkupFromAttrs,
 } from '@/utils/wikiImageSyntax';
 import { wikiImageToProtectedHtml } from '@/components/haimEditor/extensions/WikiImage';
+import { renderAppMarkdownInline } from '@/utils/createAppMarkdownIt';
 
 const SENTINEL_OPEN = '@@@haim-raw:';
 const SENTINEL_CLOSE = '@@@/haim-raw';
@@ -257,7 +258,7 @@ function foldWikiImageCaptions(src: string): string {
     if (isWikiCaptionCandidate(captionLine)) {
       const captionText = captionLine.trim();
       out.push(
-        `${indent}<figure data-haim-wiki-figure="1">${imgTag}<figcaption>${escapeHtml(captionText)}</figcaption></figure>`,
+        `${indent}<figure data-haim-wiki-figure="1">${imgTag}<figcaption>${captionMarkdownToInlineHtml(captionText)}</figcaption></figure>`,
       );
       i = captionIdx;
       continue;
@@ -285,11 +286,50 @@ function isWikiCaptionCandidate(line: string): boolean {
   return true;
 }
 
-/** Strip simple HTML from figcaption back toward vault caption text. */
+/**
+ * Caption lines are full inline Markdown (links, emphasis, …) per wiki-image.md.
+ * Parse to HTML so TipTap figcaption gets real <a>/<strong>/… nodes — not escaped text.
+ */
+function captionMarkdownToInlineHtml(md: string): string {
+  const raw = String(md ?? '').trim();
+  if (!raw) return '';
+  try {
+    return renderAppMarkdownInline(raw);
+  } catch {
+    return escapeHtml(raw);
+  }
+}
+
+/** Strip / convert figcaption HTML back toward vault caption Markdown. */
 function htmlInlineToMarkdownText(html: string): string {
   let s = String(html || '');
   s = s.replace(/<br\s*\/?>/gi, '\n');
   s = s.replace(/<\/(p|div|h[1-6])>/gi, '\n');
+
+  // Links first (nested inline inside <a> is uncommon in captions).
+  s = s.replace(
+    /<a\b([^>]*)>([\s\S]*?)<\/a>/gi,
+    (_m, attrs: string, inner: string) => {
+      const hrefMatch = String(attrs).match(/\bhref\s*=\s*"([^"]*)"/i)
+        || String(attrs).match(/\bhref\s*=\s*'([^']*)'/i);
+      const href = hrefMatch ? unescapeAttr(hrefMatch[1] || '') : '';
+      const text = htmlInlineToMarkdownText(inner).trim() || href;
+      if (!href) return text;
+      return `[${text}](${href})`;
+    },
+  );
+
+  s = s.replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m, _t, inner) => {
+    const t = htmlInlineToMarkdownText(inner);
+    return `**${t}**`;
+  });
+  s = s.replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, (_m, _t, inner) => {
+    const t = htmlInlineToMarkdownText(inner);
+    return `*${t}*`;
+  });
+  s = s.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_m, inner) => {
+    return `\`${unescapeHtml(String(inner))}\``;
+  });
   s = s.replace(/<[^>]+>/g, '');
   return unescapeHtml(s).replace(/\s+/g, ' ').trim();
 }

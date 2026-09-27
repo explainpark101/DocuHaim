@@ -73,9 +73,24 @@ describe('protectCustomMarkdown', () => {
     const src = '![[photos/b.png]]\n\nCaption with **stars**\n';
     const protectedMd = protectCustomMarkdown(src);
     expect(protectedMd).toContain('data-haim-wiki-figure');
-    expect(protectedMd).toContain('Caption with **stars**');
+    expect(protectedMd).toContain('<strong>stars</strong>');
     const restored = restoreCustomMarkdown(protectedMd);
     expect(restored).toMatch(/!\[\[photos\/b\.png\]\]\nCaption with \*\*stars\*\*/);
+  });
+
+  it('renders markdown links inside wiki image captions (not escaped text)', () => {
+    const url = 'https://example.com/path?tkn=secret';
+    const src = `![[photos/c.png]]\n[${url}](${url})\n`;
+    const protectedMd = protectCustomMarkdown(src);
+    expect(protectedMd).toContain('data-haim-wiki-figure');
+    expect(protectedMd).toContain(`<a href="${url}">`);
+    expect(protectedMd).not.toContain(`&lt;`);
+    expect(protectedMd).not.toMatch(
+      new RegExp(`\\[${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\(`),
+    );
+    const restored = restoreCustomMarkdown(protectedMd);
+    expect(restored).toContain(`![[photos/c.png]]`);
+    expect(restored).toContain(`[${url}](${url})`);
   });
 
   it('does not treat a following heading as a caption', () => {
