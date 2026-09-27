@@ -117,6 +117,8 @@ export default function Modal({
       <div
         ref={panelRef}
         className={`relative flex w-full flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl dark:bg-odp-surface dark:text-odp-fgStrong ${contentClassName} ${
+          // Drop max-width so pinned/resized width can grow; keep inline width
+          // from useModalCornerResize (callers should use max-w-* not bare w-[min]).
           positioned ? 'max-w-none!' : ''
         } ${
           positioned
