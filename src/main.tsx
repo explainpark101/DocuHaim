@@ -13,6 +13,7 @@ import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initEditorImageAlignDom } from '@/utils/editorImageAlignSettings'
 import { initHaimFocusOutlineDom } from '@/utils/haimFocusOutlineSettings'
+import { initHaimProseWidthDom } from '@/utils/haimProseWidthSettings'
 import { initHaimWysiwygLineNumbersDom } from '@/utils/haimWysiwygLineNumberSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
@@ -29,6 +30,7 @@ import { getBootSplash, initBootSplash } from '@/boot/bootSplash'
 initEditorAutocompleteDomFlag()
 initEditorImageAlignDom()
 initHaimFocusOutlineDom()
+initHaimProseWidthDom()
 initHaimWysiwygLineNumbersDom()
 initTouchLongPressHaptics()
 initDesktopViewport()

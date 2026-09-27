@@ -4,16 +4,16 @@ overview: 설정에 Haim Editor WYSIWYG 본문 max-width 클램프(토글 + px)�
 todos:
   - id: store-dom
     content: Add haimProseWidthSettings.ts (localStorage + DOM attr/CSS var + init in main.tsx)
-    status: pending
+    status: completed
   - id: css-rule
     content: Add clamp CSS in haim-editor/style.css for note WYSIWYG only
-    status: pending
+    status: completed
   - id: as-toggle
     content: Register settings-haim-prose-width-clamp in settingsToggles.ts
-    status: pending
+    status: completed
   - id: settings-ui
     content: Add HaimProseWidthSettings.tsx and mount under SettingsPage Haim block
-    status: pending
+    status: completed
 isProject: false
 ---
 

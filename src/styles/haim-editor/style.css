@@ -47,6 +47,15 @@
   padding-bottom: 50dvh;
 }
 
+/* Optional reading-width clamp (Settings → Haim prose max-width). */
+html[data-haim-prose-width-clamp='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-editor-content
+  .tiptap.haim-editor-prose {
+  max-width: var(--haim-prose-max-width, 800px);
+  margin-inline: auto;
+}
+
 /* Compact read-only preview: strip md-editor-rt .md-editor-preview 50vh too. */
 .haim-markdown-preview.md-editor-preview {
   padding-bottom: 0 !important;

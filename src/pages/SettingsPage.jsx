@@ -8,6 +8,7 @@ import AppUiFontSettings from '@/components/settings/AppUiFontSettings';
 import StatusBarClockSettings from '@/components/settings/StatusBarClockSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
+import HaimProseWidthSettings from '@/components/settings/HaimProseWidthSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
 import QuizSettingsSection from '@/components/settings/QuizSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
@@ -1309,6 +1310,7 @@ export default function SettingsPage({
                   <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
                 </Switch.Root>
               </div>
+              <HaimProseWidthSettings />
               <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
