@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router';
 import { markAutoSaveTimestamp } from '@/App/hooks/autoSaveBridge';
 import { getActiveTab } from '@/utils/workspaceTabs';
 import {
+  buildLockedEncMdEditorFile,
   decryptEncMdContent,
   encryptEncMdContent,
   getEncMdPassword,
@@ -264,7 +265,18 @@ export function useSessionWorkspaceDomain() {
       let encMd = false;
       if (isEncMdPath(record.name)) {
         const plain = await unlockEncMdOrPrompt(compositeId, rawText);
-        if (plain == null) return false;
+        if (plain == null) {
+          const locked = buildLockedEncMdEditorFile({
+            type: SESSION_STORAGE_TYPE,
+            id: compositeId,
+            name: record.name,
+            ciphertext: rawText,
+            size,
+          });
+          commitOpenFile(locked, locked.content);
+          if (!skipNavigate) navigate(`/view/${encodeURIComponent(compositeId)}`);
+          return true;
+        }
         text = plain;
         encMd = true;
       }
