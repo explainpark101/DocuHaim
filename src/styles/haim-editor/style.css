@@ -373,8 +373,10 @@ html[data-haim-prose-width-clamp='1']
   min-width: 0;
   margin: 0;
   padding: 0.75em 1em;
-  white-space: pre-wrap;
-  word-break: break-word;
+  /* Default; html[data-haim-code-wrap] / preview-only overrides in preview-tokens.css */
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
   font-size: inherit;
   font-family: D2Coding, ui-monospace, monospace;
   line-height: 1.55;

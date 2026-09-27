@@ -80,6 +80,10 @@ import {
   loadHaimRawLineNumbersEnabled,
 } from '@/utils/haimWysiwygLineNumberSettings';
 import {
+  HAIM_CODE_WRAP_CHANGED_EVENT,
+  loadHaimCodeWrapEnabled,
+} from '@/utils/haimCodeWrapSettings';
+import {
   BASE64_IMAGE_FOLD_CHANGED_EVENT,
   loadBase64ImageFoldEnabled,
 } from '@/utils/base64ImageFoldSettings';
@@ -267,6 +271,9 @@ export default function SettingsPage({
   const [haimRawLineNumbers, setHaimRawLineNumbersState] = useState(() =>
     loadHaimRawLineNumbersEnabled(),
   );
+  const [haimCodeWrap, setHaimCodeWrapState] = useState(() =>
+    loadHaimCodeWrapEnabled(),
+  );
   const [base64ImageFold, setBase64ImageFoldState] = useState(() =>
     loadBase64ImageFoldEnabled(),
   );
@@ -317,6 +324,8 @@ export default function SettingsPage({
         setHaimCodeLineNumbersState(enabled);
       } else if (id === 'settings-haim-raw-line-numbers') {
         setHaimRawLineNumbersState(enabled);
+      } else if (id === 'settings-haim-code-wrap') {
+        setHaimCodeWrapState(enabled);
       } else if (id === 'settings-base64-image-fold') {
         setBase64ImageFoldState(enabled);
       }
@@ -427,6 +436,18 @@ export default function SettingsPage({
     window.addEventListener(HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT, sync);
     return () =>
       window.removeEventListener(HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimCodeWrapEnabled();
+      setHaimCodeWrapState(enabled);
+    };
+    window.addEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -1382,6 +1403,32 @@ export default function SettingsPage({
                     setHaimRawLineNumbersState(next);
                   }}
                   aria-label="Raw 블록 줄 번호"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    코드 줄 바꿈
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    켜면 긴 코드·raw 줄을 soft-wrap하고 줄 번호 높이를 맞춥니다. 끄면
+                    pre(가로 스크롤). Export PDF는 항상 wrap입니다.
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimCodeWrap
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimCodeWrap}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-code-wrap', next);
+                    setHaimCodeWrapState(next);
+                  }}
+                  aria-label="코드 줄 바꿈"
                 >
                   <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
                 </Switch.Root>

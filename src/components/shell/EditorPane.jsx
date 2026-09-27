@@ -67,7 +67,7 @@ import {
   EDITOR_TYPE_HAIM,
   loadEditorType,
 } from '@/utils/editorTypeSettings';
-import { openHaimProseWidthLivePanel } from '@/utils/haimProseWidthPanel';
+import { openHaimProseWidthPanel } from '@/utils/haimProseWidthPanel';
 
 const NoteEditorSurface = lazy(
   () => import('@/components/editor/surface/NoteEditorSurface'),
@@ -1053,7 +1053,7 @@ export default function EditorPane({
                     type="button"
                     className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
                     onClick={() => {
-                      openHaimProseWidthLivePanel();
+                      openHaimProseWidthPanel();
                       setFileManagementOpen(false);
                     }}
                   >

@@ -132,6 +132,10 @@ import {
   saveHaimRawLineNumbersEnabled,
 } from '@/utils/haimWysiwygLineNumberSettings';
 import {
+  loadHaimCodeWrapEnabled,
+  saveHaimCodeWrapEnabled,
+} from '@/utils/haimCodeWrapSettings';
+import {
   loadHaimTocDockEnabled,
   saveHaimTocDockEnabled,
 } from '@/utils/haimTocLayoutSettings';
@@ -171,6 +175,7 @@ export type SettingsToggleId =
   | 'settings-haim-link-open-on-click'
   | 'settings-haim-code-line-numbers'
   | 'settings-haim-raw-line-numbers'
+  | 'settings-haim-code-wrap'
   | 'settings-base64-image-fold';
 
 export type SettingsToggleDef = {
@@ -371,6 +376,29 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimRawLineNumbersEnabled,
     save: saveHaimRawLineNumbersEnabled,
+  },
+  {
+    id: 'settings-haim-code-wrap',
+    enableTitle: 'Haim 코드 줄 바꿈 켜기',
+    disableTitle: 'Haim 코드 줄 바꿈 끄기',
+    description:
+      'WYSIWYG 코드·raw 블록에서 긴 줄을 soft-wrap합니다. 끄면 pre(가로 스크롤). Export PDF는 항상 wrap',
+    keywords: [
+      'haim',
+      'code',
+      'codeblock',
+      '코드',
+      '줄바꿈',
+      '줄 바꿈',
+      'wrap',
+      'softwrap',
+      'pre',
+      'pre-wrap',
+      'raw',
+      'wysiwyg',
+    ],
+    load: loadHaimCodeWrapEnabled,
+    save: saveHaimCodeWrapEnabled,
   },
   {
     id: 'settings-base64-image-fold',
