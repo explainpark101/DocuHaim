@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -128,6 +134,7 @@ export default function HaimCodeBlockView({
   const [collapsed, setCollapsed] = useState(false);
   const [copied, setCopied] = useState(false);
   const editable = editor.isEditable;
+  const codePreRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {
     if (!isMermaid || editing || collapsed) return undefined;
@@ -257,8 +264,16 @@ export default function HaimCodeBlockView({
             <HaimLineNumberGutter
               text={source}
               className="haim-code-block__line-numbers"
+              contentRootRef={codePreRef}
             />
-            <pre className={language ? `language-${language}` : undefined}>
+            <pre
+              ref={codePreRef}
+              className={language ? `language-${language}` : undefined}
+            >
+              {/*
+                white-space is driven by html[data-haim-code-wrap] CSS
+                (TipTap NodeViewContent defaults to inline pre-wrap).
+              */}
               <NodeViewContent
                 as={'code' as 'div'}
                 {...(language ? { className: `language-${language}` } : {})}

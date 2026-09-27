@@ -4,7 +4,6 @@ import { applyExportPdfCodeBlockFragmentChrome } from '@/utils/exportPdf/applyEx
 import { normalizeHaimPreviewForExportPdf } from '@/utils/exportPdf/normalizeHaimPreviewForExportPdf';
 import { prepareExportPdfCodeBlocksForPaging } from '@/utils/exportPdf/prepareExportPdfCodeBlocksForPaging';
 import { sanitizeExportPdfPagedSource } from '@/utils/exportPdf/sanitizeExportPdfPagedSource';
-import { splitExportPdfCodeBlocksByPageHeight } from '@/utils/exportPdf/splitExportPdfCodeBlocksByPageHeight';
 import {
   exportPdfLoadDebug,
   exportPdfLoadDebugElapsed,
@@ -12,7 +11,6 @@ import {
 import { buildExportPdfPagedStyles } from '@/pages/exportPdf/exportPdfPagedStyles';
 import type { ExportPdfPagedStatus } from '@/pages/exportPdf/exportPdfPagedStatus';
 import {
-  getPrintPageInnerSizePx,
   type PrintPageMarginsMm,
   type PrintPageSizeId,
 } from '@/utils/printPageLayout';
@@ -104,7 +102,7 @@ function tagBodyPages(root: HTMLElement): number {
 
 function buildPagedSourceFromPreview(
   preview: Element,
-  options: {
+  _options: {
     pageSizeId: PrintPageSizeId;
     marginMm?: number | PrintPageMarginsMm;
     bodyLineHeight?: string;
@@ -125,7 +123,7 @@ function buildPagedSourceFromPreview(
   // Drop code-block / mermaid chrome (copy, pin, lang head) from the print flow.
   // Include Haim TipTap node-view chrome when staging uses HaimMarkdownPreview.
   for (const el of wrapper.querySelectorAll(
-    '.md-editor-code-head, .md-editor-copy-button, .md-editor-code-action, .md-editor-mermaid-action, .haim-code-block__header, .haim-code-block__action, .haim-code-block__actions',
+    '.md-editor-code-head, .md-editor-copy-button, .md-editor-code-action, .md-editor-mermaid-action, .haim-code-block__header, .haim-code-block__action, .haim-code-block__actions, .haim-mermaid-block__source-hidden, .haim-line-numbers, .haim-prose-line-numbers',
   )) {
     el.remove();
   }
@@ -136,27 +134,8 @@ function buildPagedSourceFromPreview(
   prepareExportPdfCodeBlocksForPaging(wrapper);
   sanitizeExportPdfPagedSource(wrapper);
 
-  // Split tall fences into page-sized sibling chunks so paged.js never resumes
-  // mid-fence (Layout repeated aborts and drops the remainder).
-  const inner = getPrintPageInnerSizePx(options.pageSizeId, options.marginMm);
-  const measureCss = buildExportPdfPagedStyles(options.pageSizeId, {
-    ...(options.bodyLineHeight != null
-      ? { bodyLineHeight: options.bodyLineHeight }
-      : {}),
-    ...(options.headingLineHeight != null
-      ? { headingLineHeight: options.headingLineHeight }
-      : {}),
-    ...(options.baseFontSizePx != null
-      ? { baseFontSizePx: options.baseFontSizePx }
-      : {}),
-    ...(options.marginMm != null ? { marginMm: options.marginMm } : {}),
-  });
-  splitExportPdfCodeBlocksByPageHeight(wrapper, {
-    maxHeightPx: inner.heightPx,
-    widthPx: inner.widthPx,
-    measureCss,
-  });
-
+  // Do not pre-split tall fences by page height: that drew mid-block borders
+  // between chunks. Let paged.js fragment continuous fences instead.
   return wrapper;
 }
 

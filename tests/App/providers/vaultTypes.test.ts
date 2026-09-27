@@ -7,13 +7,14 @@ import { createStorageBackendForType } from '@/utils/storage';
 
 describe('Vault domain types', () => {
   it('lists vault-backed storage modes', () => {
-    expect(VAULT_PATH_STORAGE_TYPES).toEqual(['s3', 'local', 'webdav']);
+    expect(VAULT_PATH_STORAGE_TYPES).toEqual(['s3', 'local', 'webdav', 'idb']);
   });
 
   it('classifies vault path storage types', () => {
     expect(isVaultPathStorageType('s3')).toBe(true);
     expect(isVaultPathStorageType('local')).toBe(true);
     expect(isVaultPathStorageType('webdav')).toBe(true);
+    expect(isVaultPathStorageType('idb')).toBe(true);
     expect(isVaultPathStorageType('session')).toBe(false);
     expect(isVaultPathStorageType(undefined)).toBe(false);
   });

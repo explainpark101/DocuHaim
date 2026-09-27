@@ -66,7 +66,7 @@ function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
   }
   if (
     v.kind === 'file' &&
-    (v.type === 's3' || v.type === 'local' || v.type === 'webdav' || v.type === 'session') &&
+    (v.type === 's3' || v.type === 'local' || v.type === 'webdav' || v.type === 'idb' || v.type === 'session') &&
     typeof v.path === 'string' &&
     v.path
   ) {
@@ -156,7 +156,7 @@ export function loadPersistedWorkspaceTabs(): PersistedWorkspaceTabs | null {
     };
   }
   if (
-    (l.type === 's3' || l.type === 'local' || l.type === 'webdav') &&
+    (l.type === 's3' || l.type === 'local' || l.type === 'webdav' || l.type === 'idb') &&
     typeof l.path === 'string' &&
     l.path
   ) {

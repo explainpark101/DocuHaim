@@ -1,6 +1,7 @@
 import { getObjectBody, headObject, putObject, getSignedGetUrl } from '@/utils/s3Client';
 import { getLocalWikiImageObjectUrl } from '@/utils/localEditorImage';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 import {
   DEFAULT_PRINT_FONTS,
   parsePrintFonts,
@@ -26,7 +27,7 @@ const store = {
 /**
  * ExportPDFPage etc.: wiki image URL resolver.
  * Passes through data:/http(s)/blob URLs (cover base64 export) without storage lookup.
- * @param {'s3' | 'local' | 'webdav' | null | undefined} [fileType]
+ * @param {'s3' | 'local' | 'webdav' | 'idb' | null | undefined} [fileType]
  * @returns {((path: string) => Promise<string|null>) | null}
  */
 export function getPresignedUrlResolver(fileType = null) {
@@ -42,6 +43,9 @@ export function getPresignedUrlResolver(fileType = null) {
     inner = (path) => getLocalWikiImageObjectUrl(localHandle, path);
   } else if (mode === 'webdav' && webdavCfg?.endpoint && webdavCfg?.username) {
     const backend = createWebdavBackend(webdavCfg);
+    inner = (path) => backend.getObjectUrl(path);
+  } else if (mode === 'idb') {
+    const backend = createIdbBackend();
     inner = (path) => backend.getObjectUrl(path);
   } else if (client && bucket) {
     inner = (path) => getSignedGetUrl(client, bucket, path, 3600);
@@ -164,6 +168,19 @@ async function loadPrintFontsFromLocal() {
   }
 }
 
+async function loadPrintFontsFromIdb() {
+  try {
+    const backend = createIdbBackend();
+    const head = await backend.head(PRINT_JSON_KEY);
+    if (!head) return null;
+    const { text } = await backend.readText(PRINT_JSON_KEY);
+    return parseFontsJson(JSON.parse(text));
+  } catch (e) {
+    console.warn('Print settings load from IDB failed:', e);
+    return null;
+  }
+}
+
 /**
  * Active storage mode only, then localStorage fallback.
  * @returns {Promise<import('@/utils/print/printFonts').PrintFonts>}
@@ -178,6 +195,9 @@ export async function loadPrintFontsFromStorage() {
   } else if (mode === 'local') {
     const fromLocal = await loadPrintFontsFromLocal();
     if (fromLocal) return fromLocal;
+  } else if (mode === 'idb') {
+    const fromIdb = await loadPrintFontsFromIdb();
+    if (fromIdb) return fromIdb;
   } else {
     const fromS3 = await loadPrintFontsFromS3();
     if (fromS3) return fromS3;
@@ -210,6 +230,9 @@ export async function savePrintFontsToStorage(fonts) {
       await writable.write(payload);
       await writable.close();
     }
+  } else if (mode === 'idb') {
+    const backend = createIdbBackend();
+    await backend.writeText(PRINT_JSON_KEY, payload, 'application/json');
   } else {
     const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
     const bucket = store.s3Creds?.bucket;

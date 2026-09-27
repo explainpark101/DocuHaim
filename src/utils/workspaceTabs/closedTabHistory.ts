@@ -70,7 +70,7 @@ function isClosedTabEntry(value: unknown): value is ClosedTabEntry {
   }
   if (
     v.kind === 'file' &&
-    (v.storageType === 's3' || v.storageType === 'local' || v.storageType === 'webdav') &&
+    (v.storageType === 's3' || v.storageType === 'local' || v.storageType === 'webdav' || v.storageType === 'idb') &&
     typeof v.path === 'string' &&
     v.path
   ) {

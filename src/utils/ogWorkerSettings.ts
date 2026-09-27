@@ -1,5 +1,6 @@
 import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 
 /**
  * Deploy template: Social Preview Inspector (HTMLRewriter OG/Twitter extract).
@@ -231,6 +232,19 @@ async function loadFromLocal(): Promise<OgWorkerSettings | null> {
   }
 }
 
+async function loadFromIdb(): Promise<OgWorkerSettings | null> {
+  try {
+    const backend = createIdbBackend();
+    const head = await backend.head(OG_WORKER_JSON_KEY);
+    if (!head) return null;
+    const { text } = await backend.readText(OG_WORKER_JSON_KEY);
+    return parseOgWorkerSettings(JSON.parse(text));
+  } catch (e) {
+    console.warn('OG worker settings load from IDB failed:', e);
+    return null;
+  }
+}
+
 async function writeRemote(settings: OgWorkerSettings): Promise<void> {
   const payload = JSON.stringify(settings, null, 2);
   const mode = store.storageMode || 's3';
@@ -254,6 +268,9 @@ async function writeRemote(settings: OgWorkerSettings): Promise<void> {
       await writable.write(payload);
       await writable.close();
     }
+  } else if (mode === 'idb') {
+    const backend = createIdbBackend();
+    await backend.writeText(OG_WORKER_JSON_KEY, payload, 'application/json');
   } else {
     const client =
       typeof store.getS3Client === 'function' ? store.getS3Client() : null;
@@ -277,6 +294,7 @@ export async function loadOgWorkerSettingsFromStorage(): Promise<OgWorkerSetting
   let remote: OgWorkerSettings | null = null;
   if (mode === 'webdav') remote = await loadFromWebdav();
   else if (mode === 'local') remote = await loadFromLocal();
+  else if (mode === 'idb') remote = await loadFromIdb();
   else remote = await loadFromS3();
 
   const next = remote ?? fallback;

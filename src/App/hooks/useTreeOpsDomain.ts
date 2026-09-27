@@ -72,6 +72,10 @@ import { openNotePathnameForStoragePath } from '@/utils/appHref';
 import {
   encryptEncMdContent,
   isEncMdPath,
+  prepareEncMdRenameWrite,
+  relocateEncMdPassword,
+  commitEncMdRenamePasswords,
+  reencryptEncMdContent,
   setEncMdPassword,
 } from '@/utils/encMd';
 import { createWebdavBackend, createLocalBackend } from '@/utils/storage';
@@ -115,6 +119,7 @@ export function useTreeOpsDomain() {
     s3Tree,
     localTree,
     webdavTree,
+    idbTree,
     sessionWorkspaces,
     localRootHandle,
     localVaultFsPath,
@@ -124,6 +129,7 @@ export function useTreeOpsDomain() {
     loadS3Files,
     refreshLocalTree,
     refreshWebdavTree,
+    refreshIdbTree,
     webdavReady,
   } = useVault();
 
@@ -189,6 +195,11 @@ export function useTreeOpsDomain() {
     setMoveModalSelectPath,
     uploadTarget,
     setUploadTarget,
+    encMdPasswordChangeTarget,
+    setEncMdPasswordChangeTarget,
+    isChangingEncMdPassword,
+    setIsChangingEncMdPassword,
+    setEncMdPasswordChangeError,
     confirmAndCancelEditorImageUploadRef,
     readBackendBytesRef,
     downloadMarkdownImageZipRef,
@@ -292,11 +303,43 @@ export function useTreeOpsDomain() {
       };
       await collectLocalFiles(sourceDirHandle);
       updateIndicator(indicatorId, { progress: 100 });
+    } else if (storageType === 'idb' || storageType === 'webdav') {
+      const backend = getBackendForType(storageType);
+      const prefix = String(node.path || '').replace(/\/+$/, '');
+      const collect = async (relBase = '') => {
+        const listPath = prefix
+          ? relBase
+            ? `${prefix}/${relBase}`
+            : `${prefix}/`
+          : relBase
+            ? `${relBase}/`
+            : '';
+        const children = await backend.listChildren(listPath || '');
+        for (const child of children || []) {
+          if (child.type === 'folder') {
+            const nextRel = relBase ? `${relBase}/${child.name}` : child.name;
+            await collect(nextRel);
+          } else if (child.type === 'file' && child.path) {
+            const { body } = await backend.readBytes(child.path);
+            const relativeKey = prefix
+              ? String(child.path).slice(prefix.length).replace(/^\/+/, '')
+              : child.path;
+            entries.push({
+              path: normalizePathToNfc(
+                `${nfcFolderName}/${relativeKey}`.replace(/\\/g, '/'),
+              ),
+              data: body instanceof Uint8Array ? body : new Uint8Array(body),
+            });
+          }
+        }
+      };
+      await collect('');
+      updateIndicator(indicatorId, { progress: 100 });
     }
 
     const zipBlob = await buildZipBlob(entries);
     triggerBlobDownload(zipBlob, `${nfcFolderName}.zip`);
-  }, [localRootHandle, s3Creds, triggerBlobDownload, updateIndicator]);
+  }, [localRootHandle, s3Creds, triggerBlobDownload, updateIndicator, getBackendForType]);
 
   const beginTreeTransferBusy = useCallback((entry) => {
     setTreeTransferBusy((prev) => upsertTreeTransferBusy(prev, entry));
@@ -317,6 +360,8 @@ export function useTreeOpsDomain() {
           ? s3Tree
           : storageType === 'webdav'
             ? webdavTree
+            : storageType === 'idb'
+              ? idbTree
             : localTree;
       let node = findNodeByPath(tree, filePath) || findFileNodeByPath(tree, filePath);
       if ((!node || node.type !== 'file') && storageType === 'local') {
@@ -332,7 +377,7 @@ export function useTreeOpsDomain() {
       }
       await selectFileRawRef.current?.(storageType, node, { skipNavigate: true });
     },
-    [s3Tree, webdavTree, localTree, localRootHandle],
+    [s3Tree, webdavTree, idbTree, localTree, localRootHandle],
   );
 
   const moveS3FileToFolder = async (file, destFolderPath, destFileName) => {
@@ -492,6 +537,32 @@ export function useTreeOpsDomain() {
     await refreshWebdavTree();
   };
 
+  const moveIdbFileToFolder = async (file, destFolderPath, destFileName) => {
+    const backend = getBackendForType('idb');
+    const fileName = destFileName || file.name;
+    const destPrefix = destFolderPath || '';
+    const newKey = `${destPrefix}${fileName}`;
+    const oldKey = file.id;
+    if (newKey === oldKey) return file;
+    await backend.move(oldKey, newKey);
+    await refreshIdbTree();
+    return { ...file, id: newKey, name: fileName };
+  };
+
+  const moveIdbFolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+    const backend = getBackendForType('idb');
+    const prefix = folderNode.path.endsWith('/') ? folderNode.path.slice(0, -1) : folderNode.path;
+    if (!prefix) return;
+    const folderName = newFolderName ?? folderNode.name;
+    const destPath = `${destParentPath || ''}${folderName}`.replace(/\/+$/, '');
+    if (`${destPath}/` === `${prefix}/`) return;
+    if (`${destPath}/`.startsWith(`${prefix}/`) || `${prefix}/`.startsWith(`${destPath}/`)) {
+      throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 이동할 수 없습니다.');
+    }
+    await backend.move(prefix, destPath);
+    await refreshIdbTree();
+  };
+
   const copyS3FileToFolder = async (file, destFolderPath, destFileName) => {
     const client = getS3Client();
     if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
@@ -621,6 +692,38 @@ export function useTreeOpsDomain() {
     await refreshWebdavTree();
   };
 
+  const copyIdbFileToFolder = async (file, destFolderPath, destFileName) => {
+    const backend = getBackendForType('idb');
+    const fileName = destFileName || file.name;
+    const newKey = `${destFolderPath || ''}${fileName}`;
+    const oldKey = file.id;
+    if (newKey === oldKey) return file;
+    await backend.copy(oldKey, newKey);
+    await refreshIdbTree();
+    return { ...file, id: newKey };
+  };
+
+  const copyIdbFolderToFolder = async (folderNode, destParentPath, newFolderName) => {
+    const backend = getBackendForType('idb');
+    const prefix = folderNode.path.endsWith('/') ? folderNode.path : `${folderNode.path}/`;
+    if (!prefix) return;
+    const folderName = newFolderName ?? folderNode.name;
+    const destPrefix = `${destParentPath || ''}${folderName}/`;
+    if (destPrefix === prefix) return;
+    if (destPrefix.startsWith(prefix) || prefix.startsWith(destPrefix)) {
+      throw new Error('폴더를 자기 자신 또는 하위 폴더 안으로 복제할 수 없습니다.');
+    }
+    await backend.mkdir(destPrefix.replace(/\/$/, ''));
+    const { listAllFiles } = await import('@/utils/vault/idbVaultStore');
+    const all = await listAllFiles();
+    for (const file of all) {
+      if (!file.path.startsWith(prefix)) continue;
+      const relative = file.path.slice(prefix.length);
+      await backend.copy(file.path, `${destPrefix}${relative}`);
+    }
+    await refreshIdbTree();
+  };
+
   const toSelectKey = (storageType, path) => `${storageType}:${path}`;
 
   const handleTreeNodeSelect = useCallback(
@@ -693,7 +796,7 @@ export function useTreeOpsDomain() {
         await selectFileRaw(storageType, node);
       }
     },
-    [s3Tree, localTree, webdavTree, sessionWorkspaces, selectFileRaw, saveCurrentMarkdownBeforeSwitch, isMobile, setSidebarOpen]
+    [s3Tree, localTree, webdavTree, idbTree, sessionWorkspaces, selectFileRaw, saveCurrentMarkdownBeforeSwitch, isMobile, setSidebarOpen]
   );
 
   const handleDownloadNode = async (storageType, node) => {
@@ -965,7 +1068,7 @@ export function useTreeOpsDomain() {
         }
         return;
       }
-      if (storageType === 'webdav') {
+      if (storageType === 'webdav' || storageType === 'idb') {
         const body = await readBackendBytesRef.current?.(storageType, node.path);
         await triggerBlobDownload(new Blob([body]), fileName);
         setOperationStatus(`다운로드: ${downloadedName}`);
@@ -1292,6 +1395,26 @@ export function useTreeOpsDomain() {
             viewer: 'markdown',
           });
         }
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        if (type === 'folder') {
+          await backend.mkdir(newPath);
+          await refreshIdbTree();
+          const parentPaths = getParentPathsToExpand(expandParent);
+          expandPaths(storageType, parentPaths);
+        } else {
+          await backend.writeText(newPath, initialBody, 'text/markdown');
+          await refreshIdbTree();
+          const parentPaths = getParentPathsToExpand(expandParent);
+          expandPaths(storageType, parentPaths);
+          openCreatedFile({
+            type: 'idb',
+            id: newPath,
+            name: finalName,
+            content: openContent,
+            viewer: 'markdown',
+          });
+        }
       }
     } catch (e) {
       alert('생성 실패: ' + e.message);
@@ -1423,6 +1546,7 @@ export function useTreeOpsDomain() {
     (storageType) => {
       if (storageType === 's3') return s3Tree;
       if (storageType === 'webdav') return webdavTree;
+      if (storageType === 'idb') return idbTree;
       return localTree;
     },
     [s3Tree, webdavTree, localTree],
@@ -1440,6 +1564,11 @@ export function useTreeOpsDomain() {
       }
       if (storageType === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
+        const result = await backend.readBytes(key);
+        return result?.body || null;
+      }
+      if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
         const result = await backend.readBytes(key);
         return result?.body || null;
       }
@@ -1612,22 +1741,126 @@ export function useTreeOpsDomain() {
               { oldPath: currentFile.id, retargetTabs: false },
             );
           }
+        } else if (storageType === 'idb') {
+          const oldPrefix = node.path.endsWith('/') ? node.path : `${node.path}/`;
+          const destPrefix = node.path.slice(0, -(node.name?.length ?? 0) - 1) + trimmed + '/';
+          await moveIdbFolderToFolder(node, '', trimmed);
+          applyWorkspaceFolderPathRetargetLocalRef.current?.('idb', oldPrefix, destPrefix);
+          notifyAdvancedSearchChange({
+            type: 'retargetPaths',
+            from: oldPrefix,
+            to: destPrefix,
+          });
+          if (currentFile && currentFile.type === 'idb' && currentFile.id.startsWith(node.path)) {
+            const newPathForFile = currentFile.id.startsWith(oldPrefix)
+              ? destPrefix + currentFile.id.slice(oldPrefix.length)
+              : destPrefix + currentFile.id.slice(node.path.length);
+            applyOpenFileIdentityChange(
+              { ...currentFile, id: newPathForFile },
+              { oldPath: currentFile.id, retargetTabs: false },
+            );
+          }
         }
         return;
       }
+
+      const originalName = node.name || '';
+      const lastDot = originalName.lastIndexOf('.');
+      const ext = lastDot > 0 ? originalName.slice(lastDot) : '';
+      const newName = `${trimmed}${ext}`;
+      const oldPath = node.path;
+      const lastSlash = oldPath.lastIndexOf('/');
+      const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
+      const newPath = dirPrefix + newName;
+      if (newPath === oldPath) return;
+
+      const isCurrentFile =
+        currentFile?.type === storageType && currentFile?.id === node.path;
+      const plaintextForEnc = isCurrentFile ? editorContent : null;
+
+      const requestEncMdPassword = async (opts) => {
+        const req = requestEncMdPasswordRef.current;
+        if (!req) throw new Error('cancelled');
+        return req(opts);
+      };
+
+      const readVaultTextForRename = async () => {
+        if (storageType === 's3') {
+          const client = getS3Client();
+          if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+          const { body } = await getObjectBody(client, s3Creds.bucket, oldPath);
+          return typeof body === 'string' ? body : new TextDecoder().decode(body);
+        }
+        if (storageType === 'webdav') {
+          const backend = createWebdavBackend(webdavConfig);
+          const { text } = await backend.readText(oldPath);
+          return String(text ?? '');
+        }
+        if (storageType === 'idb') {
+          const backend = getBackendForType('idb');
+          const { text } = await backend.readText(oldPath);
+          return String(text ?? '');
+        }
+        // local
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const { text } = await backend.readText(oldPath);
+          return String(text ?? '');
+        }
+        const handle = node.handle;
+        if (!handle) throw new Error('로컬 파일 핸들이 없습니다.');
+        const file = await handle.getFile();
+        return await file.text();
+      };
+
+      let encWrite = null;
+      try {
+        encWrite = await prepareEncMdRenameWrite({
+          oldPath,
+          newPath,
+          plaintext: plaintextForEnc,
+          readVaultText: readVaultTextForRename,
+          requestPassword: requestEncMdPassword,
+        });
+      } catch (e) {
+        if (e?.message === 'cancelled') return;
+        throw e;
+      }
+      const forceRewrite = encWrite != null;
+      const writeBody = encWrite
+        ? encWrite.vaultBody
+        : isCurrentFile && currentFile.content !== editorContent
+          ? editorContent
+          : null;
+      const openPlaintext = encWrite
+        ? encWrite.plaintext
+        : isCurrentFile
+          ? editorContent
+          : undefined;
+      const encMdFlag = isEncMdPath(newName);
+
       if (storageType === 's3') {
-        const originalName = node.name || '';
-        const lastDot = originalName.lastIndexOf('.');
-        const ext = lastDot > 0 ? originalName.slice(lastDot) : '';
-        const newName = `${trimmed}${ext}`;
-        const oldPath = node.path;
-
-        const isCurrentFile = currentFile?.type === 's3' && currentFile?.id === node.path;
-        const fileToRename = isCurrentFile ? { ...currentFile, viewer: currentFile.viewer } : { id: node.path, name: node.name };
-        const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
-        const contentOverride = hasUnsaved ? editorContent : null;
-
-        const updated = await renameS3File(fileToRename, newName, contentOverride);
+        const fileToRename = isCurrentFile
+          ? { ...currentFile, viewer: currentFile.viewer }
+          : { id: node.path, name: node.name };
+        // Always rewrite body on enc-mode change; otherwise only when unsaved.
+        const contentOverride = forceRewrite
+          ? writeBody
+          : writeBody != null
+            ? writeBody
+            : null;
+        let updated = await renameS3File(fileToRename, newName, contentOverride);
+        if (encWrite && updated) {
+          commitEncMdRenamePasswords(encWrite, oldPath, updated.id);
+          updated = {
+            ...updated,
+            content: openPlaintext,
+            ...(encMdFlag ? { encMd: true } : { encMd: false }),
+          };
+        } else if (updated && encMdFlag && isEncMdPath(oldPath)) {
+          relocateEncMdPassword(oldPath, updated.id);
+        }
         notifyAdvancedSearchChange({
           type: 'retargetPaths',
           from: oldPath,
@@ -1646,25 +1879,22 @@ export function useTreeOpsDomain() {
           const backend = getBackendForType('local');
           if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
 
-          const oldPath = node.path;
-          const lastSlash = oldPath.lastIndexOf('/');
-          const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
-          const originalName = node.name || '';
-          const nameLastDot = originalName.lastIndexOf('.');
-          const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
-          const newName = `${trimmed}${ext}`;
-          const newPath = dirPrefix + newName;
-          if (newPath === oldPath) return;
-
-          const isCurrentFile = currentFile?.type === 'local' && currentFile?.id === node.path;
-          const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
-          if (hasUnsaved) {
-            await backend.writeText(newPath, editorContent, 'text/markdown');
+          if (forceRewrite || writeBody != null) {
+            await backend.writeText(
+              newPath,
+              forceRewrite ? encWrite.vaultBody : writeBody,
+              'text/markdown',
+            );
             await backend.delete(oldPath);
           } else {
             await backend.move(oldPath, newPath);
           }
           await refreshLocalTree();
+          if (encWrite) {
+            commitEncMdRenamePasswords(encWrite, oldPath, newPath);
+          } else if (encMdFlag && isEncMdPath(oldPath)) {
+            relocateEncMdPassword(oldPath, newPath);
+          }
           notifyAdvancedSearchChange({
             type: 'retargetPaths',
             from: oldPath,
@@ -1672,7 +1902,13 @@ export function useTreeOpsDomain() {
           });
           if (isCurrentFile) {
             applyOpenFileIdentityChange(
-              { ...currentFile, id: newPath, name: newName },
+              {
+                ...currentFile,
+                id: newPath,
+                name: newName,
+                ...(openPlaintext != null ? { content: openPlaintext } : {}),
+                ...(encMdFlag ? { encMd: true } : { encMd: false }),
+              },
               { oldPath },
             );
           } else {
@@ -1685,26 +1921,28 @@ export function useTreeOpsDomain() {
           const pHandle = node.parentHandle || localRootHandle;
           if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
 
-          const oldPath = node.path;
-          const lastSlash = oldPath.lastIndexOf('/');
-          const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
-          const originalName = node.name || '';
-          const nameLastDot = originalName.lastIndexOf('.');
-          const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
-          const newName = `${trimmed}${ext}`;
-          const newPath = dirPrefix + newName;
-
-          if (newPath === oldPath) return;
-
-          const file = await node.handle.getFile();
+          let bodyToWrite;
+          if (forceRewrite) {
+            bodyToWrite = encWrite.vaultBody;
+          } else if (writeBody != null) {
+            bodyToWrite = writeBody;
+          } else {
+            const file = await node.handle.getFile();
+            bodyToWrite = await file.arrayBuffer();
+          }
           const newFileHandle = await pHandle.getFileHandle(newName, { create: true });
           const writable = await newFileHandle.createWritable();
-          await writable.write(await file.arrayBuffer());
+          await writable.write(bodyToWrite);
           await writable.close();
 
           await pHandle.removeEntry(node.name, { recursive: false });
 
           await refreshLocalTree();
+          if (encWrite) {
+            commitEncMdRenamePasswords(encWrite, oldPath, newPath);
+          } else if (encMdFlag) {
+            relocateEncMdPassword(oldPath, newPath);
+          }
           notifyAdvancedSearchChange({
             type: 'retargetPaths',
             from: oldPath,
@@ -1718,6 +1956,8 @@ export function useTreeOpsDomain() {
                 id: newPath,
                 name: newName,
                 handle: newFileHandle,
+                ...(openPlaintext != null ? { content: openPlaintext } : {}),
+                ...(encMdFlag ? { encMd: true } : { encMd: false }),
               },
               { oldPath },
             );
@@ -1731,25 +1971,22 @@ export function useTreeOpsDomain() {
         }
       } else if (storageType === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
-        const oldPath = node.path;
-        const lastSlash = oldPath.lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
-        const originalName = node.name || '';
-        const nameLastDot = originalName.lastIndexOf('.');
-        const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
-        const newName = `${trimmed}${ext}`;
-        const newPath = dirPrefix + newName;
-        if (newPath === oldPath) return;
-
-        const isCurrentFile = currentFile?.type === 'webdav' && currentFile?.id === node.path;
-        const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
-        if (hasUnsaved) {
-          await backend.writeText(newPath, editorContent, 'text/markdown');
+        if (forceRewrite || writeBody != null) {
+          await backend.writeText(
+            newPath,
+            forceRewrite ? encWrite.vaultBody : writeBody,
+            'text/markdown',
+          );
           await backend.delete(oldPath);
         } else {
           await backend.move(oldPath, newPath);
         }
         await refreshWebdavTree();
+        if (encWrite) {
+          commitEncMdRenamePasswords(encWrite, oldPath, newPath);
+        } else if (encMdFlag && isEncMdPath(oldPath)) {
+          relocateEncMdPassword(oldPath, newPath);
+        }
         notifyAdvancedSearchChange({
           type: 'retargetPaths',
           from: oldPath,
@@ -1757,7 +1994,13 @@ export function useTreeOpsDomain() {
         });
         if (isCurrentFile) {
           applyOpenFileIdentityChange(
-            { ...currentFile, id: newPath, name: newName },
+            {
+              ...currentFile,
+              id: newPath,
+              name: newName,
+              ...(openPlaintext != null ? { content: openPlaintext } : {}),
+              ...(encMdFlag ? { encMd: true } : { encMd: false }),
+            },
             { oldPath },
           );
         } else {
@@ -1766,9 +2009,174 @@ export function useTreeOpsDomain() {
             name: newName,
           });
         }
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        if (forceRewrite || writeBody != null) {
+          await backend.writeText(
+            newPath,
+            forceRewrite ? encWrite.vaultBody : writeBody,
+            'text/markdown',
+          );
+          await backend.delete(oldPath);
+        } else {
+          await backend.move(oldPath, newPath);
+        }
+        await refreshIdbTree();
+        if (encWrite) {
+          commitEncMdRenamePasswords(encWrite, oldPath, newPath);
+        } else if (encMdFlag && isEncMdPath(oldPath)) {
+          relocateEncMdPassword(oldPath, newPath);
+        }
+        notifyAdvancedSearchChange({
+          type: 'retargetPaths',
+          from: oldPath,
+          to: newPath,
+        });
+        if (isCurrentFile) {
+          applyOpenFileIdentityChange(
+            {
+              ...currentFile,
+              id: newPath,
+              name: newName,
+              ...(openPlaintext != null ? { content: openPlaintext } : {}),
+              ...(encMdFlag ? { encMd: true } : { encMd: false }),
+            },
+            { oldPath },
+          );
+        } else {
+          applyWorkspaceFilePathRetargetLocalRef.current?.('idb', oldPath, newPath, {
+            id: newPath,
+            name: newName,
+          });
+        }
       }
     } catch (e) {
+      if (e?.message === 'cancelled') return;
       alert("이름 변경 실패: " + e.message);
+    }
+  };
+
+  const requestChangeEncMdPassword = (storageType, node) => {
+    if (!node || node.type === 'folder') return;
+    if (!isEncMdPath(node.path) && !isEncMdPath(node.name)) return;
+    setEncMdPasswordChangeError('');
+    setEncMdPasswordChangeTarget({ storageType, node });
+  };
+
+  const cancelChangeEncMdPassword = () => {
+    if (isChangingEncMdPassword) return;
+    setEncMdPasswordChangeTarget(null);
+    setEncMdPasswordChangeError('');
+    setIsChangingEncMdPassword(false);
+  };
+
+  const confirmChangeEncMdPassword = async (currentPassword, newPassword) => {
+    const target = encMdPasswordChangeTarget;
+    if (!target?.node || !target?.storageType) return;
+    const { storageType, node } = target;
+    const path = String(node.path || '');
+    if (!path) return;
+
+    setIsChangingEncMdPassword(true);
+    setEncMdPasswordChangeError('');
+    try {
+      let ciphertext = '';
+      if (storageType === 's3') {
+        const client = getS3Client();
+        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        const { body } = await getObjectBody(client, s3Creds.bucket, path);
+        ciphertext =
+          typeof body === 'string' ? body : new TextDecoder().decode(body);
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        const { text } = await backend.readText(path);
+        ciphertext = String(text ?? '');
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        const { text } = await backend.readText(path);
+        ciphertext = String(text ?? '');
+      } else if (storageType === 'local') {
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const { text } = await backend.readText(path);
+          ciphertext = String(text ?? '');
+        } else {
+          const handle = node.handle;
+          if (!handle) throw new Error('로컬 파일 핸들이 없습니다.');
+          const file = await handle.getFile();
+          ciphertext = await file.text();
+        }
+      } else {
+        throw new Error('이 저장소에서는 비밀번호 변경을 지원하지 않습니다.');
+      }
+
+      const { vaultBody } = await reencryptEncMdContent(
+        ciphertext,
+        currentPassword,
+        newPassword,
+      );
+
+      if (storageType === 's3') {
+        const client = getS3Client();
+        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        await putObject(client, {
+          Bucket: s3Creds.bucket,
+          Key: path,
+          Body: vaultBody,
+          ContentType: 'application/json; charset=utf-8',
+        });
+        await loadS3Files();
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        await backend.writeText(path, vaultBody, 'application/json; charset=utf-8');
+        await refreshWebdavTree();
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        await backend.writeText(path, vaultBody, 'application/json; charset=utf-8');
+        await refreshIdbTree();
+      } else if (storageType === 'local') {
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          await backend.writeText(path, vaultBody, 'application/json; charset=utf-8');
+          await refreshLocalTree();
+        } else {
+          const pHandle = node.parentHandle || localRootHandle;
+          if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const fileHandle =
+            node.handle || (await pHandle.getFileHandle(node.name));
+          const writable = await fileHandle.createWritable();
+          await writable.write(vaultBody);
+          await writable.close();
+          await refreshLocalTree();
+        }
+      }
+
+      setEncMdPassword(path, String(newPassword || '').trim());
+      setEncMdPasswordChangeTarget(null);
+      setEncMdPasswordChangeError('');
+      setOperationStatus('파일 비밀번호를 변경했습니다.');
+    } catch (e) {
+      const msg = String(e?.message || '비밀번호 변경에 실패했습니다.');
+      if (
+        msg.includes('Password required') ||
+        msg.includes('올바르지') ||
+        msg.includes('decrypt') ||
+        msg.includes('Decrypt') ||
+        msg.includes('operation') ||
+        msg.includes('새 비밀번호')
+      ) {
+        setEncMdPasswordChangeError(
+          msg.includes('새 비밀번호')
+            ? msg
+            : '현재 비밀번호가 올바르지 않거나 파일을 읽을 수 없습니다.',
+        );
+      } else {
+        setEncMdPasswordChangeError(msg);
+      }
+    } finally {
+      setIsChangingEncMdPassword(false);
     }
   };
 
@@ -1829,6 +2237,8 @@ export function useTreeOpsDomain() {
           ? s3Tree
           : targetStorageType === 'webdav'
             ? webdavTree
+            : targetStorageType === 'idb'
+              ? idbTree
             : localTree;
       const usedDestNames = new Set(getTreeChildNames(tree, destPath, findNodeByPath));
       let successCount = 0;
@@ -1936,6 +2346,8 @@ export function useTreeOpsDomain() {
                   await copyS3FileToFolder(fileNode, destPath, destName);
                 } else if (srcStorageType === 'webdav') {
                   await copyWebdavFileToFolder(fileNode, destPath, destName);
+                } else if (srcStorageType === 'idb') {
+                  await copyIdbFileToFolder(fileNode, destPath, destName);
                 } else {
                   await copyLocalFileToFolder(fileNode, destHandle, destPath, destName);
                 }
@@ -1944,6 +2356,8 @@ export function useTreeOpsDomain() {
                 await copyS3FolderToFolder(srcNode, destPath, destName);
               } else if (srcStorageType === 'webdav') {
                 await copyWebdavFolderToFolder(srcNode, destPath, destName);
+              } else if (srcStorageType === 'idb') {
+                await copyIdbFolderToFolder(srcNode, destPath, destName);
               } else {
                 await copyLocalFolderToFolder(srcNode, destHandle, destPath, destName);
               }
@@ -1977,6 +2391,17 @@ export function useTreeOpsDomain() {
                   });
                   await reloadOpenFileIfPath(srcStorageType, destFilePath);
                 }
+              } else if (srcStorageType === 'idb') {
+                const updated = await moveIdbFileToFolder(fileNode, destPath, destName);
+                if (currentFileRef.current?.type === 'idb' && currentFileRef.current.id === srcPath) {
+                  applyOpenFileIdentityChange(updated, { oldPath: srcPath });
+                } else {
+                  applyWorkspaceFilePathRetargetLocalRef.current?.(srcStorageType, srcPath, destFilePath, {
+                    id: destFilePath,
+                    name: destName,
+                  });
+                  await reloadOpenFileIfPath(srcStorageType, destFilePath);
+                }
               } else {
                 const updated = await moveLocalFileToFolder(fileNode, destHandle, destPath, destName);
                 if (currentFileRef.current?.type === 'local' && currentFileRef.current.id === srcPath) {
@@ -2001,6 +2426,8 @@ export function useTreeOpsDomain() {
                 await moveS3FolderToFolder(srcNode, destPath, destName);
               } else if (srcStorageType === 'webdav') {
                 await moveWebdavFolderToFolder(srcNode, destPath, destName);
+              } else if (srcStorageType === 'idb') {
+                await moveIdbFolderToFolder(srcNode, destPath, destName);
               } else {
                 await moveLocalFolderToFolder(srcNode, destHandle, destPath, destName);
               }
@@ -2119,6 +2546,19 @@ export function useTreeOpsDomain() {
             });
           }
           await refreshWebdavTree();
+        } else if (targetStorageType === 'idb') {
+          const backend = getBackendForType('idb');
+          for (const entry of flatFiles) {
+            await uploadRunner.run(entry.relativePath, async () => {
+              const relPath = normalizePathToNfc(entry.relativePath);
+              const key = destPath + relPath;
+              const contentType = guessMimeTypeFromFileName(entry.baseName);
+              const body = await readOpenPathBytes(entry.absolutePath);
+              await backend.writeBytes(key, body, contentType);
+              await reloadOpenFileIfPath(targetStorageType, key);
+            });
+          }
+          await refreshIdbTree();
         } else if (localVaultFsPath && !localRootHandle) {
           const backend = getBackendForType('local');
           if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
@@ -2599,6 +3039,31 @@ export function useTreeOpsDomain() {
           await reloadOpenFileIfPath(storageType, key);
         }
         await refreshWebdavTree();
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const fileKey = normalizeUnicodeNfc(file.name);
+          const destName = await resolveUploadDestFileName(
+            file.name,
+            usedNames,
+            askUploadNameConflict,
+          );
+          if (!destName) {
+            skippedCount += 1;
+            uploadRunner.markSkipped(fileKey);
+            continue;
+          }
+          const key = parentPath + destName;
+          await uploadRunner.run(fileKey, async () => {
+            const body = new Uint8Array(await file.arrayBuffer());
+            await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+          });
+          usedNames.add(destName);
+          uploadedCount += 1;
+          await reloadOpenFileIfPath(storageType, key);
+        }
+        await refreshIdbTree();
       }
       const parentPaths = getParentPathsToExpand(parentPath);
       expandPaths(storageType, parentPaths);
@@ -2714,6 +3179,18 @@ export function useTreeOpsDomain() {
           });
         }
         await refreshWebdavTree();
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const relPath = normalizePathToNfc(file.webkitRelativePath || file.name);
+          const key = parentPath + relPath;
+          await uploadRunner.run(relPath, async () => {
+            const body = new Uint8Array(await file.arrayBuffer());
+            await backend.writeBytes(key, body, file.type || 'application/octet-stream');
+          });
+        }
+        await refreshIdbTree();
       }
       const parentPaths = getParentPathsToExpand(parentPath);
       expandPaths(storageType, parentPaths);
@@ -2825,9 +3302,9 @@ export function useTreeOpsDomain() {
     const seen = new Set();
     const recordings = [];
     for (const t of targets) {
-      if (!['s3', 'local', 'webdav'].includes(t.type) || t.node.type !== 'file') continue;
+      if (!['s3', 'local', 'webdav', 'idb'].includes(t.type) || t.node.type !== 'file') continue;
       const tree =
-        t.type === 's3' ? s3Tree : t.type === 'webdav' ? webdavTree : localTree;
+        t.type === 's3' ? s3Tree : t.type === 'webdav' ? webdavTree : t.type === 'idb' ? idbTree : localTree;
       for (const r of getRecordingKeysFromTree(tree, t.node.path)) {
         if (seen.has(r.key)) continue;
         seen.add(r.key);
@@ -2874,7 +3351,7 @@ export function useTreeOpsDomain() {
     const deletedNodesForChat = [];
 
     const treeFor = (type) =>
-      type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
+      type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : type === 'idb' ? idbTree : localTree;
 
     const recordingKeysForNode = (node, type) => {
       if (!deleteWithRecordings || node.type !== 'file') return [];
@@ -3024,6 +3501,35 @@ export function useTreeOpsDomain() {
               await backend.trash(node.path, { additionalKeys });
             }
             storagesTouched.add('webdav');
+          } else if (type === 'idb') {
+            const backend = getBackendForType('idb');
+            if (isInTrash) {
+              if (node.type === 'folder') {
+                await backend.deletePrefix(node.path);
+                for (const key of additionalKeys) {
+                  try {
+                    await backend.delete(key);
+                  } catch {
+                    /* missing companion ok */
+                  }
+                }
+              } else {
+                const keysToDelete =
+                  additionalKeys.length > 0
+                    ? [node.path, ...additionalKeys]
+                    : [node.path];
+                for (const key of keysToDelete) {
+                  try {
+                    await backend.delete(key);
+                  } catch {
+                    /* missing ok */
+                  }
+                }
+              }
+            } else {
+              await backend.trash(node.path, { additionalKeys });
+            }
+            storagesTouched.add('idb');
           }
 
           successCount += 1;
@@ -3059,6 +3565,7 @@ export function useTreeOpsDomain() {
       if (storagesTouched.has('s3')) loadS3Files();
       if (storagesTouched.has('local')) await refreshLocalTree();
       if (storagesTouched.has('webdav')) await refreshWebdavTree();
+      if (storagesTouched.has('idb')) await refreshIdbTree();
 
       if (openFileAffected) {
         const activeFile = getActiveFileTab(workspaceTabsRef.current);
@@ -3142,6 +3649,7 @@ export function useTreeOpsDomain() {
       if (storageType === 's3') await loadS3Files();
       else if (storageType === 'local') await refreshLocalTree();
       else if (storageType === 'webdav') await refreshWebdavTree();
+      else if (storageType === 'idb') await refreshIdbTree();
 
       if (
         currentFile?.id &&
@@ -3173,6 +3681,8 @@ export function useTreeOpsDomain() {
       await refreshLocalTree();
     } else if (currentFile.type === 'webdav' && webdavReady) {
       await refreshWebdavTree();
+    } else if (currentFile.type === 'idb') {
+      await refreshIdbTree();
     }
     setIsMoveModalOpen(true);
   };
@@ -3232,7 +3742,7 @@ export function useTreeOpsDomain() {
         const fileToMove =
           storageType === 's3'
             ? { id: node.path, name: node.name }
-            : storageType === 'webdav'
+            : storageType === 'webdav' || storageType === 'idb'
               ? { id: node.path, name: node.name }
               : { ...node, handle: node.handle, parentHandle: node.parentHandle || localRootHandle };
         if (storageType === 's3') {
@@ -3249,6 +3759,13 @@ export function useTreeOpsDomain() {
         } else if (storageType === 'webdav') {
           const updated = await moveWebdavFileToFolder(fileToMove, destPath, destName);
           if (currentFileRef.current?.type === 'webdav' && currentFileRef.current.id === node.path) {
+            setCurrentFile(updated);
+          } else {
+            await reloadOpenFileIfPath(storageType, destFilePath);
+          }
+        } else if (storageType === 'idb') {
+          const updated = await moveIdbFileToFolder(fileToMove, destPath, destName);
+          if (currentFileRef.current?.type === 'idb' && currentFileRef.current.id === node.path) {
             setCurrentFile(updated);
           } else {
             await reloadOpenFileIfPath(storageType, destFilePath);
@@ -3323,6 +3840,8 @@ export function useTreeOpsDomain() {
           await moveS3FolderToFolder(node, destPath, destName);
         } else if (storageType === 'webdav') {
           await moveWebdavFolderToFolder(node, destPath, destName);
+        } else if (storageType === 'idb') {
+          await moveIdbFolderToFolder(node, destPath, destName);
         } else {
           const destHandle = dest.handle || localRootHandle;
           if (!destHandle) throw new Error('대상 폴더를 찾을 수 없습니다.');
@@ -3426,6 +3945,11 @@ export function useTreeOpsDomain() {
           if (updated) {
             applyOpenFileIdentityChange(updated, { oldPath: srcPath });
           }
+        } else if (currentFile.type === 'idb') {
+          const updated = await moveIdbFileToFolder(currentFile, destPath, destName);
+          if (updated) {
+            applyOpenFileIdentityChange(updated, { oldPath: srcPath });
+          }
         } else if (currentFile.type === 'local') {
           const updated = await moveLocalFileToFolder(
             currentFile,
@@ -3475,6 +3999,10 @@ export function useTreeOpsDomain() {
         const backend = createWebdavBackend(webdavConfig);
         await backend.trash(key);
         await refreshWebdavTree();
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        await backend.trash(key);
+        await refreshIdbTree();
       } else if (localVaultFsPath && !localRootHandle) {
         const backend = getBackendForType('local');
         if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
@@ -3517,6 +4045,9 @@ export function useTreeOpsDomain() {
     handleTreeNodeSelect,
     handleDownloadNode,
     handleDuplicateNode,
+    requestChangeEncMdPassword,
+    cancelChangeEncMdPassword,
+    confirmChangeEncMdPassword,
     createItem,
     requestCreateItem,
     requestAdvancedSearchCreateItem,

@@ -34,6 +34,8 @@ import { useRecordingVaultEffectsDomain } from '@/App/hooks/useRecordingVaultEff
 import { useFileOpenRoutingDomain } from '@/App/hooks/useFileOpenRoutingDomain';
 import { useDownloadSessionDomain } from '@/App/hooks/useDownloadSessionDomain';
 import { useTempChatRecordingDomain } from '@/App/hooks/useTempChatRecordingDomain';
+import { useVaultExportDomain } from '@/App/hooks/useVaultExportDomain';
+import { useFirstNoteOnboardingDomain } from '@/App/hooks/useFirstNoteOnboardingDomain';
 
 export function useAppLogicSharedState(): Record<string, any> {
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
@@ -86,6 +88,8 @@ export function useAppLogicSharedState(): Record<string, any> {
   const fileOpen = useFileOpenRoutingDomain();
   const download = useDownloadSessionDomain();
   const tempChat = useTempChatRecordingDomain();
+  const vaultExport = useVaultExportDomain();
+  const firstNoteOnboarding = useFirstNoteOnboardingDomain();
 
   treeOwned.confirmAndCancelEditorImageUploadRef.current =
     editorImage.confirmAndCancelEditorImageUpload ?? null;
@@ -104,7 +108,7 @@ export function useAppLogicSharedState(): Record<string, any> {
     getParentPathsToExpand, ...setup,
     suppressUnsavedNavGuardRef: fileOwned.suppressUnsavedNavGuardRef,
     ...bootstrap, ...session, ...appChrome, ...advancedSearch, ...chat, ...editorImage,
-    ...recordingEffects, ...fileOpen, ...download, ...tempChat,
+    ...recordingEffects, ...fileOpen, ...download, ...tempChat, ...vaultExport, ...firstNoteOnboarding,
     renameS3File: (...args: any[]) => fileSessionApi.renameS3File?.(...args),
     renameLocalFile: (...args: any[]) => fileSessionApi.renameLocalFile?.(...args),
   };

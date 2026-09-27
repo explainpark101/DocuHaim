@@ -71,6 +71,7 @@ export function ConfirmModal({
     panelRef,
     beginResize,
     resetBox,
+    pinToCurrentRect,
     positioned,
     positionedStyle,
   } = useModalCornerResize(resizable, { resizeHeight: false });
@@ -83,8 +84,17 @@ export function ConfirmModal({
   });
 
   useEffect(() => {
-    if (!isOpen) resetBox();
-  }, [isOpen, resetBox]);
+    if (!isOpen) {
+      resetBox();
+      return undefined;
+    }
+    // After Motion enter spring settles, pin fixed so resize does not
+    // switch layout mode mid-drag (pointercancel).
+    const timer = window.setTimeout(() => {
+      pinToCurrentRect();
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, resetBox, pinToCurrentRect]);
 
   if (typeof document === 'undefined') return null;
 

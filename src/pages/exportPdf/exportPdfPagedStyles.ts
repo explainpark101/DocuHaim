@@ -258,12 +258,17 @@ export function buildExportPdfPagedStyles(
   --md-theme-code-block-bg-color: #fafafa;
   --md-theme-code-before-bg-color: #f0f0f0;
   display: block;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   margin: 1.25em 0;
   padding: 0;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-width: 2px;
+  border-style: solid;
+  border-color: #6b7280;
+  border-radius: 0;
   overflow: visible;
-  box-shadow: none;
+  box-shadow: none !important;
   background-color: #fafafa;
   line-height: 1.6;
   -webkit-print-color-adjust: exact;
@@ -307,6 +312,113 @@ export function buildExportPdfPagedStyles(
 .export-pdf-paged-source .md-editor-code pre code .md-editor-code-block,
 .pagedjs_page_content .md-editor-code pre code .md-editor-code-block {
   color: unset;
+  display: block;
+  width: 100%;
+  max-width: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  overflow: visible;
+}
+
+/* Haim TipTap code/raw: always wrap in Export PDF (ignore editor wrap pref). */
+.export-pdf-paged-source .haim-code-block code,
+.export-pdf-paged-source .haim-code-block [data-node-view-content],
+.export-pdf-paged-source .haim-raw-md__pre,
+.pagedjs_page_content .haim-code-block code,
+.pagedjs_page_content .haim-code-block [data-node-view-content],
+.pagedjs_page_content .haim-raw-md__pre {
+  white-space: pre-wrap !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  max-width: none !important;
+}
+
+.export-pdf-paged-source .haim-code-block:not(.haim-mermaid-block),
+.pagedjs_page_content .haim-code-block:not(.haim-mermaid-block) {
+  display: block;
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box;
+  box-shadow: none !important;
+  /* Longhands so frag-continue can clear top/bottom without shorthand fight. */
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: #6b7280 !important;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.export-pdf-paged-source .haim-code-block__body,
+.pagedjs_page_content .haim-code-block__body {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.export-pdf-paged-source .haim-line-numbers,
+.pagedjs_page_content .haim-line-numbers,
+.export-pdf-paged-source .haim-prose-line-numbers,
+.pagedjs_page_content .haim-prose-line-numbers,
+.export-pdf-paged-source .export-pdf-code-gutter,
+.pagedjs_page_content .export-pdf-code-gutter {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-right-color: #d1d5db;
+}
+
+.export-pdf-paged-source .haim-prose-line-numbers,
+.pagedjs_page_content .haim-prose-line-numbers {
+  display: none !important;
+}
+
+.export-pdf-paged-source .haim-mermaid-block,
+.export-pdf-paged-source .haim-code-block.haim-mermaid-block,
+.pagedjs_page_content .haim-mermaid-block,
+.pagedjs_page_content .haim-code-block.haim-mermaid-block {
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+  overflow: visible;
+}
+
+.export-pdf-paged-source .haim-mermaid-block__chart,
+.pagedjs_page_content .haim-mermaid-block__chart {
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  padding: 0;
+  text-align: center;
+  overflow: visible;
+}
+
+.export-pdf-paged-source .haim-mermaid-block__chart svg,
+.pagedjs_page_content .haim-mermaid-block__chart svg {
+  display: block;
+  margin-inline: auto;
+}
+
+.export-pdf-paged-source
+  .haim-mermaid-block:not([data-mermaid-sized]):not([data-print-free-transform])
+  .haim-mermaid-block__chart
+  svg,
+.pagedjs_page_content
+  .haim-mermaid-block:not([data-mermaid-sized]):not([data-print-free-transform])
+  .haim-mermaid-block__chart
+  svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.export-pdf-paged-source .haim-mermaid-block__source-hidden,
+.pagedjs_page_content .haim-mermaid-block__source-hidden {
+  display: none !important;
 }
 
 /* Per-line rows: avoid flex (paged.js break-token bugs); allow splitting tall wraps. */
@@ -318,10 +430,15 @@ export function buildExportPdfPagedStyles(
   -webkit-box-decoration-break: slice;
 }
 
-/* Page-break continuation: flat edge, no border at the seam. */
+/* Page-break continuation: flat edge, no border at the seam.
+   Beat .haim-code-block { border: … !important } shorthand. */
 .export-pdf-paged-source .md-editor-code.export-pdf-code-frag-continue,
-.pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue {
-  border-top: none !important;
+.export-pdf-paged-source .haim-code-block.export-pdf-code-frag-continue,
+.pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue,
+.pagedjs_page_content .haim-code-block.export-pdf-code-frag-continue {
+  border-top-color: transparent !important;
+  border-top-width: 0 !important;
+  border-top-style: none !important;
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
   margin-top: 0 !important;
@@ -333,8 +450,12 @@ export function buildExportPdfPagedStyles(
 }
 
 .export-pdf-paged-source .md-editor-code.export-pdf-code-frag-break,
-.pagedjs_page_content .md-editor-code.export-pdf-code-frag-break {
-  border-bottom: none !important;
+.export-pdf-paged-source .haim-code-block.export-pdf-code-frag-break,
+.pagedjs_page_content .md-editor-code.export-pdf-code-frag-break,
+.pagedjs_page_content .haim-code-block.export-pdf-code-frag-break {
+  border-bottom-color: transparent !important;
+  border-bottom-width: 0 !important;
+  border-bottom-style: none !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
   margin-bottom: 0 !important;
@@ -370,7 +491,11 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .export-pdf-code-line,
 .pagedjs_page_content .export-pdf-code-line {
-  display: block;
+  display: table;
+  width: 100%;
+  max-width: none;
+  table-layout: fixed;
+  box-sizing: border-box;
   break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -391,7 +516,7 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .export-pdf-code-gutter,
 .pagedjs_page_content .export-pdf-code-gutter {
-  display: inline-block;
+  display: table-cell;
   width: 3em;
   padding-inline-end: 0.5em;
   text-align: right;
@@ -399,16 +524,21 @@ export function buildExportPdfPagedStyles(
   color: #6b7280;
   user-select: none;
   font-variant-numeric: tabular-nums;
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 .export-pdf-paged-source .export-pdf-code-content,
 .pagedjs_page_content .export-pdf-code-content {
-  display: inline-block;
-  width: calc(100% - 3.5em);
+  /* table-cell takes remaining width — avoids inline-block % shrink in paged.js */
+  display: table-cell;
+  width: auto;
+  max-width: none;
   vertical-align: top;
+  box-sizing: border-box;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .export-pdf-paged-source table,
@@ -464,12 +594,26 @@ export function buildExportPdfPagedStyles(
   display: block;
   text-align: center;
   margin-inline: auto;
-  width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
 }
 
 .export-pdf-paged-source .md-editor-mermaid[data-processed] svg,
 .pagedjs_page_content .md-editor-mermaid[data-processed] svg {
+  display: block;
   margin-inline: auto;
+}
+
+.export-pdf-paged-source
+  .md-editor-mermaid[data-processed]:not([data-mermaid-sized]):not([data-print-free-transform])
+  svg,
+.pagedjs_page_content
+  .md-editor-mermaid[data-processed]:not([data-mermaid-sized]):not([data-print-free-transform])
+  svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
 }
 
 .export-pdf-paged-source .md-editor-mermaid[data-mermaid-sized],

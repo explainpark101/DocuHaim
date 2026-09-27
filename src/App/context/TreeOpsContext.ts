@@ -36,6 +36,12 @@ export type TreeOpsValue = {
   handleDropOnFolder: (...args: any[]) => any;
   handleDownloadNode: (...args: any[]) => any;
   handleDuplicateNode: (...args: any[]) => any;
+  requestChangeEncMdPassword: (...args: any[]) => any;
+  cancelChangeEncMdPassword: (...args: any[]) => any;
+  confirmChangeEncMdPassword: (...args: any[]) => any;
+  encMdPasswordChangeTarget: any;
+  isChangingEncMdPassword: boolean;
+  encMdPasswordChangeError: string;
   renameTreeItem: (...args: any[]) => any;
   dropTarget: any;
   treeNameConflict: any;

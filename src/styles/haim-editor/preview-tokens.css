@@ -156,6 +156,13 @@ html[data-haim-focus-outline='1'] .haim-editor .tiptap .haim-node-focused {
   height: 1.75rem;
 }
 
+/* Keep drag grip to the right of the prose line gutter when enabled. */
+html[data-haim-prose-line-numbers='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-drag-handle {
+  margin-left: 0.15rem;
+}
+
 /* TipTap Mathematics (KaTeX) — no scrollbar chrome */
 .haim-editor .tiptap-mathematics-render {
   display: inline-block;
@@ -301,9 +308,117 @@ html[data-haim-focus-outline='1'] .haim-editor .tiptap .haim-node-focused {
   padding: 0;
   line-height: 1.55;
   white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
-/* Shared gutter — visibility via html[data-haim-*-line-numbers] */
+/*
+ * TipTap NodeViewContent sets inline white-space:pre-wrap.
+ * html[data-haim-code-wrap] controls editor wrap; preview-only / Export PDF always wrap.
+ */
+.haim-editor .haim-code-block [data-node-view-content] {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+html[data-haim-code-wrap='0']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-code-block
+  code,
+html[data-haim-code-wrap='0']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-code-block
+  [data-node-view-content] {
+  white-space: pre !important;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+html[data-haim-code-wrap='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-code-block
+  code,
+html[data-haim-code-wrap='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-code-block
+  [data-node-view-content] {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+html[data-haim-code-wrap='0']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-raw-md__pre {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+html[data-haim-code-wrap='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-raw-md__pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Export PDF / read-only Haim preview: always soft-wrap code + raw */
+.haim-editor[data-haim-preview-only] .haim-code-block code,
+.haim-editor[data-haim-preview-only] .haim-code-block [data-node-view-content],
+.haim-editor[data-haim-preview-only] .haim-raw-md__pre {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/*
+ * Document (prose) line numbers — left of drag-handle gutter.
+ * `left` is set in JS to the (clamped) .tiptap column edge.
+ * Visibility via html[data-haim-prose-line-numbers].
+ */
+.haim-prose-line-numbers {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  width: 2.35rem;
+  pointer-events: none;
+  user-select: none;
+  font-family: D2Coding, ui-monospace, monospace;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--md-theme-color, #64748b) 55%, transparent);
+}
+
+.haim-editor--dark .haim-prose-line-numbers,
+:is(.dark) .haim-editor .haim-prose-line-numbers {
+  color: color-mix(in srgb, var(--md-theme-color, #94a3b8) 50%, transparent);
+}
+
+.haim-prose-line-numbers__n {
+  position: absolute;
+  right: 0.35rem;
+  left: 0;
+  transform: translateY(-0.1em);
+  text-align: right;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+html[data-haim-prose-line-numbers='0'] .haim-prose-line-numbers {
+  display: none;
+}
+
+/* Room for prose line gutter + drag handle when line numbers are on. */
+html[data-haim-prose-line-numbers='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-editor-content
+  .tiptap.haim-editor-prose {
+  padding-left: 4.25rem;
+}
+
+/* Shared block gutter — visibility via html[data-haim-*-line-numbers] */
 .haim-editor .haim-line-numbers {
   flex: 0 0 auto;
   display: flex;
@@ -335,8 +450,13 @@ html[data-haim-focus-outline='1'] .haim-editor .tiptap .haim-node-focused {
 
 .haim-editor .haim-line-numbers__n {
   display: block;
+  flex: 0 0 auto;
+  box-sizing: border-box;
   text-align: right;
   white-space: nowrap;
+  overflow: hidden;
+  /* Digit at top of hard-line band; inline height comes from measured px. */
+  line-height: inherit;
 }
 
 html[data-haim-code-line-numbers='0'] .haim-editor .haim-code-block__line-numbers {

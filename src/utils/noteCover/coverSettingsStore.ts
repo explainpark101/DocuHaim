@@ -1,5 +1,6 @@
 import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 
 const COVER_JSON_KEY = '.settings/cover.json';
 const LOCAL_STORAGE_KEY = 's3haim_cover_settings';
@@ -275,6 +276,19 @@ async function loadFromLocal(): Promise<CoverAppSettings | null> {
   }
 }
 
+async function loadFromIdb(): Promise<CoverAppSettings | null> {
+  try {
+    const backend = createIdbBackend();
+    const head = await backend.head(COVER_JSON_KEY);
+    if (!head) return null;
+    const { text } = await backend.readText(COVER_JSON_KEY);
+    return parseCoverSettings(JSON.parse(text));
+  } catch (e) {
+    console.warn('Cover settings load from IDB failed:', e);
+    return null;
+  }
+}
+
 async function writeRemote(settings: CoverAppSettings): Promise<void> {
   const payload = JSON.stringify(settings, null, 2);
   const mode = store.storageMode || 's3';
@@ -294,6 +308,9 @@ async function writeRemote(settings: CoverAppSettings): Promise<void> {
       await writable.write(payload);
       await writable.close();
     }
+  } else if (mode === 'idb') {
+    const backend = createIdbBackend();
+    await backend.writeText(COVER_JSON_KEY, payload, 'application/json');
   } else {
     const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
     const bucket = store.s3Creds?.bucket;
@@ -330,6 +347,7 @@ export async function loadCoverSettingsFromStorage(): Promise<CoverAppSettings> 
   let remote: CoverAppSettings | null = null;
   if (mode === 'webdav') remote = await loadFromWebdav();
   else if (mode === 'local') remote = await loadFromLocal();
+  else if (mode === 'idb') remote = await loadFromIdb();
   else remote = await loadFromS3();
 
   const next = remote ?? fallback;

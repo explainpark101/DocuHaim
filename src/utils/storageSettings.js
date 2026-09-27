@@ -1,1 +1,1 @@
-export * from '@/utils/vault/storageSettings.js';
+export * from '@/utils/vault/storageSettings';

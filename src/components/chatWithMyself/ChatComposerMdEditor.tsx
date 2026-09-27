@@ -1,6 +1,7 @@
 /**
  * Chat composer editor surface — respects Settings editor type
  * (기존 에디터 / Haim Editor). Only the selected engine chunk loads.
+ * While the chunk loads, a plain textarea stays usable.
  */
 
 import { lazy, Suspense, useEffect, useState } from 'react';
@@ -11,6 +12,7 @@ import {
   type EditorTypeId,
 } from '@/utils/editorTypeSettings';
 import type { ChatComposerEditorProps } from '@/components/chatWithMyself/ChatComposerLegacyMdEditor';
+import ChatComposerPlainTextarea from '@/components/chatWithMyself/ChatComposerPlainTextarea';
 
 const ChatComposerLegacyMdEditor = lazy(
   () => import('@/components/chatWithMyself/ChatComposerLegacyMdEditor'),
@@ -18,14 +20,6 @@ const ChatComposerLegacyMdEditor = lazy(
 const ChatComposerHaimEditor = lazy(
   () => import('@/components/chatWithMyself/ChatComposerHaimEditor'),
 );
-
-function Fallback() {
-  return (
-    <div className="flex h-full items-center px-2.5 text-sm text-gray-400">
-      에디터 불러오는 중…
-    </div>
-  );
-}
 
 /**
  * Drop-in replacement for the previous ChatComposerMdEditor export.
@@ -44,9 +38,16 @@ export default function ChatComposerMdEditor(props: ChatComposerEditorProps) {
   }, []);
 
   const useHaim = editorType === EDITOR_TYPE_HAIM;
+  const loadingFallback = (
+    <ChatComposerPlainTextarea
+      value={props.value}
+      onChange={props.onChange}
+      fillParent
+    />
+  );
 
   return (
-    <Suspense fallback={<Fallback />}>
+    <Suspense fallback={loadingFallback}>
       {useHaim ? (
         <ChatComposerHaimEditor {...props} />
       ) : (

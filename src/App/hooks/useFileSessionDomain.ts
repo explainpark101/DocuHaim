@@ -29,10 +29,14 @@ import { openOrReplaceFileTab, evictForSoftCap } from '@/utils/workspaceTabs/wor
 import { retainOnlyFileTab } from '@/utils/workspaceTabs/legacyMode';
 import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
 import {
+  buildLockedEncMdEditorFile,
   decryptEncMdContent,
   getEncMdPassword,
   isEncMdPath,
+  prepareEncMdRenameWrite,
   prepareEncMdVaultBody,
+  relocateEncMdPassword,
+  commitEncMdRenamePasswords,
   setEncMdPassword,
   tryUnlockEncMdContent,
 } from '@/utils/encMd';
@@ -74,6 +78,7 @@ import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
+  STORAGE_MODE_IDB,
 } from '@/utils/storageSettings';
 
 function isAbortOrNetworkError(e) {
@@ -113,6 +118,7 @@ export function useFileSessionDomain() {
     s3Tree,
     localTree,
     webdavTree,
+    idbTree,
     localRootHandle,
     localVaultFsPath,
     webdavConfig,
@@ -122,6 +128,7 @@ export function useFileSessionDomain() {
     loadS3Files,
     refreshLocalTree,
     refreshWebdavTree,
+    refreshIdbTree,
     upsertSessionWorkspace,
   } = useVault();
 
@@ -417,6 +424,39 @@ export function useFileSessionDomain() {
     };
 
     try {
+      if (type === 'idb') {
+        try {
+          const ok = markAsLoading();
+          if (!ok) return;
+
+          const backend = getBackendForType('idb');
+          const opened = await openPathFileFromBackend({ backend, type: 'idb', node });
+          if (!opened) return;
+          let { currentFile: openedFile, editorContent: content } = opened;
+          if (opened.needsEncMdPassword) {
+            const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext);
+            if (plain == null) {
+              const locked = buildLockedEncMdEditorFile({
+                type: 'idb',
+                id: node.path,
+                name: node.name,
+                ciphertext: opened.encMdCiphertext || '',
+                size: openedFile.size ?? null,
+                lastModified: openedFile.lastModified ?? node.lastModified,
+              });
+              commit(locked, locked.content);
+              return;
+            }
+            content = plain;
+            openedFile = { ...openedFile, content: plain, encMd: true };
+          }
+          commit(openedFile, content);
+        } catch (err) {
+          console.error('IDB Read Error:', err);
+        }
+        return;
+      }
+
       if (type === 'webdav') {
       if (!webdavReady) return;
       try {
@@ -429,7 +469,18 @@ export function useFileSessionDomain() {
         let { currentFile: openedFile, editorContent: content } = opened;
         if (opened.needsEncMdPassword) {
           const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext);
-          if (plain == null) return;
+          if (plain == null) {
+            const locked = buildLockedEncMdEditorFile({
+              type: 'webdav',
+              id: node.path,
+              name: node.name,
+              ciphertext: opened.encMdCiphertext || '',
+              size: openedFile.size ?? null,
+              lastModified: openedFile.lastModified ?? node.lastModified,
+            });
+            commit(locked, locked.content);
+            return;
+          }
           content = plain;
           openedFile = { ...openedFile, content: plain, encMd: true };
         }
@@ -529,7 +580,18 @@ export function useFileSessionDomain() {
           let baselineContent = resolved.baselineContent;
           if (isEncMdPath(node.path)) {
             const plain = await unlockEncMdOrPrompt(node.path, serverText);
-            if (plain == null) return;
+            if (plain == null) {
+              const locked = buildLockedEncMdEditorFile({
+                type: 's3',
+                id: node.path,
+                name: node.name,
+                ciphertext: serverText,
+                size: typeof ContentLength === 'number' ? ContentLength : null,
+                lastModified: serverLastModified ?? node.lastModified,
+              });
+              commit(locked, locked.content);
+              return;
+            }
             contentToUse = plain;
             baselineContent = plain;
           }
@@ -670,7 +732,18 @@ export function useFileSessionDomain() {
         let { currentFile: openedFile, editorContent: content } = opened;
         if (opened.needsEncMdPassword) {
           const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext);
-          if (plain == null) return;
+          if (plain == null) {
+            const locked = buildLockedEncMdEditorFile({
+              type: 'local',
+              id: node.path,
+              name: node.name,
+              ciphertext: opened.encMdCiphertext || '',
+              size: openedFile.size ?? null,
+              lastModified: openedFile.lastModified ?? node.lastModified,
+            });
+            commit(locked, locked.content);
+            return;
+          }
           content = plain;
           openedFile = { ...openedFile, content: plain, encMd: true };
         }
@@ -804,7 +877,20 @@ export function useFileSessionDomain() {
       let baselineContent = resolved.baselineContent;
       if (isEncMdPath(node.path)) {
         const plain = await unlockEncMdOrPrompt(node.path, serverText);
-        if (plain == null) return;
+        if (plain == null) {
+          const locked = buildLockedEncMdEditorFile({
+            type: 'local',
+            id: node.path,
+            name: node.name,
+            ciphertext: serverText,
+            size: typeof file.size === 'number' ? file.size : null,
+            lastModified: file.lastModified,
+            handle: node.handle,
+            parentHandle: node.parentHandle,
+          });
+          commit(locked, locked.content);
+          return;
+        }
         contentToUse = plain;
         baselineContent = plain;
       }
@@ -945,6 +1031,8 @@ export function useFileSessionDomain() {
       } else if (type === STORAGE_MODE_WEBDAV) {
         node =
           findFileNodeByPath(webdavTree, path) || findNodeByPath(webdavTree, path);
+      } else if (type === STORAGE_MODE_IDB) {
+        node = findFileNodeByPath(idbTree, path) || findNodeByPath(idbTree, path);
       } else if (type === STORAGE_MODE_S3) {
         node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
       }
@@ -958,6 +1046,7 @@ export function useFileSessionDomain() {
       storageMode,
       localTree,
       webdavTree,
+      idbTree,
       s3Tree,
       localRootHandle,
       navigate,
@@ -1054,7 +1143,10 @@ export function useFileSessionDomain() {
               : 'text/markdown';
 
     let vaultBody = textToSave;
-    if (isEncMdPath(fileToSave.id) || isEncMdPath(fileToSave.name)) {
+    if (
+      (isEncMdPath(fileToSave.id) || isEncMdPath(fileToSave.name)) &&
+      viewer !== 'raw'
+    ) {
       try {
         let pw = getEncMdPassword(fileToSave.id);
         if (!pw) {
@@ -1187,6 +1279,24 @@ export function useFileSessionDomain() {
           sessionFile: fileToSave,
           content: vaultBody,
         });
+      } else if (fileToSave.type === 'idb') {
+        const backend = getBackendForType('idb');
+        await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
+        await deleteMemoDraft(getDraftKey('idb', fileToSave.id));
+        await refreshIdbTree();
+        const savedByteLength = new TextEncoder().encode(vaultBody).length;
+        setCurrentFile((prev) => {
+          if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
+          const next = { ...prev, content: textToSave, size: savedByteLength };
+          currentFileRef.current = next;
+          return next;
+        });
+        applySavedContentToTab({ size: savedByteLength });
+        notifyAdvancedSearchChange({
+          type: 'file',
+          path: fileToSave.id,
+          content: isEncMdPath(fileToSave.id) ? '' : textToSave,
+        });
       } else if (fileToSave.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
@@ -1267,6 +1377,7 @@ export function useFileSessionDomain() {
     loadS3Files,
     webdavConfig,
     refreshWebdavTree,
+    refreshIdbTree,
     refreshLocalTree,
     getBackendForType,
     localVaultFsPath,
@@ -1387,7 +1498,13 @@ export function useFileSessionDomain() {
 
   const refreshRemoteFile = useCallback(async () => {
     const fileToRefresh = currentFileRef.current;
-    if (!fileToRefresh || (fileToRefresh.type !== 's3' && fileToRefresh.type !== 'webdav')) return;
+    if (
+      !fileToRefresh ||
+      (fileToRefresh.type !== 's3' &&
+        fileToRefresh.type !== 'webdav' &&
+        fileToRefresh.type !== 'idb')
+    )
+      return;
     if (isEncMdPath(fileToRefresh.id) || isEncMdPath(fileToRefresh.name)) return;
     const viewer = fileToRefresh.viewer || 'markdown';
     const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
@@ -1664,14 +1781,145 @@ export function useFileSessionDomain() {
     const trimmed = newFullName.trim();
     if (!trimmed) return null;
 
+    const requestEncMdPassword = async (opts) => {
+      const req = requestEncMdPasswordRef.current;
+      if (!req) throw new Error('cancelled');
+      return req(opts);
+    };
+
+    const readCurrentVaultText = async () => {
+      if (currentFile.type === 's3') {
+        const client = getS3Client();
+        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        const { body } = await getObjectBody(client, s3Creds.bucket, currentFile.id);
+        return typeof body === 'string' ? body : new TextDecoder().decode(body);
+      }
+      if (currentFile.type === 'local') {
+        if (localVaultFsPath && !currentFile.handle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const { text } = await backend.readText(currentFile.id);
+          return String(text ?? '');
+        }
+        const handle = currentFile.handle;
+        if (!handle) throw new Error('로컬 파일 핸들이 없습니다.');
+        const file = await handle.getFile();
+        return await file.text();
+      }
+      if (currentFile.type === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        const { text } = await backend.readText(currentFile.id);
+        return String(text ?? '');
+      }
+      if (currentFile.type === 'idb') {
+        const backend = getBackendForType('idb');
+        const { text } = await backend.readText(currentFile.id);
+        return String(text ?? '');
+      }
+      if (currentFile.type === SESSION_STORAGE_TYPE) {
+        return String(editorContent ?? '');
+      }
+      return String(editorContent ?? '');
+    };
+
     try {
+      const oldKey = currentFile.id;
+      const lastSlash = String(oldKey || '').lastIndexOf('/');
+      const dirPrefix = lastSlash >= 0 ? oldKey.slice(0, lastSlash + 1) : '';
+      const newKey = dirPrefix + trimmed;
+
+      let encWrite = null;
+      if (newKey !== oldKey) {
+        try {
+          encWrite = await prepareEncMdRenameWrite({
+            oldPath: oldKey,
+            newPath: newKey,
+            plaintext: editorContent,
+            readVaultText: readCurrentVaultText,
+            requestPassword: requestEncMdPassword,
+          });
+        } catch (e) {
+          if (e?.message === 'cancelled') {
+            setEditedFileName(currentFile.name || '');
+            return null;
+          }
+          throw e;
+        }
+      }
+
+      const vaultBodyForWrite = encWrite ? encWrite.vaultBody : null;
+      const plaintextForFile = encWrite ? encWrite.plaintext : editorContent;
+      const forceRewrite = encWrite != null;
+
       let updated = null;
       if (currentFile.type === 's3') {
         const hasUnsaved = currentFile.content !== editorContent;
-        const contentOverride = hasUnsaved ? editorContent : null;
+        const contentOverride =
+          forceRewrite ? vaultBodyForWrite : hasUnsaved ? editorContent : null;
         updated = await renameS3File(currentFile, trimmed, contentOverride);
+        if (updated && encWrite) {
+          commitEncMdRenamePasswords(encWrite, oldKey, updated.id);
+          updated = {
+            ...updated,
+            content: plaintextForFile,
+            ...(isEncMdPath(trimmed) ? { encMd: true } : { encMd: false }),
+          };
+        } else if (updated && isEncMdPath(trimmed) && isEncMdPath(oldKey)) {
+          relocateEncMdPassword(oldKey, updated.id);
+        }
       } else if (currentFile.type === 'local') {
-        updated = await renameLocalFile(currentFile, trimmed);
+        if (localVaultFsPath && !currentFile.handle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          if (newKey === oldKey) return currentFile;
+          const hasUnsaved = currentFile.content !== editorContent;
+          if (forceRewrite || hasUnsaved) {
+            await backend.writeText(
+              newKey,
+              forceRewrite ? vaultBodyForWrite : editorContent,
+              'text/markdown',
+            );
+            await backend.delete(oldKey);
+          } else {
+            await backend.move(oldKey, newKey);
+          }
+          await refreshLocalTree();
+          updated = {
+            ...currentFile,
+            id: newKey,
+            name: trimmed,
+            content: plaintextForFile,
+            ...(isEncMdPath(trimmed) ? { encMd: true } : { encMd: false }),
+          };
+          if (encWrite) {
+            commitEncMdRenamePasswords(encWrite, oldKey, newKey);
+          } else if (isEncMdPath(trimmed) && isEncMdPath(oldKey)) {
+            relocateEncMdPassword(oldKey, newKey);
+          }
+        } else {
+          const pHandle = currentFile.parentHandle || localRootHandle;
+          if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          if (newKey === oldKey) return currentFile;
+          const newFileHandle = await pHandle.getFileHandle(trimmed, { create: true });
+          const writable = await newFileHandle.createWritable();
+          await writable.write(forceRewrite ? vaultBodyForWrite : editorContent);
+          await writable.close();
+          await pHandle.removeEntry(currentFile.name, { recursive: false });
+          await refreshLocalTree();
+          if (encWrite) {
+            commitEncMdRenamePasswords(encWrite, oldKey, newKey);
+          } else if (isEncMdPath(trimmed)) {
+            relocateEncMdPassword(oldKey, newKey);
+          }
+          updated = {
+            ...currentFile,
+            id: newKey,
+            name: trimmed,
+            handle: newFileHandle,
+            content: plaintextForFile,
+            ...(isEncMdPath(trimmed) ? { encMd: true } : { encMd: false }),
+          };
+        }
       } else if (currentFile.type === SESSION_STORAGE_TYPE) {
         const map =
           (await flushSessionEditorToWorkspaceRef.current?.()) ??
@@ -1683,47 +1931,94 @@ export function useFileSessionDomain() {
         const nextMap = { ...map, [ref.sessionId]: nextWs };
         sessionWorkspacesRef.current = nextMap;
         upsertSessionWorkspace(nextWs);
-        const lastSlash = String(ref.path || '').lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? ref.path.slice(0, lastSlash + 1) : '';
-        const newRelPath = dirPrefix + trimmed;
-        const newKey = sessionFileKey(ref.sessionId, newRelPath);
+        const lastSlashRel = String(ref.path || '').lastIndexOf('/');
+        const dirPrefixRel = lastSlashRel >= 0 ? ref.path.slice(0, lastSlashRel + 1) : '';
+        const newRelPath = dirPrefixRel + trimmed;
+        const newSessionKey = sessionFileKey(ref.sessionId, newRelPath);
         const bindingsRef = sessionVaultBindingsRef;
         const prevBinding = bindingsRef?.current?.[currentFile.id];
-        if (bindingsRef && prevBinding && newKey !== currentFile.id) {
+        if (bindingsRef && prevBinding && newSessionKey !== currentFile.id) {
           const nextBindings = { ...bindingsRef.current };
           delete nextBindings[currentFile.id];
-          nextBindings[newKey] = prevBinding;
+          nextBindings[newSessionKey] = prevBinding;
           bindingsRef.current = nextBindings;
         }
-        updated = { ...currentFile, id: newKey, name: trimmed, content: editorContent };
+        if (encWrite) {
+          commitEncMdRenamePasswords(encWrite, oldKey, newSessionKey);
+        } else if (isEncMdPath(trimmed)) {
+          relocateEncMdPassword(oldKey, newSessionKey);
+        }
+        updated = {
+          ...currentFile,
+          id: newSessionKey,
+          name: trimmed,
+          content: plaintextForFile,
+          ...(isEncMdPath(trimmed) ? { encMd: true } : { encMd: false }),
+        };
       } else if (currentFile.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
-        const oldKey = currentFile.id;
-        const lastSlash = oldKey.lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? oldKey.slice(0, lastSlash + 1) : '';
-        const newKey = dirPrefix + trimmed;
-        if (newKey !== oldKey) {
-          const hasUnsaved = currentFile.content !== editorContent;
-          if (hasUnsaved) {
-            await backend.writeText(newKey, editorContent, 'text/markdown');
-            await backend.delete(oldKey);
-          } else {
-            await backend.move(oldKey, newKey);
-          }
-          await refreshWebdavTree();
-          updated = {
-            ...currentFile,
-            id: newKey,
-            name: trimmed,
-            ...(hasUnsaved ? { content: editorContent } : {}),
-          };
+        if (newKey === oldKey) return currentFile;
+        const hasUnsaved = currentFile.content !== editorContent;
+        if (forceRewrite || hasUnsaved) {
+          await backend.writeText(
+            newKey,
+            forceRewrite ? vaultBodyForWrite : editorContent,
+            'text/markdown',
+          );
+          await backend.delete(oldKey);
+        } else {
+          await backend.move(oldKey, newKey);
         }
+        await refreshWebdavTree();
+        if (encWrite) {
+          commitEncMdRenamePasswords(encWrite, oldKey, newKey);
+        } else if (isEncMdPath(trimmed) && isEncMdPath(oldKey)) {
+          relocateEncMdPassword(oldKey, newKey);
+        }
+        updated = {
+          ...currentFile,
+          id: newKey,
+          name: trimmed,
+          content: plaintextForFile,
+          ...(isEncMdPath(trimmed) ? { encMd: true } : { encMd: false }),
+        };
+      } else if (currentFile.type === 'idb') {
+        const backend = getBackendForType('idb');
+        if (newKey === oldKey) return currentFile;
+        const hasUnsaved = currentFile.content !== editorContent;
+        if (forceRewrite || hasUnsaved) {
+          await backend.writeText(
+            newKey,
+            forceRewrite ? vaultBodyForWrite : editorContent,
+            'text/markdown',
+          );
+          await backend.delete(oldKey);
+        } else {
+          await backend.move(oldKey, newKey);
+        }
+        await refreshIdbTree();
+        if (encWrite) {
+          commitEncMdRenamePasswords(encWrite, oldKey, newKey);
+        } else if (isEncMdPath(trimmed) && isEncMdPath(oldKey)) {
+          relocateEncMdPassword(oldKey, newKey);
+        }
+        updated = {
+          ...currentFile,
+          id: newKey,
+          name: trimmed,
+          content: plaintextForFile,
+          ...(isEncMdPath(trimmed) ? { encMd: true } : { encMd: false }),
+        };
       }
       if (updated) {
         return applyOpenFileIdentityChange(updated);
       }
       return updated ?? null;
     } catch (e) {
+      if (e?.message === 'cancelled') {
+        if (currentFile?.name) setEditedFileName(currentFile.name);
+        return null;
+      }
       alert("이름 변경 실패: " + e.message);
       return null;
     }
@@ -1731,11 +2026,18 @@ export function useFileSessionDomain() {
     currentFile,
     editorContent,
     renameS3File,
-    renameLocalFile,
+    localRootHandle,
+    localVaultFsPath,
     upsertSessionWorkspace,
     webdavConfig,
     refreshWebdavTree,
+    refreshIdbTree,
+    refreshLocalTree,
+    getBackendForType,
+    getS3Client,
+    s3Creds,
     applyOpenFileIdentityChange,
+    setEditedFileName,
   ]);
 
   // Keep saveFileRef in sync for tabs / AppLogic background saves.

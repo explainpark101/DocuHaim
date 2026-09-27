@@ -18,6 +18,12 @@ import {
   HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
   useHaimDualSync,
 } from '@/components/haimEditor/useHaimDualSync';
+import {
+  isLocalInputDebounceActive,
+  replaceCmDocPreservingView,
+  replaceTipTapPreservingView,
+} from '@/components/haimEditor/haimDualSyncApply';
+import { isVaultValueEcho } from '@/components/haimEditor/haimExternalValueSync';
 import { useHaimDoubleScrollSync } from '@/components/haimEditor/useHaimDoubleScrollSync';
 import {
   registerHaimAnnotateUpload,
@@ -102,6 +108,9 @@ const HaimFindReplaceBar = lazy(
 const HaimDragHandleLayer = lazy(
   () => import('@/components/haimEditor/HaimDragHandleLayer'),
 );
+const HaimProseLineNumberGutter = lazy(
+  () => import('@/components/haimEditor/HaimProseLineNumberGutter'),
+);
 
 type HaimTableEditSession =
   | { mode: 'node'; pos: number; meta: HaimTableMeta; grid: HaimTableGrid }
@@ -135,6 +144,11 @@ export default function HaimEditor({
   const wysiwygScrollRef = useRef<HTMLDivElement | null>(null);
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
+  /** Last markdown we pushed via onChange — ignore parent echo (typing race). */
+  const lastEmittedMdRef = useRef(value || '');
+  const prevFileIdRef = useRef(currentFile?.id);
+  /** Date.now of last TipTap/CM local edit schedule (dual-sync). */
+  const localInputAtRef = useRef(0);
   valueRef.current = value;
   onChangeRef.current = onChange;
 
@@ -257,29 +271,12 @@ export default function HaimEditor({
     editor.setEditable(!previewOnly && isSurfaceLive);
   }, [editor, previewOnly, isSurfaceLive]);
 
-  useEffect(() => {
-    if (!editor) return;
-    if (blockDragActiveRef.current) return;
-    const current = editorToVaultMarkdown(editor, metaPrefixRef.current);
-    if (current === (value || '')) return;
-    setEditorMarkdown(editor, value || '', metaPrefixRef, { emitUpdate: false });
-    try {
-      editor.commands.updateDecorations('haimSourceLine');
-    } catch {
-      // ignore
-    }
-    const cm = cmViewRef.current;
-    if (cm) {
-      const cur = cm.state.doc.toString();
-      const md = value || '';
-      if (cur !== md) {
-        cm.dispatch({ changes: { from: 0, to: cur.length, insert: md } });
-      }
-    }
-  }, [editor, value, currentFile?.id]);
-
   const emitVault = useCallback((md: string) => {
-    if (md !== valueRef.current) onChangeRef.current(md);
+    lastEmittedMdRef.current = md;
+    if (md !== valueRef.current) {
+      valueRef.current = md;
+      onChangeRef.current(md);
+    }
   }, []);
 
   const suppressScrollSyncUntilRef = useRef(0);
@@ -302,7 +299,67 @@ export default function HaimEditor({
     wysiwygScrollRef,
     suppressScrollSyncUntilRef,
     blockDragActiveRef,
+    localInputAtRef,
   });
+
+  // Apply parent `value` only for true external changes (file switch, LLM, etc.).
+  // Never re-apply our own onChange echo — that races ahead of in-flight typing
+  // (especially list Enter/indent) and resets WYSIWYG scroll / caret.
+  useEffect(() => {
+    if (!editor) return;
+    if (blockDragActiveRef.current) return;
+    const next = value || '';
+    const fileChanged = prevFileIdRef.current !== currentFile?.id;
+    prevFileIdRef.current = currentFile?.id;
+
+    if (!fileChanged && isVaultValueEcho(next, lastEmittedMdRef.current)) {
+      return;
+    }
+
+    // While local input debounce is active, do not rewrite the live doc
+    // (prevents caret jumping to the bottom mid-keystroke).
+    if (
+      !fileChanged &&
+      isLocalInputDebounceActive(Date.now(), localInputAtRef.current)
+    ) {
+      return;
+    }
+
+    const current = editorToVaultMarkdown(editor, metaPrefixRef.current);
+    if (current === next) {
+      lastEmittedMdRef.current = next;
+      return;
+    }
+
+    cancelPending();
+    lastEmittedMdRef.current = next;
+
+    originRef.current = 'external';
+    try {
+      replaceTipTapPreservingView(
+        editor,
+        next,
+        metaPrefixRef,
+        wysiwygScrollRef.current,
+      );
+      try {
+        editor.commands.updateDecorations('haimSourceLine');
+      } catch {
+        // ignore
+      }
+      const cm = cmViewRef.current;
+      if (cm) {
+        replaceCmDocPreservingView(cm, next);
+      }
+    } finally {
+      // Clear after microtask so nested TipTap txs still see external origin.
+      void Promise.resolve().then(() => {
+        if (originRef.current === 'external') originRef.current = null;
+      });
+    }
+    // cancelPending / originRef are stable refs from dual-sync; omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [editor, value, currentFile?.id]);
 
   useHaimDoubleScrollSync({
     enabled: Boolean(doublePane && scrollSyncEnabled && isSurfaceLive),
@@ -1222,6 +1279,11 @@ export default function HaimEditor({
               >
                 {!previewOnly && isSurfaceLive ? (
                   <Suspense fallback={null}>
+                    <HaimProseLineNumberGutter
+                      editor={editor}
+                      scrollRef={wysiwygScrollRef}
+                      active
+                    />
                     <HaimDragHandleLayer
                       editor={editor}
                       onDraggingChange={(dragging) => {

@@ -79,8 +79,9 @@ jobs:
       - name: Generate Tauri icons
         run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
 
-      - name: Build Android APK
-        run: bunx tauri android build --apk
+      # Debug-signed APK for sideload (no release keystore yet).
+      - name: Build Android APK (debug)
+        run: bunx tauri android build --debug --apk
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
@@ -112,9 +113,8 @@ jobs:
             Install on device: enable “Install unknown apps”, then open the `.apk`.
 
             - Separate from desktop DMG/NSIS releases (`vX.Y.Z`)
+            - **Debug-signed** build (installable without a release keystore)
             - See docs/desktop/android-sideload.md
-
-            Unsigned / debug-signed builds if signing secrets are not configured.
           prerelease: ${{ inputs.prerelease }}
           files: dist-android/*.apk
         env:

@@ -13,7 +13,6 @@ import {
   Link2,
   Undo2,
   Redo2,
-  Loader2,
 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { createHaimExtensions } from '@/components/haimEditor/createHaimExtensions';
@@ -22,6 +21,7 @@ import {
   invalidateMarkdownCache,
 } from '@/components/haimEditor/markdownCache';
 import type { ChatComposerEditorProps } from '@/components/chatWithMyself/ChatComposerLegacyMdEditor';
+import ChatComposerPlainTextarea from '@/components/chatWithMyself/ChatComposerPlainTextarea';
 import '@/styles/haim-editor/style.css';
 
 function ToolBtn({
@@ -82,6 +82,8 @@ export default function ChatComposerHaimEditor({
   onChangeRef.current = onChange;
   const valueRef = useRef(value);
   valueRef.current = value;
+  /** Skip parent value echo so in-flight typing is not stomped. */
+  const lastEmittedMdRef = useRef(value || '');
   const composingRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -114,7 +116,11 @@ export default function ChatComposerHaimEditor({
   const emitMarkdown = useCallback(() => {
     if (!editor) return;
     const md = getCachedMarkdown(editor);
-    if (md !== valueRef.current) onChangeRef.current(md);
+    lastEmittedMdRef.current = md;
+    if (md !== valueRef.current) {
+      valueRef.current = md;
+      onChangeRef.current(md);
+    }
   }, [editor]);
 
   useEffect(() => {
@@ -136,7 +142,7 @@ export default function ChatComposerHaimEditor({
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;
         emitMarkdown();
-      }, 120);
+      }, 300);
     };
     editor.on('update', onUpdate);
     return () => {
@@ -147,13 +153,19 @@ export default function ChatComposerHaimEditor({
     };
   }, [editor, emitMarkdown]);
 
-  // External value (clear after send, edit target load)
+  // External value (clear after send, edit target load) — never re-apply our echo.
   useEffect(() => {
     if (!editor) return;
+    const next = value || '';
+    if (next === lastEmittedMdRef.current) return;
     const current = getCachedMarkdown(editor);
-    if (current === (value || '')) return;
+    if (current === next) {
+      lastEmittedMdRef.current = next;
+      return;
+    }
+    lastEmittedMdRef.current = next;
     invalidateMarkdownCache(editor);
-    editor.commands.setContent(value || '', {
+    editor.commands.setContent(next, {
       contentType: 'markdown',
       emitUpdate: false,
     } as never);
@@ -202,22 +214,13 @@ export default function ChatComposerHaimEditor({
   });
 
   if (!editor) {
+    // TipTap still initializing — keep a usable native textarea.
     return (
-      <div
-        className="flex h-full min-h-0 flex-1 items-center gap-2 px-2.5"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-      >
-        <Loader2
-          size={14}
-          className="shrink-0 animate-spin text-gray-400 dark:text-gray-500"
-          aria-hidden
-        />
-        <span className="text-sm text-gray-400 dark:text-odp-muted">
-          Haim Editor 로딩 중…
-        </span>
-      </div>
+      <ChatComposerPlainTextarea
+        value={value}
+        onChange={onChange}
+        fillParent
+      />
     );
   }
 

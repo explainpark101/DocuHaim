@@ -118,15 +118,25 @@ import {
   saveHaimFocusOutlineEnabled,
 } from '@/utils/haimFocusOutlineSettings';
 import {
+  loadHaimProseWidthClampEnabled,
+  saveHaimProseWidthClampEnabled,
+} from '@/utils/haimProseWidthSettings';
+import {
   loadHaimLinkOpenOnClick,
   saveHaimLinkOpenOnClick,
 } from '@/utils/haimLinkOpenSettings';
 import {
+  loadHaimProseLineNumbersEnabled,
   loadHaimCodeLineNumbersEnabled,
   loadHaimRawLineNumbersEnabled,
+  saveHaimProseLineNumbersEnabled,
   saveHaimCodeLineNumbersEnabled,
   saveHaimRawLineNumbersEnabled,
 } from '@/utils/haimWysiwygLineNumberSettings';
+import {
+  loadHaimCodeWrapEnabled,
+  saveHaimCodeWrapEnabled,
+} from '@/utils/haimCodeWrapSettings';
 import {
   loadHaimTocDockEnabled,
   saveHaimTocDockEnabled,
@@ -163,9 +173,12 @@ export type SettingsToggleId =
   | 'settings-haim-double-scroll-sync'
   | 'settings-haim-toc-dock'
   | 'settings-haim-focus-outline'
+  | 'settings-haim-prose-width-clamp'
   | 'settings-haim-link-open-on-click'
+  | 'settings-haim-prose-line-numbers'
   | 'settings-haim-code-line-numbers'
   | 'settings-haim-raw-line-numbers'
+  | 'settings-haim-code-wrap'
   | 'settings-base64-image-fold';
 
 export type SettingsToggleDef = {
@@ -278,6 +291,29 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     save: saveHaimFocusOutlineEnabled,
   },
   {
+    id: 'settings-haim-prose-width-clamp',
+    enableTitle: 'Haim WYSIWYG 본문 너비 제한 켜기',
+    disableTitle: 'Haim WYSIWYG 본문 너비 제한 끄기',
+    description:
+      '노트 Haim Editor WYSIWYG 본문을 설정한 max-width(px)로 가운데 정렬합니다',
+    keywords: [
+      'haim',
+      'prose',
+      'width',
+      'max-width',
+      'clamp',
+      'container',
+      '본문',
+      '너비',
+      '폭',
+      'reading',
+      'reading width',
+      'wysiwyg',
+    ],
+    load: loadHaimProseWidthClampEnabled,
+    save: saveHaimProseWidthClampEnabled,
+  },
+  {
     id: 'settings-haim-link-open-on-click',
     enableTitle: 'Haim 링크 클릭으로 열기',
     disableTitle: 'Haim 링크 Ctrl/Cmd+클릭으로만 열기',
@@ -298,6 +334,27 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimLinkOpenOnClick,
     save: saveHaimLinkOpenOnClick,
+  },
+  {
+    id: 'settings-haim-prose-line-numbers',
+    enableTitle: 'Haim WYSIWYG 줄 번호 켜기',
+    disableTitle: 'Haim WYSIWYG 줄 번호 끄기',
+    description:
+      'WYSIWYG 문서 왼쪽에 줄 번호를 표시합니다 (기본 켜짐)',
+    keywords: [
+      'haim',
+      'prose',
+      'wysiwyg',
+      '문서',
+      '줄번호',
+      '줄 번호',
+      'line',
+      'number',
+      'linenumber',
+      'gutter',
+    ],
+    load: loadHaimProseLineNumbersEnabled,
+    save: saveHaimProseLineNumbersEnabled,
   },
   {
     id: 'settings-haim-code-line-numbers',
@@ -343,6 +400,29 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimRawLineNumbersEnabled,
     save: saveHaimRawLineNumbersEnabled,
+  },
+  {
+    id: 'settings-haim-code-wrap',
+    enableTitle: 'Haim 코드 줄 바꿈 켜기',
+    disableTitle: 'Haim 코드 줄 바꿈 끄기',
+    description:
+      'WYSIWYG 코드·raw 블록에서 긴 줄을 soft-wrap합니다. 끄면 pre(가로 스크롤). Export PDF는 항상 wrap',
+    keywords: [
+      'haim',
+      'code',
+      'codeblock',
+      '코드',
+      '줄바꿈',
+      '줄 바꿈',
+      'wrap',
+      'softwrap',
+      'pre',
+      'pre-wrap',
+      'raw',
+      'wysiwyg',
+    ],
+    load: loadHaimCodeWrapEnabled,
+    save: saveHaimCodeWrapEnabled,
   },
   {
     id: 'settings-base64-image-fold',

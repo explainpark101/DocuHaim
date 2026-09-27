@@ -11,6 +11,7 @@ export type AppEditorExtrasValue = {
   editorImageUploadPercent: number;
   handleRequestDownload: (...args: any[]) => any;
   handleViewUnsupportedAsText: (...args: any[]) => any;
+  handleUnlockEncMdFromUnsupported: (...args: any[]) => any;
   getAdvancedSearchTrees: (...args: any[]) => any;
   ensureAdvancedSearchBrowseFolder: (...args: any[]) => any;
   getPresignedUrlForPath: (...args: any[]) => any;
@@ -28,6 +29,7 @@ export const APP_EDITOR_EXTRAS_KEYS = [
   'editorImageUploadPercent',
   'handleRequestDownload',
   'handleViewUnsupportedAsText',
+  'handleUnlockEncMdFromUnsupported',
   'getAdvancedSearchTrees',
   'ensureAdvancedSearchBrowseFolder',
   'getPresignedUrlForPath',

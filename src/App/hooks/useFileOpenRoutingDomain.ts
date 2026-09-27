@@ -18,7 +18,7 @@ import {
   persistedTabId,
   seedTabsRestoreQueueFromSnapshot,
 } from '@/utils/workspaceTabs';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV, STORAGE_MODE_IDB } from '@/utils/storageSettings';
 import { createWebdavBackend } from '@/utils/storage';
 import { hasStoredLocalRootHandle, loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { isDesktopApp } from '@/utils/isDesktopApp';
@@ -57,6 +57,8 @@ export function useFileOpenRoutingDomain() {
     webdavConfig,
     webdavReady,
     webdavTree,
+    idbTree,
+    loadIdbFolderChildren,
   } = useVault();
   const { clearOpenFileStateRef, currentFileRef, editorContentRef, hasProcessedOpenFromUrlRef, hasPromptedLocalFolderRestoreRef, hasRestoredFromPrintRef, hasRestoredLastFileRef, hasSeededTabsRestoreQueueRef, loadLastOpenedFileRef, openSessionWorkspaceRef, prevEditorContentRef, prevHistoryViewPathRef, restorePersistedWorkspaceTabsRef, restoringWorkspaceTabsRef, selectFileRawRef, selectFileRef, setCurrentFile, setEditorContent } = useFileSessionOwned();
   const { selectFileRaw } = useFileSession();
@@ -121,6 +123,16 @@ export function useFileOpenRoutingDomain() {
         if ((node as any)?.type === 'folder') {
           await loadWebdavFolderChildren(node);
         }
+        return;
+      }
+      if (st === 'idb') {
+        const node =
+          findNodeByPath(idbTree, folderPath) ||
+          findNodeByPath(idbTree, folderPath.replace(/\/$/, '')) ||
+          findNodeByPath(idbTree, `${folderPath.replace(/\/$/, '')}/`);
+        if ((node as any)?.type === 'folder') {
+          await loadIdbFolderChildren(node);
+        }
       }
     },
     [
@@ -136,6 +148,7 @@ export function useFileOpenRoutingDomain() {
     const st = createModalContext?.storageType;
     if (st === 'local') return localTree;
     if (st === 'webdav') return webdavTree;
+    if (st === 'idb') return idbTree;
     if (st === 's3') return s3Tree;
     return null;
   }, [createModalContext?.storageType, localTree, webdavTree, s3Tree]);
@@ -151,10 +164,10 @@ export function useFileOpenRoutingDomain() {
       const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
       const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
       const isPathMedia =
-        (storageType === 's3' || storageType === 'webdav' || storageType === 'local') &&
+        (storageType === 's3' || storageType === 'webdav' || storageType === 'local' || storageType === 'idb') &&
         (ext === 'pdf' || imageExts.includes(ext) || videoExts.includes(ext) || audioExts.includes(ext));
 
-      if (isPathMedia && (storageType === 's3' || storageType === 'webdav')) {
+      if (isPathMedia && (storageType === 's3' || storageType === 'webdav' || storageType === 'idb')) {
         const win = window.open('about:blank', '_blank');
         if (!win) {
           alert('팝업이 차단되어 새 창을 열 수 없습니다.');
@@ -354,7 +367,7 @@ export function useFileOpenRoutingDomain() {
       const openType = colonIdx >= 0 ? openParam.slice(0, colonIdx) : null;
       const openPath = colonIdx >= 0 ? openParam.slice(colonIdx + 1) : null;
       if (
-        (openType !== 's3' && openType !== 'local' && openType !== 'webdav') ||
+        (openType !== 's3' && openType !== 'local' && openType !== 'webdav' && openType !== 'idb') ||
         !openPath
       ) {
         hasProcessedOpenFromUrlRef.current = true;
@@ -368,7 +381,9 @@ export function useFileOpenRoutingDomain() {
           ? 'local'
           : storageMode === STORAGE_MODE_WEBDAV
             ? 'webdav'
-            : 's3';
+            : storageMode === STORAGE_MODE_IDB
+              ? 'idb'
+              : 's3';
       path = routeNotePath;
     } else if (onChat) {
       hasRestoredLastFileRef.current = true;
@@ -458,7 +473,7 @@ export function useFileOpenRoutingDomain() {
           else navigate('/chat');
           return;
         }
-        if (saved.type !== 's3' && saved.type !== 'local' && saved.type !== 'webdav') {
+        if (saved.type !== 's3' && saved.type !== 'local' && saved.type !== 'webdav' && saved.type !== 'idb') {
           hasRestoredLastFileRef.current = true;
           return;
         }
@@ -479,6 +494,8 @@ export function useFileOpenRoutingDomain() {
       }
     } else if (type === 'webdav') {
       if (!webdavReady || !webdavTree?.length) return;
+    } else if (type === 'idb') {
+      if (!idbTree?.length) return;
     } else if (!s3Tree?.length) {
       return;
     }
@@ -493,6 +510,8 @@ export function useFileOpenRoutingDomain() {
           (await resolveLocalFileNode(localRootHandle, path));
       } else if (type === 'webdav') {
         node = findFileNodeByPath(webdavTree, path) || findNodeByPath(webdavTree, path);
+      } else if (type === 'idb') {
+        node = findFileNodeByPath(idbTree, path) || findNodeByPath(idbTree, path);
       } else {
         node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
       }
@@ -535,6 +554,7 @@ export function useFileOpenRoutingDomain() {
     localTree,
     webdavReady,
     webdavTree,
+    idbTree,
     s3Tree,
     storageMode,
     location.pathname,
@@ -568,6 +588,8 @@ export function useFileOpenRoutingDomain() {
 
     const needsWebdav = persisted.tabs.some((tab) => tab.kind === 'file' && tab.type === 'webdav');
     if (needsWebdav && !webdavReady) return;
+    const needsIdb = persisted.tabs.some((tab) => tab.kind === 'file' && tab.type === 'idb');
+    if (needsIdb && !idbTree?.length) return;
 
     const routeNotePath = parseOpenNotePathFromAppPathname(location.pathname);
     const routeStorageType = routeNotePath
@@ -669,12 +691,16 @@ export function useFileOpenRoutingDomain() {
         ? 'local'
         : storageMode === STORAGE_MODE_WEBDAV
           ? 'webdav'
+          : storageMode === STORAGE_MODE_IDB
+            ? 'idb'
           : 's3';
 
     if (type === 'local') {
       if (!localRootHandle) return;
     } else if (type === 'webdav') {
       if (!webdavReady || !webdavTree?.length) return;
+    } else if (type === 'idb') {
+      if (!idbTree?.length) return;
     } else if (!s3Tree?.length) {
       return;
     }
@@ -689,6 +715,8 @@ export function useFileOpenRoutingDomain() {
           (await resolveLocalFileNode(localRootHandle, routeNotePath));
       } else if (type === 'webdav') {
         node = findFileNodeByPath(webdavTree, routeNotePath) || findNodeByPath(webdavTree, routeNotePath);
+      } else if (type === 'idb') {
+        node = findFileNodeByPath(idbTree, routeNotePath) || findNodeByPath(idbTree, routeNotePath);
       } else {
         node = findFileNodeByPath(s3Tree, routeNotePath) || findNodeByPath(s3Tree, routeNotePath);
       }
@@ -713,6 +741,7 @@ export function useFileOpenRoutingDomain() {
     localTree,
     webdavReady,
     webdavTree,
+    idbTree,
     s3Tree,
     openChatWorkspaceTab,
     openSettingsWorkspaceTab,

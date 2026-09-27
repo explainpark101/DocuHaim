@@ -29,8 +29,9 @@ export function chatComposerAreaMaxHeight() {
  *
  * When `autoFit` is true (e.g. message edit), the dock grows if content would
  * overflow the current height (so the send/input row stays visible), up to 70%
- * of the message column. It does not shrink below the pre-edit height while
- * editing. Leaving autoFit restores the pre-edit dock height.
+ * of the message column. Manual resize via the handle always wins and updates
+ * the persisted height. Leaving autoFit restores the pre-edit dock height when
+ * the user did not resize during the session.
  */
 export default function ChatComposerDock({
   children,
@@ -43,6 +44,8 @@ export default function ChatComposerDock({
   const heightBeforeFitRef = useRef(/** @type {number | null} */ (null));
   const contentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const [fitHeight, setFitHeight] = useState(/** @type {number | null} */ (null));
+  /** Once the user drags the handle during autoFit, stop overriding with measures. */
+  const userResizedDuringFitRef = useRef(false);
 
   useEffect(() => {
     const sync = () => setMaxHeight(chatComposerAreaMaxHeight());
@@ -64,11 +67,16 @@ export default function ChatComposerDock({
     edge: 'bottom',
   });
 
-  // Snapshot before first autoFit measure; restore when leaving edit.
+  // Snapshot before first autoFit measure; restore when leaving edit
+  // (unless the user resized — then keep the new height).
   useLayoutEffect(() => {
     if (autoFit) {
       if (heightBeforeFitRef.current == null) {
         heightBeforeFitRef.current = height;
+        userResizedDuringFitRef.current = false;
+        // Start from current dock height so we do not flash to MIN_FIT_H
+        // before the first content measure (and fillParent) settles.
+        setFitHeight(height);
       }
       return undefined;
     }
@@ -76,26 +84,36 @@ export default function ChatComposerDock({
     if (saved == null) return undefined;
     heightBeforeFitRef.current = null;
     setFitHeight(null);
-    const restored = Math.min(maxHeight, Math.max(MIN_H, saved));
-    setHeight(restored);
+    if (!userResizedDuringFitRef.current) {
+      const restored = Math.min(maxHeight, Math.max(MIN_H, saved));
+      setHeight(restored);
+    }
+    userResizedDuringFitRef.current = false;
     return undefined;
   }, [autoFit, height, maxHeight, setHeight]);
 
-  // Grow-only fit: expand when edit content needs more room than the pre-edit dock.
+  // While autoFit + user is dragging: treat height as the fit target.
+  useLayoutEffect(() => {
+    if (!autoFit || !isResizing) return;
+    userResizedDuringFitRef.current = true;
+    setFitHeight(height);
+  }, [autoFit, isResizing, height]);
+
+  // Grow-only fit: expand when edit content needs more room than the current dock.
+  // Do not keep a tall pre-edit floor (that left empty space under a short editor).
+  // Skip while the user is manually resizing or has already resized this session.
   useLayoutEffect(() => {
     if (!autoFit) return undefined;
+    if (userResizedDuringFitRef.current) return undefined;
     const el = contentRef.current;
     if (!el) return undefined;
 
     const measure = () => {
+      if (userResizedDuringFitRef.current) return;
       const natural = Math.ceil(
         Math.max(el.scrollHeight, el.getBoundingClientRect().height),
       );
-      const floor = Math.max(
-        MIN_FIT_H,
-        heightBeforeFitRef.current ?? height,
-      );
-      const next = Math.min(maxHeight, Math.max(floor, natural));
+      const next = Math.min(maxHeight, Math.max(MIN_FIT_H, natural));
       setFitHeight((prev) => (prev === next ? prev : next));
     };
 
@@ -119,10 +137,17 @@ export default function ChatComposerDock({
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [autoFit, maxHeight, height, fitKey]);
+  }, [autoFit, maxHeight, fitKey]);
+
+  // Keep persisted height in sync when autoFit settles (so handle aria + next open match).
+  useLayoutEffect(() => {
+    if (!autoFit || fitHeight == null || isResizing) return;
+    if (userResizedDuringFitRef.current) return;
+    if (height !== fitHeight) setHeight(fitHeight);
+  }, [autoFit, fitHeight, height, isResizing, setHeight]);
 
   const targetHeight =
-    autoFit && fitHeight != null ? fitHeight : height;
+    autoFit && fitHeight != null && !isResizing ? fitHeight : height;
 
   return (
     <Motion.div
@@ -132,38 +157,30 @@ export default function ChatComposerDock({
       transition={isResizing ? { duration: 0 } : HEIGHT_TRANSITION}
       style={{ maxHeight }}
     >
-      {!autoFit ? (
-        <div
-          {...handleProps}
-          aria-label="채팅 입력창 높이 조절"
-          title="채팅 입력창 높이 조절"
+      <div
+        {...handleProps}
+        aria-label="채팅 입력창 높이 조절"
+        title="채팅 입력창 높이 조절"
+        className={[
+          'absolute inset-x-0 top-0 z-30 flex h-3 cursor-row-resize touch-none items-start justify-center select-none',
+          'pointer-fine:h-2.5',
+        ].join(' ')}
+      >
+        <span
           className={[
-            'absolute inset-x-0 top-0 z-30 flex h-3 cursor-row-resize touch-none items-start justify-center select-none',
-            'pointer-fine:h-2.5',
+            'mt-1 h-1 w-10 rounded-full transition-colors',
+            isResizing
+              ? 'bg-blue-400/90 dark:bg-blue-400/70'
+              : 'bg-slate-400/55 dark:bg-slate-500/55 hover:bg-blue-400/70 dark:hover:bg-blue-400/55',
           ].join(' ')}
-        >
-          <span
-            className={[
-              'mt-1 h-1 w-10 rounded-full transition-colors',
-              isResizing
-                ? 'bg-blue-400/90 dark:bg-blue-400/70'
-                : 'bg-slate-400/55 dark:bg-slate-500/55 hover:bg-blue-400/70 dark:hover:bg-blue-400/55',
-            ].join(' ')}
-            aria-hidden
-          />
-        </div>
-      ) : null}
+          aria-hidden
+        />
+      </div>
       <div
         ref={contentRef}
-        className={
-          autoFit
-            ? 'relative z-0 flex flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
-            : 'relative z-0 flex h-full min-h-0 flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
-        }
+        className="relative z-0 flex h-full min-h-0 flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2"
       >
-        <div className={autoFit ? 'flex shrink-0 flex-col' : 'flex h-full min-h-0 flex-col'}>
-          {children}
-        </div>
+        <div className="flex h-full min-h-0 flex-col">{children}</div>
       </div>
     </Motion.div>
   );

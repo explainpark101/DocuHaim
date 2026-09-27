@@ -118,11 +118,17 @@ export const printFontStyles = `
     --md-theme-code-block-color: #383a42;
     --md-theme-code-block-bg-color: #fafafa;
     --md-theme-code-before-bg-color: #f0f0f0;
+    display: block;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
     margin: 1.25em 0;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-width: 2px;
+    border-style: solid;
+    border-color: #6b7280;
+    border-radius: 0;
     overflow: visible;
-    box-shadow: none;
+    box-shadow: none !important;
     background-color: #fafafa;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-code .md-editor-code-head {
@@ -147,10 +153,110 @@ export const printFontStyles = `
     color: unset;
     display: block;
     width: 100%;
+    max-width: none;
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
     overflow: visible;
+  }
+  /* Haim TipTap code/raw: always wrap in Export PDF (ignore editor wrap pref). */
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block code,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block [data-node-view-content],
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-raw-md__pre,
+  [data-export-pdf-pages] .haim-code-block code,
+  [data-export-pdf-pages] .haim-code-block [data-node-view-content],
+  [data-export-pdf-pages] .haim-raw-md__pre,
+  .export-pdf-preview-stage .haim-code-block code,
+  .export-pdf-preview-stage .haim-code-block [data-node-view-content],
+  .export-pdf-preview-stage .haim-raw-md__pre {
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    max-width: none !important;
+  }
+  /* Haim code chrome in Export PDF: no shadow, stronger border, full width. */
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block:not(.haim-mermaid-block),
+  [data-export-pdf-pages] .haim-code-block:not(.haim-mermaid-block),
+  .export-pdf-preview-stage .haim-code-block:not(.haim-mermaid-block) {
+    display: block;
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box;
+    box-shadow: none !important;
+    /* Longhands so frag-continue can clear top/bottom without shorthand fight. */
+    border-width: 2px !important;
+    border-style: solid !important;
+    border-color: #6b7280 !important;
+    border-radius: 0;
+    overflow: visible;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block__body,
+  [data-export-pdf-pages] .haim-code-block__body,
+  .export-pdf-preview-stage .haim-code-block__body {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+  /* Line-number gutter: same surface as code (no tinted bg). */
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-line-numbers,
+  [data-export-pdf-pages] .haim-line-numbers,
+  .export-pdf-preview-stage .haim-line-numbers,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .export-pdf-code-gutter,
+  [data-export-pdf-pages] .export-pdf-code-gutter,
+  .export-pdf-preview-stage .export-pdf-code-gutter {
+    background: transparent !important;
+    background-color: transparent !important;
+    border-right-color: #d1d5db;
+  }
+  /* Mermaid: full width chart; never show TipTap source. */
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-mermaid-block,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block.haim-mermaid-block,
+  [data-export-pdf-pages] .haim-mermaid-block,
+  [data-export-pdf-pages] .haim-code-block.haim-mermaid-block,
+  .export-pdf-preview-stage .haim-mermaid-block,
+  .export-pdf-preview-stage .haim-code-block.haim-mermaid-block {
+    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    overflow: visible;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-mermaid-block__chart,
+  [data-export-pdf-pages] .haim-mermaid-block__chart,
+  .export-pdf-preview-stage .haim-mermaid-block__chart {
+    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    padding: 0;
+    text-align: center;
+    overflow: visible;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-mermaid-block__chart svg,
+  [data-export-pdf-pages] .haim-mermaid-block__chart svg,
+  .export-pdf-preview-stage .haim-mermaid-block__chart svg,
+  :is(#export-pdf-preview, [data-export-pdf-preview])
+    .md-editor-mermaid[data-processed]:not([data-mermaid-sized]):not([data-print-free-transform])
+    svg,
+  [data-export-pdf-pages]
+    .md-editor-mermaid[data-processed]:not([data-mermaid-sized]):not([data-print-free-transform])
+    svg,
+  .export-pdf-preview-stage
+    .md-editor-mermaid[data-processed]:not([data-mermaid-sized]):not([data-print-free-transform])
+    svg {
+    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    margin-inline: auto;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-mermaid-block__source-hidden,
+  [data-export-pdf-pages] .haim-mermaid-block__source-hidden,
+  .export-pdf-preview-stage .haim-mermaid-block__source-hidden {
+    display: none !important;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview :not(pre) > code {
     background-color: rgba(135, 131, 120, 0.15);
@@ -169,13 +275,12 @@ export const printFontStyles = `
   /* Only processed hosts — flex on placeholders breaks lazy Mermaid source (white-space:pre). */
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-processed],
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-mermaid[data-processed] {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: block;
     text-align: center;
     margin-inline: auto;
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-mermaid[data-processed] svg,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview .md-editor-mermaid[data-processed] svg {
@@ -426,10 +531,16 @@ export const printFontStyles = `
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code {
     display: block;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
     margin: 1.25em 0;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-width: 2px;
+    border-style: solid;
+    border-color: #6b7280;
+    border-radius: 0;
     overflow: visible;
+    box-shadow: none !important;
     background-color: #fafafa;
     line-height: 1.6;
     -webkit-print-color-adjust: exact;
@@ -450,11 +561,26 @@ export const printFontStyles = `
     display: block;
     text-align: center;
     margin-inline: auto;
-    width: 100%;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-mermaid[data-processed] svg,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-mermaid[data-processed] svg {
+    display: block;
     margin-inline: auto;
+  }
+  [data-export-pdf-pages]
+    .pagedjs_page_content
+    .md-editor-mermaid[data-processed]:not([data-mermaid-sized]):not([data-print-free-transform])
+    svg,
+  .export-pdf-preview-stage
+    .export-pdf-page-slot-clone
+    .md-editor-mermaid[data-processed]:not([data-mermaid-sized]):not([data-print-free-transform])
+    svg {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code pre,
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code .export-pdf-code-pre,
@@ -484,18 +610,34 @@ export const printFontStyles = `
     -webkit-box-decoration-break: slice;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-continue {
-    border-top: none !important;
+  [data-export-pdf-pages] .pagedjs_page_content .haim-code-block.export-pdf-code-frag-continue,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-continue,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .haim-code-block.export-pdf-code-frag-continue {
+    border-top-color: transparent !important;
+    border-top-width: 0 !important;
+    border-top-style: none !important;
     border-top-left-radius: 0 !important;
     border-top-right-radius: 0 !important;
     margin-top: 0 !important;
   }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue .export-pdf-code-body,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-continue .export-pdf-code-body {
+    padding-top: 0 !important;
+  }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-break,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-break {
-    border-bottom: none !important;
+  [data-export-pdf-pages] .pagedjs_page_content .haim-code-block.export-pdf-code-frag-break,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-break,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .haim-code-block.export-pdf-code-frag-break {
+    border-bottom-color: transparent !important;
+    border-bottom-width: 0 !important;
+    border-bottom-style: none !important;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
     margin-bottom: 0 !important;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-break .export-pdf-code-body,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-break .export-pdf-code-body {
+    padding-bottom: 0 !important;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-paged pre code,
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-paged .export-pdf-code-body,
@@ -505,7 +647,11 @@ export const printFontStyles = `
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-line,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-line {
-    display: block;
+    display: table;
+    width: 100%;
+    max-width: none;
+    table-layout: fixed;
+    box-sizing: border-box;
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -521,7 +667,7 @@ export const printFontStyles = `
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-gutter,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-gutter {
-    display: inline-block;
+    display: table-cell;
     width: 3em;
     padding-inline-end: 0.5em;
     text-align: right;
@@ -529,15 +675,19 @@ export const printFontStyles = `
     color: #6b7280;
     font-variant-numeric: tabular-nums;
     user-select: none;
+    background: transparent !important;
+    background-color: transparent !important;
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-content,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-content {
-    display: inline-block;
-    width: calc(100% - 3.5em);
+    display: table-cell;
+    width: auto;
+    max-width: none;
     vertical-align: top;
+    box-sizing: border-box;
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 
   .export-pdf-paper .md-pgbr {

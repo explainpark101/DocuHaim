@@ -14,6 +14,8 @@ import { MoveFileModal } from '@/components/modals/MoveFileModal';
 import { MoveFolderModal } from '@/components/modals/MoveFolderModal';
 import { CreateItemModal } from '@/components/modals/CreateItemModal';
 import PromptModal from '@/components/modals/PromptModal';
+import ChangeEncMdPasswordModal from '@/components/modals/ChangeEncMdPasswordModal';
+import FirstNoteWelcomeModal from '@/components/shared/modals/FirstNoteWelcomeModal';
 import { revertNoteCoverComment } from '@/utils/noteCover';
 import { getActiveFileTab, isFileTab } from '@/utils/workspaceTabs';
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
@@ -112,6 +114,14 @@ export function AppModals() {
     handleConfirmMoveFolder,
     createModalTree,
     ensureCreateModalFolderLoaded,
+    firstNoteWelcomeOpen,
+    dismissFirstNoteWelcome,
+    handleCreateFirstNote,
+    idbSyncLocalConfirm,
+    handleConfirmOpenAsLocalHaim,
+    handleCancelOpenAsLocalHaim,
+    zipInstructOpen,
+    handleCloseZipInstruct,
   } = useAppModals();
 
   const { theme } = useAppBootstrap();
@@ -147,12 +157,18 @@ export function AppModals() {
     setCreateModalOpen,
     isCreateSubmitting,
     handleCreateItemSubmit,
+    encMdPasswordChangeTarget,
+    isChangingEncMdPassword,
+    encMdPasswordChangeError,
+    cancelChangeEncMdPassword,
+    confirmChangeEncMdPassword,
   } = useTreeOps();
   const {
     storageMode,
     s3Tree,
     localTree,
     webdavTree,
+    idbTree,
     localRootHandle,
   } = useVault();
   const { state: workspaceTabs } = useWorkspaceTabsCtx();
@@ -442,6 +458,7 @@ export function AppModals() {
       s3Tree={s3Tree}
       localTree={localTree}
       webdavTree={webdavTree}
+      idbTree={idbTree}
       localRootHandle={localRootHandle}
       defaultFileName={currentFile?.name || 'untitled.md'}
       defaultParentPath={newFileDefaultParentPath ?? ''}
@@ -513,6 +530,7 @@ export function AppModals() {
       s3Tree={s3Tree}
       localTree={localTree}
       webdavTree={webdavTree}
+      idbTree={idbTree}
       localRootHandle={localRootHandle}
       currentFile={moveFileTarget ? null : currentFile}
       fileToMove={moveFileTarget?.node}
@@ -522,9 +540,12 @@ export function AppModals() {
         setMoveFileTarget(null);
       }}
       onConfirm={moveFileTarget ? handleConfirmMoveFileFromSidebar : handleConfirmMove}
-      onRequestCreateFolder={
-        (moveFileTarget || currentFile)
-          ? (parentPath: string, parentDirHandle: FileSystemDirectoryHandle | null) => {
+      {...((moveFileTarget || currentFile)
+        ? {
+            onRequestCreateFolder: (
+              parentPath: string,
+              parentDirHandle: FileSystemDirectoryHandle | null | undefined,
+            ) => {
               const st = moveFileTarget ? moveFileTarget.storageType : currentFile.type;
               setCreateModalContext({
                 storageType: st,
@@ -534,9 +555,9 @@ export function AppModals() {
                 fromMoveModal: true,
               });
               setCreateModalOpen(true);
-            }
-          : undefined
-      }
+            },
+          }
+        : {})}
       selectPathAfterCreate={moveModalSelectPath}
       onSelectPathAfterCreateApplied={() => setMoveModalSelectPath(null)}
     />
@@ -548,6 +569,7 @@ export function AppModals() {
       s3Tree={s3Tree}
       localTree={localTree}
       webdavTree={webdavTree}
+      idbTree={idbTree}
       localRootHandle={localRootHandle}
       folderNode={moveFolderTarget?.node}
       onClose={() => setMoveFolderTarget(null)}
@@ -572,6 +594,10 @@ export function AppModals() {
               ? createModalContext.parentPath
                 ? `WebDAV: ${createModalContext.parentPath}`
                 : 'WebDAV 루트'
+              : createModalContext.storageType === 'idb'
+                ? createModalContext.parentPath
+                  ? `IDB: ${createModalContext.parentPath}`
+                  : 'IDB 루트'
               : createModalContext.parentPath
                 ? `로컬: ${createModalContext.parentPath}`
                 : '로컬 루트'
@@ -604,6 +630,46 @@ export function AppModals() {
       }}
     />
 
+    <ChangeEncMdPasswordModal
+      isOpen={Boolean(encMdPasswordChangeTarget)}
+      fileLabel={
+        encMdPasswordChangeTarget?.node?.path ||
+        encMdPasswordChangeTarget?.node?.name ||
+        ''
+      }
+      isSubmitting={isChangingEncMdPassword}
+      error={encMdPasswordChangeError || ''}
+      onCancel={cancelChangeEncMdPassword}
+      onConfirm={confirmChangeEncMdPassword}
+    />
+
+    <FirstNoteWelcomeModal
+      isOpen={Boolean(firstNoteWelcomeOpen)}
+      onClose={dismissFirstNoteWelcome}
+      onCreateNote={handleCreateFirstNote}
+    />
+
+    <ConfirmModal
+      isOpen={Boolean(idbSyncLocalConfirm?.isOpen)}
+      title="Local Haim으로 열기"
+      message="방금 내보낸 폴더를 Local Haim으로 열까요? 확인하면 저장소가 Local Haim으로 전환됩니다."
+      confirmLabel="Local Haim으로 열기"
+      cancelLabel="나중에"
+      onConfirm={() => {
+        void handleConfirmOpenAsLocalHaim?.();
+      }}
+      onCancel={handleCancelOpenAsLocalHaim}
+    />
+
+    <ConfirmModal
+      isOpen={Boolean(zipInstructOpen)}
+      title="ZIP 다운로드 완료"
+      message="압축을 해제한 뒤, 저장소를 Local Haim으로 바꾸고 해당 폴더를 열어 주세요."
+      confirmLabel="확인"
+      cancelLabel="닫기"
+      onConfirm={handleCloseZipInstruct}
+      onCancel={handleCloseZipInstruct}
+    />
 
     </>
   );

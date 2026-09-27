@@ -8,6 +8,7 @@ import AppUiFontSettings from '@/components/settings/AppUiFontSettings';
 import StatusBarClockSettings from '@/components/settings/StatusBarClockSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
+import HaimProseWidthSettings from '@/components/settings/HaimProseWidthSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
 import QuizSettingsSection from '@/components/settings/QuizSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
@@ -73,11 +74,17 @@ import {
   loadHaimLinkOpenOnClick,
 } from '@/utils/haimLinkOpenSettings';
 import {
+  HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT,
   HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT,
   HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT,
+  loadHaimProseLineNumbersEnabled,
   loadHaimCodeLineNumbersEnabled,
   loadHaimRawLineNumbersEnabled,
 } from '@/utils/haimWysiwygLineNumberSettings';
+import {
+  HAIM_CODE_WRAP_CHANGED_EVENT,
+  loadHaimCodeWrapEnabled,
+} from '@/utils/haimCodeWrapSettings';
 import {
   BASE64_IMAGE_FOLD_CHANGED_EVENT,
   loadBase64ImageFoldEnabled,
@@ -106,9 +113,11 @@ import {
   subscribeSettingsToggles,
 } from '@/utils/advancedSearch/settingsToggles';
 import {
+  STORAGE_MODE_IDB,
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
+  getAppNameByStorageMode,
 } from '@/utils/storageSettings';
 import {
   DEFAULT_TREE_HOVER_EXPAND,
@@ -189,13 +198,19 @@ export default function SettingsPage({
   snippetConfigLoaded = false,
   editorType: editorTypeProp,
   onEditorTypeChange,
-  storageMode = STORAGE_MODE_S3,
+  storageMode = STORAGE_MODE_IDB,
   onStorageModeChange,
   localFolderName = '',
   localVaultFsPath = '',
   onOpenLocalFolder,
   webdavConfig,
   onSaveWebdavConfig,
+  onExportVaultToFolder,
+  onExportVaultAsZip,
+  onIdbSyncToLocalFolder,
+  canUseDirectoryExport = false,
+  isVaultExportReady = false,
+  vaultExportBusy = false,
   isMobileLayout = false,
   sidebarOpen = true,
   sidebarCollapsed = false,
@@ -260,11 +275,17 @@ export default function SettingsPage({
   const [haimLinkOpenOnClick, setHaimLinkOpenOnClickState] = useState(() =>
     loadHaimLinkOpenOnClick(),
   );
+  const [haimProseLineNumbers, setHaimProseLineNumbersState] = useState(() =>
+    loadHaimProseLineNumbersEnabled(),
+  );
   const [haimCodeLineNumbers, setHaimCodeLineNumbersState] = useState(() =>
     loadHaimCodeLineNumbersEnabled(),
   );
   const [haimRawLineNumbers, setHaimRawLineNumbersState] = useState(() =>
     loadHaimRawLineNumbersEnabled(),
+  );
+  const [haimCodeWrap, setHaimCodeWrapState] = useState(() =>
+    loadHaimCodeWrapEnabled(),
   );
   const [base64ImageFold, setBase64ImageFoldState] = useState(() =>
     loadBase64ImageFoldEnabled(),
@@ -312,10 +333,14 @@ export default function SettingsPage({
         setHaimFocusOutlineState(enabled);
       } else if (id === 'settings-haim-link-open-on-click') {
         setHaimLinkOpenOnClickState(enabled);
+      } else if (id === 'settings-haim-prose-line-numbers') {
+        setHaimProseLineNumbersState(enabled);
       } else if (id === 'settings-haim-code-line-numbers') {
         setHaimCodeLineNumbersState(enabled);
       } else if (id === 'settings-haim-raw-line-numbers') {
         setHaimRawLineNumbersState(enabled);
+      } else if (id === 'settings-haim-code-wrap') {
+        setHaimCodeWrapState(enabled);
       } else if (id === 'settings-base64-image-fold') {
         setBase64ImageFoldState(enabled);
       }
@@ -407,6 +432,19 @@ export default function SettingsPage({
       const enabled =
         typeof event?.detail?.enabled === 'boolean'
           ? event.detail.enabled
+          : loadHaimProseLineNumbersEnabled();
+      setHaimProseLineNumbersState(enabled);
+    };
+    window.addEventListener(HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
           : loadHaimCodeLineNumbersEnabled();
       setHaimCodeLineNumbersState(enabled);
     };
@@ -426,6 +464,18 @@ export default function SettingsPage({
     window.addEventListener(HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT, sync);
     return () =>
       window.removeEventListener(HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimCodeWrapEnabled();
+      setHaimCodeWrapState(enabled);
+    };
+    window.addEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -638,11 +688,22 @@ export default function SettingsPage({
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">기본 저장소 선택 (3중 택1)</h3>
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">기본 저장소 선택 (4중 택1)</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
             앱에서 기본으로 동작할 저장소를 선택합니다. 선택은 저장되어 다음 접속 시 자동 복원됩니다.
+            신규 사용자는 기본적으로 IDB Haim으로 시작합니다.
           </p>
           <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="storageMode"
+                value={STORAGE_MODE_IDB}
+                checked={storageMode === STORAGE_MODE_IDB}
+                onChange={() => onStorageModeChange?.(STORAGE_MODE_IDB)}
+              />
+              <span className="font-semibold">IDB Haim</span>
+            </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
@@ -674,6 +735,64 @@ export default function SettingsPage({
               <span className="font-semibold">WebDAV Haim</span>
             </label>
           </div>
+        </div>
+
+        <div
+          id="settings-vault-export"
+          tabIndex={-1}
+          className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+        >
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+            Vault 전체 다운로드
+          </h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted">
+            현재 저장소({getAppNameByStorageMode(storageMode)})의 모든 파일을 폴더로 내보내거나 ZIP으로
+            다운로드합니다. Storage API를 지원하지 않는 환경에서는 ZIP만 사용할 수 있습니다.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {canUseDirectoryExport && (
+              <button
+                type="button"
+                disabled={!isVaultExportReady || vaultExportBusy}
+                onClick={() => onExportVaultToFolder?.()}
+                className="inline-flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg"
+              >
+                <IconFolder size={14} />
+                폴더로 내보내기
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={!isVaultExportReady || vaultExportBusy}
+              onClick={() => onExportVaultAsZip?.()}
+              className="inline-flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg"
+            >
+              <IconDownload size={14} />
+              ZIP으로 다운로드
+            </button>
+          </div>
+          {!canUseDirectoryExport && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              이 브라우저는 Storage API 폴더 쓰기를 지원하지 않습니다. ZIP을 받은 뒤 압축을 해제하고
+              Local Haim으로 폴더를 열어 주세요.
+            </p>
+          )}
+          {storageMode === STORAGE_MODE_IDB && (
+            <div className="space-y-2 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+              <p className="text-xs text-gray-600 dark:text-odp-muted">
+                IDB Haim 데이터를 로컬 폴더에 동기화한 뒤 Local Haim으로 열 수 있습니다.
+              </p>
+              <button
+                type="button"
+                disabled={!isVaultExportReady || vaultExportBusy}
+                onClick={() => onIdbSyncToLocalFolder?.()}
+                className="inline-flex items-center gap-2 rounded border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
+              >
+                <IconUpload size={14} />
+                로컬 폴더로 동기화
+              </button>
+            </div>
+          )}
         </div>
 
 
@@ -1309,6 +1428,7 @@ export default function SettingsPage({
                   <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
                 </Switch.Root>
               </div>
+              <HaimProseWidthSettings />
               <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
@@ -1330,6 +1450,31 @@ export default function SettingsPage({
                     setHaimLinkOpenOnClickState(next);
                   }}
                   aria-label="링크 클릭으로 열기"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    WYSIWYG 줄 번호
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    WYSIWYG 문서 왼쪽에 줄 번호를 표시합니다(기본 켜짐).
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimProseLineNumbers
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimProseLineNumbers}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-prose-line-numbers', next);
+                    setHaimProseLineNumbersState(next);
+                  }}
+                  aria-label="WYSIWYG 줄 번호"
                 >
                   <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
                 </Switch.Root>
@@ -1380,6 +1525,32 @@ export default function SettingsPage({
                     setHaimRawLineNumbersState(next);
                   }}
                   aria-label="Raw 블록 줄 번호"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    코드 줄 바꿈
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    켜면 긴 코드·raw 줄을 soft-wrap하고 줄 번호 높이를 맞춥니다. 끄면
+                    pre(가로 스크롤). Export PDF는 항상 wrap입니다.
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimCodeWrap
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimCodeWrap}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-code-wrap', next);
+                    setHaimCodeWrapState(next);
+                  }}
+                  aria-label="코드 줄 바꿈"
                 >
                   <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
                 </Switch.Root>

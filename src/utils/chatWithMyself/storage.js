@@ -1,7 +1,7 @@
 import {
   ChatPreconditionFailedError,
   createChatBackend,
-} from '@/utils/chatWithMyself/backends/index.js';
+} from '@/utils/chatWithMyself/backends';
 import {
   CHAT_FOLDER,
   dayFileKey,
@@ -34,12 +34,7 @@ import { notifyAdvancedSearchChange } from '@/utils/advancedSearch/notify';
 const MAX_WRITE_RETRIES = 5;
 
 /**
- * @typedef {Object} ChatStorageCtx
- * @property {'s3'|'local'|'webdav'} mode
- * @property {import('@aws-sdk/client-s3').S3Client} [client]
- * @property {string} [bucket]
- * @property {FileSystemDirectoryHandle} [localRootHandle]
- * @property {{ endpoint: string, username: string, password: string, basePath: string }} [webdavConfig]
+ * @typedef {import('@/utils/chatWithMyself/backends').ChatStorageCtx} ChatStorageCtx
  */
 
 /**
@@ -65,7 +60,7 @@ async function readText(ctx, key) {
 async function writeTextUnconditional(ctx, key, content, contentType) {
   const b = backend(ctx);
   await b.ensureChatFolder();
-  if (ctx.mode === 'local') {
+  if (ctx.mode === 'local' || ctx.mode === 'idb') {
     return b.putTextIfMatch(key, content, contentType, null);
   }
   const meta = await b.headMeta(key);
@@ -107,7 +102,7 @@ async function mutateDayFile(ctx, dateStr, mutator) {
       return next;
     }
     try {
-      if (ctx.mode === 'local') {
+      if (ctx.mode === 'local' || ctx.mode === 'idb') {
         await b.putTextIfMatch(key, content, 'text/markdown; charset=utf-8', null);
       } else {
         await b.putTextIfMatch(
@@ -157,7 +152,7 @@ async function mutateMeta(ctx, mutator) {
       return payload;
     }
     try {
-      if (ctx.mode === 'local') {
+      if (ctx.mode === 'local' || ctx.mode === 'idb') {
         await b.putTextIfMatch(key, content, 'application/json', null);
       } else {
         await b.putTextIfMatch(

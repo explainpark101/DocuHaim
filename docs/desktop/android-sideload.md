@@ -7,15 +7,18 @@ DocuHaim Android is a **Tauri v2** shell around the same SPA. It is **not** dist
 | Channel | Workflow | Tag | Artifacts |
 |---------|----------|-----|-----------|
 | Desktop | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS |
-| Android | `.github/workflows/release-tauri-android.yml` | `android-vX.Y.Z` | APK |
+| Android | `.github/workflows/release-tauri-android.yml` | `android-vX.Y.Z` | debug-signed APK |
 
 Android and desktop releases are **separate**. Desktop workflow does not upload APKs.
+
+CI currently builds **`tauri android build --debug --apk`** so the published APK is sideload-installable without a release keystore.
 
 ### Publish an Android build
 
 1. Actions → **Release Tauri Android** → Run workflow.
 2. Optional `version` input (defaults to root `package.json` version).
 3. Download the APK from the new `android-v…` release.
+
 
 ## Install (sideload)
 
@@ -49,7 +52,8 @@ Project files: `src-tauri/gen/android/`. Intent filters come from [`src-tauri/ta
 
 ## Signing
 
-Without a release keystore, use **`tauri:android:build:debug`** for sideload. Plain `tauri:android:build` can produce an unsigned release APK that Android rejects (“패키지가 잘못되어…”). For private release signing, configure Gradle `signingConfig` / CI secrets (not covered by the desktop Apple/Windows signing doc).
+GitHub Release Android APKs are **debug-signed** (same idea as local `tauri:android:build:debug`). Plain `tauri:android:build` (release, no keystore) can produce an unsigned APK that Android rejects (“패키지가 잘못되어…”). For private release signing later, configure Gradle `signingConfig` / CI secrets and switch the workflow off `--debug`.
+
 ## Out of scope
 
 - Google Play / AAB

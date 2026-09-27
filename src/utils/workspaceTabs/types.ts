@@ -21,7 +21,7 @@ export const WORKSPACE_TABS_STORAGE_KEY = 's3haim_workspaceTabs';
 /** Legacy single-slot key (compat hydrate). */
 export const LAST_FILE_KEY = 's3haim_lastFile';
 
-export type FileStorageType = 's3' | 'local' | 'webdav' | 'session';
+export type FileStorageType = 's3' | 'local' | 'webdav' | 'idb' | 'session';
 
 /** Quiz vs markdown editor for `.quiz.md` file tabs (per-tab, not pathname-only). */
 export type FileNoteSurface = 'edit' | 'quiz';

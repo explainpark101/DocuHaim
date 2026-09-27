@@ -7,12 +7,24 @@
 const HAIM_CODE_SEL = '.haim-code-block';
 const HAIM_MERMAID_SEL = '.haim-mermaid-block';
 
+const MERMAID_STRIP_SEL = [
+  '.haim-mermaid-block__source-hidden',
+  '.haim-code-block__header',
+  '.haim-code-block__action',
+  '.haim-code-block__actions',
+  '.haim-line-numbers',
+  '.haim-prose-line-numbers',
+].join(', ');
+
 /**
  * Add md-editor-* alias classes on Haim preview nodes (live staging or clone).
+ * Mermaid chart hosts are never aliased as `.md-editor-code` (avoids paging the
+ * hidden TipTap source as a fenced code block).
  */
 export function applyHaimPreviewExportPdfAliases(root: ParentNode): void {
   const codeBlocks = root.querySelectorAll<HTMLElement>(HAIM_CODE_SEL);
   for (const block of codeBlocks) {
+    if (block.classList.contains('haim-mermaid-block')) continue;
     block.classList.add('md-editor-code');
     const code = block.querySelector<HTMLElement>('pre code');
     if (code) {
@@ -23,6 +35,10 @@ export function applyHaimPreviewExportPdfAliases(root: ParentNode): void {
   const mermaidBlocks = root.querySelectorAll<HTMLElement>(HAIM_MERMAID_SEL);
   for (const block of mermaidBlocks) {
     block.classList.add('md-editor-mermaid');
+    block.classList.remove('md-editor-code');
+    for (const el of block.querySelectorAll(MERMAID_STRIP_SEL)) {
+      el.remove();
+    }
     if (block.querySelector('svg')) {
       block.setAttribute('data-processed', '');
     }

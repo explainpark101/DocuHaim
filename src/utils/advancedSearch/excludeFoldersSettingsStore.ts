@@ -1,5 +1,6 @@
 import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 import { isSystemIndexExcludedFolder } from '@/utils/advancedSearch/paths';
 
 /** Haim vault path — shared across devices for the same storage root. */
@@ -256,6 +257,19 @@ async function loadFromLocal(): Promise<AdvancedSearchExcludeFoldersSettings | n
   }
 }
 
+async function loadFromIdb(): Promise<AdvancedSearchExcludeFoldersSettings | null> {
+  try {
+    const backend = createIdbBackend();
+    const head = await backend.head(ADVANCED_SEARCH_EXCLUDE_FOLDERS_JSON_KEY);
+    if (!head) return null;
+    const { text } = await backend.readText(ADVANCED_SEARCH_EXCLUDE_FOLDERS_JSON_KEY);
+    return parseExcludeFoldersSettings(JSON.parse(text));
+  } catch (e) {
+    console.warn('Advanced Search exclude folders load from IDB failed:', e);
+    return null;
+  }
+}
+
 async function writeRemote(settings: AdvancedSearchExcludeFoldersSettings): Promise<void> {
   const payload = JSON.stringify(settings, null, 2);
   const mode = store.storageMode || 's3';
@@ -284,6 +298,13 @@ async function writeRemote(settings: AdvancedSearchExcludeFoldersSettings): Prom
       await writable.write(payload);
       await writable.close();
     }
+  } else if (mode === 'idb') {
+    const backend = createIdbBackend();
+    await backend.writeText(
+      ADVANCED_SEARCH_EXCLUDE_FOLDERS_JSON_KEY,
+      payload,
+      'application/json',
+    );
   } else {
     const client =
       typeof store.getS3Client === 'function' ? store.getS3Client() : null;
@@ -311,6 +332,7 @@ export async function loadAdvancedSearchExcludeFoldersFromStorage(): Promise<str
   let remote: AdvancedSearchExcludeFoldersSettings | null = null;
   if (mode === 'webdav') remote = await loadFromWebdav();
   else if (mode === 'local') remote = await loadFromLocal();
+  else if (mode === 'idb') remote = await loadFromIdb();
   else remote = await loadFromS3();
 
   const next = remote ?? fallback;
