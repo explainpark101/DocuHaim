@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-27T06:44:53.235Z",
+  "generatedAt": "2026-09-27T07:24:58.628Z",
   "totalBytes": 4053214,
   "assets": [
     {
@@ -59,7 +59,7 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-BF8EnhwI.js",
+      "file": "assets/index-DJNs5ruw.js",
       "bytes": 1860935,
       "label": "앱 코어"
     }
