@@ -5,4 +5,7 @@ export {
   boxFromCornerDrag,
   useModalCornerResize,
   ModalCornerResizeHandles,
-} from '@/components/shared/modals/modalCornerResize.tsx';
+  type CornerId,
+  type ModalBox,
+  type ModalResizeLimits,
+} from '@/components/shared/modals/modalCornerResize';

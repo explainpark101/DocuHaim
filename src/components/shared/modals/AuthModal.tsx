@@ -1,10 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent, type RefObject } from 'react';
 import { IconLock, IconFingerprint } from '@/components/icons';
 import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import Modal from '@/components/modals/Modal';
 
-export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWithoutUnlock, canUnlockWithWebAuthn, isPasswordMode = true, autoPromptWebAuthn = true, fileInputRef }) {
+function errorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'message' in err) {
+    const msg = (err as { message?: unknown }).message;
+    if (typeof msg === 'string' && msg) return msg;
+  }
+  return fallback;
+}
+
+function isUserCancelError(err: unknown): boolean {
+  const msg = errorMessage(err, '');
+  return /cancel|abort|user|denied|dismissed/i.test(msg);
+}
+
+export type AuthModalProps = {
+  isOpen: boolean;
+  onUnlock: (password: string) => void;
+  onUnlockWithWebAuthn?: (() => void | Promise<void>) | undefined;
+  onCloseWithoutUnlock?: (() => void) | undefined;
+  canUnlockWithWebAuthn?: boolean | undefined;
+  isPasswordMode?: boolean | undefined;
+  autoPromptWebAuthn?: boolean | undefined;
+  fileInputRef: RefObject<HTMLInputElement | null>;
+};
+
+export function AuthModal({
+  isOpen,
+  onUnlock,
+  onUnlockWithWebAuthn,
+  onCloseWithoutUnlock,
+  canUnlockWithWebAuthn,
+  isPasswordMode = true,
+  autoPromptWebAuthn = true,
+  fileInputRef,
+}: AuthModalProps) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const webauthnLabel = getWebAuthnEncryptLabel();
 
@@ -13,20 +46,20 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
     if (!autoPromptWebAuthn || !isOpen || !canUnlockWithWebAuthn || !onUnlockWithWebAuthn) return;
     const timer = setTimeout(() => {
       setWebauthnLoading(true);
-      let promise;
+      let promise: void | Promise<void>;
       try {
         promise = onUnlockWithWebAuthn();
       } catch (e) {
         setWebauthnLoading(false);
-        if (e?.message && !/cancel|abort|user|denied|dismissed/i.test(String(e.message))) {
-          alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
+        if (!isUserCancelError(e)) {
+          alert(errorMessage(e, `${webauthnLabel} 인증에 실패했습니다.`));
         }
         return;
       }
       Promise.resolve(promise)
-        .catch((e) => {
-          if (e?.message && !/cancel|abort|user|denied|dismissed/i.test(String(e.message))) {
-            alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
+        .catch((e: unknown) => {
+          if (!isUserCancelError(e)) {
+            alert(errorMessage(e, `${webauthnLabel} 인증에 실패했습니다.`));
           }
         })
         .finally(() => setWebauthnLoading(false));
@@ -38,21 +71,29 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
   // Call WebAuthn flow first (sync until credentials.get), then set loading and await.
   const handleWebAuthnUnlock = async () => {
     if (!onUnlockWithWebAuthn || !canUnlockWithWebAuthn) return;
-    let promise;
+    let promise: void | Promise<void>;
     try {
       promise = onUnlockWithWebAuthn();
     } catch (e) {
-      alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
+      alert(errorMessage(e, `${webauthnLabel} 인증에 실패했습니다.`));
       return;
     }
     setWebauthnLoading(true);
     try {
       await promise;
     } catch (e) {
-      alert(e?.message || `${webauthnLabel} 인증에 실패했습니다.`);
+      alert(errorMessage(e, `${webauthnLabel} 인증에 실패했습니다.`));
     } finally {
       setWebauthnLoading(false);
     }
+  };
+
+  const handlePasswordSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const field = form.elements.namedItem('password');
+    const value = field instanceof HTMLInputElement ? field.value : '';
+    onUnlock(value);
   };
 
   return (
@@ -82,12 +123,7 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
         )}
 
         {isPasswordMode && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              onUnlock(e.target.password.value);
-            }}
-          >
+          <form onSubmit={handlePasswordSubmit}>
             <input
               type="password"
               name="password"
@@ -107,6 +143,7 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
 
         <div className="flex gap-3 justify-center items-center">
           <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-[#f0f0f0] underline transition"
           >
@@ -127,4 +164,3 @@ export function AuthModal({ isOpen, onUnlock, onUnlockWithWebAuthn, onCloseWitho
     </Modal>
   );
 }
-

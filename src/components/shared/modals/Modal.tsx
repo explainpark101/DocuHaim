@@ -1,4 +1,10 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useModalLayerKeyboard } from '@/hooks/useModalLayerKeyboard';
 import {
@@ -8,20 +14,22 @@ import {
 
 const ANIMATION_DURATION_MS = 200;
 
+export type ModalProps = {
+  isOpen: boolean;
+  onClose?: (() => void) | undefined;
+  onConfirm?: (() => void) | undefined;
+  children?: ReactNode | undefined;
+  contentClassName?: string | undefined;
+  contentStyle?: CSSProperties | undefined;
+  overlayClassName?: string | undefined;
+  ignoreEnterInFields?: boolean | undefined;
+  resizable?: boolean | undefined;
+  resizeHeight?: boolean | undefined;
+  layoutKey?: string | number | boolean | undefined;
+};
+
 /**
- * @param {{
- *   isOpen: boolean,
- *   onClose?: (() => void) | undefined,
- *   onConfirm?: (() => void) | undefined,
- *   children?: import('react').ReactNode,
- *   contentClassName?: string,
- *   contentStyle?: import('react').CSSProperties,
- *   overlayClassName?: string,
- *   ignoreEnterInFields?: boolean,
- *   resizable?: boolean,
- *   resizeHeight?: boolean,
- *   layoutKey?: string | number | boolean,
- * }} props
+ * Base modal shell: portal overlay, enter/exit opacity, optional corner resize.
  */
 export default function Modal({
   isOpen,
@@ -35,14 +43,13 @@ export default function Modal({
   resizable = true,
   resizeHeight = false,
   layoutKey,
-}) {
+}: ModalProps) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const {
     panelRef,
     beginResize,
     resetBox,
-    captureBaseline,
     pinToCurrentRect,
     positioned,
     positionedStyle,
@@ -75,6 +82,7 @@ export default function Modal({
         clearTimeout(timer);
       };
     }
+    return undefined;
   }, [isOpen, mounted, resetBox]);
 
   // Pin to fixed rect after enter animation so the first drag does not
@@ -99,7 +107,7 @@ export default function Modal({
 
   if (!mounted || typeof document === 'undefined') return null;
 
-  const mergedStyle = {
+  const mergedStyle: CSSProperties = {
     ...contentStyle,
     ...positionedStyle,
   };
@@ -115,7 +123,7 @@ export default function Modal({
       }}
     >
       <div
-        ref={panelRef}
+        ref={panelRef as RefObject<HTMLDivElement | null>}
         className={`relative flex w-full flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl dark:bg-odp-surface dark:text-odp-fgStrong ${contentClassName} ${
           // Drop max-width so pinned/resized width can grow; keep inline width
           // from useModalCornerResize (callers should use max-w-* not bare w-[min]).
@@ -124,8 +132,8 @@ export default function Modal({
           positioned
             ? 'opacity-100'
             : `transition-[opacity,transform] duration-200 ease-out ${
-              visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-2 scale-95 opacity-0'
-            }`
+                visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-2 scale-95 opacity-0'
+              }`
         }`}
         style={mergedStyle}
         onClick={(e) => e.stopPropagation()}

@@ -1,7 +1,30 @@
+import type { FormEvent } from 'react';
 import { IconDownload, IconSettings, IconUpload } from '@/components/icons';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { hasDesktopStoredCredsMarker } from '@/utils/desktopStrongholdSecrets';
 import Modal from '@/components/modals/Modal';
+
+/** S3 connection fields edited in this modal. */
+export type SettingsModalS3Creds = {
+  accessKeyId: string;
+  secretAccessKey: string;
+  region: string;
+  bucket: string;
+  endpoint?: string | undefined;
+};
+
+export type SettingsModalCredField = keyof SettingsModalS3Creds;
+
+export type SettingsModalProps = {
+  isOpen: boolean;
+  s3Creds: SettingsModalS3Creds;
+  onChangeCreds: (field: SettingsModalCredField, value: string) => void;
+  masterPassword?: string | undefined;
+  onCancel: () => void;
+  onSubmit: () => void;
+  onExportCreds: () => void;
+  onImportClick: () => void;
+};
 
 export function SettingsModal({
   isOpen,
@@ -12,7 +35,24 @@ export function SettingsModal({
   onSubmit,
   onExportCreds,
   onImportClick,
-}) {
+}: SettingsModalProps) {
+  const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    onSubmit();
+  };
+
+  const handleCancel = () => {
+    const hasLegacyEncrypted = !isDesktopApp() && localStorage.getItem('s3NotesEncrypted');
+    const hasDesktopEncrypted = isDesktopApp() && hasDesktopStoredCredsMarker();
+    if (!masterPassword && (hasLegacyEncrypted || hasDesktopEncrypted)) {
+      onCancel();
+    } else if (!masterPassword) {
+      alert('마스터 비밀번호를 설정해야 창을 닫을 수 있습니다.');
+    } else {
+      onCancel();
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onCancel}>
       <div className="w-full max-w-md max-h-[90vh] flex flex-col">
@@ -23,13 +63,9 @@ export function SettingsModal({
         </div>
 
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
-          {/* S3 Form */}
           <form
             id="settings-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              onSubmit();
-            }}
+            onSubmit={handleFormSubmit}
             className="space-y-4"
           >
             <div>
@@ -101,19 +137,20 @@ export function SettingsModal({
             </div>
           </form>
 
-          {/* Import / Export Section */}
           <div className="bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong">
             <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">
               데이터 백업/복원
             </h3>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={onExportCreds}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-white dark:bg-odp-bgSoft border border-gray-300 dark:border-odp-borderStrong hover:bg-gray-100 dark:hover:bg-odp-focusBg text-gray-700 dark:text-odp-fgStrong text-xs font-semibold py-2 rounded transition"
               >
                 <IconDownload /> 내보내기 (.json)
               </button>
               <button
+                type="button"
                 onClick={onImportClick}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-white dark:bg-odp-bgSoft border border-gray-300 dark:border-odp-borderStrong hover:bg-gray-100 dark:hover:bg-odp-focusBg text-gray-700 dark:text-odp-fgStrong text-xs font-semibold py-2 rounded transition"
               >
@@ -126,19 +163,7 @@ export function SettingsModal({
         <div className="flex justify-end gap-2 p-4 border-t border-gray-100 dark:border-odp-surface bg-white dark:bg-odp-surface shrink-0">
           <button
             type="button"
-            onClick={() => {
-              const hasLegacyEncrypted =
-                !isDesktopApp() && localStorage.getItem('s3NotesEncrypted');
-              const hasDesktopEncrypted =
-                isDesktopApp() && hasDesktopStoredCredsMarker();
-              if (!masterPassword && (hasLegacyEncrypted || hasDesktopEncrypted)) {
-                onCancel();
-              } else if (!masterPassword) {
-                alert('마스터 비밀번호를 설정해야 창을 닫을 수 있습니다.');
-              } else {
-                onCancel();
-              }
-            }}
+            onClick={handleCancel}
             className="px-4 py-2 text-sm text-gray-600 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-focusBg rounded transition"
           >
             취소
@@ -155,4 +180,3 @@ export function SettingsModal({
     </Modal>
   );
 }
-

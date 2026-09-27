@@ -1,7 +1,28 @@
+import type { FormEvent } from 'react';
 import { IconKey } from '@/components/icons';
 import Modal from '@/components/modals/Modal';
 
-export function SetPasswordModal({ isOpen, masterPassword, onCancel, onSubmit }) {
+export type SetPasswordModalProps = {
+  isOpen: boolean;
+  masterPassword?: string | undefined;
+  onCancel: () => void;
+  onSubmit: (password: string) => void;
+};
+
+export function SetPasswordModal({
+  isOpen,
+  masterPassword,
+  onCancel,
+  onSubmit,
+}: SetPasswordModalProps) {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const field = form.elements.namedItem('password');
+    const value = field instanceof HTMLInputElement ? field.value : '';
+    onSubmit(value);
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onCancel}>
       <div className="p-8 text-center">
@@ -15,12 +36,7 @@ export function SetPasswordModal({ isOpen, masterPassword, onCancel, onSubmit })
           앱을 켤 때 사용할 비밀번호를 입력하세요.
         </p>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit(e.target.password.value);
-          }}
-        >
+        <form onSubmit={handleSubmit}>
           <input
             type="password"
             name="password"
@@ -50,4 +66,3 @@ export function SetPasswordModal({ isOpen, masterPassword, onCancel, onSubmit })
     </Modal>
   );
 }
-

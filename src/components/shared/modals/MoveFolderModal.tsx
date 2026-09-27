@@ -1,8 +1,42 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type MouseEvent } from 'react';
 import Modal from '@/components/modals/Modal';
 import { IconFolder } from '@/components/icons';
 
-function FolderNode({ node, level, onSelect, selectedPath }) {
+/** Vault tree node shape used by the move-folder picker. */
+export type MoveFolderTreeNode = {
+  name: string;
+  type: string;
+  path: string;
+  handle?: FileSystemDirectoryHandle;
+  children?: MoveFolderTreeNode[];
+};
+
+/** Destination folder chosen in the modal. */
+export type MoveFolderDestination = {
+  path: string;
+  handle?: FileSystemDirectoryHandle | null | undefined;
+};
+
+export type MoveFolderModalProps = {
+  isOpen: boolean;
+  storageType?: string | null;
+  s3Tree?: MoveFolderTreeNode[] | null;
+  localTree?: MoveFolderTreeNode[] | null;
+  webdavTree?: MoveFolderTreeNode[] | null;
+  localRootHandle?: FileSystemDirectoryHandle | null;
+  folderNode?: MoveFolderTreeNode | null;
+  onClose: () => void;
+  onConfirm: (dest: MoveFolderDestination) => void | Promise<void>;
+};
+
+type FolderNodeProps = {
+  node: MoveFolderTreeNode;
+  level: number;
+  onSelect: (node: MoveFolderTreeNode) => void;
+  selectedPath: string | null | undefined;
+};
+
+function FolderNode({ node, level, onSelect, selectedPath }: FolderNodeProps) {
   if (node.type !== 'folder') return null;
 
   const [open, setOpen] = useState(true);
@@ -13,7 +47,7 @@ function FolderNode({ node, level, onSelect, selectedPath }) {
     setOpen((prev) => !prev);
   };
 
-  const handleSelect = (e) => {
+  const handleSelect = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onSelect(node);
   };
@@ -61,7 +95,10 @@ function FolderNode({ node, level, onSelect, selectedPath }) {
   );
 }
 
-function filterFoldersForMove(nodes, movingFolderPath) {
+function filterFoldersForMove(
+  nodes: MoveFolderTreeNode[] | null | undefined,
+  movingFolderPath: string,
+): MoveFolderTreeNode[] {
   if (!nodes || !Array.isArray(nodes)) return [];
   return nodes
     .filter(
@@ -76,31 +113,20 @@ function filterFoldersForMove(nodes, movingFolderPath) {
     }));
 }
 
-/** @typedef {{ name: string, type: string, path: string, handle?: FileSystemDirectoryHandle, children?: TreeNodeLike[] }} TreeNodeLike */
-
 /**
- * @param {object} props
- * @param {boolean} props.isOpen
- * @param {string} props.storageType
- * @param {TreeNodeLike[]} [props.s3Tree]
- * @param {TreeNodeLike[]} [props.localTree]
- * @param {TreeNodeLike[]} [props.webdavTree]
- * @param {FileSystemDirectoryHandle | null} [props.localRootHandle]
- * @param {TreeNodeLike | null} [props.folderNode]
- * @param {() => void} props.onClose
- * @param {(folder: object) => void | Promise<void>} props.onConfirm
+ * Pick a destination folder for moving a folder (excludes self and descendants).
  */
 export function MoveFolderModal({
   isOpen,
   storageType,
   s3Tree,
   localTree,
-  webdavTree = /** @type {TreeNodeLike[]} */ ([]),
+  webdavTree = [],
   localRootHandle,
   folderNode,
   onClose,
   onConfirm,
-}) {
+}: MoveFolderModalProps) {
   if (!folderNode || folderNode.type !== 'folder') return null;
 
   const isS3 = storageType === 's3';
@@ -111,7 +137,7 @@ export function MoveFolderModal({
     [tree, folderNode.path],
   );
 
-  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState<MoveFolderTreeNode | null>(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
 
   const handleSelectRoot = () => {
@@ -119,7 +145,7 @@ export function MoveFolderModal({
     setSelectedFolder(null);
   };
 
-  const handleSelectFolder = (node) => {
+  const handleSelectFolder = (node: MoveFolderTreeNode) => {
     setSelectedRoot(false);
     setSelectedFolder(node);
   };
@@ -129,11 +155,11 @@ export function MoveFolderModal({
 
     if (isS3 || isWebdav) {
       const destPath = selectedRoot ? '' : selectedFolder?.path || '';
-      onConfirm({ path: destPath });
+      void onConfirm({ path: destPath });
     } else {
       const destPath = selectedRoot ? '' : selectedFolder?.path || '';
       const destHandle = selectedRoot ? localRootHandle : selectedFolder?.handle;
-      onConfirm({ path: destPath, handle: destHandle });
+      void onConfirm({ path: destPath, handle: destHandle });
     }
   };
 

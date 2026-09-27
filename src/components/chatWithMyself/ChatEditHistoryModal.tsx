@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { Dialog } from 'radix-ui';
 import { Loader2, Trash2 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
@@ -21,10 +28,65 @@ import {
   resolveGroupLabel,
   SELF_GROUP,
 } from '@/utils/chatWithMyself';
+import type { ChatEditVersion } from '@/utils/chatWithMyself/editHistory';
 
 const PAGE_SIZE = 10;
 
-function formatHistoryWhen(iso, timeZone) {
+export type ChatEditHistoryMessage = {
+  id?: string;
+  body?: string;
+  group?: string;
+  editedAt?: string;
+  markdown?: unknown;
+  editHistory?: ChatEditVersion[];
+  [key: string]: unknown;
+};
+
+export type ChatEditHistoryGroup = {
+  id: string;
+  name?: string;
+  [key: string]: unknown;
+};
+
+export type ChatEditHistoryPage = {
+  entries?: ChatEditVersion[];
+  nextOffset?: number;
+  hasMore?: boolean;
+  total?: number;
+};
+
+export type ChatEditHistoryModalProps = {
+  open?: boolean;
+  message?: ChatEditHistoryMessage | null;
+  onOpenChange?: ((open: boolean) => void) | undefined;
+  timeZone?: string | null | undefined;
+  getPresignedUrl?:
+    | ((path: string) => Promise<string | null>)
+    | undefined;
+  groups?: ChatEditHistoryGroup[];
+  onLoadHistoryPage?:
+    | ((
+        message: ChatEditHistoryMessage,
+        opts: { offset: number; limit: number },
+      ) => Promise<ChatEditHistoryPage>)
+    | undefined;
+  onDeleteHistoryEntry?:
+    | ((
+        message: ChatEditHistoryMessage,
+        entry: ChatEditVersion,
+      ) => Promise<void> | void)
+    | undefined;
+  onDeleteAllHistory?:
+    | ((message: ChatEditHistoryMessage) => Promise<void> | void)
+    | undefined;
+};
+
+type ConfirmTarget =
+  | { kind: 'one'; entry: ChatEditVersion }
+  | { kind: 'all' }
+  | null;
+
+function formatHistoryWhen(iso: string | undefined | null, timeZone?: string | null): string {
   if (!iso) return '';
   try {
     return new Intl.DateTimeFormat(undefined, {
@@ -41,13 +103,13 @@ function formatHistoryWhen(iso, timeZone) {
   }
 }
 
-function useShiftHeldRef() {
+function useShiftHeldRef(): MutableRefObject<boolean> {
   const shiftRef = useRef(false);
   useEffect(() => {
-    const onDown = (e) => {
+    const onDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift') shiftRef.current = true;
     };
-    const onUp = (e) => {
+    const onUp = (e: KeyboardEvent) => {
       if (e.key === 'Shift') shiftRef.current = false;
     };
     const onBlur = () => {
@@ -65,7 +127,7 @@ function useShiftHeldRef() {
   return shiftRef;
 }
 
-function useIsCoarsePointer() {
+function useIsCoarsePointer(): boolean {
   const [coarse, setCoarse] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
@@ -83,6 +145,24 @@ function useIsCoarsePointer() {
   return coarse;
 }
 
+type HistoryEntryCardProps = {
+  entry: ChatEditVersion;
+  indexLabel: string;
+  timeZone?: string | null;
+  groups: ChatEditHistoryGroup[];
+  getPresignedUrl?:
+    | ((path: string) => Promise<string | null>)
+    | undefined;
+  canDelete: boolean;
+  deleting: boolean;
+  onRequestDelete?:
+    | ((entry: ChatEditVersion, opts?: { skipConfirm?: boolean }) => void)
+    | undefined;
+  shiftHeldRef: MutableRefObject<boolean>;
+  coarse: boolean;
+  markdown?: boolean;
+};
+
 /**
  * Edit-history card with chat-bubble press morph + context menu (right-click / long-press).
  */
@@ -98,7 +178,7 @@ function HistoryEntryCard({
   shiftHeldRef,
   coarse,
   markdown = false,
-}) {
+}: HistoryEntryCardProps) {
   const {
     contextMenuOpen,
     setContextMenuOpen,
@@ -152,7 +232,7 @@ function HistoryEntryCard({
         className={chatMenuDangerItemClass}
         danger
         disabled={deleting}
-        onPointerDown={(e) => {
+        onPointerDown={(e: ReactPointerEvent) => {
           if (e.shiftKey) shiftHeldRef.current = true;
         }}
         onSelect={() => {
@@ -183,12 +263,10 @@ export default function ChatEditHistoryModal({
   onLoadHistoryPage,
   onDeleteHistoryEntry,
   onDeleteAllHistory,
-}) {
+}: ChatEditHistoryModalProps) {
   const tz = timeZone || detectTimeZone();
   const isOpen = Boolean(open && message);
-  const [entries, setEntries] = useState(
-    /** @type {Array<{ at: string, body: string, group: string, key?: string }>} */ ([]),
-  );
+  const [entries, setEntries] = useState<ChatEditVersion[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
@@ -196,18 +274,17 @@ export default function ChatEditHistoryModal({
   const [loadingMore, setLoadingMore] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-  /** @type {[{ kind: 'one', entry: object } | { kind: 'all' } | null, Function]} */
-  const [confirmTarget, setConfirmTarget] = useState(null);
-  const scrollRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const sentinelRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const shiftHeldRef = useShiftHeldRef();
   const coarse = useIsCoarsePointer();
   const messageId = message?.id || '';
 
   const loadPage = useCallback(
-    async (nextOffset, { append }) => {
-      if (!messageId || !onLoadHistoryPage) {
+    async (nextOffset: number, { append }: { append: boolean }) => {
+      if (!messageId || !onLoadHistoryPage || !message) {
         setEntries([]);
         setHasMore(false);
         setTotal(0);
@@ -231,8 +308,10 @@ export default function ChatEditHistoryModal({
         setOffset(Number(page?.nextOffset) || nextOffset + list.length);
         setHasMore(Boolean(page?.hasMore));
         setTotal(Number(page?.total) || 0);
-      } catch (e) {
-        setError(e?.message || '수정 기록을 불러오지 못했습니다.');
+      } catch (e: unknown) {
+        const errMsg =
+          e instanceof Error ? e.message : '수정 기록을 불러오지 못했습니다.';
+        setError(errMsg || '수정 기록을 불러오지 못했습니다.');
         if (!append) {
           setEntries([]);
           setHasMore(false);
@@ -286,15 +365,17 @@ export default function ChatEditHistoryModal({
   }, [isOpen, hasMore, offset, loadPage]);
 
   const runDeleteEntry = useCallback(
-    async (entry) => {
+    async (entry: ChatEditVersion) => {
       if (!message || !entry || deleting) return;
       setDeleting(true);
       setError('');
       try {
         await onDeleteHistoryEntry?.(message, entry);
         await loadPage(0, { append: false });
-      } catch (e) {
-        setError(e?.message || '수정 기록 삭제에 실패했습니다.');
+      } catch (e: unknown) {
+        const errMsg =
+          e instanceof Error ? e.message : '수정 기록 삭제에 실패했습니다.';
+        setError(errMsg || '수정 기록 삭제에 실패했습니다.');
       } finally {
         setDeleting(false);
       }
@@ -309,15 +390,17 @@ export default function ChatEditHistoryModal({
     try {
       await onDeleteAllHistory?.(message);
       await loadPage(0, { append: false });
-    } catch (e) {
-      setError(e?.message || '수정 기록 전체 삭제에 실패했습니다.');
+    } catch (e: unknown) {
+      const errMsg =
+        e instanceof Error ? e.message : '수정 기록 전체 삭제에 실패했습니다.';
+      setError(errMsg || '수정 기록 전체 삭제에 실패했습니다.');
     } finally {
       setDeleting(false);
     }
   }, [message, deleting, onDeleteAllHistory, loadPage]);
 
   const requestDeleteEntry = useCallback(
-    (entry, { skipConfirm = false } = {}) => {
+    (entry: ChatEditVersion, { skipConfirm = false }: { skipConfirm?: boolean } = {}) => {
       if (!entry || deleting) return;
       if (skipConfirm || shiftHeldRef.current) {
         void runDeleteEntry(entry);
@@ -329,7 +412,7 @@ export default function ChatEditHistoryModal({
   );
 
   const requestDeleteAll = useCallback(
-    ({ skipConfirm = false } = {}) => {
+    ({ skipConfirm = false }: { skipConfirm?: boolean } = {}) => {
       if (total <= 0 || deleting) return;
       if (skipConfirm || shiftHeldRef.current) {
         void runDeleteAll();
@@ -366,7 +449,7 @@ export default function ChatEditHistoryModal({
     <>
       <Dialog.Root
         open={isOpen}
-        onOpenChange={(next) => {
+        onOpenChange={(next: boolean) => {
           if (!next && (deleting || confirmTarget)) return;
           onOpenChange?.(next);
         }}
@@ -396,7 +479,7 @@ export default function ChatEditHistoryModal({
                     type="button"
                     disabled={deleting}
                     title="Shift+클릭 시 확인 생략"
-                    onPointerDown={(e) => {
+                    onPointerDown={(e: ReactPointerEvent) => {
                       if (e.shiftKey) shiftHeldRef.current = true;
                     }}
                     onClick={() => requestDeleteAll()}
