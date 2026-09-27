@@ -1,6 +1,7 @@
 import {
   useLayoutEffect,
   useState,
+  type CSSProperties,
   type RefObject,
 } from 'react';
 import { countHaimDisplayLines } from '@/utils/haimWysiwygLineNumberSettings';
@@ -10,7 +11,7 @@ import {
 } from '@/utils/haimCodeWrapSettings';
 import {
   haimCodeHostSoftWraps,
-  measureHaimHardLineHeights,
+  measureHaimHardLineMargins,
 } from '@/utils/measureHaimHardLineHeights';
 
 type HaimLineNumberGutterProps = {
@@ -41,8 +42,9 @@ function shouldSyncWrapHeights(el: HTMLElement): boolean {
 /**
  * Non-interactive line-number column. Visibility is gated by
  * `html[data-haim-*-line-numbers]` CSS (see preview-tokens.css).
- * When code soft-wraps, each number's height matches its hard line
- * (including soft-wrap continuation rows).
+ *
+ * When code soft-wraps, pretext pre-computes wrap rows per hard line and
+ * applies margin-bottom under each digit so numbers stay synced with code.
  */
 export default function HaimLineNumberGutter({
   text,
@@ -50,13 +52,13 @@ export default function HaimLineNumberGutter({
   contentRootRef,
 }: HaimLineNumberGutterProps) {
   const count = countHaimDisplayLines(text);
-  const [heights, setHeights] = useState<number[] | null>(null);
+  const [margins, setMargins] = useState<number[] | null>(null);
 
   useLayoutEffect(() => {
     const root = contentRootRef?.current ?? null;
     const el = resolveMeasureTarget(root);
     if (!el) {
-      setHeights(null);
+      setMargins(null);
       return undefined;
     }
 
@@ -68,11 +70,11 @@ export default function HaimLineNumberGutter({
       raf = requestAnimationFrame(() => {
         const target = resolveMeasureTarget(contentRootRef?.current ?? null);
         if (!target || !shouldSyncWrapHeights(target)) {
-          setHeights(null);
+          setMargins(null);
           return;
         }
-        const next = measureHaimHardLineHeights(target, text, count);
-        setHeights(next.some((h) => h > 0) ? next : null);
+        const next = measureHaimHardLineMargins(target, text, count);
+        setMargins(next.some((m) => m > 0) ? next : null);
       });
     };
 
@@ -80,6 +82,8 @@ export default function HaimLineNumberGutter({
     ro = new ResizeObserver(sync);
     ro.observe(el);
     if (root && root !== el) ro.observe(root);
+    const pre = el.closest('pre');
+    if (pre && pre !== el && pre !== root) ro.observe(pre);
 
     const mo = new MutationObserver(sync);
     mo.observe(el, {
@@ -108,19 +112,16 @@ export default function HaimLineNumberGutter({
       className={['haim-line-numbers', className].filter(Boolean).join(' ')}
       aria-hidden
     >
-      {Array.from({ length: count }, (_, i) => (
-        <span
-          key={i}
-          className="haim-line-numbers__n"
-          style={
-            heights?.[i] != null && heights[i]! > 0
-              ? { height: heights[i], minHeight: heights[i] }
-              : undefined
-          }
-        >
-          {i + 1}
-        </span>
-      ))}
+      {Array.from({ length: count }, (_, i) => {
+        const mb = margins?.[i] ?? 0;
+        const style: CSSProperties | undefined =
+          mb > 0 ? { marginBottom: mb } : undefined;
+        return (
+          <span key={i} className="haim-line-numbers__n" style={style}>
+            {i + 1}
+          </span>
+        );
+      })}
     </div>
   );
 }

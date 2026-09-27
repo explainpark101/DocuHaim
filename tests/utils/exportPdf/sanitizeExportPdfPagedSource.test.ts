@@ -21,7 +21,7 @@ describe('exportPdfPagedStyles code paging', () => {
     expect(css).toContain('.export-pdf-code-pre');
     expect(css).toContain('.export-pdf-code-body');
     expect(css).toContain('.export-pdf-code-line');
-    expect(css).toMatch(/\.export-pdf-code-line[^{]*\{[^}]*display:\s*block/);
+    expect(css).toMatch(/\.export-pdf-code-line[^{]*\{[^}]*display:\s*table/);
     expect(css).toMatch(/\.export-pdf-code-line[^{]*\{[^}]*break-inside:\s*avoid/);
     expect(css).toContain('export-pdf-code-page-chunk');
     expect(css).toMatch(
@@ -32,6 +32,10 @@ describe('exportPdfPagedStyles code paging', () => {
     );
     expect(css).not.toMatch(
       /\.export-pdf-code-line[^{]*\{[^}]*display:\s*flex/,
+    );
+    expect(css).toMatch(/\.export-pdf-code-content[^{]*\{[^}]*display:\s*table-cell/);
+    expect(css).toMatch(
+      /\.export-pdf-code-frag-continue[^{]*\{[^}]*border-top-width:\s*0/,
     );
   });
 });
