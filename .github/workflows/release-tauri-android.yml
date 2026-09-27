@@ -35,8 +35,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Default packages used to include legacy `tools`, which Google removed
+      # from the SDK repo (sdkmanager: Failed to find package 'tools').
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       - name: Install Android NDK
         run: |
