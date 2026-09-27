@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-09-26T10:30:36.700Z
+Generated: 2026-09-27T06:44:15.234Z
 
 ============================================================
 Advanced Search
@@ -1570,7 +1570,7 @@ URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/markdown-ima
 
 ## Spec (interop)
 
-기준 구현: `parseMarkdownImageAttrsBlock` / `markdown-image-size-attrs` ruler in `wikiImageMarkdownIt.js`.
+기준 구현: `parseMarkdownImageAttrsBlock` / `markdown-image-size-attrs` ruler in `wikiImageMarkdownIt.ts`.
 
 ### 1. When to apply
 
@@ -1642,7 +1642,7 @@ Omit empty keys; space-separated. Empty → no `{}` suffix.
 | 역할 | 경로 |
 |------|------|
 | attrs 파서·갱신 | `src/utils/wikiImageSyntax.js` |
-| markdown-it ruler | `src/utils/wikiImageMarkdownIt.js` (`markdown-image-size-attrs`) |
+| markdown-it ruler | `src/utils/wikiImageMarkdownIt.ts` (`markdown-image-size-attrs`) |
 | storage path | `src/utils/storageImagePath.ts` |
 | Hydration / export | `src/utils/storageImageHydration.ts`, `markdownImageExport.ts` |
 
@@ -2088,9 +2088,10 @@ Export PDF renders markdown (Mermaid, code blocks, wiki images) in a staging `Md
 | 역할 | 경로 |
 |------|------|
 | markdown-it | `src/utils/pageBreakMarkdownIt.js` |
+| Haim TipTap node | `src/components/haimEditor/extensions/PageBreak.ts` (markdownTokenizer + `setPageBreak`) |
 | paged.js preview | `src/pages/exportPdf/hooks/usePagedJsPreview.ts`, `exportPdfPagedStyles.ts` |
 | XSS whitelist | `src/config/mdEditorConfig.js` |
-| AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx` |
+| AS / toolbar | `editor-pgbr`, `MarkdownPageBreakToolbar.jsx`, Haim toolbar `onInsertPageBreak` |
 
 ============================================================
 Plan frontmatter (`*.plan.md` YAML)
@@ -2854,7 +2855,7 @@ Obsidian 스타일 위키 이미지. 스토리지 상대 경로를 가리키며,
 
 ## Spec (interop)
 
-다른 Markdown 엔진에 포팅할 때의 계약. 기준 구현: `wikiImageSyntax.js` + `wikiImageMarkdownIt.js`.
+다른 Markdown 엔진에 포팅할 때의 계약. 기준 구현: `wikiImageSyntax.js` + `wikiImageMarkdownIt.ts`.
 
 ### 1. Match
 
@@ -3029,7 +3030,8 @@ Public ImgBB cache without replacing the vault path: [remote-image.md](./remote-
 | 역할 | 경로 |
 |------|------|
 | 파서/옵션 | `src/utils/wikiImageSyntax.js` |
-| markdown-it | `src/utils/wikiImageMarkdownIt.js` |
+| markdown-it | `src/utils/wikiImageMarkdownIt.ts` |
+| Haim TipTap figure/caption | `WikiFigure` / `Figcaption` + `protectCustomMarkdown` fold |
 | URL / 캐시 | `src/utils/wikiImageResolver.js`, `wikiImageCacheDb.js`, `wikiImageSettings.js` |
 | Hydration | `src/utils/storageImageHydration.ts`, `src/hooks/useWikiImageHydration.js` |
 | Hex helper | `src/utils/cssColor.ts` |

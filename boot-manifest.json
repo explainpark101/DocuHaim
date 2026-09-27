@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-27T06:44:53.235Z",
+  "totalBytes": 4053214,
+  "assets": [
+    {
+      "file": "assets/vendor-react-BDjpSibw.js",
+      "bytes": 286665,
+      "label": "React 런타임"
+    },
+    {
+      "file": "assets/vendor-aws-Cvd3RhZI.js",
+      "bytes": 221541,
+      "label": "스토리지 SDK"
+    },
+    {
+      "file": "assets/vendor-lucide-DgRPSpKt.js",
+      "bytes": 824199,
+      "label": "아이콘"
+    },
+    {
+      "file": "assets/bootSplash-B8aCHT5v.js",
+      "bytes": 8057,
+      "label": "진행률 UI"
+    },
+    {
+      "file": "assets/core-DhEqZVGG.js",
+      "bytes": 2441,
+      "label": "스크립트"
+    },
+    {
+      "file": "assets/vendor-zip-Bez6qchM.js",
+      "bytes": 143111,
+      "label": "압축 유틸"
+    },
+    {
+      "file": "assets/vendor-motion-Djo_xQxQ.js",
+      "bytes": 134000,
+      "label": "애니메이션"
+    },
+    {
+      "file": "assets/vendor-markdown-it-BSFfF5B5.js",
+      "bytes": 116649,
+      "label": "Markdown 엔진"
+    },
+    {
+      "file": "assets/vendor-radix-qpbG9kXl.js",
+      "bytes": 141532,
+      "label": "UI 컴포넌트"
+    },
+    {
+      "file": "assets/index-4pm0DzGn.css",
+      "bytes": 313495,
+      "label": "스타일시트"
+    },
+    {
+      "file": "assets/earlyBoot-CL3UCp_A.js",
+      "bytes": 589,
+      "label": "시작 화면"
+    },
+    {
+      "file": "assets/index-BF8EnhwI.js",
+      "bytes": 1860935,
+      "label": "앱 코어"
+    }
+  ]
+}
