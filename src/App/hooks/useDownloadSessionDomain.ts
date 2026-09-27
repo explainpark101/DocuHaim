@@ -20,9 +20,12 @@ import { ensureDirectoryReadWritePermission } from '@/utils/localFolderStore';
 import { resolveStorageImagePath } from '@/utils/storageImagePath';
 import { buildZipBlob } from '@/utils/zipBuilder';
 import {
+  decryptEncMdContent,
   getEncMdPassword,
   isEncMdPath,
+  parseEncMdPayload,
   prepareEncMdVaultBody,
+  setEncMdPassword,
 } from '@/utils/encMd';
 import {
   SESSION_STORAGE_TYPE,
@@ -72,69 +75,140 @@ export function useDownloadSessionDomain() {
   const { setOperationStatus } = useChromeOwned();
   const { setState: setWorkspaceTabs, workspaceTabsRef } = useWorkspaceTabsCtx();
 
+  const loadUnsupportedFileText = useCallback(async (file: any): Promise<string | null> => {
+    if (!file) return null;
+    const existing = String(file.content ?? editorContentRef.current ?? '');
+    if (existing) return existing;
+
+    if (file.type === 's3') {
+      const client = getS3Client();
+      if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+      const { body } = await getObjectBody(client, s3Creds.bucket, file.id);
+      return new TextDecoder('utf-8').decode(body);
+    }
+    if (file.type === SESSION_STORAGE_TYPE) {
+      const ref = resolveSessionFileRef(sessionWorkspacesRef.current, file.id);
+      const record = ref?.workspace.files[ref.path];
+      if (!record) return null;
+      return decodeSessionText(record.bytes);
+    }
+    if (file.type === 'local' && file.handle) {
+      return file.handle.getFile().then((f: any) => f.text());
+    }
+    if (file.type === 'local' || file.type === 'idb' || file.type === 'webdav') {
+      const backend =
+        file.type === 'webdav'
+          ? createWebdavBackend(webdavConfig)
+          : getBackendForType(file.type);
+      if (!backend?.readText) return null;
+      const { text } = await backend.readText(file.id);
+      return String(text ?? '');
+    }
+    return null;
+  }, [
+    editorContentRef,
+    getBackendForType,
+    getS3Client,
+    s3Creds.bucket,
+    sessionWorkspacesRef,
+    webdavConfig,
+  ]);
+
   const handleViewUnsupportedAsText = async () => {
     if (!currentFile || currentFile.viewer !== 'unsupported') return;
-    if (currentFile.type === 's3') {
-      try {
-        const client = getS3Client();
-        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
-        const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, currentFile.id);
-        const content = new TextDecoder('utf-8').decode(body);
-        setCurrentFile((prev: any) => ({
-          ...prev,
-          content,
-          viewer: 'raw',
-          size: typeof ContentLength === 'number' ? ContentLength : prev?.size ?? null,
-        }));
-        setEditorContent(content);
-      } catch (e) {
-        console.error('S3 파일 로드 실패:', e);
-        alert('파일을 텍스트로 불러오지 못했습니다.');
-      }
-    } else if (currentFile.type === SESSION_STORAGE_TYPE) {
-      const ref = resolveSessionFileRef(sessionWorkspacesRef.current, currentFile.id);
-      const record = ref?.workspace.files[ref.path];
-      if (!record) {
+    try {
+      const content = await loadUnsupportedFileText(currentFile);
+      if (content == null) {
         alert('파일을 텍스트로 불러오지 못했습니다.');
         return;
       }
-      const content = decodeSessionText(record.bytes);
+      const isEnc =
+        isEncMdPath(currentFile.id) ||
+        isEncMdPath(currentFile.name) ||
+        Boolean(currentFile.encMd);
       setCurrentFile((prev: any) => ({
         ...prev,
         content,
         viewer: 'raw',
-        size: record.bytes.byteLength,
+        size:
+          typeof content === 'string'
+            ? new TextEncoder().encode(content).length
+            : prev?.size ?? null,
+        ...(isEnc ? { encMd: true, encMdLocked: true } : {}),
       }));
       setEditorContent(content);
-    } else if (currentFile.type === 'local' && currentFile.handle) {
-      try {
-        const content = await currentFile.handle.getFile().then((f: any) => f.text());
-        setCurrentFile((prev: any) => ({
-          ...prev,
-          content,
-          viewer: 'raw',
-          size: typeof content === 'string' ? new TextEncoder().encode(content).length : prev?.size ?? null,
-        }));
-        setEditorContent(content);
-      } catch (e) {
-        console.error('Local file load failed:', e);
-        alert('파일을 텍스트로 불러오지 못했습니다.');
+    } catch (e) {
+      console.error('Unsupported file load failed:', e);
+      alert('파일을 텍스트로 불러오지 못했습니다.');
+    }
+  };
+
+  const handleUnlockEncMdFromUnsupported = async () => {
+    if (!currentFile) return;
+    if (
+      !isEncMdPath(currentFile.id) &&
+      !isEncMdPath(currentFile.name) &&
+      !currentFile.encMd
+    ) {
+      return;
+    }
+    try {
+      let ciphertext = String(currentFile.content ?? editorContentRef.current ?? '');
+      if (!parseEncMdPayload(ciphertext)) {
+        const loaded = await loadUnsupportedFileText(currentFile);
+        ciphertext = String(loaded ?? '');
       }
-    } else if (currentFile.type === 'webdav') {
-      try {
-        const backend = createWebdavBackend(webdavConfig);
-        const { text, contentLength } = await backend.readText(currentFile.id);
-        setCurrentFile((prev: any) => ({
-          ...prev,
-          content: text,
-          viewer: 'raw',
-          size: typeof contentLength === 'number' ? contentLength : prev?.size ?? null,
-        }));
-        setEditorContent(text);
-      } catch (e) {
-        console.error('WebDAV file load failed:', e);
-        alert('파일을 텍스트로 불러오지 못했습니다.');
+      if (!parseEncMdPayload(ciphertext)) {
+        alert('암호화된 파일 내용을 불러오지 못했습니다.');
+        return;
       }
+
+      const plain = await new Promise<string | null>((resolve) => {
+        const run = (password: string) => {
+          void (async () => {
+            try {
+              const text = await decryptEncMdContent(ciphertext, password);
+              setEncMdPassword(currentFile.id, password);
+              setEncMdPrompt(null);
+              resolve(text);
+            } catch {
+              setEncMdPrompt((prev: any) =>
+                prev
+                  ? {
+                      ...prev,
+                      error:
+                        '비밀번호가 올바르지 않거나 파일을 열 수 없습니다.',
+                    }
+                  : null,
+              );
+            }
+          })();
+        };
+        setEncMdPrompt({
+          title: '암호화된 노트 잠금 해제',
+          message: '이 노트를 열 때 사용한 비밀번호를 입력하세요.',
+          confirmLabel: '잠금 해제',
+          error: '',
+          resolve: run,
+          reject: () => {
+            setEncMdPrompt(null);
+            resolve(null);
+          },
+        });
+      });
+
+      if (plain == null) return;
+      setCurrentFile((prev: any) => ({
+        ...prev,
+        content: plain,
+        viewer: 'markdown',
+        encMd: true,
+        encMdLocked: false,
+      }));
+      setEditorContent(plain);
+    } catch (e) {
+      console.error('EncMd unlock failed:', e);
+      alert('잠금 해제에 실패했습니다.');
     }
   };
 
@@ -1204,6 +1278,7 @@ export function useDownloadSessionDomain() {
 
   const api = {
     handleViewUnsupportedAsText,
+    handleUnlockEncMdFromUnsupported,
     handleRequestDownload,
     handleRequestSessionSaveChooser,
     handleRequestSessionTransformDownload,
