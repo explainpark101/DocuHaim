@@ -11,6 +11,7 @@ import {
 
 /**
  * Brand-new / empty IDB vault: show non-resizable welcome modal → CreateItemModal.
+ * "Empty" ignores app-internal paths (e.g. `.settings`) written during boot.
  */
 export function useFirstNoteOnboardingDomain() {
   const { isUnlocked } = useAuth();
@@ -28,6 +29,7 @@ export function useFirstNoteOnboardingDomain() {
         return;
       }
       try {
+        // isVaultEmpty ignores `.settings` / other dot folders seeded at boot.
         const empty = await isVaultEmpty();
         if (!cancelled && empty) {
           setWelcomeOpen(true);

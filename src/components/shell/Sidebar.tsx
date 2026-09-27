@@ -2226,11 +2226,15 @@ export default function Sidebar({
 
         {isIdbMode && (
         <div>
-          <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
-            <span className="flex items-center gap-1">
-              <HardDrive size={14} aria-hidden /> IDB Haim
+          <div className="sticky top-0 z-9999 mb-1 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:border-odp-surface dark:bg-odp-bgSoft">
+            <span className="@container flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+              <HardDrive size={14} aria-hidden className="shrink-0" />
+              <span className="min-w-0 truncate" aria-label="IndexedDB">
+                <span className="@[5.75rem]:hidden">IDB</span>
+                <span className="hidden @[5.75rem]:inline">IndexedDB</span>
+              </span>
             </span>
-            <div className="flex gap-1">
+            <div className="flex shrink-0 gap-1">
               {onRefreshIdb && (
                 <button
                   type="button"

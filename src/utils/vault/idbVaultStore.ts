@@ -273,9 +273,25 @@ export async function listAllDirPaths(): Promise<string[]> {
     .sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * App-owned vault paths (settings, chat, trash, search index) — not user notes.
+ * First segment starting with `.` matches sidebar `hideDotFolders`.
+ */
+export function isAppInternalVaultPath(path: string): boolean {
+  const normalized = normalizePath(path);
+  if (!normalized) return true;
+  const top = normalized.split('/')[0] ?? '';
+  return top.startsWith('.');
+}
+
+/**
+ * True when there are no user-facing notes/files.
+ * Ignores app-internal paths (`.settings`, `.chat-with-myself`, …) that boot
+ * may write before first-note onboarding runs.
+ */
 export async function isVaultEmpty(): Promise<boolean> {
-  const count = await db.entries.count();
-  return count === 0;
+  const paths = await db.entries.toCollection().primaryKeys();
+  return !paths.some((path) => !isAppInternalVaultPath(String(path)));
 }
 
 export async function countEntries(): Promise<number> {
