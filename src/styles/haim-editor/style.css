@@ -47,13 +47,64 @@
   padding-bottom: 50dvh;
 }
 
-/* Optional reading-width clamp (Settings → Haim prose max-width). */
+/*
+ * Optional reading-width clamp (Settings → Haim prose max-width).
+ * Outside the clamped column: slightly darker gutter so the reading
+ * column stays visually distinct from the full editor width.
+ */
+html[data-haim-prose-width-clamp='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-editor-content {
+  background-color: color-mix(in srgb, #000 5%, #fff);
+}
+
+html[data-haim-prose-width-clamp='1']
+  .haim-editor--dark:not([data-haim-preview-only])
+  .haim-editor-content,
+html.dark[data-haim-prose-width-clamp='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-editor-content,
+html[data-haim-prose-width-clamp='1']
+  :is(.dark)
+  .haim-editor:not([data-haim-preview-only])
+  .haim-editor-content {
+  /* Near-black gutter (not a light fringe) beside the floating column */
+  background-color: var(--color-odp-bgSofter, #0f1115);
+}
+
 html[data-haim-prose-width-clamp='1']
   .haim-editor:not([data-haim-preview-only])
   .haim-editor-content
   .tiptap.haim-editor-prose {
   max-width: var(--haim-prose-max-width, 800px);
   margin-inline: auto;
+  min-height: 100%;
+  box-sizing: border-box;
+  background-color: #fff;
+  border-inline: 1px solid color-mix(in srgb, #000 10%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, #000 4%, transparent),
+    0 8px 24px color-mix(in srgb, #000 6%, transparent);
+}
+
+html[data-haim-prose-width-clamp='1']
+  .haim-editor--dark:not([data-haim-preview-only])
+  .haim-editor-content
+  .tiptap.haim-editor-prose,
+html.dark[data-haim-prose-width-clamp='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-editor-content
+  .tiptap.haim-editor-prose,
+html[data-haim-prose-width-clamp='1']
+  :is(.dark)
+  .haim-editor:not([data-haim-preview-only])
+  .haim-editor-content
+  .tiptap.haim-editor-prose {
+  background-color: var(--color-odp-surface, #23272e);
+  border-inline-color: color-mix(in srgb, #000 55%, #3a4050);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, #000 40%, transparent),
+    0 10px 28px color-mix(in srgb, #000 45%, transparent);
 }
 
 /* Compact read-only preview: strip md-editor-rt .md-editor-preview 50vh too. */

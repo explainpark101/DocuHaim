@@ -13,6 +13,7 @@ const MERMAID_STRIP_SEL = [
   '.haim-code-block__action',
   '.haim-code-block__actions',
   '.haim-line-numbers',
+  '.haim-prose-line-numbers',
 ].join(', ');
 
 /**

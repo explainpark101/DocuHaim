@@ -4,9 +4,11 @@ import {
   IconCloud,
   IconChevronDown,
   IconDownload,
+  IconFile,
   IconFileCode,
   IconFilePlus,
   IconFolder,
+  IconKey,
   IconMenu,
   IconMessage,
   IconRefresh,
@@ -14,6 +16,7 @@ import {
   IconTrash,
   IconEye,
 } from '@/components/icons';
+import { isEncMdPath } from '@/utils/encMd';
 import AudioLevelIndicator from '@/components/AudioLevelIndicator';
 import RecordingDropdownButton from '@/components/RecordingDropdownButton';
 import RecordingSyncView from '@/components/RecordingSyncView';
@@ -112,6 +115,7 @@ export default function EditorPane({
   onRequestClose,
   onRequestMove,
   onViewUnsupportedAsText,
+  onUnlockEncMdFromUnsupported,
   onRequestDownload,
   onShareToChatWithMyself,
   theme = 'light',
@@ -844,6 +848,8 @@ export default function EditorPane({
             )
           ) : currentFile.type === 'session' ? (
             <IconDownload />
+          ) : currentFile.type === 'idb' || currentFile.type === 'local' ? (
+            <IconFile />
           ) : (
             <IconFolder />
           )}
@@ -1383,7 +1389,13 @@ export default function EditorPane({
             <Suspense fallback={<EditorPaneSuspenseFallback />}>
               <MonacoTextEditor
                 value={editorContent}
-                language="plaintext"
+                language={
+                  isEncMdPath(currentFile?.id) ||
+                  isEncMdPath(currentFile?.name) ||
+                  currentFile?.encMd
+                    ? 'json'
+                    : 'plaintext'
+                }
                 theme={theme}
                 readOnly={false}
                 onChange={onChangeEditor}
@@ -1394,9 +1406,26 @@ export default function EditorPane({
         ) : viewer === 'unsupported' ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
             <p className="text-sm text-gray-500 dark:text-odp-muted">
-              이 파일 형식은 에디터에서 미리보기를 지원하지 않습니다.
+              {isEncMdPath(currentFile?.id) ||
+              isEncMdPath(currentFile?.name) ||
+              currentFile?.encMd
+                ? '암호화된 노트입니다. 비밀번호를 입력하거나 암호문 그대로 텍스트로 볼 수 있습니다.'
+                : '이 파일 형식은 에디터에서 미리보기를 지원하지 않습니다.'}
             </p>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              {(isEncMdPath(currentFile?.id) ||
+                isEncMdPath(currentFile?.name) ||
+                currentFile?.encMd) &&
+              typeof onUnlockEncMdFromUnsupported === 'function' ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={onUnlockEncMdFromUnsupported}
+                >
+                  <IconKey size={16} /> 비밀번호 입력
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="secondary"

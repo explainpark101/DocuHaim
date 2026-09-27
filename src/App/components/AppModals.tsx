@@ -14,6 +14,7 @@ import { MoveFileModal } from '@/components/modals/MoveFileModal';
 import { MoveFolderModal } from '@/components/modals/MoveFolderModal';
 import { CreateItemModal } from '@/components/modals/CreateItemModal';
 import PromptModal from '@/components/modals/PromptModal';
+import ChangeEncMdPasswordModal from '@/components/modals/ChangeEncMdPasswordModal';
 import FirstNoteWelcomeModal from '@/components/shared/modals/FirstNoteWelcomeModal';
 import { revertNoteCoverComment } from '@/utils/noteCover';
 import { getActiveFileTab, isFileTab } from '@/utils/workspaceTabs';
@@ -156,6 +157,11 @@ export function AppModals() {
     setCreateModalOpen,
     isCreateSubmitting,
     handleCreateItemSubmit,
+    encMdPasswordChangeTarget,
+    isChangingEncMdPassword,
+    encMdPasswordChangeError,
+    cancelChangeEncMdPassword,
+    confirmChangeEncMdPassword,
   } = useTreeOps();
   const {
     storageMode,
@@ -622,6 +628,19 @@ export function AppModals() {
       onConfirm={(password) => {
         encMdPrompt?.resolve?.(password);
       }}
+    />
+
+    <ChangeEncMdPasswordModal
+      isOpen={Boolean(encMdPasswordChangeTarget)}
+      fileLabel={
+        encMdPasswordChangeTarget?.node?.path ||
+        encMdPasswordChangeTarget?.node?.name ||
+        ''
+      }
+      isSubmitting={isChangingEncMdPassword}
+      error={encMdPasswordChangeError || ''}
+      onCancel={cancelChangeEncMdPassword}
+      onConfirm={confirmChangeEncMdPassword}
     />
 
     <FirstNoteWelcomeModal

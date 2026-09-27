@@ -126,8 +126,10 @@ import {
   saveHaimLinkOpenOnClick,
 } from '@/utils/haimLinkOpenSettings';
 import {
+  loadHaimProseLineNumbersEnabled,
   loadHaimCodeLineNumbersEnabled,
   loadHaimRawLineNumbersEnabled,
+  saveHaimProseLineNumbersEnabled,
   saveHaimCodeLineNumbersEnabled,
   saveHaimRawLineNumbersEnabled,
 } from '@/utils/haimWysiwygLineNumberSettings';
@@ -173,6 +175,7 @@ export type SettingsToggleId =
   | 'settings-haim-focus-outline'
   | 'settings-haim-prose-width-clamp'
   | 'settings-haim-link-open-on-click'
+  | 'settings-haim-prose-line-numbers'
   | 'settings-haim-code-line-numbers'
   | 'settings-haim-raw-line-numbers'
   | 'settings-haim-code-wrap'
@@ -331,6 +334,27 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimLinkOpenOnClick,
     save: saveHaimLinkOpenOnClick,
+  },
+  {
+    id: 'settings-haim-prose-line-numbers',
+    enableTitle: 'Haim WYSIWYG 줄 번호 켜기',
+    disableTitle: 'Haim WYSIWYG 줄 번호 끄기',
+    description:
+      'WYSIWYG 문서 왼쪽에 줄 번호를 표시합니다 (기본 켜짐)',
+    keywords: [
+      'haim',
+      'prose',
+      'wysiwyg',
+      '문서',
+      '줄번호',
+      '줄 번호',
+      'line',
+      'number',
+      'linenumber',
+      'gutter',
+    ],
+    load: loadHaimProseLineNumbersEnabled,
+    save: saveHaimProseLineNumbersEnabled,
   },
   {
     id: 'settings-haim-code-line-numbers',

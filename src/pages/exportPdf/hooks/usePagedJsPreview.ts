@@ -123,7 +123,7 @@ function buildPagedSourceFromPreview(
   // Drop code-block / mermaid chrome (copy, pin, lang head) from the print flow.
   // Include Haim TipTap node-view chrome when staging uses HaimMarkdownPreview.
   for (const el of wrapper.querySelectorAll(
-    '.md-editor-code-head, .md-editor-copy-button, .md-editor-code-action, .md-editor-mermaid-action, .haim-code-block__header, .haim-code-block__action, .haim-code-block__actions, .haim-mermaid-block__source-hidden, .haim-line-numbers',
+    '.md-editor-code-head, .md-editor-copy-button, .md-editor-code-action, .md-editor-mermaid-action, .haim-code-block__header, .haim-code-block__action, .haim-code-block__actions, .haim-mermaid-block__source-hidden, .haim-line-numbers, .haim-prose-line-numbers',
   )) {
     el.remove();
   }

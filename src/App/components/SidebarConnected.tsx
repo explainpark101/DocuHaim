@@ -101,6 +101,7 @@ export default function SidebarConnected(props: ChromeProps) {
         isDeletingFolder: treeOps.isDeletingFolder,
         onDownloadNode: treeOps.handleDownloadNode,
         onDuplicateNode: treeOps.handleDuplicateNode,
+        onChangeEncMdPassword: treeOps.requestChangeEncMdPassword,
         theme: bootstrap.theme,
         onToggleTheme: () =>
           bootstrap.setTheme(bootstrap.theme === 'dark' ? 'light' : 'dark'),

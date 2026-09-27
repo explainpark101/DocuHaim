@@ -1,8 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
 import {
-  MOBILE_CONTEXT_MENU_DANGER_ITEM_CLASS,
   MOBILE_CONTEXT_MENU_ITEM_CLASS,
   DESKTOP_CONTEXT_MENU_Z_CLASS,
 } from '@/components/contextMenu/mobileContextMenuStyles';
@@ -13,17 +12,48 @@ import {
   IconMessage,
   IconTrash,
   IconX,
+  IconKey,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucide-react';
+import { isEncMdPath } from '@/utils/encMd';
 
 const VIEWPORT_PADDING = 8;
 
-function formatTreeNodePath(node, storageType) {
+type TreeMenuNode = {
+  type?: string;
+  name?: string;
+  path?: string;
+  handle?: unknown;
+};
+
+function formatTreeNodePath(node: TreeMenuNode | null | undefined): string {
   if (!node) return '';
   if (node.path === '.trash/') return '.trash/';
   if (!node.path) return '/';
   return node.path;
 }
+
+type MenuItemsProps = {
+  node: TreeMenuNode;
+  storageType: string;
+  isTrashRoot: boolean;
+  deleteCount: number;
+  onClose: () => void;
+  onCloseTab?: (() => void) | undefined;
+  onCreateFile?: ((node: TreeMenuNode) => void) | undefined;
+  onCreateFolder?: ((node: TreeMenuNode) => void) | undefined;
+  onDownload?: ((node: TreeMenuNode) => void) | undefined;
+  onRename?: ((node: TreeMenuNode) => void) | undefined;
+  onChangeEncMdPassword?: ((storageType: string, node: TreeMenuNode) => void) | undefined;
+  onDelete?: ((node: TreeMenuNode) => void) | undefined;
+  onEmptyTrash?: ((node: TreeMenuNode, storageType: string) => void) | undefined;
+  onDuplicate?: ((node: TreeMenuNode) => void) | undefined;
+  onMove?: ((node: TreeMenuNode) => void) | undefined;
+  onOpenInNewWindow?: ((storageType: string, node: TreeMenuNode) => void | Promise<void>) | undefined;
+  onShareToChatWithMyself?: ((storageType: string, node: TreeMenuNode) => void | Promise<void>) | undefined;
+  itemClass: string;
+  iconClass: string;
+};
 
 function SidebarContextMenuItems({
   node,
@@ -36,6 +66,7 @@ function SidebarContextMenuItems({
   onCreateFolder,
   onDownload,
   onRename,
+  onChangeEncMdPassword,
   onDelete,
   onEmptyTrash,
   onDuplicate,
@@ -44,10 +75,15 @@ function SidebarContextMenuItems({
   onShareToChatWithMyself,
   itemClass,
   iconClass,
-}) {
+}: MenuItemsProps) {
   const isFolder = node.type === 'folder';
   const canAdd = isFolder && !isTrashRoot;
   const canEdit = !isTrashRoot;
+  const showChangeEncMdPassword =
+    !isFolder &&
+    node.type === 'file' &&
+    Boolean(onChangeEncMdPassword) &&
+    (isEncMdPath(node.name) || isEncMdPath(node.path));
 
   return (
     <>
@@ -148,6 +184,19 @@ function SidebarContextMenuItems({
           이름 수정
         </button>
       )}
+      {showChangeEncMdPassword && onChangeEncMdPassword && (
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => {
+            onChangeEncMdPassword(storageType, node);
+            onClose();
+          }}
+        >
+          <IconKey className={iconClass} size={14} />
+          파일 비밀번호 변경
+        </button>
+      )}
       {isTrashRoot && onEmptyTrash && (
         <button
           type="button"
@@ -204,6 +253,29 @@ function SidebarContextMenuItems({
   );
 }
 
+export type SidebarContextMenuProps = {
+  x?: number | null;
+  y?: number | null;
+  node: TreeMenuNode | null;
+  storageType: string;
+  isTrashRoot?: boolean;
+  mobileDialog?: boolean;
+  onClose: () => void;
+  onCloseTab?: (() => void) | undefined;
+  onCreateFile?: ((node: TreeMenuNode) => void) | undefined;
+  onCreateFolder?: ((node: TreeMenuNode) => void) | undefined;
+  onDownload?: ((node: TreeMenuNode) => void) | undefined;
+  onRename?: ((node: TreeMenuNode) => void) | undefined;
+  onChangeEncMdPassword?: ((storageType: string, node: TreeMenuNode) => void) | undefined;
+  onDelete?: ((node: TreeMenuNode) => void) | undefined;
+  onEmptyTrash?: ((node: TreeMenuNode, storageType: string) => void) | undefined;
+  onDuplicate?: ((node: TreeMenuNode) => void) | undefined;
+  onMove?: ((node: TreeMenuNode) => void) | undefined;
+  onOpenInNewWindow?: ((storageType: string, node: TreeMenuNode) => void | Promise<void>) | undefined;
+  onShareToChatWithMyself?: ((storageType: string, node: TreeMenuNode) => void | Promise<void>) | undefined;
+  deleteCount?: number;
+};
+
 /**
  * Sidebar tree context menu.
  * Desktop: fixed portal at pointer. Mobile portrait: full-screen modal with path header.
@@ -213,7 +285,7 @@ export default function SidebarContextMenu({
   y,
   node,
   storageType,
-  isTrashRoot,
+  isTrashRoot = false,
   mobileDialog = false,
   onClose,
   onCloseTab,
@@ -221,6 +293,7 @@ export default function SidebarContextMenu({
   onCreateFolder,
   onDownload,
   onRename,
+  onChangeEncMdPassword,
   onDelete,
   onEmptyTrash,
   onDuplicate,
@@ -228,48 +301,51 @@ export default function SidebarContextMenu({
   onOpenInNewWindow,
   onShareToChatWithMyself,
   deleteCount = 1,
-}) {
-  const menuRef = useRef(null);
-  const [position, setPosition] = useState({ left: x, top: y });
+}: SidebarContextMenuProps): ReactNode {
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState({ left: x ?? 0, top: y ?? 0 });
 
   const isOpen = Boolean(node);
   const displayName = isTrashRoot ? '쓰레기통' : node?.name;
-  const pathLabel = formatTreeNodePath(node, storageType);
+  const pathLabel = formatTreeNodePath(node);
 
   const itemClass = mobileDialog
     ? MOBILE_CONTEXT_MENU_ITEM_CLASS
     : 'flex items-center gap-2 w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fg hover:bg-gray-100 dark:hover:bg-odp-focusBg disabled:opacity-50 disabled:pointer-events-none';
   const iconClass = 'shrink-0 w-4 h-4 text-gray-500 dark:text-odp-muted';
 
-  const itemsProps = {
-    node,
-    storageType,
-    isTrashRoot,
-    deleteCount,
-    onClose,
-    onCloseTab,
-    onCreateFile,
-    onCreateFolder,
-    onDownload,
-    onRename,
-    onDelete,
-    onEmptyTrash,
-    onDuplicate,
-    onMove,
-    onOpenInNewWindow,
-    onShareToChatWithMyself,
-    itemClass,
-    iconClass,
-  };
+  const itemsProps: MenuItemsProps | null = node
+    ? {
+        node,
+        storageType,
+        isTrashRoot,
+        deleteCount,
+        onClose,
+        onCloseTab,
+        onCreateFile,
+        onCreateFolder,
+        onDownload,
+        onRename,
+        onChangeEncMdPassword,
+        onDelete,
+        onEmptyTrash,
+        onDuplicate,
+        onMove,
+        onOpenInNewWindow,
+        onShareToChatWithMyself,
+        itemClass,
+        iconClass,
+      }
+    : null;
 
   useEffect(() => {
     if (!isOpen || mobileDialog) return undefined;
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
-    const handleEscape = (e) => {
+    const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -302,7 +378,7 @@ export default function SidebarContextMenu({
     setPosition({ left, top });
   }, [x, y, node, isTrashRoot, mobileDialog]);
 
-  if (!node) return null;
+  if (!node || !itemsProps) return null;
 
   if (mobileDialog) {
     return (

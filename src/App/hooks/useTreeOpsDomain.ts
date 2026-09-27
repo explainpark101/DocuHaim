@@ -72,6 +72,10 @@ import { openNotePathnameForStoragePath } from '@/utils/appHref';
 import {
   encryptEncMdContent,
   isEncMdPath,
+  prepareEncMdRenameWrite,
+  relocateEncMdPassword,
+  commitEncMdRenamePasswords,
+  reencryptEncMdContent,
   setEncMdPassword,
 } from '@/utils/encMd';
 import { createWebdavBackend, createLocalBackend } from '@/utils/storage';
@@ -191,6 +195,11 @@ export function useTreeOpsDomain() {
     setMoveModalSelectPath,
     uploadTarget,
     setUploadTarget,
+    encMdPasswordChangeTarget,
+    setEncMdPasswordChangeTarget,
+    isChangingEncMdPassword,
+    setIsChangingEncMdPassword,
+    setEncMdPasswordChangeError,
     confirmAndCancelEditorImageUploadRef,
     readBackendBytesRef,
     downloadMarkdownImageZipRef,
@@ -1754,19 +1763,104 @@ export function useTreeOpsDomain() {
         }
         return;
       }
+
+      const originalName = node.name || '';
+      const lastDot = originalName.lastIndexOf('.');
+      const ext = lastDot > 0 ? originalName.slice(lastDot) : '';
+      const newName = `${trimmed}${ext}`;
+      const oldPath = node.path;
+      const lastSlash = oldPath.lastIndexOf('/');
+      const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
+      const newPath = dirPrefix + newName;
+      if (newPath === oldPath) return;
+
+      const isCurrentFile =
+        currentFile?.type === storageType && currentFile?.id === node.path;
+      const plaintextForEnc = isCurrentFile ? editorContent : null;
+
+      const requestEncMdPassword = async (opts) => {
+        const req = requestEncMdPasswordRef.current;
+        if (!req) throw new Error('cancelled');
+        return req(opts);
+      };
+
+      const readVaultTextForRename = async () => {
+        if (storageType === 's3') {
+          const client = getS3Client();
+          if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+          const { body } = await getObjectBody(client, s3Creds.bucket, oldPath);
+          return typeof body === 'string' ? body : new TextDecoder().decode(body);
+        }
+        if (storageType === 'webdav') {
+          const backend = createWebdavBackend(webdavConfig);
+          const { text } = await backend.readText(oldPath);
+          return String(text ?? '');
+        }
+        if (storageType === 'idb') {
+          const backend = getBackendForType('idb');
+          const { text } = await backend.readText(oldPath);
+          return String(text ?? '');
+        }
+        // local
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const { text } = await backend.readText(oldPath);
+          return String(text ?? '');
+        }
+        const handle = node.handle;
+        if (!handle) throw new Error('로컬 파일 핸들이 없습니다.');
+        const file = await handle.getFile();
+        return await file.text();
+      };
+
+      let encWrite = null;
+      try {
+        encWrite = await prepareEncMdRenameWrite({
+          oldPath,
+          newPath,
+          plaintext: plaintextForEnc,
+          readVaultText: readVaultTextForRename,
+          requestPassword: requestEncMdPassword,
+        });
+      } catch (e) {
+        if (e?.message === 'cancelled') return;
+        throw e;
+      }
+      const forceRewrite = encWrite != null;
+      const writeBody = encWrite
+        ? encWrite.vaultBody
+        : isCurrentFile && currentFile.content !== editorContent
+          ? editorContent
+          : null;
+      const openPlaintext = encWrite
+        ? encWrite.plaintext
+        : isCurrentFile
+          ? editorContent
+          : undefined;
+      const encMdFlag = isEncMdPath(newName);
+
       if (storageType === 's3') {
-        const originalName = node.name || '';
-        const lastDot = originalName.lastIndexOf('.');
-        const ext = lastDot > 0 ? originalName.slice(lastDot) : '';
-        const newName = `${trimmed}${ext}`;
-        const oldPath = node.path;
-
-        const isCurrentFile = currentFile?.type === 's3' && currentFile?.id === node.path;
-        const fileToRename = isCurrentFile ? { ...currentFile, viewer: currentFile.viewer } : { id: node.path, name: node.name };
-        const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
-        const contentOverride = hasUnsaved ? editorContent : null;
-
-        const updated = await renameS3File(fileToRename, newName, contentOverride);
+        const fileToRename = isCurrentFile
+          ? { ...currentFile, viewer: currentFile.viewer }
+          : { id: node.path, name: node.name };
+        // Always rewrite body on enc-mode change; otherwise only when unsaved.
+        const contentOverride = forceRewrite
+          ? writeBody
+          : writeBody != null
+            ? writeBody
+            : null;
+        let updated = await renameS3File(fileToRename, newName, contentOverride);
+        if (encWrite && updated) {
+          commitEncMdRenamePasswords(encWrite, oldPath, updated.id);
+          updated = {
+            ...updated,
+            content: openPlaintext,
+            ...(encMdFlag ? { encMd: true } : { encMd: false }),
+          };
+        } else if (updated && encMdFlag && isEncMdPath(oldPath)) {
+          relocateEncMdPassword(oldPath, updated.id);
+        }
         notifyAdvancedSearchChange({
           type: 'retargetPaths',
           from: oldPath,
@@ -1785,25 +1879,22 @@ export function useTreeOpsDomain() {
           const backend = getBackendForType('local');
           if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
 
-          const oldPath = node.path;
-          const lastSlash = oldPath.lastIndexOf('/');
-          const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
-          const originalName = node.name || '';
-          const nameLastDot = originalName.lastIndexOf('.');
-          const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
-          const newName = `${trimmed}${ext}`;
-          const newPath = dirPrefix + newName;
-          if (newPath === oldPath) return;
-
-          const isCurrentFile = currentFile?.type === 'local' && currentFile?.id === node.path;
-          const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
-          if (hasUnsaved) {
-            await backend.writeText(newPath, editorContent, 'text/markdown');
+          if (forceRewrite || writeBody != null) {
+            await backend.writeText(
+              newPath,
+              forceRewrite ? encWrite.vaultBody : writeBody,
+              'text/markdown',
+            );
             await backend.delete(oldPath);
           } else {
             await backend.move(oldPath, newPath);
           }
           await refreshLocalTree();
+          if (encWrite) {
+            commitEncMdRenamePasswords(encWrite, oldPath, newPath);
+          } else if (encMdFlag && isEncMdPath(oldPath)) {
+            relocateEncMdPassword(oldPath, newPath);
+          }
           notifyAdvancedSearchChange({
             type: 'retargetPaths',
             from: oldPath,
@@ -1811,7 +1902,13 @@ export function useTreeOpsDomain() {
           });
           if (isCurrentFile) {
             applyOpenFileIdentityChange(
-              { ...currentFile, id: newPath, name: newName },
+              {
+                ...currentFile,
+                id: newPath,
+                name: newName,
+                ...(openPlaintext != null ? { content: openPlaintext } : {}),
+                ...(encMdFlag ? { encMd: true } : { encMd: false }),
+              },
               { oldPath },
             );
           } else {
@@ -1824,26 +1921,28 @@ export function useTreeOpsDomain() {
           const pHandle = node.parentHandle || localRootHandle;
           if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
 
-          const oldPath = node.path;
-          const lastSlash = oldPath.lastIndexOf('/');
-          const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
-          const originalName = node.name || '';
-          const nameLastDot = originalName.lastIndexOf('.');
-          const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
-          const newName = `${trimmed}${ext}`;
-          const newPath = dirPrefix + newName;
-
-          if (newPath === oldPath) return;
-
-          const file = await node.handle.getFile();
+          let bodyToWrite;
+          if (forceRewrite) {
+            bodyToWrite = encWrite.vaultBody;
+          } else if (writeBody != null) {
+            bodyToWrite = writeBody;
+          } else {
+            const file = await node.handle.getFile();
+            bodyToWrite = await file.arrayBuffer();
+          }
           const newFileHandle = await pHandle.getFileHandle(newName, { create: true });
           const writable = await newFileHandle.createWritable();
-          await writable.write(await file.arrayBuffer());
+          await writable.write(bodyToWrite);
           await writable.close();
 
           await pHandle.removeEntry(node.name, { recursive: false });
 
           await refreshLocalTree();
+          if (encWrite) {
+            commitEncMdRenamePasswords(encWrite, oldPath, newPath);
+          } else if (encMdFlag) {
+            relocateEncMdPassword(oldPath, newPath);
+          }
           notifyAdvancedSearchChange({
             type: 'retargetPaths',
             from: oldPath,
@@ -1857,6 +1956,8 @@ export function useTreeOpsDomain() {
                 id: newPath,
                 name: newName,
                 handle: newFileHandle,
+                ...(openPlaintext != null ? { content: openPlaintext } : {}),
+                ...(encMdFlag ? { encMd: true } : { encMd: false }),
               },
               { oldPath },
             );
@@ -1870,25 +1971,22 @@ export function useTreeOpsDomain() {
         }
       } else if (storageType === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
-        const oldPath = node.path;
-        const lastSlash = oldPath.lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
-        const originalName = node.name || '';
-        const nameLastDot = originalName.lastIndexOf('.');
-        const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
-        const newName = `${trimmed}${ext}`;
-        const newPath = dirPrefix + newName;
-        if (newPath === oldPath) return;
-
-        const isCurrentFile = currentFile?.type === 'webdav' && currentFile?.id === node.path;
-        const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
-        if (hasUnsaved) {
-          await backend.writeText(newPath, editorContent, 'text/markdown');
+        if (forceRewrite || writeBody != null) {
+          await backend.writeText(
+            newPath,
+            forceRewrite ? encWrite.vaultBody : writeBody,
+            'text/markdown',
+          );
           await backend.delete(oldPath);
         } else {
           await backend.move(oldPath, newPath);
         }
         await refreshWebdavTree();
+        if (encWrite) {
+          commitEncMdRenamePasswords(encWrite, oldPath, newPath);
+        } else if (encMdFlag && isEncMdPath(oldPath)) {
+          relocateEncMdPassword(oldPath, newPath);
+        }
         notifyAdvancedSearchChange({
           type: 'retargetPaths',
           from: oldPath,
@@ -1896,7 +1994,13 @@ export function useTreeOpsDomain() {
         });
         if (isCurrentFile) {
           applyOpenFileIdentityChange(
-            { ...currentFile, id: newPath, name: newName },
+            {
+              ...currentFile,
+              id: newPath,
+              name: newName,
+              ...(openPlaintext != null ? { content: openPlaintext } : {}),
+              ...(encMdFlag ? { encMd: true } : { encMd: false }),
+            },
             { oldPath },
           );
         } else {
@@ -1907,25 +2011,22 @@ export function useTreeOpsDomain() {
         }
       } else if (storageType === 'idb') {
         const backend = getBackendForType('idb');
-        const oldPath = node.path;
-        const lastSlash = oldPath.lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';
-        const originalName = node.name || '';
-        const nameLastDot = originalName.lastIndexOf('.');
-        const ext = nameLastDot > 0 ? originalName.slice(nameLastDot) : '';
-        const newName = `${trimmed}${ext}`;
-        const newPath = dirPrefix + newName;
-        if (newPath === oldPath) return;
-
-        const isCurrentFile = currentFile?.type === 'idb' && currentFile?.id === node.path;
-        const hasUnsaved = isCurrentFile && currentFile.content !== editorContent;
-        if (hasUnsaved) {
-          await backend.writeText(newPath, editorContent, 'text/markdown');
+        if (forceRewrite || writeBody != null) {
+          await backend.writeText(
+            newPath,
+            forceRewrite ? encWrite.vaultBody : writeBody,
+            'text/markdown',
+          );
           await backend.delete(oldPath);
         } else {
           await backend.move(oldPath, newPath);
         }
         await refreshIdbTree();
+        if (encWrite) {
+          commitEncMdRenamePasswords(encWrite, oldPath, newPath);
+        } else if (encMdFlag && isEncMdPath(oldPath)) {
+          relocateEncMdPassword(oldPath, newPath);
+        }
         notifyAdvancedSearchChange({
           type: 'retargetPaths',
           from: oldPath,
@@ -1933,7 +2034,13 @@ export function useTreeOpsDomain() {
         });
         if (isCurrentFile) {
           applyOpenFileIdentityChange(
-            { ...currentFile, id: newPath, name: newName },
+            {
+              ...currentFile,
+              id: newPath,
+              name: newName,
+              ...(openPlaintext != null ? { content: openPlaintext } : {}),
+              ...(encMdFlag ? { encMd: true } : { encMd: false }),
+            },
             { oldPath },
           );
         } else {
@@ -1944,7 +2051,132 @@ export function useTreeOpsDomain() {
         }
       }
     } catch (e) {
+      if (e?.message === 'cancelled') return;
       alert("이름 변경 실패: " + e.message);
+    }
+  };
+
+  const requestChangeEncMdPassword = (storageType, node) => {
+    if (!node || node.type === 'folder') return;
+    if (!isEncMdPath(node.path) && !isEncMdPath(node.name)) return;
+    setEncMdPasswordChangeError('');
+    setEncMdPasswordChangeTarget({ storageType, node });
+  };
+
+  const cancelChangeEncMdPassword = () => {
+    if (isChangingEncMdPassword) return;
+    setEncMdPasswordChangeTarget(null);
+    setEncMdPasswordChangeError('');
+    setIsChangingEncMdPassword(false);
+  };
+
+  const confirmChangeEncMdPassword = async (currentPassword, newPassword) => {
+    const target = encMdPasswordChangeTarget;
+    if (!target?.node || !target?.storageType) return;
+    const { storageType, node } = target;
+    const path = String(node.path || '');
+    if (!path) return;
+
+    setIsChangingEncMdPassword(true);
+    setEncMdPasswordChangeError('');
+    try {
+      let ciphertext = '';
+      if (storageType === 's3') {
+        const client = getS3Client();
+        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        const { body } = await getObjectBody(client, s3Creds.bucket, path);
+        ciphertext =
+          typeof body === 'string' ? body : new TextDecoder().decode(body);
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        const { text } = await backend.readText(path);
+        ciphertext = String(text ?? '');
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        const { text } = await backend.readText(path);
+        ciphertext = String(text ?? '');
+      } else if (storageType === 'local') {
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const { text } = await backend.readText(path);
+          ciphertext = String(text ?? '');
+        } else {
+          const handle = node.handle;
+          if (!handle) throw new Error('로컬 파일 핸들이 없습니다.');
+          const file = await handle.getFile();
+          ciphertext = await file.text();
+        }
+      } else {
+        throw new Error('이 저장소에서는 비밀번호 변경을 지원하지 않습니다.');
+      }
+
+      const { vaultBody } = await reencryptEncMdContent(
+        ciphertext,
+        currentPassword,
+        newPassword,
+      );
+
+      if (storageType === 's3') {
+        const client = getS3Client();
+        if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+        await putObject(client, {
+          Bucket: s3Creds.bucket,
+          Key: path,
+          Body: vaultBody,
+          ContentType: 'application/json; charset=utf-8',
+        });
+        await loadS3Files();
+      } else if (storageType === 'webdav') {
+        const backend = createWebdavBackend(webdavConfig);
+        await backend.writeText(path, vaultBody, 'application/json; charset=utf-8');
+        await refreshWebdavTree();
+      } else if (storageType === 'idb') {
+        const backend = getBackendForType('idb');
+        await backend.writeText(path, vaultBody, 'application/json; charset=utf-8');
+        await refreshIdbTree();
+      } else if (storageType === 'local') {
+        if (localVaultFsPath && !localRootHandle) {
+          const backend = getBackendForType('local');
+          if (!backend?.isReady?.()) throw new Error('루트 폴더를 먼저 열어주세요.');
+          await backend.writeText(path, vaultBody, 'application/json; charset=utf-8');
+          await refreshLocalTree();
+        } else {
+          const pHandle = node.parentHandle || localRootHandle;
+          if (!pHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+          const fileHandle =
+            node.handle || (await pHandle.getFileHandle(node.name));
+          const writable = await fileHandle.createWritable();
+          await writable.write(vaultBody);
+          await writable.close();
+          await refreshLocalTree();
+        }
+      }
+
+      setEncMdPassword(path, String(newPassword || '').trim());
+      setEncMdPasswordChangeTarget(null);
+      setEncMdPasswordChangeError('');
+      setOperationStatus('파일 비밀번호를 변경했습니다.');
+    } catch (e) {
+      const msg = String(e?.message || '비밀번호 변경에 실패했습니다.');
+      if (
+        msg.includes('Password required') ||
+        msg.includes('올바르지') ||
+        msg.includes('decrypt') ||
+        msg.includes('Decrypt') ||
+        msg.includes('operation') ||
+        msg.includes('새 비밀번호')
+      ) {
+        setEncMdPasswordChangeError(
+          msg.includes('새 비밀번호')
+            ? msg
+            : '현재 비밀번호가 올바르지 않거나 파일을 읽을 수 없습니다.',
+        );
+      } else {
+        setEncMdPasswordChangeError(msg);
+      }
+    } finally {
+      setIsChangingEncMdPassword(false);
     }
   };
 
@@ -3813,6 +4045,9 @@ export function useTreeOpsDomain() {
     handleTreeNodeSelect,
     handleDownloadNode,
     handleDuplicateNode,
+    requestChangeEncMdPassword,
+    cancelChangeEncMdPassword,
+    confirmChangeEncMdPassword,
     createItem,
     requestCreateItem,
     requestAdvancedSearchCreateItem,

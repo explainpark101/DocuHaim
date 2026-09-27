@@ -263,6 +263,7 @@ export type SidebarProps = {
   onRefreshS3?: () => void | Promise<void>;
   onDownloadNode?: (storageType: string, node: SidebarTreeNode) => void;
   onDuplicateNode?: (storageType: string, node: SidebarTreeNode) => void;
+  onChangeEncMdPassword?: (storageType: string, node: SidebarTreeNode) => void;
   onRequestMoveFile?: (node: SidebarTreeNode, storageType: string) => void;
   onOpenInNewWindow?: (...args: unknown[]) => void;
   onShareToChatWithMyself?: (...args: unknown[]) => void;
@@ -518,6 +519,7 @@ export default function Sidebar({
   onRefreshS3,
   onDownloadNode,
   onDuplicateNode,
+  onChangeEncMdPassword,
   onRequestMoveFile,
   onOpenInNewWindow,
   onShareToChatWithMyself,
@@ -1566,6 +1568,11 @@ export default function Sidebar({
               : undefined
           }
           onDuplicate={onDuplicateNode ? () => onDuplicateNode(contextMenuStorageType, contextMenuNode) : undefined}
+          onChangeEncMdPassword={
+            onChangeEncMdPassword
+              ? (storageType, node) => onChangeEncMdPassword(storageType, node as SidebarTreeNode)
+              : undefined
+          }
           onMove={() => {
             if (contextMenuNode.type === 'folder') {
               onRequestMoveFolder?.(contextMenuNode, contextMenuStorageType);

@@ -358,11 +358,18 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .haim-line-numbers,
 .pagedjs_page_content .haim-line-numbers,
+.export-pdf-paged-source .haim-prose-line-numbers,
+.pagedjs_page_content .haim-prose-line-numbers,
 .export-pdf-paged-source .export-pdf-code-gutter,
 .pagedjs_page_content .export-pdf-code-gutter {
   background: transparent !important;
   background-color: transparent !important;
   border-right-color: #d1d5db;
+}
+
+.export-pdf-paged-source .haim-prose-line-numbers,
+.pagedjs_page_content .haim-prose-line-numbers {
+  display: none !important;
 }
 
 .export-pdf-paged-source .haim-mermaid-block,
