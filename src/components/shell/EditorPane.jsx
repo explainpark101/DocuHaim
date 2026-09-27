@@ -63,6 +63,11 @@ import {
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { patchFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
+import {
+  EDITOR_TYPE_HAIM,
+  loadEditorType,
+} from '@/utils/editorTypeSettings';
+import { openHaimProseWidthLivePanel } from '@/utils/haimProseWidthPanel';
 
 const NoteEditorSurface = lazy(
   () => import('@/components/editor/surface/NoteEditorSurface'),
@@ -1042,6 +1047,20 @@ export default function EditorPane({
                   <Sparkles size={14} />
                   AI설정
                 </button>
+                {viewer === 'markdown' &&
+                (editorType ?? loadEditorType()) === EDITOR_TYPE_HAIM ? (
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
+                    onClick={() => {
+                      openHaimProseWidthLivePanel();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <IconEye size={14} />
+                    보기 설정
+                  </button>
+                ) : null}
                 {currentFile.type !== 'session' ? (
                 <button
                   type="button"
@@ -1054,8 +1073,7 @@ export default function EditorPane({
                   <Settings size={14} />
                   문서 설정
                 </button>
-                ) : null}
-                {onShareToChatWithMyself && currentFile.type !== 'session' && (
+                ) : null}                {onShareToChatWithMyself && currentFile.type !== 'session' && (
                   <button
                     type="button"
                     className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"

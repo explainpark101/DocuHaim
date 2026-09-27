@@ -43,6 +43,7 @@ export default function Modal({
     beginResize,
     resetBox,
     captureBaseline,
+    pinToCurrentRect,
     positioned,
     positionedStyle,
   } = useModalCornerResize(resizable, { resizeHeight });
@@ -76,24 +77,25 @@ export default function Modal({
     }
   }, [isOpen, mounted, resetBox]);
 
-  // Capture opening size as resize floor after enter animation.
+  // Pin to fixed rect after enter animation so the first drag does not
+  // switch flex-centering → fixed (that cancels the pointer).
   useEffect(() => {
     if (!isOpen || !visible || !resizable) return undefined;
     const timer = window.setTimeout(() => {
-      captureBaseline();
+      pinToCurrentRect();
     }, ANIMATION_DURATION_MS + 30);
     return () => window.clearTimeout(timer);
-  }, [isOpen, visible, resizable, captureBaseline]);
+  }, [isOpen, visible, resizable, pinToCurrentRect]);
 
   // Size ↔ crop (etc.): drop fixed box, remeasure floor for the new layout.
   useEffect(() => {
     if (!isOpen || layoutKey === undefined) return undefined;
     resetBox();
     const timer = window.setTimeout(() => {
-      captureBaseline();
+      pinToCurrentRect();
     }, 40);
     return () => window.clearTimeout(timer);
-  }, [layoutKey, isOpen, resetBox, captureBaseline]);
+  }, [layoutKey, isOpen, resetBox, pinToCurrentRect]);
 
   if (!mounted || typeof document === 'undefined') return null;
 

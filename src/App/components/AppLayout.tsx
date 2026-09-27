@@ -15,6 +15,7 @@ import UserWebfontStyles from '@/components/UserWebfontStyles';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import FileUploadQueueStatusBar from '@/components/FileUploadQueueStatusBar';
 import FileUploadQueueFloatingPanel from '@/components/FileUploadQueueFloatingPanel';
+import HaimProseWidthFloatingPanel from '@/components/settings/HaimProseWidthFloatingPanel';
 import StatusBarClock from '@/components/shell/StatusBarClock';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { isStoredWithWebAuthn, getStoredWebAuthn } from '@/utils/webauthn';
@@ -1242,6 +1243,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
 
       {children}
       <FileUploadQueueFloatingPanel />
+      <HaimProseWidthFloatingPanel />
     </div>
   );
 }
