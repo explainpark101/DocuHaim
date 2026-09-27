@@ -401,8 +401,9 @@ html[data-haim-code-wrap='1']
   box-sizing: border-box;
   text-align: right;
   white-space: nowrap;
-  /* Digit stays at the top of its hard-line band; soft-wrap extra = margin-bottom. */
-  line-height: 1.55;
+  overflow: hidden;
+  /* Digit at top of hard-line band; inline height comes from measured px. */
+  line-height: inherit;
 }
 
 html[data-haim-code-line-numbers='0'] .haim-editor .haim-code-block__line-numbers {

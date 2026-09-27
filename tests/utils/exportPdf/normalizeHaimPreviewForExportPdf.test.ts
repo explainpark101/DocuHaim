@@ -13,6 +13,7 @@ type FakeEl = {
   classList: {
     contains: (name: string) => boolean;
     add: (...names: string[]) => void;
+    remove: (...names: string[]) => void;
   };
   children: FakeEl[];
   tagName: string;
@@ -51,6 +52,10 @@ function fakeEl(tagName: string, className = ''): FakeEl {
       contains: (name) => classes.has(name),
       add: (...names) => {
         for (const n of names) classes.add(n);
+        node.className = [...classes].join(' ');
+      },
+      remove: (...names) => {
+        for (const n of names) classes.delete(n);
         node.className = [...classes].join(' ');
       },
     },
@@ -146,6 +151,7 @@ describe('normalizeHaimPreviewForExportPdf', () => {
 
     const mermaid = root.children[1]!;
     expect(mermaid.classList.contains('md-editor-mermaid')).toBe(true);
+    expect(mermaid.classList.contains('md-editor-code')).toBe(false);
     expect(mermaid.hasAttribute('data-processed')).toBe(true);
   });
 

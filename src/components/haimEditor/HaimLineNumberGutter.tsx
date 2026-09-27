@@ -5,21 +5,19 @@ import {
   type RefObject,
 } from 'react';
 import { countHaimDisplayLines } from '@/utils/haimWysiwygLineNumberSettings';
+import { HAIM_CODE_WRAP_CHANGED_EVENT } from '@/utils/haimCodeWrapSettings';
 import {
-  HAIM_CODE_WRAP_CHANGED_EVENT,
-  loadHaimCodeWrapEnabled,
-} from '@/utils/haimCodeWrapSettings';
-import {
-  haimCodeHostSoftWraps,
-  measureHaimHardLineMargins,
+  measureHaimHardLineHeights,
+  probeHaimLineHeightPx,
+  resolveHaimGutterLineCount,
 } from '@/utils/measureHaimHardLineHeights';
 
 type HaimLineNumberGutterProps = {
   text: string;
   className?: string;
   /**
-   * Root that contains the wrapped text (`pre` / content host).
-   * Prefer TipTap contentDOM / `[data-node-view-content]` when present.
+   * Root that contains the wrapped text (`pre` / TipTap content host).
+   * Works for lowlight CodeBlock and plain / raw-md pre alike.
    */
   contentRootRef?: RefObject<HTMLElement | null>;
 };
@@ -34,31 +32,27 @@ function resolveMeasureTarget(root: HTMLElement | null): HTMLElement | null {
   );
 }
 
-function shouldSyncWrapHeights(el: HTMLElement): boolean {
-  if (haimCodeHostSoftWraps(el)) return true;
-  return loadHaimCodeWrapEnabled();
-}
-
 /**
- * Non-interactive line-number column. Visibility is gated by
- * `html[data-haim-*-line-numbers]` CSS (see preview-tokens.css).
- *
- * When code soft-wraps, pretext pre-computes wrap rows per hard line and
- * applies margin-bottom under each digit so numbers stay synced with code.
+ * Line-number column locked to painted hard-line bands
+ * (lowlight TipTap code + plain/raw pre).
  */
 export default function HaimLineNumberGutter({
   text,
   className,
   contentRootRef,
 }: HaimLineNumberGutterProps) {
-  const count = countHaimDisplayLines(text);
-  const [margins, setMargins] = useState<number[] | null>(null);
+  const textCount = countHaimDisplayLines(text);
+  const [count, setCount] = useState(textCount);
+  const [heights, setHeights] = useState<number[] | null>(null);
+  const [lineHeightPx, setLineHeightPx] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     const root = contentRootRef?.current ?? null;
     const el = resolveMeasureTarget(root);
     if (!el) {
-      setMargins(null);
+      setCount(textCount);
+      setHeights(null);
+      setLineHeightPx(null);
       return undefined;
     }
 
@@ -69,12 +63,22 @@ export default function HaimLineNumberGutter({
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const target = resolveMeasureTarget(contentRootRef?.current ?? null);
-        if (!target || !shouldSyncWrapHeights(target)) {
-          setMargins(null);
+        if (!target) {
+          setCount(textCount);
+          setHeights(null);
+          setLineHeightPx(null);
           return;
         }
-        const next = measureHaimHardLineMargins(target, text, count);
-        setMargins(next.some((m) => m > 0) ? next : null);
+        const nextCount = resolveHaimGutterLineCount(target, text);
+        const lh = probeHaimLineHeightPx(target);
+        const nextHeights = measureHaimHardLineHeights(target, text, nextCount);
+        setCount(nextCount);
+        setLineHeightPx(lh);
+        setHeights(
+          nextHeights.length === nextCount && nextHeights.every((h) => h > 0)
+            ? nextHeights
+            : null,
+        );
       });
     };
 
@@ -90,9 +94,9 @@ export default function HaimLineNumberGutter({
       subtree: true,
       childList: true,
       characterData: true,
+      attributes: true,
     });
 
-    // TipTap may mount contentDOM one frame later.
     const boot = window.setTimeout(sync, 0);
 
     window.addEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
@@ -105,17 +109,33 @@ export default function HaimLineNumberGutter({
       window.removeEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
       window.removeEventListener('resize', sync);
     };
-  }, [text, count, contentRootRef]);
+  }, [text, textCount, contentRootRef]);
+
+  const gutterStyle: CSSProperties | undefined =
+    lineHeightPx != null && lineHeightPx > 0
+      ? { lineHeight: `${lineHeightPx}px` }
+      : undefined;
 
   return (
     <div
       className={['haim-line-numbers', className].filter(Boolean).join(' ')}
+      style={gutterStyle}
       aria-hidden
     >
       {Array.from({ length: count }, (_, i) => {
-        const mb = margins?.[i] ?? 0;
+        const h = heights?.[i];
         const style: CSSProperties | undefined =
-          mb > 0 ? { marginBottom: mb } : undefined;
+          h != null && h > 0
+            ? {
+                height: h,
+                minHeight: h,
+                maxHeight: h,
+                lineHeight:
+                  lineHeightPx != null && lineHeightPx > 0
+                    ? `${Math.min(lineHeightPx, h)}px`
+                    : undefined,
+              }
+            : undefined;
         return (
           <span key={i} className="haim-line-numbers__n" style={style}>
             {i + 1}
