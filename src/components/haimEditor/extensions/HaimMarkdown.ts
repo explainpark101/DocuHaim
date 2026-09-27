@@ -6,8 +6,8 @@ import { patchMarkdownManagerPreserveRawText } from '@/components/haimEditor/pat
  * do not auto-backslash-escape or HTML-entity-encode plain text.
  */
 export const HaimMarkdown = Markdown.extend({
-  onBeforeCreate() {
-    this.parent?.();
+  onBeforeCreate(event) {
+    this.parent?.(event);
     const manager = this.storage?.manager;
     if (manager) {
       patchMarkdownManagerPreserveRawText(manager);
