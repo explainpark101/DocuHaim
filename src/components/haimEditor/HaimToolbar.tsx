@@ -180,7 +180,7 @@ export default function HaimToolbar({
   if (!editor || previewOnly) {
     return (
       <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-        <div className="haim-toolbar flex h-9 shrink-0 items-center gap-1 border-b border-slate-300 bg-slate-50 px-2 shadow-[0_2px_6px_-1px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-[0_2px_8px_-1px_rgba(0,0,0,0.45)]">
+        <div className="haim-toolbar flex h-9 shrink-0 flex-nowrap items-center gap-1 border-b border-slate-300 bg-slate-50 px-2 shadow-[0_2px_6px_-1px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-[0_2px_8px_-1px_rgba(0,0,0,0.45)]">
           <span className="text-xs text-gray-500 dark:text-odp-muted">미리보기</span>
           {tocToggle}
         </div>
@@ -200,7 +200,7 @@ export default function HaimToolbar({
 
   return (
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-      <div className="haim-toolbar flex h-9 shrink-0 flex-wrap items-center gap-0.5 overflow-x-auto border-b border-slate-300 bg-slate-50 px-1 shadow-[0_2px_6px_-1px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-[0_2px_8px_-1px_rgba(0,0,0,0.45)]">
+      <div className="haim-toolbar flex h-9 shrink-0 flex-nowrap items-center gap-0.5 border-b border-slate-300 bg-slate-50 px-1 shadow-[0_2px_6px_-1px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-[0_2px_8px_-1px_rgba(0,0,0,0.45)]">
         <HaimViewModeCycleButton viewMode={viewMode} onChange={setMode} />
         <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-odp-borderStrong" />
         <ToolBtn

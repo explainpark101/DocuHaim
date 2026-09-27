@@ -12,6 +12,7 @@ import { invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import HaimToolbar from '@/components/haimEditor/HaimToolbar';
 import HaimSourcePane from '@/components/haimEditor/HaimSourcePane';
 import HaimTocPanel from '@/components/haimEditor/HaimTocPanel';
+import { getHaimSelectedPlainText } from '@/components/haimEditor/getHaimSelectedPlainText';
 import {
   HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
   useHaimDualSync,
@@ -150,6 +151,7 @@ export default function HaimEditor({
   const headingRemapRangeRef = useRef<{ from: number; to: number } | null>(null);
   const [imageLinkOpen, setImageLinkOpen] = useState(false);
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
+  const [qrCodeInitialText, setQrCodeInitialText] = useState('');
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [whiteboardLightbox, setWhiteboardLightbox] = useState<{
     src: string;
@@ -497,6 +499,16 @@ export default function HaimEditor({
     }
     setHeadingRemapOpen(true);
   }, [editor]);
+
+  const openQrCodeCreate = useCallback(() => {
+    if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
+    setQrCodeInitialText(
+      getHaimSelectedPlainText(editor, cmViewRef.current, {
+        sourceVisible: showSource,
+      }),
+    );
+    setQrCodeOpen(true);
+  }, [editor, onUploadImage, showImageUploadOverlay, showSource]);
 
   const openHaimTableEditor = useCallback(
     (detail: HaimTableEditRequestDetail) => {
@@ -952,8 +964,7 @@ export default function HaimEditor({
         input.click();
       },
       'editor-create-qrcode': () => {
-        if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
-        setQrCodeOpen(true);
+        openQrCodeCreate();
       },
       'editor-create-whiteboard': () => {
         if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
@@ -971,6 +982,7 @@ export default function HaimEditor({
     onRequestConvertAllImagesToWiki,
     llmAssist,
     openHeadingRemap,
+    openQrCodeCreate,
     handleUploadFiles,
     openHaimTableFromSelection,
     onUploadImage,
@@ -1091,7 +1103,7 @@ export default function HaimEditor({
             onImageClip: (file) => setClipCropFile(file),
             imageDisabled:
               typeof onUploadImage !== 'function' || showImageUploadOverlay,
-            onCreateQrCode: () => setQrCodeOpen(true),
+            onCreateQrCode: () => openQrCodeCreate(),
             onCreateWhiteboard: () => setWhiteboardOpen(true),
             onInsertMermaid: () => {
               editor
@@ -1255,12 +1267,20 @@ export default function HaimEditor({
       />
       <QrCodeCreateModal
         isOpen={qrCodeOpen}
-        onClose={() => setQrCodeOpen(false)}
+        initialText={qrCodeInitialText}
+        onClose={() => {
+          setQrCodeOpen(false);
+          setQrCodeInitialText('');
+        }}
         disabled={
           typeof onUploadImage !== 'function' || showImageUploadOverlay
         }
         onConfirm={async (file) => {
           await handleUploadFiles([file]);
+        }}
+        onInsertDecodedText={(decodedText) => {
+          if (!editor) return;
+          editor.chain().focus().insertContent(decodedText).run();
         }}
       />
       <WhiteboardCreateModal

@@ -671,6 +671,9 @@ function manualChunks(id: string): string | undefined {
   if (normalizedId.includes('/node_modules/pagedjs/')) {
     return 'vendor-pagedjs';
   }
+  if (normalizedId.includes('/node_modules/jsqr/')) {
+    return 'vendor-jsqr';
+  }
   if (
     normalizedId.includes('/node_modules/@aws-sdk/') ||
     normalizedId.includes('/node_modules/@smithy/')
