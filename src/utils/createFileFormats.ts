@@ -45,6 +45,26 @@ export function createFileFormatsLongestFirst(): CreateFileFormat[] {
   );
 }
 
+/**
+ * Intermediate suffixes of composite `*.md` formats (e.g. `.enc` from `.enc.md`).
+ * Longest first — typing `note.enc` should complete to `.enc.md`, not `.enc.enc.md`.
+ */
+export function createFileIntermediateSuffixes(): Array<{
+  mid: string;
+  format: CreateFileFormat;
+}> {
+  const out: Array<{ mid: string; format: CreateFileFormat }> = [];
+  for (const fmt of CREATE_FILE_FORMATS) {
+    const ext = fmt.extension.toLowerCase();
+    if (ext === '.md' || !ext.endsWith('.md')) continue;
+    const mid = ext.slice(0, -'.md'.length);
+    if (mid.startsWith('.') && mid.length > 1) {
+      out.push({ mid, format: fmt });
+    }
+  }
+  return out.sort((a, b) => b.mid.length - a.mid.length);
+}
+
 export function defaultCreateFileFormat(): CreateFileFormat {
   return (
     CREATE_FILE_FORMATS.find((f) => f.default) ||
@@ -69,6 +89,7 @@ export function getCreateFileFormatById(
 
 /**
  * Detect format from a file base name (longest extension match).
+ * Also recognizes partial composite suffixes (`.enc`, `.quiz`).
  * Falls back to default when no registry extension matches.
  */
 export function detectCreateFileFormat(
@@ -78,16 +99,25 @@ export function detectCreateFileFormat(
   for (const fmt of createFileFormatsLongestFirst()) {
     if (lower.endsWith(fmt.extension.toLowerCase())) return fmt;
   }
+  for (const { mid, format } of createFileIntermediateSuffixes()) {
+    if (lower.endsWith(mid)) return format;
+  }
   return defaultCreateFileFormat();
 }
 
-/** Strip any registered create-file extension from the end of a base name. */
+/**
+ * Strip any registered create-file extension (or composite intermediate like
+ * `.enc` / `.quiz`) from the end of a base name.
+ */
 export function stripCreateFileExtension(baseName: string): string {
   const raw = String(baseName || '');
   const lower = raw.toLowerCase();
   for (const fmt of createFileFormatsLongestFirst()) {
     const ext = fmt.extension.toLowerCase();
     if (lower.endsWith(ext)) return raw.slice(0, raw.length - ext.length);
+  }
+  for (const { mid } of createFileIntermediateSuffixes()) {
+    if (lower.endsWith(mid)) return raw.slice(0, raw.length - mid.length);
   }
   return raw;
 }
@@ -119,6 +149,7 @@ export function applyCreateFileFormat(
 /**
  * Ensure a file base name ends with the given format (or detected / default).
  * Used by `resolveCreateItemPath`.
+ * Completes partial composites (`note.enc` → `note.enc.md`) before appending.
  */
 export function ensureCreateFileExtension(
   baseName: string,
@@ -129,6 +160,12 @@ export function ensureCreateFileExtension(
   const lower = raw.toLowerCase();
   for (const fmt of createFileFormatsLongestFirst()) {
     if (lower.endsWith(fmt.extension.toLowerCase())) return raw;
+  }
+  // User typed `.enc` / `.quiz` — complete to the matching composite format.
+  for (const { mid, format } of createFileIntermediateSuffixes()) {
+    if (lower.endsWith(mid)) {
+      return `${raw.slice(0, raw.length - mid.length)}${format.extension}`;
+    }
   }
   const fmt =
     getCreateFileFormatById(formatId) || defaultCreateFileFormat();

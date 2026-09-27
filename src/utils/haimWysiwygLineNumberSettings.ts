@@ -1,13 +1,18 @@
 /**
- * Haim WYSIWYG: line numbers on lowlight code blocks and raw-markdown blocks.
- * Both default on.
+ * Haim WYSIWYG: line numbers on the prose surface, lowlight code blocks,
+ * and raw-markdown blocks. All default on.
  */
 
+const PROSE_STORAGE_KEY = 's3haim_haim_prose_line_numbers';
 const CODE_STORAGE_KEY = 's3haim_haim_code_line_numbers';
 const RAW_STORAGE_KEY = 's3haim_haim_raw_line_numbers';
 
+const PROSE_DOM_ATTR = 'data-haim-prose-line-numbers';
 const CODE_DOM_ATTR = 'data-haim-code-line-numbers';
 const RAW_DOM_ATTR = 'data-haim-raw-line-numbers';
+
+/** Fired on `window` when the prose (document) line-number preference changes. */
+export const HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT = 's3haim-haim-prose-line-numbers';
 
 /** Fired on `window` when the code-block preference changes. */
 export const HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT = 's3haim-haim-code-line-numbers';
@@ -15,6 +20,7 @@ export const HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT = 's3haim-haim-code-line-numbe
 /** Fired on `window` when the raw-block preference changes. */
 export const HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT = 's3haim-haim-raw-line-numbers';
 
+export const HAIM_PROSE_LINE_NUMBERS_DEFAULT = true;
 export const HAIM_CODE_LINE_NUMBERS_DEFAULT = true;
 export const HAIM_RAW_LINE_NUMBERS_DEFAULT = true;
 
@@ -55,12 +61,29 @@ function applyDomAttr(attr: string, enabled: boolean): void {
   document.documentElement.setAttribute(attr, enabled ? '1' : '0');
 }
 
+export function applyHaimProseLineNumbersDom(enabled: boolean): void {
+  applyDomAttr(PROSE_DOM_ATTR, enabled);
+}
+
 export function applyHaimCodeLineNumbersDom(enabled: boolean): void {
   applyDomAttr(CODE_DOM_ATTR, enabled);
 }
 
 export function applyHaimRawLineNumbersDom(enabled: boolean): void {
   applyDomAttr(RAW_DOM_ATTR, enabled);
+}
+
+export function loadHaimProseLineNumbersEnabled(): boolean {
+  return readBoolPref(PROSE_STORAGE_KEY, HAIM_PROSE_LINE_NUMBERS_DEFAULT);
+}
+
+export function saveHaimProseLineNumbersEnabled(enabled: boolean): void {
+  writeBoolPref(
+    PROSE_STORAGE_KEY,
+    enabled,
+    PROSE_DOM_ATTR,
+    HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT,
+  );
 }
 
 export function loadHaimCodeLineNumbersEnabled(): boolean {
@@ -91,6 +114,7 @@ export function saveHaimRawLineNumbersEnabled(enabled: boolean): void {
 
 /** Call once at app boot. */
 export function initHaimWysiwygLineNumbersDom(): void {
+  applyHaimProseLineNumbersDom(loadHaimProseLineNumbersEnabled());
   applyHaimCodeLineNumbersDom(loadHaimCodeLineNumbersEnabled());
   applyHaimRawLineNumbersDom(loadHaimRawLineNumbersEnabled());
 }

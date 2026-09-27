@@ -108,6 +108,9 @@ const HaimFindReplaceBar = lazy(
 const HaimDragHandleLayer = lazy(
   () => import('@/components/haimEditor/HaimDragHandleLayer'),
 );
+const HaimProseLineNumberGutter = lazy(
+  () => import('@/components/haimEditor/HaimProseLineNumberGutter'),
+);
 
 type HaimTableEditSession =
   | { mode: 'node'; pos: number; meta: HaimTableMeta; grid: HaimTableGrid }
@@ -1276,6 +1279,11 @@ export default function HaimEditor({
               >
                 {!previewOnly && isSurfaceLive ? (
                   <Suspense fallback={null}>
+                    <HaimProseLineNumberGutter
+                      editor={editor}
+                      scrollRef={wysiwygScrollRef}
+                      active
+                    />
                     <HaimDragHandleLayer
                       editor={editor}
                       onDraggingChange={(dragging) => {

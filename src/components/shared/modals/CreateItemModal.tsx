@@ -99,8 +99,14 @@ export function CreateItemModal({
   );
 
   // Sync badge when the user types an explicit registered extension.
+  // Clearing the name resets to the default `.md` format.
   useEffect(() => {
-    if (itemType !== 'file' || !name.trim()) return;
+    if (itemType !== 'file') return;
+    if (!name.trim()) {
+      const def = defaultCreateFileFormat().id;
+      if (fileFormatId !== def) setFileFormatId(def);
+      return;
+    }
     if (!resolved?.ok) return;
     const detected = detectCreateFileFormat(resolved.baseName);
     if (detected.id !== fileFormatId) {

@@ -173,6 +173,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     editorImageUploadPercent,
     handleRequestDownload,
     handleViewUnsupportedAsText,
+    handleUnlockEncMdFromUnsupported,
     getAdvancedSearchTrees,
     ensureAdvancedSearchBrowseFolder,
     getPresignedUrlForPath,
@@ -930,6 +931,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     onRequestClose: workspaceTabsEnabled ? undefined : handleRequestCloseEditor,
                     onRequestMove: handleRequestMove,
                     onViewUnsupportedAsText: handleViewUnsupportedAsText,
+                    onUnlockEncMdFromUnsupported: handleUnlockEncMdFromUnsupported,
                     onRequestDownload: handleRequestDownload,
                     onShareToChatWithMyself:
                       paneFile && paneFile.type !== SESSION_STORAGE_TYPE
@@ -1110,22 +1112,26 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     ? `S3 (${s3Creds.bucket || '-'})`
                     : currentFile?.type === 'local'
                       ? '로컬'
-                    : currentFile?.type === 'webdav' || currentFile?.type === 'idb'
-                      ? 'WebDAV'
-                      : currentFile?.type === SESSION_STORAGE_TYPE
-                        ? '다운로드 세션'
-                        : '없음'
+                      : currentFile?.type === 'webdav'
+                        ? 'WebDAV'
+                        : currentFile?.type === 'idb'
+                          ? 'IDB Haim'
+                          : currentFile?.type === SESSION_STORAGE_TYPE
+                            ? '다운로드 세션'
+                            : '없음'
                 }>
                   <span className="md:hidden">
                     {currentFile?.type === 's3'
                       ? 'S3'
                       : currentFile?.type === 'local'
                         ? '로컬'
-                        : currentFile?.type === 'webdav' || currentFile?.type === 'idb'
+                        : currentFile?.type === 'webdav'
                           ? 'WebDAV'
-                          : currentFile?.type === SESSION_STORAGE_TYPE
-                            ? '세션'
-                            : '없음'}
+                          : currentFile?.type === 'idb'
+                            ? 'IDB'
+                            : currentFile?.type === SESSION_STORAGE_TYPE
+                              ? '세션'
+                              : '없음'}
                   </span>
                   <span className="hidden md:inline">
                     <span className='flex items-center gap-1'>
@@ -1135,11 +1141,13 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                         ? `S3`
                         : currentFile?.type === 'local'
                           ? '로컬'
-                          : currentFile?.type === 'webdav' || currentFile?.type === 'idb'
+                          : currentFile?.type === 'webdav'
                             ? 'WebDAV'
-                            : currentFile?.type === SESSION_STORAGE_TYPE
-                              ? '다운로드 세션'
-                              : '없음'}
+                            : currentFile?.type === 'idb'
+                              ? 'IDB'
+                              : currentFile?.type === SESSION_STORAGE_TYPE
+                                ? '다운로드 세션'
+                                : '없음'}
                     </span>
                   </span>
                 </span>

@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import { GripHorizontal, PanelRightOpen, X } from 'lucide-react';
 import HaimProseWidthControls from '@/components/settings/HaimProseWidthControls';
 import HaimCodeWrapControls from '@/components/settings/HaimCodeWrapControls';
+import HaimProseLineNumbersControls from '@/components/settings/HaimProseLineNumbersControls';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import { subscribeSettingsToggles } from '@/utils/advancedSearch/settingsToggles';
 import {
@@ -32,6 +33,10 @@ import {
   HAIM_CODE_WRAP_CHANGED_EVENT,
   loadHaimCodeWrapEnabled,
 } from '@/utils/haimCodeWrapSettings';
+import {
+  HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT,
+  loadHaimProseLineNumbersEnabled,
+} from '@/utils/haimWysiwygLineNumberSettings';
 
 /**
  * Draggable floating panel for live Haim WYSIWYG prose max-width tuning.
@@ -44,6 +49,9 @@ export default function HaimProseWidthFloatingPanel() {
     loadHaimProseWidthSettings(),
   );
   const [codeWrap, setCodeWrap] = useState(() => loadHaimCodeWrapEnabled());
+  const [proseLineNumbers, setProseLineNumbers] = useState(() =>
+    loadHaimProseLineNumbersEnabled(),
+  );
   const [position, setPosition] = useState(() => loadHaimProseWidthPanelPosition());
   const panelRef = useRef<HTMLDivElement | null>(null);
   const anchoredRef = useRef(hasStoredHaimProseWidthPanelPosition());
@@ -61,17 +69,26 @@ export default function HaimProseWidthFloatingPanel() {
     if (!open) return;
     const syncWidth = () => setSettings(loadHaimProseWidthSettings());
     const syncWrap = () => setCodeWrap(loadHaimCodeWrapEnabled());
+    const syncLineNumbers = () =>
+      setProseLineNumbers(loadHaimProseLineNumbersEnabled());
     syncWidth();
     syncWrap();
+    syncLineNumbers();
     window.addEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, syncWidth);
     window.addEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, syncWrap);
+    window.addEventListener(HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT, syncLineNumbers);
     const unsub = subscribeSettingsToggles((id) => {
       if (id === 'settings-haim-prose-width-clamp') syncWidth();
       if (id === 'settings-haim-code-wrap') syncWrap();
+      if (id === 'settings-haim-prose-line-numbers') syncLineNumbers();
     });
     return () => {
       window.removeEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, syncWidth);
       window.removeEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, syncWrap);
+      window.removeEventListener(
+        HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT,
+        syncLineNumbers,
+      );
       unsub();
     };
   }, [open]);
@@ -164,11 +181,25 @@ export default function HaimProseWidthFloatingPanel() {
           <X size={15} />
         </button>
       </div>
-      <div className="space-y-3 p-3">
-        <HaimProseWidthControls settings={settings} compact />
-        <div className="border-t border-slate-200 pt-3 dark:border-odp-borderSoft">
+      <div className="flex flex-col gap-2.5 p-3">
+        <section
+          className="rounded-md border border-slate-200/90 bg-slate-50/70 p-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft/50"
+          aria-label="WYSIWYG 본문 너비 제한"
+        >
+          <HaimProseWidthControls settings={settings} compact />
+        </section>
+        <section
+          className="rounded-md border border-slate-200/90 bg-slate-50/70 p-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft/50"
+          aria-label="WYSIWYG 줄 번호"
+        >
+          <HaimProseLineNumbersControls enabled={proseLineNumbers} compact />
+        </section>
+        <section
+          className="rounded-md border border-slate-200/90 bg-slate-50/70 p-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft/50"
+          aria-label="코드 줄 바꿈"
+        >
           <HaimCodeWrapControls enabled={codeWrap} compact />
-        </div>
+        </section>
       </div>
     </div>,
     document.body,

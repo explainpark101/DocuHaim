@@ -1,1 +1,1 @@
-export { default } from '@/components/shell/SidebarContextMenu.jsx';
+export { default } from '@/components/shell/SidebarContextMenu';

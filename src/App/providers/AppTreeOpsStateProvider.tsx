@@ -45,6 +45,13 @@ export type TreeOpsOwnedApi = {
   setTreeTransferBusy: (b: any[] | ((prev: any[]) => any[])) => void;
   uploadTarget: any;
   setUploadTarget: (t: any | ((prev: any) => any)) => void;
+  /** Target for `.enc.md` password change modal (`{ storageType, node }`). */
+  encMdPasswordChangeTarget: any;
+  setEncMdPasswordChangeTarget: (t: any | ((prev: any) => any)) => void;
+  isChangingEncMdPassword: boolean;
+  setIsChangingEncMdPassword: (v: boolean | ((prev: boolean) => boolean)) => void;
+  encMdPasswordChangeError: string;
+  setEncMdPasswordChangeError: (e: string | ((prev: string) => string)) => void;
   /** Late-bound AppLogic helpers (TreeOps mounts above AppLogic). */
   confirmAndCancelEditorImageUploadRef: MutableRefObject<(() => boolean) | null>;
   readBackendBytesRef: MutableRefObject<
@@ -81,6 +88,9 @@ export function AppTreeOpsStateProvider({ children }: { children: ReactNode }) {
   const [treeNameConflict, setTreeNameConflict] = useState<any>(null);
   const [treeTransferBusy, setTreeTransferBusy] = useState<any[]>([]);
   const [uploadTarget, setUploadTarget] = useState<any>(null);
+  const [encMdPasswordChangeTarget, setEncMdPasswordChangeTarget] = useState<any>(null);
+  const [isChangingEncMdPassword, setIsChangingEncMdPassword] = useState(false);
+  const [encMdPasswordChangeError, setEncMdPasswordChangeError] = useState('');
   const confirmAndCancelEditorImageUploadRef = useRef<(() => boolean) | null>(null);
   const readBackendBytesRef = useRef<
     ((storageType: string, path: string) => Promise<Uint8Array>) | null
@@ -127,6 +137,12 @@ export function AppTreeOpsStateProvider({ children }: { children: ReactNode }) {
       setTreeTransferBusy,
       uploadTarget,
       setUploadTarget,
+      encMdPasswordChangeTarget,
+      setEncMdPasswordChangeTarget,
+      isChangingEncMdPassword,
+      setIsChangingEncMdPassword,
+      encMdPasswordChangeError,
+      setEncMdPasswordChangeError,
       confirmAndCancelEditorImageUploadRef,
       readBackendBytesRef,
       downloadMarkdownImageZipRef,
@@ -150,6 +166,9 @@ export function AppTreeOpsStateProvider({ children }: { children: ReactNode }) {
       treeNameConflict,
       treeTransferBusy,
       uploadTarget,
+      encMdPasswordChangeTarget,
+      isChangingEncMdPassword,
+      encMdPasswordChangeError,
     ],
   );
 
