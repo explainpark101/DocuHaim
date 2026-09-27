@@ -209,6 +209,37 @@
   line-height: 0;
 }
 
+/* Captioned wiki image (protect → figure + TipTap WikiFigure) */
+.haim-editor .haim-wiki-figure,
+.haim-editor-prose .haim-wiki-figure,
+.haim-markdown-preview .haim-wiki-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0.75em 0;
+  text-align: center;
+}
+
+.haim-editor .haim-wiki-figure .haim-wiki-image-wrap,
+.haim-editor-prose .haim-wiki-figure .haim-wiki-image-wrap {
+  margin: 0;
+}
+
+.haim-editor .haim-wiki-figure > figcaption,
+.haim-editor-prose .haim-wiki-figure > figcaption,
+.haim-markdown-preview .haim-wiki-figure > figcaption {
+  margin-top: 0.5em;
+  font-size: 0.875em;
+  line-height: 1.45;
+  color: #64748b;
+  max-width: 100%;
+}
+
+.haim-editor--dark .haim-wiki-figure > figcaption,
+:is(.dark) .haim-editor .haim-wiki-figure > figcaption {
+  color: #94a3b8;
+}
+
 /* TipTap NodeViewWrapper: full-width row so the frame can sit centered. */
 .haim-wiki-image-wrap[data-node-view-wrapper] {
   display: flex;

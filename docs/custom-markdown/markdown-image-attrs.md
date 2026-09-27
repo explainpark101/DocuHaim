@@ -12,7 +12,7 @@
 
 ## Spec (interop)
 
-기준 구현: `parseMarkdownImageAttrsBlock` / `markdown-image-size-attrs` ruler in `wikiImageMarkdownIt.js`.
+기준 구현: `parseMarkdownImageAttrsBlock` / `markdown-image-size-attrs` ruler in `wikiImageMarkdownIt.ts`.
 
 ### 1. When to apply
 
@@ -84,6 +84,6 @@ Omit empty keys; space-separated. Empty → no `{}` suffix.
 | 역할 | 경로 |
 |------|------|
 | attrs 파서·갱신 | `src/utils/wikiImageSyntax.js` |
-| markdown-it ruler | `src/utils/wikiImageMarkdownIt.js` (`markdown-image-size-attrs`) |
+| markdown-it ruler | `src/utils/wikiImageMarkdownIt.ts` (`markdown-image-size-attrs`) |
 | storage path | `src/utils/storageImagePath.ts` |
 | Hydration / export | `src/utils/storageImageHydration.ts`, `markdownImageExport.ts` |

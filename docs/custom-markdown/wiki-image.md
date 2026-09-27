@@ -23,7 +23,7 @@ Obsidian 스타일 위키 이미지. 스토리지 상대 경로를 가리키며,
 
 ## Spec (interop)
 
-다른 Markdown 엔진에 포팅할 때의 계약. 기준 구현: `wikiImageSyntax.js` + `wikiImageMarkdownIt.js`.
+다른 Markdown 엔진에 포팅할 때의 계약. 기준 구현: `wikiImageSyntax.js` + `wikiImageMarkdownIt.ts`.
 
 ### 1. Match
 
@@ -198,7 +198,8 @@ Public ImgBB cache without replacing the vault path: [remote-image.md](./remote-
 | 역할 | 경로 |
 |------|------|
 | 파서/옵션 | `src/utils/wikiImageSyntax.js` |
-| markdown-it | `src/utils/wikiImageMarkdownIt.js` |
+| markdown-it | `src/utils/wikiImageMarkdownIt.ts` |
+| Haim TipTap figure/caption | `WikiFigure` / `Figcaption` + `protectCustomMarkdown` fold |
 | URL / 캐시 | `src/utils/wikiImageResolver.js`, `wikiImageCacheDb.js`, `wikiImageSettings.js` |
 | Hydration | `src/utils/storageImageHydration.ts`, `src/hooks/useWikiImageHydration.js` |
 | Hex helper | `src/utils/cssColor.ts` |

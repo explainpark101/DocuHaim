@@ -118,6 +118,10 @@ import {
   saveHaimFocusOutlineEnabled,
 } from '@/utils/haimFocusOutlineSettings';
 import {
+  loadHaimLinkOpenOnClick,
+  saveHaimLinkOpenOnClick,
+} from '@/utils/haimLinkOpenSettings';
+import {
   loadHaimCodeLineNumbersEnabled,
   loadHaimRawLineNumbersEnabled,
   saveHaimCodeLineNumbersEnabled,
@@ -159,6 +163,7 @@ export type SettingsToggleId =
   | 'settings-haim-double-scroll-sync'
   | 'settings-haim-toc-dock'
   | 'settings-haim-focus-outline'
+  | 'settings-haim-link-open-on-click'
   | 'settings-haim-code-line-numbers'
   | 'settings-haim-raw-line-numbers'
   | 'settings-base64-image-fold';
@@ -271,6 +276,28 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimFocusOutlineEnabled,
     save: saveHaimFocusOutlineEnabled,
+  },
+  {
+    id: 'settings-haim-link-open-on-click',
+    enableTitle: 'Haim 링크 클릭으로 열기',
+    disableTitle: 'Haim 링크 Ctrl/Cmd+클릭으로만 열기',
+    description:
+      '켜면 일반 클릭으로 링크를 엽니다. 끄면 Ctrl/Cmd+클릭으로만 엽니다(기본)',
+    keywords: [
+      'haim',
+      'link',
+      '링크',
+      'click',
+      '클릭',
+      'ctrl',
+      'cmd',
+      'mod',
+      'open',
+      '열기',
+      'wysiwyg',
+    ],
+    load: loadHaimLinkOpenOnClick,
+    save: saveHaimLinkOpenOnClick,
   },
   {
     id: 'settings-haim-code-line-numbers',

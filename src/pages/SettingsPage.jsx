@@ -69,6 +69,10 @@ import {
   loadHaimFocusOutlineEnabled,
 } from '@/utils/haimFocusOutlineSettings';
 import {
+  HAIM_LINK_OPEN_CHANGED_EVENT,
+  loadHaimLinkOpenOnClick,
+} from '@/utils/haimLinkOpenSettings';
+import {
   HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT,
   HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT,
   loadHaimCodeLineNumbersEnabled,
@@ -253,6 +257,9 @@ export default function SettingsPage({
   const [haimFocusOutline, setHaimFocusOutlineState] = useState(() =>
     loadHaimFocusOutlineEnabled(),
   );
+  const [haimLinkOpenOnClick, setHaimLinkOpenOnClickState] = useState(() =>
+    loadHaimLinkOpenOnClick(),
+  );
   const [haimCodeLineNumbers, setHaimCodeLineNumbersState] = useState(() =>
     loadHaimCodeLineNumbersEnabled(),
   );
@@ -303,6 +310,8 @@ export default function SettingsPage({
         );
       } else if (id === 'settings-haim-focus-outline') {
         setHaimFocusOutlineState(enabled);
+      } else if (id === 'settings-haim-link-open-on-click') {
+        setHaimLinkOpenOnClickState(enabled);
       } else if (id === 'settings-haim-code-line-numbers') {
         setHaimCodeLineNumbersState(enabled);
       } else if (id === 'settings-haim-raw-line-numbers') {
@@ -379,6 +388,18 @@ export default function SettingsPage({
     window.addEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
     return () =>
       window.removeEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimLinkOpenOnClick();
+      setHaimLinkOpenOnClickState(enabled);
+    };
+    window.addEventListener(HAIM_LINK_OPEN_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_LINK_OPEN_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -1284,6 +1305,31 @@ export default function SettingsPage({
                     setHaimFocusOutlineState(next);
                   }}
                   aria-label="편집 블록 점선 테두리"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    링크 클릭으로 열기
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    켜면 일반 클릭으로 링크를 엽니다. 끄면 Ctrl/Cmd+클릭으로만 엽니다(기본).
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimLinkOpenOnClick
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimLinkOpenOnClick}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-link-open-on-click', next);
+                    setHaimLinkOpenOnClickState(next);
+                  }}
+                  aria-label="링크 클릭으로 열기"
                 >
                   <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
                 </Switch.Root>

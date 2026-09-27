@@ -57,6 +57,34 @@ describe('protectCustomMarkdown', () => {
     expect(restored).toContain('<pgbr/>');
   });
 
+  it('folds wiki image caption into figure and restores next-line caption', () => {
+    const src = '![[photos/a.png|w=320px]]\nA scenic view\n';
+    const protectedMd = protectCustomMarkdown(src);
+    expect(protectedMd).toContain('data-haim-wiki-figure');
+    expect(protectedMd).toContain('<figcaption>');
+    expect(protectedMd).toContain('A scenic view');
+    const restored = restoreCustomMarkdown(protectedMd);
+    expect(restored).toContain('![[photos/a.png|w=320px]]');
+    expect(restored).toContain('A scenic view');
+    expect(restored).not.toContain('data-haim-wiki-figure');
+  });
+
+  it('folds caption after a blank line (adjacent paragraph)', () => {
+    const src = '![[photos/b.png]]\n\nCaption with **stars**\n';
+    const protectedMd = protectCustomMarkdown(src);
+    expect(protectedMd).toContain('data-haim-wiki-figure');
+    expect(protectedMd).toContain('Caption with **stars**');
+    const restored = restoreCustomMarkdown(protectedMd);
+    expect(restored).toMatch(/!\[\[photos\/b\.png\]\]\nCaption with \*\*stars\*\*/);
+  });
+
+  it('does not treat a following heading as a caption', () => {
+    const src = '![[photos/c.png]]\n\n# Next section\n';
+    const protectedMd = protectCustomMarkdown(src);
+    expect(protectedMd).not.toContain('data-haim-wiki-figure');
+    expect(protectedMd).toContain('# Next section');
+  });
+
   it('leaves plain mermaid fences for TipTap codeBlock chart view', () => {
     const src = '```mermaid\ngraph TD\nA-->B\n```\n';
     const protectedMd = protectCustomMarkdown(src);
@@ -142,6 +170,38 @@ describe('scrubEmptyParagraphNbsp', () => {
     expect(clean).not.toContain('\u00A0');
     expect(clean).toContain('Hello');
     expect(clean).toContain('World');
+  });
+});
+
+describe('HaimMarkdown serialize preserves raw text', () => {
+  it('does not backslash-escape underscores, asterisks, or brackets', async () => {
+    const { Editor } = await import('@tiptap/core');
+    const StarterKit = (await import('@tiptap/starter-kit')).default;
+    const { HaimMarkdown } = await import(
+      '@/components/haimEditor/extensions/HaimMarkdown'
+    );
+
+    const src = 'hello_world use * for multiply array[0] a < b Tom & Jerry';
+    const ed = new Editor({
+      extensions: [StarterKit, HaimMarkdown],
+      content: src,
+      contentType: 'markdown',
+    });
+    try {
+      const out = ed.getMarkdown();
+      expect(out).toContain('hello_world');
+      expect(out).toContain('use * for multiply');
+      expect(out).toContain('array[0]');
+      expect(out).not.toMatch(/hello\\_world/);
+      expect(out).not.toContain('\\*');
+      expect(out).not.toContain('\\[');
+      expect(out).toContain('a < b');
+      expect(out).toContain('Tom & Jerry');
+      expect(out).not.toContain('&lt;');
+      expect(out).not.toContain('&amp;');
+    } finally {
+      ed.destroy();
+    }
   });
 });
 
