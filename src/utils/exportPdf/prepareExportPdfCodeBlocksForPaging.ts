@@ -145,6 +145,13 @@ export function prepareExportPdfCodeBlocksForPaging(root: ParentNode): void {
   const blocks = root.querySelectorAll<HTMLElement>('.md-editor-code');
   let codeBlockId = 0;
   for (const codeRoot of blocks) {
+    // Never turn Mermaid chart hosts into paged fence lines.
+    if (
+      codeRoot.classList.contains('md-editor-mermaid') ||
+      codeRoot.classList.contains('haim-mermaid-block')
+    ) {
+      continue;
+    }
     const content = codeRoot.querySelector<HTMLElement>('.md-editor-code-block');
     if (!content) continue;
     codeBlockId += 1;

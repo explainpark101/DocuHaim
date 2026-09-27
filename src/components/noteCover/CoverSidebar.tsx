@@ -125,6 +125,7 @@ type CoverSidebarProps = {
   onSelectIds: (ids: string[]) => void;
   onChange: (next: NoteCover) => void;
   currentFile?: PrintFile | null;
+  /** @deprecated Pane-relative absolute sidebar; ignored. */
   topPx?: number;
   width: number;
   isResizing?: boolean;
@@ -551,7 +552,7 @@ export default function CoverSidebar({
   onSelectIds,
   onChange,
   currentFile = null,
-  topPx = 0,
+  topPx: _topPx = 0,
   width,
   isResizing = false,
   resizeHandleProps = {},
@@ -1109,8 +1110,8 @@ export default function CoverSidebar({
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
       <>
         <aside
-          className={`fixed bottom-0 z-30 flex border-r border-gray-200 bg-white/95 backdrop-blur-sm print:hidden dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 ${className}`}
-          style={{ top: topPx, left: 0, width }}
+          className={`absolute inset-y-0 z-30 flex border-r border-gray-200 bg-white/95 backdrop-blur-sm print:hidden dark:border-odp-borderSoft dark:bg-odp-bgSoft/95 ${className}`}
+          style={{ left: 0, width }}
           aria-label="표지 설정"
         >
           <div className="relative flex min-h-0 w-full flex-col overflow-y-auto pb-16">
@@ -1878,8 +1879,8 @@ export default function CoverSidebar({
 
         {layersDetached ? (
           <aside
-            className="fixed bottom-0 z-30 flex border-r border-gray-200 bg-white/95 backdrop-blur-sm print:hidden dark:border-odp-borderSoft dark:bg-odp-bgSoft/95"
-            style={{ top: topPx, left: width, width: layersWidth }}
+            className="absolute inset-y-0 z-30 flex border-r border-gray-200 bg-white/95 backdrop-blur-sm print:hidden dark:border-odp-borderSoft dark:bg-odp-bgSoft/95"
+            style={{ left: width, width: layersWidth }}
             aria-label="표지 레이어"
           >
             <div className="relative flex min-h-0 w-full flex-col overflow-y-auto pb-16">

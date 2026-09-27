@@ -13,7 +13,8 @@ const DOCK_STORAGE_KEY = 's3haim_export_pdf_tools_dock_width';
 export type ExportPdfToolsDockProps = {
   open: boolean;
   title: string;
-  topPx: number;
+  /** @deprecated Pane-relative absolute dock; ignored. */
+  topPx?: number;
   /** Offset from the right edge (e.g. when stacking left of TOC). */
   rightOffsetPx?: number;
   onClose: () => void;
@@ -26,11 +27,11 @@ export type ExportPdfToolsDockProps = {
 
 /**
  * Right-side Export PDF tools dock (font / page chrome). Landscape only at call site.
+ * Positioned absolute within the Export PDF pane (not viewport-fixed) for split view.
  */
 export default function ExportPdfToolsDock({
   open,
   title,
-  topPx,
   rightOffsetPx = 0,
   onClose,
   onUndock,
@@ -54,8 +55,8 @@ export default function ExportPdfToolsDock({
       {open ? (
         <motion.aside
           key="export-pdf-tools-dock"
-          className="flex fixed bottom-0 z-31 border-l border-gray-200 bg-white/95 print:hidden backdrop-blur-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft/95"
-          style={{ top: topPx, right: rightOffsetPx, width }}
+          className="absolute inset-y-0 z-31 flex border-l border-gray-200 bg-white/95 print:hidden backdrop-blur-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft/95"
+          style={{ right: rightOffsetPx, width }}
           data-export-pdf-tools-dock="1"
           initial={{ x: '100%', opacity: 0.9 }}
           animate={{ x: 0, opacity: 1 }}

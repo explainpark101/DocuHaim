@@ -198,7 +198,7 @@ export function ExportPdfShell({
   isLiveScroll1,
   coverChromeWidth,
   tocWidth,
-  tocTopPx,
+  tocTopPx: _tocTopPx,
   tocResizing,
   tocResizeHandleProps,
   tocListRef,
@@ -478,9 +478,8 @@ export function ExportPdfShell({
         {coverSidebar}
         {tocVisible ? (
           <aside
-            className="hidden md:flex fixed bottom-0 border-l border-gray-200 dark:border-odp-borderSoft bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-sm z-30 print:hidden"
+            className="hidden md:flex absolute inset-y-0 border-l border-gray-200 dark:border-odp-borderSoft bg-white/95 dark:bg-odp-bgSoft/95 backdrop-blur-sm z-30 print:hidden"
             style={{
-              top: tocTopPx,
               width: tocWidth,
               right: toolsDock.dockTool ? toolsDock.toolsDockWidth : 0,
             }}
@@ -572,41 +571,39 @@ export function ExportPdfShell({
             </div>
           </aside>
         ) : null}
+        <ExportPdfToolsDock
+          open={Boolean(toolsDock.dockTool)}
+          title={toolsDock.dockTool === 'chrome' ? '페이지 크롬' : '프린트 폰트 설정'}
+          onClose={toolsDock.closeDock}
+          onUndock={
+            toolsDock.dockTool === 'chrome'
+              ? toolsDock.undockChromeToModal
+              : toolsDock.undockFontToModal
+          }
+          onWidthChange={onToolsDockWidthChange}
+        >
+          {toolsDock.dockTool === 'font' ? (
+            <PrintFontOptionsModal
+              isOpen
+              presentation="dock"
+              onClose={toolsDock.closeDock}
+              fonts={fonts}
+              onFontsChange={(next: PrintFontsState) => setFonts(next)}
+            />
+          ) : toolsDock.dockTool === 'chrome' ? (
+            <PrintChromeModal
+              isOpen
+              presentation="dock"
+              onClose={toolsDock.closeDock}
+              chrome={printChrome}
+              onApply={applyPrintChrome}
+              currentFile={currentFile}
+              printLayout={printLayout}
+              onPrintLayoutChange={updatePrintLayout}
+            />
+          ) : null}
+        </ExportPdfToolsDock>
       </div>
-
-      <ExportPdfToolsDock
-        open={Boolean(toolsDock.dockTool)}
-        title={toolsDock.dockTool === 'chrome' ? '페이지 크롬' : '프린트 폰트 설정'}
-        topPx={tocTopPx}
-        onClose={toolsDock.closeDock}
-        onUndock={
-          toolsDock.dockTool === 'chrome'
-            ? toolsDock.undockChromeToModal
-            : toolsDock.undockFontToModal
-        }
-        onWidthChange={onToolsDockWidthChange}
-      >
-        {toolsDock.dockTool === 'font' ? (
-          <PrintFontOptionsModal
-            isOpen
-            presentation="dock"
-            onClose={toolsDock.closeDock}
-            fonts={fonts}
-            onFontsChange={(next: PrintFontsState) => setFonts(next)}
-          />
-        ) : toolsDock.dockTool === 'chrome' ? (
-          <PrintChromeModal
-            isOpen
-            presentation="dock"
-            onClose={toolsDock.closeDock}
-            chrome={printChrome}
-            onApply={applyPrintChrome}
-            currentFile={currentFile}
-            printLayout={printLayout}
-            onPrintLayoutChange={updatePrintLayout}
-          />
-        ) : null}
-      </ExportPdfToolsDock>
 
       <PrintFontOptionsModal
         isOpen={fontModalOpen && toolsDock.fontPresentation === 'modal'}
