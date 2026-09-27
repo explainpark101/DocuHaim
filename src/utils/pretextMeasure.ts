@@ -1,6 +1,6 @@
 /**
  * Canvas-based text width measurement ("pretext").
- * Shared by chat adaptive tabs and print toolbar fit-width controls.
+ * Shared by chat adaptive tabs, print toolbar fit-width, and Haim code gutters.
  */
 
 export function createPretextMeasurer(font: string): (text: string) => number {
@@ -41,12 +41,48 @@ export type PretextBlockMeasureOptions = {
   maxHeight?: number;
 };
 
-function wrapParagraphLineCount(
-  paragraph: string,
+export type PretextHardLineMeasureOptions = {
+  font: string;
+  contentWidth: number;
+  lineHeightPx: number;
+  /** CSS tab-size (default 4). Expanded before measuring. */
+  tabSize?: number;
+};
+
+/** Expand tabs to spaces using CSS-like tab stops (1-based columns). */
+export function expandTabsForPretext(text: string, tabSize = 4): string {
+  const size = Math.max(1, Math.floor(tabSize) || 4);
+  let out = '';
+  let col = 0;
+  for (const ch of text) {
+    if (ch === '\t') {
+      const spaces = size - (col % size);
+      out += ' '.repeat(spaces);
+      col += spaces;
+      continue;
+    }
+    if (ch === '\n') {
+      out += ch;
+      col = 0;
+      continue;
+    }
+    out += ch;
+    col += 1;
+  }
+  return out;
+}
+
+/**
+ * Visual wrap count for one hard line (no embedded \\n), matching
+ * white-space:pre-wrap + overflow-wrap:anywhere / word-break:break-word.
+ */
+export function countPretextWrapRowsForHardLine(
+  hardLine: string,
   measure: (text: string) => number,
   maxWidth: number,
 ): number {
   if (maxWidth <= 0) return 1;
+  const paragraph = hardLine;
   if (!paragraph) return 1;
   if (measure(paragraph) <= maxWidth) return 1;
 
@@ -79,7 +115,7 @@ function wrapParagraphLineCount(
       current = trial;
       continue;
     }
-    if (current.trim()) {
+    if (current.length > 0) {
       pushLine(current);
       current = '';
     }
@@ -90,8 +126,16 @@ function wrapParagraphLineCount(
     current = token;
   }
 
-  if (current.trim() || lines === 0) pushLine(current || paragraph);
+  if (current.length > 0 || lines === 0) pushLine(current || paragraph);
   return Math.max(1, lines);
+}
+
+function wrapParagraphLineCount(
+  paragraph: string,
+  measure: (text: string) => number,
+  maxWidth: number,
+): number {
+  return countPretextWrapRowsForHardLine(paragraph, measure, maxWidth);
 }
 
 export function countPretextWrappedLines(
@@ -105,6 +149,57 @@ export function countPretextWrappedLines(
   return paragraphs.reduce(
     (sum, para) => sum + wrapParagraphLineCount(para, measure, contentWidth),
     0,
+  );
+}
+
+/**
+ * Per hard-newline line: how many soft-wrap visual rows that line occupies.
+ * Empty document → `[1]`.
+ */
+export function countPretextHardLineWrapRows(
+  text: string,
+  font: string,
+  contentWidth: number,
+  tabSize = 4,
+): number[] {
+  const measure = createPretextMeasurer(font);
+  const raw = text.length === 0 ? [''] : String(text).split('\n');
+  return raw.map((line) =>
+    countPretextWrapRowsForHardLine(
+      expandTabsForPretext(line, tabSize),
+      measure,
+      contentWidth,
+    ),
+  );
+}
+
+/**
+ * Pixel height band for each hard line (wrapRows * lineHeight).
+ * Use as `height` / `minHeight`, or derive margin-bottom as height - lineHeight.
+ */
+export function measurePretextHardLineHeights(
+  text: string,
+  options: PretextHardLineMeasureOptions,
+): number[] {
+  const { font, contentWidth, lineHeightPx, tabSize = 4 } = options;
+  const lh = lineHeightPx > 0 ? lineHeightPx : 1;
+  return countPretextHardLineWrapRows(text, font, contentWidth, tabSize).map(
+    (rows) => Math.max(1, rows) * lh,
+  );
+}
+
+/**
+ * Extra space under each line-number digit so the next number starts on the
+ * next hard line (marginBottom = (wrapRows - 1) * lineHeight).
+ */
+export function measurePretextHardLineMargins(
+  text: string,
+  options: PretextHardLineMeasureOptions,
+): number[] {
+  const { font, contentWidth, lineHeightPx, tabSize = 4 } = options;
+  const lh = lineHeightPx > 0 ? lineHeightPx : 1;
+  return countPretextHardLineWrapRows(text, font, contentWidth, tabSize).map(
+    (rows) => Math.max(0, rows - 1) * lh,
   );
 }
 

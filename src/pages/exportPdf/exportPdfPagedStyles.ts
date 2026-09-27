@@ -263,7 +263,9 @@ export function buildExportPdfPagedStyles(
   box-sizing: border-box;
   margin: 1.25em 0;
   padding: 0;
-  border: 2px solid #6b7280;
+  border-width: 2px;
+  border-style: solid;
+  border-color: #6b7280;
   border-radius: 0;
   overflow: visible;
   box-shadow: none !important;
@@ -339,7 +341,10 @@ export function buildExportPdfPagedStyles(
   max-width: none !important;
   box-sizing: border-box;
   box-shadow: none !important;
-  border: 2px solid #6b7280 !important;
+  /* Longhands so frag-continue can clear top/bottom without shorthand fight. */
+  border-width: 2px !important;
+  border-style: solid !important;
+  border-color: #6b7280 !important;
   border-radius: 0;
   overflow: visible;
 }
@@ -418,10 +423,15 @@ export function buildExportPdfPagedStyles(
   -webkit-box-decoration-break: slice;
 }
 
-/* Page-break continuation: flat edge, no border at the seam. */
+/* Page-break continuation: flat edge, no border at the seam.
+   Beat .haim-code-block { border: … !important } shorthand. */
 .export-pdf-paged-source .md-editor-code.export-pdf-code-frag-continue,
-.pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue {
-  border-top: none !important;
+.export-pdf-paged-source .haim-code-block.export-pdf-code-frag-continue,
+.pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue,
+.pagedjs_page_content .haim-code-block.export-pdf-code-frag-continue {
+  border-top-color: transparent !important;
+  border-top-width: 0 !important;
+  border-top-style: none !important;
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
   margin-top: 0 !important;
@@ -433,8 +443,12 @@ export function buildExportPdfPagedStyles(
 }
 
 .export-pdf-paged-source .md-editor-code.export-pdf-code-frag-break,
-.pagedjs_page_content .md-editor-code.export-pdf-code-frag-break {
-  border-bottom: none !important;
+.export-pdf-paged-source .haim-code-block.export-pdf-code-frag-break,
+.pagedjs_page_content .md-editor-code.export-pdf-code-frag-break,
+.pagedjs_page_content .haim-code-block.export-pdf-code-frag-break {
+  border-bottom-color: transparent !important;
+  border-bottom-width: 0 !important;
+  border-bottom-style: none !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
   margin-bottom: 0 !important;
@@ -470,9 +484,10 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .export-pdf-code-line,
 .pagedjs_page_content .export-pdf-code-line {
-  display: block;
+  display: table;
   width: 100%;
   max-width: none;
+  table-layout: fixed;
   box-sizing: border-box;
   break-inside: avoid;
   page-break-inside: avoid;
@@ -494,7 +509,7 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .export-pdf-code-gutter,
 .pagedjs_page_content .export-pdf-code-gutter {
-  display: inline-block;
+  display: table-cell;
   width: 3em;
   padding-inline-end: 0.5em;
   text-align: right;
@@ -508,10 +523,10 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .export-pdf-code-content,
 .pagedjs_page_content .export-pdf-code-content {
-  /* Parent .export-pdf-code-line has width:100% so % resolves (no shrink-wrap clamp). */
-  display: inline-block;
-  width: calc(100% - 3.5em);
-  max-width: calc(100% - 3.5em);
+  /* table-cell takes remaining width — avoids inline-block % shrink in paged.js */
+  display: table-cell;
+  width: auto;
+  max-width: none;
   vertical-align: top;
   box-sizing: border-box;
   white-space: pre-wrap;

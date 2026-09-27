@@ -123,7 +123,9 @@ export const printFontStyles = `
     max-width: none;
     box-sizing: border-box;
     margin: 1.25em 0;
-    border: 2px solid #6b7280;
+    border-width: 2px;
+    border-style: solid;
+    border-color: #6b7280;
     border-radius: 0;
     overflow: visible;
     box-shadow: none !important;
@@ -181,7 +183,10 @@ export const printFontStyles = `
     max-width: none !important;
     box-sizing: border-box;
     box-shadow: none !important;
-    border: 2px solid #6b7280 !important;
+    /* Longhands so frag-continue can clear top/bottom without shorthand fight. */
+    border-width: 2px !important;
+    border-style: solid !important;
+    border-color: #6b7280 !important;
     border-radius: 0;
     overflow: visible;
   }
@@ -530,7 +535,9 @@ export const printFontStyles = `
     max-width: none;
     box-sizing: border-box;
     margin: 1.25em 0;
-    border: 2px solid #6b7280;
+    border-width: 2px;
+    border-style: solid;
+    border-color: #6b7280;
     border-radius: 0;
     overflow: visible;
     box-shadow: none !important;
@@ -603,18 +610,34 @@ export const printFontStyles = `
     -webkit-box-decoration-break: slice;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-continue {
-    border-top: none !important;
+  [data-export-pdf-pages] .pagedjs_page_content .haim-code-block.export-pdf-code-frag-continue,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-continue,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .haim-code-block.export-pdf-code-frag-continue {
+    border-top-color: transparent !important;
+    border-top-width: 0 !important;
+    border-top-style: none !important;
     border-top-left-radius: 0 !important;
     border-top-right-radius: 0 !important;
     margin-top: 0 !important;
   }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-continue .export-pdf-code-body,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-continue .export-pdf-code-body {
+    padding-top: 0 !important;
+  }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-break,
-  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-break {
-    border-bottom: none !important;
+  [data-export-pdf-pages] .pagedjs_page_content .haim-code-block.export-pdf-code-frag-break,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-break,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .haim-code-block.export-pdf-code-frag-break {
+    border-bottom-color: transparent !important;
+    border-bottom-width: 0 !important;
+    border-bottom-style: none !important;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
     margin-bottom: 0 !important;
+  }
+  [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-frag-break .export-pdf-code-body,
+  .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code.export-pdf-code-frag-break .export-pdf-code-body {
+    padding-bottom: 0 !important;
   }
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-paged pre code,
   [data-export-pdf-pages] .pagedjs_page_content .md-editor-code.export-pdf-code-paged .export-pdf-code-body,
@@ -624,9 +647,10 @@ export const printFontStyles = `
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-line,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-line {
-    display: block;
+    display: table;
     width: 100%;
     max-width: none;
+    table-layout: fixed;
     box-sizing: border-box;
     break-inside: avoid;
     page-break-inside: avoid;
@@ -643,7 +667,7 @@ export const printFontStyles = `
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-gutter,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-gutter {
-    display: inline-block;
+    display: table-cell;
     width: 3em;
     padding-inline-end: 0.5em;
     text-align: right;
@@ -656,9 +680,9 @@ export const printFontStyles = `
   }
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-content,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-content {
-    display: inline-block;
-    width: calc(100% - 3.5em);
-    max-width: calc(100% - 3.5em);
+    display: table-cell;
+    width: auto;
+    max-width: none;
     vertical-align: top;
     box-sizing: border-box;
     white-space: pre-wrap;

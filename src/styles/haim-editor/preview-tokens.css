@@ -401,7 +401,7 @@ html[data-haim-code-wrap='1']
   box-sizing: border-box;
   text-align: right;
   white-space: nowrap;
-  /* Keep the digit at the top of a soft-wrapped hard line band. */
+  /* Digit stays at the top of its hard-line band; soft-wrap extra = margin-bottom. */
   line-height: 1.55;
 }
 
