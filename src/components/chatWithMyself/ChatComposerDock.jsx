@@ -138,7 +138,7 @@ export default function ChatComposerDock({
           aria-label="채팅 입력창 높이 조절"
           title="채팅 입력창 높이 조절"
           className={[
-            'absolute inset-x-0 top-0 z-20 flex h-3 cursor-row-resize touch-none items-start justify-center select-none',
+            'absolute inset-x-0 top-0 z-30 flex h-3 cursor-row-resize touch-none items-start justify-center select-none',
             'pointer-fine:h-2.5',
           ].join(' ')}
         >
@@ -157,8 +157,8 @@ export default function ChatComposerDock({
         ref={contentRef}
         className={
           autoFit
-            ? 'flex flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
-            : 'flex h-full min-h-0 flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
+            ? 'relative z-0 flex flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
+            : 'relative z-0 flex h-full min-h-0 flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2'
         }
       >
         <div className={autoFit ? 'flex shrink-0 flex-col' : 'flex h-full min-h-0 flex-col'}>

@@ -1,20 +1,12 @@
 import { memo, useMemo, useRef } from 'react';
-import { MdPreview, config } from 'md-editor-rt';
-import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import '@/config/mdEditorConfig';
+import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { useQuizImageHydration } from '@/components/quiz/QuizImageHydrationContext';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/preview.css';
-
-config({
-  editorConfig: {
-    languageUserDefined: {
-      'ko-KR': KO_KR,
-    },
-  },
-});
 
 type QuizMdPreviewProps = {
   text: string;
@@ -45,7 +37,7 @@ function QuizMdPreview({
 
   return (
     <div ref={rootRef} className={`quiz-md-preview markdown-content ${className}`}>
-      <MdPreview
+      <MarkdownPreviewSurface
         id={previewId}
         modelValue={value}
         theme={theme === 'dark' ? 'dark' : 'light'}
@@ -54,9 +46,8 @@ function QuizMdPreview({
         language="ko-KR"
         showCodeRowNumber={false}
         noImgZoomIn
-        // @ts-expect-error custom icons shape
         iconfontType={undefined}
-        sanitize={(html) => html}
+        sanitize={(html: string) => html}
       />
     </div>
   );

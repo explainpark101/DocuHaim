@@ -537,9 +537,21 @@ table {
 }
 
 img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
   max-width: var(--print-img-max-width, 100%);
   max-height: var(--print-img-max-height, 100%);
   object-fit: contain;
+}
+
+.haim-wiki-image-wrap,
+.haim-stock-image-wrap,
+figure {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
 }
 
 .pagedjs_page {

@@ -303,13 +303,20 @@ export default function LlmAssistModal({
   }, []);
 
   const refreshSelection = useCallback(() => {
-    if (!editorRef && !editorBridge?.getEditorApi) return '';
+    if (!editorRef && !editorBridge?.getEditorApi && !editorBridge?.getMarkdown) return '';
     const { text, from, to } = getEditorSelectionFromRef(editorRef, {
       ...(editorBridge?.getEditorApi ? { getEditorApi: editorBridge.getEditorApi } : {}),
+      ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
     });
-    setSelectedText((prev) => (prev === text ? prev : text));
+    // When demoted (no view), fill text from getMarkdown + durable range.
+    let resolvedText = text;
+    if (!resolvedText && editorBridge?.getMarkdown && from !== to) {
+      const md = editorBridge.getMarkdown() ?? '';
+      resolvedText = md.slice(from, to);
+    }
+    setSelectedText((prev) => (prev === resolvedText ? prev : resolvedText));
     setSelectionRange((prev) => (prev.from === from && prev.to === to ? prev : { from, to }));
-    return text;
+    return resolvedText;
   }, [editorRef, editorBridge]);
 
   const loadTemplates = useCallback(async () => {
@@ -362,13 +369,17 @@ export default function LlmAssistModal({
   useEffect(() => {
     if (!open || popoutActive || !editorRef) return undefined;
     if (presentation === 'floating' && hidden) return undefined;
-    return subscribeEditorSelectionFromRef(editorRef, ({ text, from, to }) => {
-      setSelectedText((prev) => (prev === text ? prev : text));
-      setSelectionRange((prev) =>
-        prev.from === from && prev.to === to ? prev : { from, to },
-      );
-    });
-  }, [open, hidden, popoutActive, editorRef, presentation]);
+    return subscribeEditorSelectionFromRef(
+      editorRef,
+      ({ text, from, to }) => {
+        setSelectedText((prev) => (prev === text ? prev : text));
+        setSelectionRange((prev) =>
+          prev.from === from && prev.to === to ? prev : { from, to },
+        );
+      },
+      editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : undefined,
+    );
+  }, [open, hidden, popoutActive, editorRef, presentation, editorBridge?.documentKey]);
 
   useEffect(() => {
     if (!open || popoutActive || (!editorRef && !editorBridge?.getEditorApi)) return undefined;
@@ -588,42 +599,60 @@ export default function LlmAssistModal({
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
-    if (!editorRef || !canInsertIntoDocument) {
+    if (!canInsertIntoDocument || (!editorRef && !getMarkdown)) {
       setError('삽입할 문서 에디터가 열려 있지 않습니다.');
       return;
     }
     const ok = applyLlmResultToEditor({
-      editorRef,
+      editorRef: editorRef ?? { current: null },
       result,
       ...(onChange ? { onChange } : {}),
       ...(getMarkdown ? { getMarkdown } : {}),
+      ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
     });
     if (!ok) {
       setError('에디터에 결과를 적용할 수 없습니다. 선택 영역을 다시 확인하세요.');
       return;
     }
     refreshSelection();
-  }, [result, editorRef, canInsertIntoDocument, onChange, getMarkdown, refreshSelection]);
+  }, [
+    result,
+    editorRef,
+    canInsertIntoDocument,
+    onChange,
+    getMarkdown,
+    refreshSelection,
+    editorBridge?.documentKey,
+  ]);
 
   const handleAppendResult = useCallback(() => {
     if (!result) return;
-    if (!editorRef || !canInsertIntoDocument) {
+    if (!canInsertIntoDocument || (!editorRef && !getMarkdown)) {
       setError('삽입할 문서 에디터가 열려 있지 않습니다.');
       return;
     }
     const ok = applyLlmResultToEditor({
-      editorRef,
+      editorRef: editorRef ?? { current: null },
       result,
       ...(onChange ? { onChange } : {}),
       ...(getMarkdown ? { getMarkdown } : {}),
       forceAppendAtEnd: true,
+      ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
     });
     if (!ok) {
       setError('에디터에 결과를 삽입할 수 없습니다.');
       return;
     }
     refreshSelection();
-  }, [result, editorRef, canInsertIntoDocument, onChange, getMarkdown, refreshSelection]);
+  }, [
+    result,
+    editorRef,
+    canInsertIntoDocument,
+    onChange,
+    getMarkdown,
+    refreshSelection,
+    editorBridge?.documentKey,
+  ]);
 
   const handleCopyResult = useCallback(async () => {
     if (!result) return;

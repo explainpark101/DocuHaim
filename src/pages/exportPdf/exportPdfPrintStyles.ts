@@ -47,6 +47,13 @@ export const printFontStyles = `
     --md-theme-border-color: #e5e7eb;
     --md-theme-bg-color: #ffffff;
   }
+  /* Drop editor scroll-center padding in print staging / Haim TipTap preview. */
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-editor-content .tiptap,
+  .export-pdf-paged-source .haim-editor-content .tiptap,
+  .pagedjs_page_content .haim-editor-content .tiptap {
+    padding-bottom: 0 !important;
+  }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor,
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview [class$="-theme"] {
     color-scheme: light;
@@ -227,9 +234,32 @@ export const printFontStyles = `
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) img:not([data-print-free-transform]),
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview img:not([data-print-free-transform]) {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
     max-width: var(--print-img-max-width, 100%);
     max-height: var(--print-img-max-height, var(--print-page-inner-height, 100vh));
     object-fit: contain;
+  }
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-wiki-image-wrap,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-stock-image-wrap,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview figure,
+  .export-pdf-paged-source .haim-wiki-image-wrap,
+  .export-pdf-paged-source .haim-stock-image-wrap,
+  .export-pdf-paged-source figure,
+  .pagedjs_page_content .haim-wiki-image-wrap,
+  .pagedjs_page_content .haim-stock-image-wrap,
+  .pagedjs_page_content figure {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+  }
+  .export-pdf-paged-source img:not([data-print-free-transform]),
+  .pagedjs_page_content img:not([data-print-free-transform]) {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /*

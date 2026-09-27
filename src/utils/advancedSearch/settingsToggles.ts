@@ -69,6 +69,18 @@ import {
   type FootnoteDisplayMode,
 } from '@/utils/previewFootnotesSettings';
 import {
+  EXPORT_PDF_PREVIEW_ENGINE_OPTIONS,
+  loadExportPdfPreviewEngine,
+  saveExportPdfPreviewEngine,
+  type ExportPdfPreviewEngineId,
+} from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
+import {
+  EDITOR_IMAGE_ALIGN_OPTIONS,
+  loadEditorImageAlign,
+  setEditorImageAlign,
+  type EditorImageAlign,
+} from '@/utils/editorImageAlignSettings';
+import {
   loadOrphanImageAutoDeleteEnabled,
   saveOrphanImageAutoDeleteEnabled,
 } from '@/utils/orphanImageCleanupSettings';
@@ -91,6 +103,38 @@ import {
   saveQuizSettings,
 } from '@/utils/quiz/quizSettingsStore';
 import { advancedSearchEngine } from '@/utils/advancedSearch/engine';
+import {
+  HAIM_VIEW_MODE_DOUBLE,
+  HAIM_VIEW_MODE_WYSIWYG,
+  loadHaimViewMode,
+  saveHaimViewMode,
+} from '@/utils/haimViewModeSettings';
+import {
+  loadHaimDoubleScrollSyncEnabled,
+  saveHaimDoubleScrollSyncEnabled,
+} from '@/utils/haimDoubleScrollSyncSettings';
+import {
+  loadHaimFocusOutlineEnabled,
+  saveHaimFocusOutlineEnabled,
+} from '@/utils/haimFocusOutlineSettings';
+import {
+  loadHaimLinkOpenOnClick,
+  saveHaimLinkOpenOnClick,
+} from '@/utils/haimLinkOpenSettings';
+import {
+  loadHaimCodeLineNumbersEnabled,
+  loadHaimRawLineNumbersEnabled,
+  saveHaimCodeLineNumbersEnabled,
+  saveHaimRawLineNumbersEnabled,
+} from '@/utils/haimWysiwygLineNumberSettings';
+import {
+  loadHaimTocDockEnabled,
+  saveHaimTocDockEnabled,
+} from '@/utils/haimTocLayoutSettings';
+import {
+  loadBase64ImageFoldEnabled,
+  saveBase64ImageFoldEnabled,
+} from '@/utils/base64ImageFoldSettings';
 
 export type SettingsToggleId =
   | 'settings-alt-vim'
@@ -114,7 +158,15 @@ export type SettingsToggleId =
   | 'settings-cover-place-preview'
   | 'settings-orphan-image-auto'
   | 'settings-tauri-download-save-dialog'
-  | 'settings-quiz-dock-width-spring';
+  | 'settings-quiz-dock-width-spring'
+  | 'settings-haim-double'
+  | 'settings-haim-double-scroll-sync'
+  | 'settings-haim-toc-dock'
+  | 'settings-haim-focus-outline'
+  | 'settings-haim-link-open-on-click'
+  | 'settings-haim-code-line-numbers'
+  | 'settings-haim-raw-line-numbers'
+  | 'settings-base64-image-fold';
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -143,6 +195,175 @@ function notify(id: SettingsToggleId, enabled: boolean): void {
 }
 
 export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
+  {
+    id: 'settings-haim-double',
+    enableTitle: 'Haim double(소스+WYSIWYG) 켜기',
+    disableTitle: 'Haim double(소스+WYSIWYG) 끄기',
+    description:
+      'Haim Editor에서 마크다운 소스와 TipTap을 나란히 양방향 동기화 (비용 큼)',
+    keywords: [
+      'haim',
+      'tiptap',
+      'double',
+      'dual',
+      '듀얼',
+      '소스',
+      'wysiwyg',
+      'source',
+      '동시',
+      'markdown',
+    ],
+    load: () => loadHaimViewMode() === HAIM_VIEW_MODE_DOUBLE,
+    save: (enabled) =>
+      saveHaimViewMode(enabled ? HAIM_VIEW_MODE_DOUBLE : HAIM_VIEW_MODE_WYSIWYG),
+  },
+  {
+    id: 'settings-haim-double-scroll-sync',
+    enableTitle: 'Haim double 스크롤 동기화 켜기',
+    disableTitle: 'Haim double 스크롤 동기화 끄기',
+    description: 'double 모드에서 소스·WYSIWYG를 data-line(소스 줄) 기준으로 맞춤',
+    keywords: [
+      'haim',
+      'scroll',
+      '스크롤',
+      '동기화',
+      'sync',
+      'double',
+      'follow',
+    ],
+    load: loadHaimDoubleScrollSyncEnabled,
+    save: saveHaimDoubleScrollSyncEnabled,
+  },
+  {
+    id: 'settings-haim-toc-dock',
+    enableTitle: 'Haim 목차 사이드 패널(공간 차지) 켜기',
+    disableTitle: 'Haim 목차 오버레이(덮기)로 전환',
+    description:
+      '켜면 목차가 편집 영역 옆 자리를 차지합니다. 끄면 위에 덮는 오버레이(기본)입니다.',
+    keywords: [
+      'haim',
+      'toc',
+      'catalog',
+      '목차',
+      '오버레이',
+      'overlay',
+      'dock',
+      '사이드',
+      '패널',
+      '공간',
+    ],
+    load: loadHaimTocDockEnabled,
+    save: saveHaimTocDockEnabled,
+  },
+  {
+    id: 'settings-haim-focus-outline',
+    enableTitle: 'Haim 편집 블록 점선 테두리 켜기',
+    disableTitle: 'Haim 편집 블록 점선 테두리 끄기',
+    description:
+      'WYSIWYG에서 현재 편집 중인 블록을 dashed border로 표시합니다',
+    keywords: [
+      'haim',
+      'focus',
+      'outline',
+      'border',
+      'dash',
+      'dashed',
+      '점선',
+      '테두리',
+      '편집',
+      '블록',
+      'wysiwyg',
+    ],
+    load: loadHaimFocusOutlineEnabled,
+    save: saveHaimFocusOutlineEnabled,
+  },
+  {
+    id: 'settings-haim-link-open-on-click',
+    enableTitle: 'Haim 링크 클릭으로 열기',
+    disableTitle: 'Haim 링크 Ctrl/Cmd+클릭으로만 열기',
+    description:
+      '켜면 일반 클릭으로 링크를 엽니다. 끄면 Ctrl/Cmd+클릭으로만 엽니다(기본)',
+    keywords: [
+      'haim',
+      'link',
+      '링크',
+      'click',
+      '클릭',
+      'ctrl',
+      'cmd',
+      'mod',
+      'open',
+      '열기',
+      'wysiwyg',
+    ],
+    load: loadHaimLinkOpenOnClick,
+    save: saveHaimLinkOpenOnClick,
+  },
+  {
+    id: 'settings-haim-code-line-numbers',
+    enableTitle: 'Haim 코드 블록 줄 번호 켜기',
+    disableTitle: 'Haim 코드 블록 줄 번호 끄기',
+    description:
+      'WYSIWYG lowlight 코드 블록에 줄 번호를 표시합니다 (기본 켜짐)',
+    keywords: [
+      'haim',
+      'code',
+      'codeblock',
+      '코드',
+      '줄번호',
+      '줄 번호',
+      'line',
+      'number',
+      'linenumber',
+      'lowlight',
+      'hljs',
+      'wysiwyg',
+    ],
+    load: loadHaimCodeLineNumbersEnabled,
+    save: saveHaimCodeLineNumbersEnabled,
+  },
+  {
+    id: 'settings-haim-raw-line-numbers',
+    enableTitle: 'Haim raw 블록 줄 번호 켜기',
+    disableTitle: 'Haim raw 블록 줄 번호 끄기',
+    description:
+      'WYSIWYG raw markdown 블록에 줄 번호를 표시합니다 (기본 켜짐)',
+    keywords: [
+      'haim',
+      'raw',
+      'rawblock',
+      '로우',
+      '줄번호',
+      '줄 번호',
+      'line',
+      'number',
+      'linenumber',
+      'markdown',
+      'wysiwyg',
+    ],
+    load: loadHaimRawLineNumbersEnabled,
+    save: saveHaimRawLineNumbersEnabled,
+  },
+  {
+    id: 'settings-base64-image-fold',
+    enableTitle: 'base64 이미지 소스 접기 켜기',
+    disableTitle: 'base64 이미지 소스 접기 끄기',
+    description:
+      '마크다운 소스에서 긴 data:image base64를 접습니다. 칩을 클릭하면 개별 펼침',
+    keywords: [
+      'base64',
+      'image',
+      'fold',
+      'collapse',
+      '접기',
+      '이미지',
+      '소스',
+      'data-uri',
+      'mermaid',
+    ],
+    load: loadBase64ImageFoldEnabled,
+    save: saveBase64ImageFoldEnabled,
+  },
   {
     id: 'settings-alt-vim',
     enableTitle: 'Alt+Vim 커서 이동 켜기',
@@ -588,6 +809,9 @@ export function getWorkspacePaneFreezeCommands(): Array<{
       'focus',
       '포커스',
       'keyboard',
+      '미리보기',
+      'preview',
+      'demote',
       opt.value,
       opt.label,
     ],
@@ -662,6 +886,143 @@ export function applyFootnoteDisplayModeCommand(
   id: FootnoteDisplayModeCommandId,
 ): void {
   setFootnoteDisplayMode(footnoteDisplayModeFromCommandId(id));
+}
+
+export type ExportPdfPreviewEngineCommandId =
+  | 'settings-export-pdf-preview-auto'
+  | 'settings-export-pdf-preview-legacy'
+  | 'settings-export-pdf-preview-haim';
+
+const EXPORT_PDF_PREVIEW_ENGINE_COMMAND_BY_MODE = {
+  auto: 'settings-export-pdf-preview-auto',
+  legacy: 'settings-export-pdf-preview-legacy',
+  haim: 'settings-export-pdf-preview-haim',
+} as const;
+
+export function isExportPdfPreviewEngineCommandId(
+  id: string | undefined | null,
+): id is ExportPdfPreviewEngineCommandId {
+  return (
+    id === 'settings-export-pdf-preview-auto' ||
+    id === 'settings-export-pdf-preview-legacy' ||
+    id === 'settings-export-pdf-preview-haim'
+  );
+}
+
+export function exportPdfPreviewEngineFromCommandId(
+  id: ExportPdfPreviewEngineCommandId,
+): ExportPdfPreviewEngineId {
+  if (id === 'settings-export-pdf-preview-legacy') return 'legacy';
+  if (id === 'settings-export-pdf-preview-haim') return 'haim';
+  return 'auto';
+}
+
+/** Situational: only engines other than the current preference. */
+export function getExportPdfPreviewEngineCommands(): Array<{
+  id: ExportPdfPreviewEngineCommandId;
+  title: string;
+  description: string;
+  keywords: string[];
+}> {
+  const current = loadExportPdfPreviewEngine();
+  return EXPORT_PDF_PREVIEW_ENGINE_OPTIONS.filter((opt) => opt.value !== current).map(
+    (opt) => ({
+      id: EXPORT_PDF_PREVIEW_ENGINE_COMMAND_BY_MODE[opt.value],
+      title: `Export PDF 미리보기: ${opt.label}`,
+      description: opt.description,
+      keywords: [
+        'export pdf',
+        'export-pdf',
+        'pdf',
+        '인쇄',
+        'print',
+        '미리보기',
+        'preview',
+        'engine',
+        '엔진',
+        '에디터 따라가기',
+        'md-editor-rt',
+        'haim',
+        'tiptap',
+        opt.value,
+        opt.label,
+      ],
+    }),
+  );
+}
+
+export function applyExportPdfPreviewEngineCommand(
+  id: ExportPdfPreviewEngineCommandId,
+): void {
+  saveExportPdfPreviewEngine(exportPdfPreviewEngineFromCommandId(id));
+}
+
+export type EditorImageAlignCommandId =
+  | 'settings-image-align-left'
+  | 'settings-image-align-center'
+  | 'settings-image-align-right';
+
+const EDITOR_IMAGE_ALIGN_COMMAND_BY_MODE = {
+  left: 'settings-image-align-left',
+  center: 'settings-image-align-center',
+  right: 'settings-image-align-right',
+} as const;
+
+export function isEditorImageAlignCommandId(
+  id: string | undefined | null,
+): id is EditorImageAlignCommandId {
+  return (
+    id === 'settings-image-align-left' ||
+    id === 'settings-image-align-center' ||
+    id === 'settings-image-align-right'
+  );
+}
+
+export function editorImageAlignFromCommandId(
+  id: EditorImageAlignCommandId,
+): EditorImageAlign {
+  if (id === 'settings-image-align-left') return 'left';
+  if (id === 'settings-image-align-right') return 'right';
+  return 'center';
+}
+
+/** Situational: only alignments other than the current one. */
+export function getEditorImageAlignCommands(): Array<{
+  id: EditorImageAlignCommandId;
+  title: string;
+  description: string;
+  keywords: string[];
+}> {
+  const current = loadEditorImageAlign();
+  return EDITOR_IMAGE_ALIGN_OPTIONS.filter((opt) => opt.value !== current).map(
+    (opt) => ({
+      id: EDITOR_IMAGE_ALIGN_COMMAND_BY_MODE[opt.value],
+      title: `이미지 정렬: ${opt.label}`,
+      description: opt.description,
+      keywords: [
+        'image',
+        'align',
+        'alignment',
+        '이미지',
+        '정렬',
+        '가운데',
+        '왼쪽',
+        '오른쪽',
+        'center',
+        'left',
+        'right',
+        'wiki',
+        opt.value,
+        opt.label,
+      ],
+    }),
+  );
+}
+
+export function applyEditorImageAlignCommand(
+  id: EditorImageAlignCommandId,
+): void {
+  setEditorImageAlign(editorImageAlignFromCommandId(id));
 }
 
 export type StatusBarClockFormatCommandId =

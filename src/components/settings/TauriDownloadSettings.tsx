@@ -77,7 +77,7 @@ export default function TauriDownloadSettings() {
     >
       <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
         <IconDownload size={16} />
-        데스크톱 앱 다운로드
+        파일 다운로드
       </h3>
       <p className="mb-3 text-xs text-gray-600 dark:text-odp-muted">
         Tauri 데스크톱 빌드에서 파일을 내려받을 때 저장 위치를 먼저 확인하거나, 빠른 다운로드

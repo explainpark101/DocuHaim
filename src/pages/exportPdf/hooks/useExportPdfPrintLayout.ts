@@ -40,6 +40,16 @@ import type { ExportPdfDocumentState } from '@/pages/exportPdf/hooks/useExportPd
 import { usePagedJsPreview } from '@/pages/exportPdf/hooks/usePagedJsPreview';
 import type { ExportPdfPreviewRefs } from '@/pages/exportPdf/hooks/useExportPdfPreviewRefs';
 import { mountExportPdfBrowserPrintPrep, prepareExportPdfBrowserPrint } from '@/utils/exportPdf/prepareExportPdfBrowserPrint';
+import {
+  EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT,
+  loadExportPdfPreviewEngine,
+  type ExportPdfPreviewEngineId,
+} from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
+import {
+  EDITOR_TYPE_CHANGED_EVENT,
+  loadEditorType,
+} from '@/utils/editorTypeSettings';
+import { resolvePreviewEngine } from '@/utils/previewEngine';
 import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
 
 type UseExportPdfPrintLayoutArgs = Pick<
@@ -102,6 +112,30 @@ export function useExportPdfPrintLayout({
   const [stageVisiblePages, setStageVisiblePages] = useState<number[] | null>(null);
   const [previewFootnotesRenderKey, setPreviewFootnotesRenderKey] = useState(0);
   const [printStoreEpoch, setPrintStoreEpoch] = useState(() => getPrintSettingsStoreEpoch());
+  const [previewEngine, setPreviewEngine] = useState<ExportPdfPreviewEngineId>(() =>
+    loadExportPdfPreviewEngine(),
+  );
+  const [editorTypeForPreview, setEditorTypeForPreview] = useState(() => loadEditorType());
+
+  useEffect(() => {
+    const syncEngine = () => setPreviewEngine(loadExportPdfPreviewEngine());
+    const syncEditor = () => setEditorTypeForPreview(loadEditorType());
+    window.addEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, syncEngine);
+    window.addEventListener(EDITOR_TYPE_CHANGED_EVENT, syncEditor);
+    window.addEventListener('storage', syncEngine);
+    window.addEventListener('storage', syncEditor);
+    return () => {
+      window.removeEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, syncEngine);
+      window.removeEventListener(EDITOR_TYPE_CHANGED_EVENT, syncEditor);
+      window.removeEventListener('storage', syncEngine);
+      window.removeEventListener('storage', syncEditor);
+    };
+  }, []);
+
+  const resolvedPreviewEngine = resolvePreviewEngine(
+    previewEngine,
+    editorTypeForPreview,
+  );
 
   const pageMargins = getPrintPageMarginsMm(printLayout);
   const printLayoutKey = `${printLayout.pageSizeId}|${printLayout.imageMaxWidth}|${printLayout.imageMaxHeight}|${pageMargins.top},${pageMargins.right},${pageMargins.bottom},${pageMargins.left}`;
@@ -120,7 +154,7 @@ export function useExportPdfPrintLayout({
   const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId, pageMargins);
   const effectivePageInnerHeightPx =
     pageInnerHeightPx > 1 ? pageInnerHeightPx : printPageInnerPx.heightPx;
-  const pagedSourceKey = `${printLayoutKey}|${fontLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}`;
+  const pagedSourceKey = `${printLayoutKey}|${fontLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}|engine:${previewEngine}|resolved:${resolvedPreviewEngine}`;
   const {
     pageCount: bodyPageCount,
     packLayoutKey,
@@ -374,6 +408,7 @@ export function useExportPdfPrintLayout({
     handleExport,
     fontStyleVars,
     hasEnabledCover,
+    previewEngine,
   };
 }
 

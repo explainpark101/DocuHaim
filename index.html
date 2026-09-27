@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Docu Haim - Markdown Notes</title>
     <meta name="description" content="S3, 로컬, WebDAV에 저장하는 마크다운 메모 앱" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#181a1f" />
 
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ko_KR" />
@@ -27,9 +27,210 @@
     <meta name="twitter:description" content="S3, 로컬, WebDAV에 저장하는 마크다운 메모 앱" />
     <meta name="twitter:image" content="https://explainpark101.github.io/DocuHaim/og-image.png" />
     <meta name="twitter:image:alt" content="Docu Haim — Markdown Notes" />
+    <style>
+      /* Boot splash: paints before module CSS/JS (no Tailwind).
+         Dark tokens match app odp palette (tailwind odp.*). */
+      :root {
+        color-scheme: light dark;
+        --boot-fg: #111827;
+        --boot-muted: #6b7280;
+        --boot-accent: #3b82f6;
+        --boot-track: #e5e7eb;
+        --boot-icon-shadow: 0 6px 20px rgba(17, 24, 39, 0.1);
+        --boot-bg: linear-gradient(165deg, #f9fafb 0%, #f3f4f6 55%, #eef2f7 100%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --boot-fg: #d7dae0; /* odp-fgStrong */
+          --boot-muted: #7f848e; /* odp-muted */
+          --boot-accent: #61afef; /* odp-accentBlue */
+          --boot-track: #2c313c; /* odp-line */
+          --boot-icon-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+          --boot-bg:
+            radial-gradient(ellipse 70% 50% at 50% 0%, rgba(97, 175, 239, 0.1), transparent 60%),
+            linear-gradient(165deg, #181a1f 0%, #1e2227 50%, #23272e 100%);
+        }
+      }
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--boot-bg);
+        color: var(--boot-muted);
+      }
+      #boot-splash {
+        box-sizing: border-box;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        padding: 2rem 1.5rem;
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        user-select: none;
+        background: var(--boot-bg);
+        color: var(--boot-muted);
+      }
+      #boot-splash .boot-splash-brand {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.85rem;
+        margin-block-end: 1.75rem;
+      }
+      #boot-splash .boot-splash-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 16px;
+        box-shadow: var(--boot-icon-shadow);
+      }
+      #boot-splash .boot-splash-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 650;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        color: var(--boot-fg);
+      }
+      #boot-splash .boot-splash-spinner-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        min-height: 1.5rem;
+        margin-block-end: 0.85rem;
+      }
+      #boot-splash .boot-splash-spinner {
+        box-sizing: border-box;
+        width: 1.25rem;
+        height: 1.25rem;
+        flex-shrink: 0;
+        border: 2px solid var(--boot-track);
+        border-top-color: var(--boot-accent);
+        border-radius: 50%;
+        animation: boot-spin 0.7s linear infinite;
+      }
+      #boot-splash .boot-splash-pct {
+        box-sizing: border-box;
+        min-width: 4ch;
+        width: 4ch;
+        flex-shrink: 0;
+        font-size: 0.8125rem;
+        font-weight: 560;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        color: var(--boot-fg);
+        font-variant-numeric: tabular-nums;
+        text-align: left;
+        white-space: nowrap;
+      }
+      /* Mirror pct width so the spinner stays visually centered. */
+      #boot-splash .boot-splash-spinner-spacer {
+        min-width: 4ch;
+        width: 4ch;
+        flex-shrink: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      @keyframes boot-spin {
+        to { transform: rotate(1turn); }
+      }
+      #boot-splash .boot-splash-status-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.75rem;
+        max-width: min(92vw, 26rem);
+        width: 100%;
+        margin-block-end: 1.25rem;
+      }
+      #boot-splash .boot-splash-status {
+        margin: 0;
+        font-size: 0.875rem;
+        line-height: 1.45;
+        letter-spacing: -0.01em;
+        text-align: center;
+        color: var(--boot-muted);
+        text-wrap: balance;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        overflow: hidden;
+      }
+      #boot-splash .boot-splash-bar {
+        width: min(92vw, 14rem);
+        height: 0.25rem;
+        border-radius: 999px;
+        background: var(--boot-track);
+        overflow: hidden;
+        margin-block-end: 0.7rem;
+      }
+      #boot-splash .boot-splash-bar-fill {
+        height: 100%;
+        width: 4%;
+        border-radius: inherit;
+        background: var(--boot-accent);
+        transition: width 0.2s ease-out;
+      }
+      #boot-splash .boot-splash-detail-row {
+        max-width: min(92vw, 26rem);
+        width: 100%;
+        min-height: 1.1em;
+        text-align: center;
+      }
+      #boot-splash .boot-splash-detail {
+        font-size: 0.72rem;
+        line-height: 1.35;
+        letter-spacing: 0.01em;
+        color: var(--boot-muted);
+        opacity: 0.8;
+        font-variant-numeric: tabular-nums;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-splash .boot-splash-spinner {
+          animation-duration: 6s;
+        }
+        #boot-splash .boot-splash-bar-fill {
+          transition: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-splash" role="status" aria-live="polite" aria-busy="true">
+        <div class="boot-splash-brand">
+          <img class="boot-splash-icon" src="/vite.svg" width="72" height="72" alt="" />
+          <h1 class="boot-splash-title">DocuHaim</h1>
+        </div>
+        <div class="boot-splash-spinner-row">
+          <span class="boot-splash-spinner-spacer" aria-hidden="true">100%</span>
+          <div class="boot-splash-spinner" aria-hidden="true"></div>
+          <span id="boot-splash-pct" class="boot-splash-pct" aria-hidden="true">4%</span>
+        </div>
+        <div class="boot-splash-status-row">
+          <p id="boot-splash-status" class="boot-splash-status">앱을 준비하는 중…</p>
+        </div>
+        <div
+          id="boot-splash-bar"
+          class="boot-splash-bar"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="4"
+          aria-label="로딩 진행률"
+        >
+          <div id="boot-splash-bar-fill" class="boot-splash-bar-fill"></div>
+        </div>
+        <div class="boot-splash-detail-row">
+          <div id="boot-splash-detail" class="boot-splash-detail">모듈을 불러오는 중…</div>
+        </div>
+      </div>
+    </div>
     <!--
       SharedArrayBuffer / lucivy-wasm: GitHub Pages cannot set COOP/COEP headers.
       coi-serviceworker (https://github.com/gzuidhof/coi-serviceworker) registers a
@@ -51,6 +252,7 @@
       };
     </script>
     <script src="./coi-serviceworker.js"></script>
+    <!-- Early boot is injected at build time as a separate small entry (see bootManifestPlugin). -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

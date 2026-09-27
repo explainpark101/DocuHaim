@@ -38,7 +38,37 @@ function setFallbackText(
   const fallback = placeholder.querySelector(
     '.md-note-cover-placeholder__fallback',
   );
-  if (fallback) fallback.textContent = text;
+  if (!fallback) return;
+  const textEl = fallback.querySelector(
+    '.md-note-cover-placeholder__fallback-text',
+  );
+  if (textEl) {
+    textEl.textContent = text;
+    return;
+  }
+  // Legacy single-text fallback (no spinner markup yet)
+  fallback.textContent = text;
+}
+
+function ensurePendingFallbackMarkup(placeholder: Element | null): void {
+  if (!placeholder) return;
+  let fallback = placeholder.querySelector(
+    '.md-note-cover-placeholder__fallback',
+  );
+  if (!fallback) {
+    fallback = document.createElement('span');
+    fallback.className = 'md-note-cover-placeholder__fallback';
+    placeholder.appendChild(fallback);
+  }
+  if (fallback.querySelector('.md-note-cover-placeholder__spinner')) return;
+  fallback.replaceChildren();
+  const spinner = document.createElement('span');
+  spinner.className = 'md-note-cover-placeholder__spinner';
+  spinner.setAttribute('aria-hidden', 'true');
+  const text = document.createElement('span');
+  text.className = 'md-note-cover-placeholder__fallback-text';
+  text.textContent = FALLBACK_LOAD;
+  fallback.append(spinner, text);
 }
 
 function setPlaceholderState(
@@ -58,8 +88,12 @@ function setPlaceholderState(
     'md-note-cover-placeholder--empty',
     state === 'empty',
   );
-  if (state === 'pending') setFallbackText(placeholder, FALLBACK_LOAD);
-  else if (state === 'empty') setFallbackText(placeholder, FALLBACK_EMPTY);
+  if (state === 'pending') {
+    ensurePendingFallbackMarkup(placeholder);
+    setFallbackText(placeholder, FALLBACK_LOAD);
+  } else if (state === 'empty') {
+    setFallbackText(placeholder, FALLBACK_EMPTY);
+  }
 }
 
 function renderIntoHost(

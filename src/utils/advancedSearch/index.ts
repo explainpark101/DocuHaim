@@ -161,6 +161,14 @@ export {
   getFootnoteDisplayModeCommands,
   applyFootnoteDisplayModeCommand,
   footnoteDisplayModeFromCommandId,
+  isExportPdfPreviewEngineCommandId,
+  getExportPdfPreviewEngineCommands,
+  applyExportPdfPreviewEngineCommand,
+  exportPdfPreviewEngineFromCommandId,
+  isEditorImageAlignCommandId,
+  getEditorImageAlignCommands,
+  applyEditorImageAlignCommand,
+  editorImageAlignFromCommandId,
   isStatusBarClockFormatCommandId,
   getStatusBarClockFormatCommands,
   applyStatusBarClockFormatCommand,
@@ -172,6 +180,8 @@ export type {
   WorkspaceTabsAutoSaveCommandId,
   WorkspacePaneFreezeCommandId,
   FootnoteDisplayModeCommandId,
+  ExportPdfPreviewEngineCommandId,
+  EditorImageAlignCommandId,
   StatusBarClockFormatCommandId,
 } from '@/utils/advancedSearch/settingsToggles';
 export {

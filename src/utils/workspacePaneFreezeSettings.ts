@@ -5,9 +5,17 @@
  * - off — never freeze (not recommended; heavier when many splits are open)
  * - hover-or-focus — live while hovered or keyboard focus-within
  * - focus — live only while keyboard focus-within
+ *
+ * After freeze settles, EditorPane may demote markdown to MdPreview (unmount CM).
  */
 
 const LOCAL_STORAGE_KEY = 's3haim_workspace_pane_freeze';
+
+/** Debounce mouseleave before clearing hover (avoids thrashing across split gutters). */
+export const WORKSPACE_PANE_HOVER_FREEZE_MS = 150;
+
+/** After isSurfaceLive=false, wait before demoting to MdPreview. */
+export const WORKSPACE_PANE_DEMOTE_SETTLE_MS = 250;
 
 /** Fired on `window` when the freeze preference changes. */
 export const WORKSPACE_PANE_FREEZE_CHANGED_EVENT = 's3haim-workspace-pane-freeze';
@@ -34,19 +42,19 @@ export const WORKSPACE_PANE_FREEZE_OPTIONS: readonly WorkspacePaneFreezeModeOpti
     value: 'off',
     label: '프리징 없음 (비권장)',
     description:
-      '모든 분할 페인을 항상 활성으로 둡니다. 분할이 많을 때 성능이 떨어질 수 있습니다.',
+      '모든 분할 페인을 항상 활성으로 둡니다. 분할이 많을 때 성능이 떨어질 수 있습니다. 비활성 페인도 전체 에디터를 유지합니다.',
   },
   {
     value: 'hover-or-focus',
     label: '호버 또는 키보드 포커스 시 해제',
     description:
-      '마우스가 올라가 있거나 키보드 포커스가 있을 때만 무거운 작업을 재개합니다.',
+      '마우스가 올라가 있거나 키보드 포커스가 있을 때만 전체 에디터를 켭니다. 그 외 페인은 미리보기만 유지합니다.',
   },
   {
     value: 'focus',
     label: '키보드 포커스 시에만 해제',
     description:
-      '키보드 포커스가 있는 페인만 활성입니다. 호버만으로는 풀리지 않습니다.',
+      '키보드 포커스가 있는 페인만 전체 에디터입니다. 호버만으로는 풀리지 않으며 나머지는 미리보기만 유지합니다.',
   },
 ];
 

@@ -1,6 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { MdPreview, config } from 'md-editor-rt';
-import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
+import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import {
   chatAttachmentsToMarkdown,
@@ -14,14 +13,6 @@ import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import '@/styles/md-editor-rt/preview.css';
 import '@/styles/md-editor-rt/code-one-dark.css';
 import '@/styles/md-editor-rt/code-copy.css';
-
-config({
-  editorConfig: {
-    languageUserDefined: {
-      'ko-KR': KO_KR,
-    },
-  },
-});
 
 type ChatMessageMarkdownProps = {
   text?: string | null;
@@ -108,8 +99,8 @@ export default function ChatMessageMarkdown({
       className={`chat-message-markdown min-w-0 max-w-full ${className}`}
     >
       {hasMd ? (
-        <div className="chat-message-markdown__preview md-editor-preview-wrapper [&_.md-editor]:bg-transparent! [&_.md-editor-preview]:bg-transparent! [&_.md-editor-preview]:p-0! [&_.md-editor-preview]:text-[inherit]! [&_.md-editor-preview-wrapper]:p-0! [&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_blockquote]:my-1">
-          <MdPreview
+        <div className="chat-message-markdown__preview md-editor-preview-wrapper [&_.md-editor]:bg-transparent! [&_.md-editor-preview]:bg-transparent! [&_.md-editor-preview]:p-0! [&_.md-editor-preview]:text-[inherit]! [&_.md-editor-preview-wrapper]:p-0! [&_.haim-editor-content_.tiptap]:pb-0! [&_p]:my-1 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_blockquote]:my-1">
+          <MarkdownPreviewSurface
             id={previewId}
             value={mdText}
             theme={resolvedTheme}
@@ -119,6 +110,17 @@ export default function ChatMessageMarkdown({
             noMermaid
             codeFoldable={false}
             showCodeRowNumber={false}
+            fallback={
+              <ChatLinkedText
+                text={mdText}
+                className="whitespace-pre-wrap wrap-anywhere text-inherit"
+                getPresignedUrl={getPresignedUrl}
+                noteExists={noteExists}
+                folderExists={folderExists}
+                listFolderFiles={listFolderFiles}
+                onOpenViewPath={onOpenViewPath}
+              />
+            }
           />
         </div>
       ) : null}

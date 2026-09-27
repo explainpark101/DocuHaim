@@ -1,0 +1,581 @@
+/* Haim Editor (TipTap) surface styles — keep separate from md-editor-rt. */
+@import './preview-tokens.css';
+
+.haim-editor {
+  --haim-pgbr-color: #94a3b8;
+}
+
+.haim-toolbar {
+  position: relative;
+  z-index: 2;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.haim-toolbar::-webkit-scrollbar {
+  height: 0 !important;
+  display: none;
+}
+
+.haim-toolbar > * {
+  flex-shrink: 0;
+}
+
+.haim-editor--dark {
+  --haim-pgbr-color: #64748b;
+}
+
+.haim-editor-content .tiptap {
+  outline: none;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/*
+ * Scroll-center padding only for live note WYSIWYG.
+ * HaimMarkdownPreview sets data-haim-preview-only — do not apply 50vh there
+ * (chat bubbles, Export PDF staging/paged clone would get a huge empty gap).
+ */
+.haim-editor:not([data-haim-preview-only]) .haim-editor-content .tiptap {
+  padding-bottom: 50vh;
+  padding-bottom: 50dvh;
+}
+
+/* Compact read-only preview: strip md-editor-rt .md-editor-preview 50vh too. */
+.haim-markdown-preview.md-editor-preview {
+  padding-bottom: 0 !important;
+}
+
+.haim-editor-prose {
+  line-height: 1.65;
+  font-size: 15px;
+  color: inherit;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.haim-editor-prose h1 {
+  font-size: 1.75em;
+  font-weight: 700;
+  margin: 0.8em 0 0.4em;
+}
+
+.haim-editor-prose h2 {
+  font-size: 1.4em;
+  font-weight: 700;
+  margin: 0.75em 0 0.35em;
+}
+
+.haim-editor-prose h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 0.7em 0 0.3em;
+}
+
+.haim-editor-prose h4,
+.haim-editor-prose h5,
+.haim-editor-prose h6 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 0.6em 0 0.25em;
+}
+
+.haim-editor-prose p {
+  margin: 0.4em 0;
+}
+
+.haim-editor-prose ul,
+.haim-editor-prose ol {
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+
+/* Tailwind preflight sets list-style:none — restore WYSIWYG bullets/numbers */
+.haim-editor .tiptap ul:not([data-type='taskList']),
+.haim-editor-prose ul:not([data-type='taskList']) {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.haim-editor .tiptap ol,
+.haim-editor-prose ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+.haim-editor .tiptap ul:not([data-type='taskList']) > li,
+.haim-editor .tiptap ol > li,
+.haim-editor-prose ul:not([data-type='taskList']) > li,
+.haim-editor-prose ol > li {
+  display: list-item;
+}
+
+.haim-editor .tiptap li > p,
+.haim-editor-prose li > p {
+  margin: 0.15em 0;
+}
+
+.haim-editor .tiptap ul:not([data-type='taskList']) ul,
+.haim-editor-prose ul:not([data-type='taskList']) ul {
+  list-style-type: circle;
+}
+
+.haim-editor .tiptap ul:not([data-type='taskList']) ul ul,
+.haim-editor-prose ul:not([data-type='taskList']) ul ul {
+  list-style-type: square;
+}
+
+.haim-editor-prose blockquote {
+  border-left: 3px solid #22c55e;
+  margin: 0.6em 0;
+  padding-left: 0.85em;
+  color: #64748b;
+}
+
+.haim-editor--dark .haim-editor-prose blockquote {
+  border-left-color: #4ade80;
+  color: #94a3b8;
+}
+
+.haim-editor-prose pre {
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  font-family: D2Coding, ui-monospace, monospace;
+  font-size: 0.9em;
+}
+
+.haim-editor--dark .haim-editor-prose pre {
+  background: #0f172a;
+}
+
+.haim-editor-prose code {
+  font-family: D2Coding, ui-monospace, monospace;
+  font-size: 0.85em;
+}
+
+.haim-editor-prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+}
+
+.haim-editor-prose th,
+.haim-editor-prose td {
+  border: 1px solid #cbd5e1;
+  padding: 0.35em 0.55em;
+}
+
+.haim-editor--dark .haim-editor-prose th,
+.haim-editor--dark .haim-editor-prose td {
+  border-color: #475569;
+}
+
+.haim-pgbr,
+.md-pgbr {
+  /* Match md-editor-rt preview rule — empty flex + dashed borders often collapse. */
+  display: block;
+  height: 1px;
+  margin: 14px 0;
+  padding: 16px 0;
+  border: none;
+  border-block-start: 1px dashed var(--haim-pgbr-color);
+  background: transparent;
+  color: var(--haim-pgbr-color);
+  font-size: 11px;
+  user-select: none;
+}
+
+.haim-pgbr.is-selected,
+.md-pgbr.ProseMirror-selectednode {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+}
+
+.haim-wiki-image-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.5em 0;
+  line-height: 0;
+}
+
+/* Captioned wiki image (protect → figure + TipTap WikiFigure) */
+.haim-editor .haim-wiki-figure,
+.haim-editor-prose .haim-wiki-figure,
+.haim-markdown-preview .haim-wiki-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0.75em 0;
+  text-align: center;
+}
+
+.haim-editor .haim-wiki-figure .haim-wiki-image-wrap,
+.haim-editor-prose .haim-wiki-figure .haim-wiki-image-wrap {
+  margin: 0;
+}
+
+.haim-editor .haim-wiki-figure > figcaption,
+.haim-editor-prose .haim-wiki-figure > figcaption,
+.haim-markdown-preview .haim-wiki-figure > figcaption {
+  margin-top: 0.5em;
+  font-size: 0.875em;
+  line-height: 1.45;
+  color: #64748b;
+  max-width: 100%;
+}
+
+.haim-editor--dark .haim-wiki-figure > figcaption,
+:is(.dark) .haim-editor .haim-wiki-figure > figcaption {
+  color: #94a3b8;
+}
+
+/* TipTap NodeViewWrapper: full-width row so the frame can sit centered. */
+.haim-wiki-image-wrap[data-node-view-wrapper] {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.haim-wiki-image-frame {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.haim-stock-image-wrap {
+  display: flex !important;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.5em 0;
+  line-height: 0;
+}
+
+.haim-wiki-image-wrap.is-selected .haim-wiki-image {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+}
+
+.haim-stock-image-wrap.is-selected .haim-stock-image {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+}
+
+.haim-wiki-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-block: 0;
+  margin-inline: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.haim-editor--dark .haim-wiki-image-wrap.is-selected .haim-wiki-image,
+.haim-editor--dark .haim-stock-image-wrap.is-selected .haim-stock-image {
+  outline-color: var(--md-theme-code-active-color, #818cf8);
+}
+
+.haim-wiki-image-resize-handle {
+  position: absolute;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid #fff;
+  border-radius: 9999px;
+  background: #2563eb;
+  box-shadow: 0 0 0 1px rgb(37 99 235 / 40%);
+  pointer-events: auto;
+}
+
+.haim-wiki-image-resize-handle--nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+  transform: translate(-50%, -50%);
+}
+
+.haim-wiki-image-resize-handle--ne {
+  right: 0;
+  top: 0;
+  cursor: nesw-resize;
+  transform: translate(50%, -50%);
+}
+
+.haim-wiki-image-resize-handle--sw {
+  left: 0;
+  bottom: 0;
+  cursor: nesw-resize;
+  transform: translate(-50%, 50%);
+}
+
+.haim-wiki-image-resize-handle--se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  transform: translate(50%, 50%);
+}
+
+.haim-wiki-image-wrap.is-resizing {
+  user-select: none;
+}
+
+.haim-raw-md {
+  display: flex;
+  align-items: stretch;
+  white-space: normal;
+  font-size: 12px;
+  margin: 0.75em 0;
+  border: 1px solid var(--haim-code-border, #e5e7eb);
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(
+    in srgb,
+    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #f1f5f9)) 80%,
+    transparent
+  );
+}
+
+.haim-raw-md.is-selected {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+}
+
+.haim-raw-md__pre {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0.75em 1em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: inherit;
+  font-family: D2Coding, ui-monospace, monospace;
+  line-height: 1.55;
+  opacity: 0.85;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow-x: auto;
+}
+
+.haim-raw-md--haim-table {
+  display: block;
+  white-space: normal;
+  font-size: inherit;
+  margin: 0.75em 0;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.haim-raw-md--haim-table.is-selected {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.haim-haim-table-preview table {
+  border-collapse: collapse;
+  max-width: 100%;
+}
+
+.haim-haim-table-preview th,
+.haim-haim-table-preview td {
+  border: 1px solid #cbd5e1;
+  padding: 0.35em 0.6em;
+}
+
+.haim-editor--dark .haim-haim-table-preview th,
+.haim-editor--dark .haim-haim-table-preview td {
+  border-color: var(--odp-borderStrong, #475569);
+}
+
+/* Math (KaTeX + source edit) */
+.haim-math-block {
+  position: relative;
+  margin: 0.75em 0;
+  padding: 0.5em 0.75em;
+  overflow-x: auto;
+  text-align: center;
+  border-radius: 6px;
+  background: color-mix(
+    in srgb,
+    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #f1f5f9)) 80%,
+    transparent
+  );
+}
+
+.haim-editor--dark .haim-math-block,
+:is(.dark) .haim-editor .haim-math-block {
+  background: color-mix(
+    in srgb,
+    var(--md-theme-code-bg-color, var(--md-theme-bg-color-inset, #374151)) 15%,
+    transparent
+  );
+}
+
+.haim-math-block.is-selected,
+.haim-math-inline.is-selected {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+}
+
+.haim-math-block__toolbar {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.haim-math-block:hover .haim-math-block__toolbar,
+.haim-math-block.is-selected .haim-math-block__toolbar,
+.haim-math-block--editing .haim-math-block__toolbar {
+  opacity: 1;
+}
+
+.haim-math-block__textarea {
+  display: block;
+  width: 100%;
+  min-height: 2.5rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+}
+
+.haim-editor--dark .haim-math-block__textarea {
+  border-color: var(--odp-borderStrong, #475569);
+  background: var(--odp-bgSoft, #0f172a);
+}
+
+.haim-math-block__fallback,
+.haim-math-inline__fallback {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+
+.haim-math-block--error,
+.haim-math-inline--error {
+  color: #dc2626;
+}
+
+.haim-math-inline {
+  display: inline-block;
+  vertical-align: middle;
+  padding: 0 0.15em;
+  cursor: default;
+}
+
+.haim-math-inline--editing {
+  padding: 0;
+}
+
+.haim-math-inline__input {
+  min-width: 4rem;
+  max-width: min(80vw, 28rem);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  padding: 0.15em 0.35em;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  background: #fff;
+  color: inherit;
+}
+
+.haim-editor--dark .haim-math-inline__input {
+  border-color: var(--odp-borderStrong, #475569);
+  background: var(--odp-bgSoft, #0f172a);
+}
+
+.haim-source-pane .cm-editor {
+  height: 100%;
+}
+
+/* Match md-editor-rt / Haim WYSIWYG: allow scrolling last lines to ~viewport center */
+.haim-source-pane .cm-scroller .cm-content {
+  padding-bottom: 50vh;
+  padding-bottom: 50dvh;
+}
+
+/* Task list */
+.haim-editor-prose ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.25em;
+}
+
+.haim-editor-prose ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4em;
+}
+
+.haim-editor-prose ul[data-type='taskList'] li > label {
+  margin-top: 0.2em;
+}
+
+/* Overlay TOC — glass background (md-editor-rt catalog-fixed parity) */
+.haim-toc-overlay {
+  background-color: color-mix(in srgb, var(--color-white, #ffffff) 72%, transparent);
+  backdrop-filter: blur(8px) saturate(1.25);
+  -webkit-backdrop-filter: blur(8px) saturate(1.25);
+}
+
+.haim-editor--dark .haim-toc-overlay,
+:is(.dark) .haim-toc-overlay {
+  background-color: color-mix(
+    in srgb,
+    var(--color-odp-bgSoft, #0f172a) 72%,
+    transparent
+  );
+}
+
+/* Source pane: collapsed base64 image payload chips (parity with .md-editor) */
+.haim-editor .cm-base64-image-fold {
+  display: inline;
+  padding-block: 0;
+  padding-inline: 0.25em;
+  border-radius: 3px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--color-blue-600);
+  background-color: color-mix(in srgb, var(--color-blue-500) 12%, transparent);
+}
+
+.haim-editor--dark .cm-base64-image-fold,
+:is(.dark) .haim-editor .cm-base64-image-fold {
+  color: var(--color-odp-accentBlue, #60a5fa);
+  background-color: color-mix(
+    in srgb,
+    var(--color-odp-accentBlue, #60a5fa) 18%,
+    transparent
+  );
+}

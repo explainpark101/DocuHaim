@@ -2,7 +2,6 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, createHashRouter, RouterProvider } from 'react-router'
 import '@/index.css'
-import '@/config/mdEditorConfig'
 import App from '@/App'
 import RouteErrorPage from '@/pages/RouteErrorPage'
 import { ActivityIndicatorProvider } from '@/contexts/ActivityIndicatorContext'
@@ -12,6 +11,9 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ToastProvider } from '@/contexts/ToastContext'
 import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
+import { initEditorImageAlignDom } from '@/utils/editorImageAlignSettings'
+import { initHaimFocusOutlineDom } from '@/utils/haimFocusOutlineSettings'
+import { initHaimWysiwygLineNumbersDom } from '@/utils/haimWysiwygLineNumberSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
 import { initDesktopViewport } from '@/utils/initDesktopViewport'
@@ -21,8 +23,13 @@ import { initMdEditorToolbarScroll } from '@/utils/initMdEditorToolbarScroll'
 import { isDesktopApp } from '@/utils/isDesktopApp'
 import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
 import { initUiFontSettings } from '@/utils/uiFontSettings'
+import { scheduleRevealTauriMainWindow } from '@/utils/revealTauriMainWindow'
+import { getBootSplash, initBootSplash } from '@/boot/bootSplash'
 
 initEditorAutocompleteDomFlag()
+initEditorImageAlignDom()
+initHaimFocusOutlineDom()
+initHaimWysiwygLineNumbersDom()
 initTouchLongPressHaptics()
 initDesktopViewport()
 initDesktopWindowCloseGuard()
@@ -96,8 +103,14 @@ const router = (isDesktop ? createHashRouter : createBrowserRouter)(
 )
 
 async function bootstrap(): Promise<void> {
+  // earlyBoot normally owns splash init; fall back if that entry did not run.
+  const splash = getBootSplash() ?? initBootSplash()
+  splash.setStatus('앱 초기화 중…')
+  splash.setProgress(0.88)
+
   if (bailIfSpaShellOnDocsPath()) return
 
+  splash.setStatus('최신 빌드 확인 중…')
   const canRender = await ensureLatestAppBuild()
   if (!canRender) return
 
@@ -115,11 +128,18 @@ async function bootstrap(): Promise<void> {
   const root = document.getElementById('root')
   if (!root) return
 
+  splash.setStatus('화면 구성 중…')
+  splash.setProgress(0.96)
+  splash.complete()
+
   createRoot(root).render(
     <StrictMode>
       <RouterProvider router={router} />
     </StrictMode>,
   )
+  // Reveal after first paint; 15s failsafe inside scheduleRevealTauriMainWindow.
+  // earlyBoot may already have shown the window so the splash was visible.
+  scheduleRevealTauriMainWindow()
 }
 
 void bootstrap()

@@ -1,0 +1,251 @@
+/**
+ * Haim TipTap code highlight themes (lowlight / hljs-* token classes).
+ * Default (dark): One Dark Pro Darker–inspired palette.
+ * Light mode + print: GitHub Light.
+ */
+
+/* ---- Default / dark: one-dark-pro-darker ---- */
+.haim-editor .haim-code-block {
+  --haim-code-fg: #abb2bf;
+  --haim-code-bg: #23272e;
+  --haim-code-border: #3a4050;
+  --haim-code-head-bg: #1c1f26;
+  --haim-code-muted: #7f848e;
+  color: var(--haim-code-fg);
+  background: var(--haim-code-bg);
+  border-color: var(--haim-code-border);
+}
+
+.haim-editor .haim-code-block__header {
+  background: var(--haim-code-head-bg);
+  border-bottom-color: var(--haim-code-border);
+}
+
+.haim-editor .haim-code-block__lang {
+  color: var(--haim-code-muted);
+}
+
+.haim-editor .haim-code-block__action {
+  color: #9da5b4;
+}
+
+.haim-editor .haim-code-block__action:hover {
+  background: color-mix(in srgb, #61afef 16%, transparent);
+  color: #e6e6e6;
+}
+
+.haim-editor .haim-code-block__action.is-copy-success {
+  color: #4ade80;
+}
+
+.haim-editor .haim-code-block pre,
+.haim-editor .haim-code-block code {
+  color: var(--haim-code-fg);
+  background: transparent;
+}
+
+.haim-editor .haim-code-block .hljs-comment,
+.haim-editor .haim-code-block .hljs-quote {
+  color: #7f848e;
+  font-style: italic;
+}
+
+.haim-editor .haim-code-block .hljs-doctag,
+.haim-editor .haim-code-block .hljs-keyword,
+.haim-editor .haim-code-block .hljs-formula {
+  color: #c678dd;
+}
+
+.haim-editor .haim-code-block .hljs-section,
+.haim-editor .haim-code-block .hljs-name,
+.haim-editor .haim-code-block .hljs-selector-tag,
+.haim-editor .haim-code-block .hljs-deletion,
+.haim-editor .haim-code-block .hljs-subst {
+  color: #e06c75;
+}
+
+.haim-editor .haim-code-block .hljs-literal {
+  color: #56b6c2;
+}
+
+.haim-editor .haim-code-block .hljs-string,
+.haim-editor .haim-code-block .hljs-regexp,
+.haim-editor .haim-code-block .hljs-addition,
+.haim-editor .haim-code-block .hljs-attribute,
+.haim-editor .haim-code-block .hljs-meta .hljs-string {
+  color: #98c379;
+}
+
+.haim-editor .haim-code-block .hljs-attr,
+.haim-editor .haim-code-block .hljs-variable,
+.haim-editor .haim-code-block .hljs-template-variable,
+.haim-editor .haim-code-block .hljs-type,
+.haim-editor .haim-code-block .hljs-selector-class,
+.haim-editor .haim-code-block .hljs-selector-attr,
+.haim-editor .haim-code-block .hljs-selector-pseudo,
+.haim-editor .haim-code-block .hljs-number {
+  color: #d19a66;
+}
+
+.haim-editor .haim-code-block .hljs-symbol,
+.haim-editor .haim-code-block .hljs-bullet,
+.haim-editor .haim-code-block .hljs-link,
+.haim-editor .haim-code-block .hljs-meta,
+.haim-editor .haim-code-block .hljs-selector-id,
+.haim-editor .haim-code-block .hljs-title {
+  color: #61afef;
+}
+
+.haim-editor .haim-code-block .hljs-built_in,
+.haim-editor .haim-code-block .hljs-title.class_,
+.haim-editor .haim-code-block .hljs-class .hljs-title {
+  color: #e5c07b;
+}
+
+.haim-editor .haim-code-block .hljs-emphasis {
+  font-style: italic;
+}
+
+.haim-editor .haim-code-block .hljs-strong {
+  font-weight: 700;
+}
+
+/* ---- Light mode: GitHub Light ---- */
+.haim-editor:not(.haim-editor--dark) .haim-code-block {
+  --haim-code-fg: #24292e;
+  --haim-code-bg: #ffffff;
+  --haim-code-border: #cfd3d9;
+  --haim-code-head-bg: #f6f8fa;
+  --haim-code-muted: #6a737d;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-comment,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-quote {
+  color: #6a737d;
+  font-style: italic;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-doctag,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-keyword,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-meta .hljs-keyword,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-template-tag,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-template-variable,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-type,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-variable.language_ {
+  color: #d73a49;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-title,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-title.class_,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-title.class_.inherited__,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-title.function_ {
+  color: #6f42c1;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-attr,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-attribute,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-literal,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-meta,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-number,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-operator,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-variable,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-selector-attr,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-selector-class,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-selector-id {
+  color: #005cc5;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-regexp,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-string,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-meta .hljs-string {
+  color: #032f62;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-built_in,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-symbol {
+  color: #e36209;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-name,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-section,
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-selector-tag {
+  color: #22863a;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-deletion {
+  color: #b31d28;
+  background: #ffeef0;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block .hljs-addition {
+  color: #22863a;
+  background: #f0fff4;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block__action {
+  color: #586069;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block__action:hover {
+  background: #eaecef;
+  color: #24292e;
+}
+
+.haim-editor:not(.haim-editor--dark) .haim-code-block__action.is-copy-success {
+  color: #22863a;
+}
+
+/* ---- Print: always GitHub Light ---- */
+@media print {
+  .haim-editor .haim-code-block {
+    --haim-code-fg: #24292e;
+    --haim-code-bg: #ffffff;
+    --haim-code-border: #e1e4e8;
+    --haim-code-head-bg: #f6f8fa;
+    --haim-code-muted: #6a737d;
+    color: #24292e !important;
+    background: #ffffff !important;
+    border-color: #cfd3d9 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .haim-editor .haim-code-block__header {
+    display: none !important;
+  }
+
+  .haim-editor .haim-code-block .hljs-comment,
+  .haim-editor .haim-code-block .hljs-quote {
+    color: #6a737d !important;
+  }
+
+  .haim-editor .haim-code-block .hljs-keyword,
+  .haim-editor .haim-code-block .hljs-doctag {
+    color: #d73a49 !important;
+  }
+
+  .haim-editor .haim-code-block .hljs-string,
+  .haim-editor .haim-code-block .hljs-regexp {
+    color: #032f62 !important;
+  }
+
+  .haim-editor .haim-code-block .hljs-number,
+  .haim-editor .haim-code-block .hljs-literal,
+  .haim-editor .haim-code-block .hljs-attr {
+    color: #005cc5 !important;
+  }
+
+  .haim-editor .haim-code-block .hljs-title,
+  .haim-editor .haim-code-block .hljs-title.function_ {
+    color: #6f42c1 !important;
+  }
+
+  .haim-editor .haim-code-block .hljs-built_in {
+    color: #e36209 !important;
+  }
+
+  .haim-editor .haim-code-block .hljs-name,
+  .haim-editor .haim-code-block .hljs-section {
+    color: #22863a !important;
+  }
+}

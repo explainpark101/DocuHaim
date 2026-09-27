@@ -17,7 +17,7 @@ function clearPointer(pointerId: number): void {
 }
 
 /**
- * When the md-editor-rt toolbar overflows horizontally, treat vertical wheel /
+ * When md-editor-rt / Haim toolbars overflow horizontally, treat vertical wheel /
  * touch gestures on the toolbar as horizontal scroll. Wheel input is smoothed via rAF.
  */
 export function initMdEditorToolbarScroll(): void {

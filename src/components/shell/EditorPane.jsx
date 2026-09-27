@@ -27,17 +27,17 @@ import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import DocumentSettingsModal from '@/components/DocumentSettingsModal';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import { useAiSettingsDock } from '@/contexts/AiSettingsDockContext';
+import FrozenPaneMarkdownPreview from '@/components/shell/workspace/FrozenPaneMarkdownPreview';
+import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
+import { getLastFocusedDocumentKey } from '@/utils/mdEditorSourceFocus';
+import { sanitizeMdEditorIdFragment } from '@/utils/mdEditorInstanceId';
+import { WORKSPACE_PANE_DEMOTE_SETTLE_MS } from '@/utils/workspacePaneFreezeSettings';
 import {
   convertAllMarkdownImagesToWiki,
   countStandardMarkdownImages,
   hasStandardMarkdownImages,
 } from '@/utils/convertMarkdownImagesToWiki';
 import { copyCurrentPageAsFormattedHtml } from '@/utils/copyFormattedPageHtml';
-import {
-  collectImgbbCopyCandidates,
-  ensureMermaidSvgMarkup,
-  findMermaidHostByReplaceKey,
-} from '@/utils/imgbbCopyCandidates';
 import { uploadImageToImgbb } from '@/utils/imgbbUpload';
 import {
   batchUpsertRemoteImageComments,
@@ -64,7 +64,9 @@ import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { patchFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
 
-const MarkdownEditor = lazy(() => import('@/components/MarkdownEditor'));
+const NoteEditorSurface = lazy(
+  () => import('@/components/editor/surface/NoteEditorSurface'),
+);
 const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
 const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
 const QuizPane = lazy(() => import('@/components/quiz/QuizPane'));
@@ -138,7 +140,7 @@ export default function EditorPane({
   onResolveWikiImageUrl,
   onOpenViewPath,
   snippetConfig = { snippets: [] },
-  editorType: _editorType,
+  editorType,
   hideRecordingCompanions = false,
   llmProviderProfiles = [],
   getImgbbApiKey,
@@ -176,6 +178,56 @@ export default function EditorPane({
   const { showAlert } = useAlertModal();
   const location = useLocation();
   const navigate = useNavigate();
+  const llmAssist = useLlmAssistSessionOptional();
+
+  /** Full MdEditor mounted; false after freeze settles → lightweight MdPreview. */
+  const [markdownEditorMounted, setMarkdownEditorMounted] = useState(() => isSurfaceLive);
+
+  useEffect(() => {
+    if (isSurfaceLive) {
+      setMarkdownEditorMounted(true);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setMarkdownEditorMounted(false);
+    }, WORKSPACE_PANE_DEMOTE_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [isSurfaceLive]);
+
+  // When demoted, keep a content-only LLM bridge so apply uses durable focus + onChange.
+  const demotedBridgeContentRef = useRef(editorContent);
+  demotedBridgeContentRef.current = editorContent;
+  const demotedOnChangeRef = useRef(onChangeEditor);
+  demotedOnChangeRef.current = onChangeEditor;
+
+  useEffect(() => {
+    if (markdownEditorMounted || !isActiveFile || previewOnly) return undefined;
+    const registerBridge = llmAssist?.registerEditorBridge;
+    if (!registerBridge || !currentFile) return undefined;
+    const viewer = currentFile.viewer || 'markdown';
+    if (viewer !== 'markdown') return undefined;
+    const documentKey =
+      currentFile.type && currentFile.id
+        ? `${currentFile.type}:${currentFile.id}`
+        : undefined;
+    // Only the last source-focused document should own the demoted LLM bridge.
+    const lastKey = getLastFocusedDocumentKey();
+    if (lastKey && documentKey && lastKey !== documentKey) return undefined;
+    return registerBridge({
+      editorRef: { current: null },
+      getMarkdown: () => demotedBridgeContentRef.current ?? '',
+      onChange: (md) => demotedOnChangeRef.current?.(md),
+      ...(documentKey ? { documentKey } : {}),
+    });
+  }, [
+    markdownEditorMounted,
+    isActiveFile,
+    previewOnly,
+    llmAssist?.registerEditorBridge,
+    currentFile?.type,
+    currentFile?.id,
+    currentFile?.viewer,
+  ]);
 
   const isQuizFile = isQuizMdPath(currentFile?.id || currentFile?.name);
   const quizMode =
@@ -339,6 +391,7 @@ export default function EditorPane({
     setCopyingFormattedHtml(true);
     try {
       quizFlushBeforeSaveRef.current?.();
+      const { collectImgbbCopyCandidates } = await import('@/utils/imgbbCopyCandidates');
       const candidates = collectImgbbCopyCandidates();
       if (candidates.length > 0) {
         setImgbbCopyCandidates(candidates);
@@ -372,6 +425,8 @@ export default function EditorPane({
       const replacements = new Map();
       /** @type {Array<{ kind: import('@/utils/remoteImageComment').RemoteImageKind, key: string, occurrence: number, url: string }>} */
       const sidecarItems = [];
+      const { ensureMermaidSvgMarkup, findMermaidHostByReplaceKey } =
+        await import('@/utils/imgbbCopyCandidates');
 
       for (const candidate of imgbbCopyCandidates) {
         const cached = await lookupRemoteImageUrl(markdown, {
@@ -1195,7 +1250,13 @@ export default function EditorPane({
                 />
               ) : (
                 <Suspense fallback={<EditorPaneSuspenseFallback message="에디터 로딩 중…" />}>
-                  <MarkdownEditor
+                  {markdownEditorMounted ? (
+                    <NoteEditorSurface
+                      engine={
+                        editorType === 'haim' || editorType === 'md-editor-rt'
+                          ? editorType
+                          : undefined
+                      }
                       value={editorContent}
                       onChange={onChangeEditor}
                       onSave={onSave}
@@ -1219,6 +1280,20 @@ export default function EditorPane({
                         convertAllImagesToWikiRef.current = fn;
                       }}
                     />
+                  ) : (
+                    <FrozenPaneMarkdownPreview
+                      content={editorContent}
+                      previewId={`frozen-pane-${sanitizeMdEditorIdFragment(
+                        `${currentFile?.type || 'file'}-${currentFile?.id || 'untitled'}`,
+                      )}`}
+                      scrollMemoryKey={
+                        currentFile?.type && currentFile?.id
+                          ? `${currentFile.type}:${currentFile.id}`
+                          : null
+                      }
+                      theme={theme === 'dark' ? 'dark' : 'light'}
+                    />
+                  )}
                 </Suspense>
               )}
             </div>

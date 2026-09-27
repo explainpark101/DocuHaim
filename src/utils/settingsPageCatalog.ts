@@ -56,6 +56,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     title: '에디터 및 콘텐츠',
     sections: [
       { id: 'settings-editor', label: '마크다운 에디터' },
+      { id: 'settings-image-align', label: '이미지 정렬' },
       { id: 'settings-snippets', label: '스니펫 단축키' },
       { id: 'settings-table-styles', label: '표 스타일' },
       { id: 'settings-cover', label: '커버' },
@@ -95,7 +96,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     id: 'app',
     title: '앱',
     sections: [
-      { id: 'settings-tauri-download', label: '데스크톱 앱 다운로드', visible: () => isTauriDesktopPlatform() },
+      { id: 'settings-tauri-download', label: '파일 다운로드', visible: () => isTauriDesktopPlatform() },
       { id: 'settings-app-update', label: '앱 업데이트' },
     ],
   },

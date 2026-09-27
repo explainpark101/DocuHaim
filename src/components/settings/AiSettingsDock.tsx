@@ -1,11 +1,15 @@
+import { lazy, Suspense } from 'react';
 import AppRightDockShell from '@/components/shell/AppRightDockShell';
-import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfilesSettings';
-import LlamaCppSettings from '@/components/settings/LlamaCppSettings';
-import MlxVlmSettings from '@/components/settings/MlxVlmSettings';
-import QuizSettingsSection from '@/components/settings/QuizSettings';
 import { useAiSettingsDock } from '@/contexts/AiSettingsDockContext';
 import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
 import { X } from 'lucide-react';
+
+const LlmProviderProfilesSettings = lazy(
+  () => import('@/components/settings/LlmProviderProfilesSettings'),
+);
+const LlamaCppSettings = lazy(() => import('@/components/settings/LlamaCppSettings'));
+const MlxVlmSettings = lazy(() => import('@/components/settings/MlxVlmSettings'));
+const QuizSettingsSection = lazy(() => import('@/components/settings/QuizSettings'));
 
 type AiSettingsDockProps = {
   profiles: LlmProviderProfile[];
@@ -41,14 +45,24 @@ export default function AiSettingsDock({ profiles, onSaveProfiles }: AiSettingsD
           </button>
         </div>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-          <LlmProviderProfilesSettings
-            profiles={profiles}
-            onSaveProfiles={onSaveProfiles}
-            compact
-          />
-          <MlxVlmSettings />
-          <LlamaCppSettings />
-          <QuizSettingsSection llmProviderProfiles={profiles} />
+          {open ? (
+            <Suspense
+              fallback={
+                <div className="py-6 text-center text-sm text-slate-500 dark:text-odp-muted">
+                  로딩 중…
+                </div>
+              }
+            >
+              <LlmProviderProfilesSettings
+                profiles={profiles}
+                onSaveProfiles={onSaveProfiles}
+                compact
+              />
+              <MlxVlmSettings />
+              <LlamaCppSettings />
+              <QuizSettingsSection llmProviderProfiles={profiles} />
+            </Suspense>
+          ) : null}
         </div>
       </div>
     </AppRightDockShell>

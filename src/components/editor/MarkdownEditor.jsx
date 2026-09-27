@@ -1,7 +1,7 @@
+import { ensureMdEditorConfig } from '@/config/mdEditorConfig';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
-import { MdEditor, config } from 'md-editor-rt';
 import {
   createScopedPreviewHeadingId,
   mdEditorIdFromReactId,
@@ -19,7 +19,6 @@ import MarkdownHeadingRemapToolbar from '@/components/MarkdownHeadingRemapToolba
 import HeadingRemapModal from '@/components/modals/HeadingRemapModal';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import TocTitleWrapToolbar from '@/components/TocTitleWrapToolbar';
-import Base64ImageFoldToolbar from '@/components/Base64ImageFoldToolbar';
 import EditorAutocompleteToolbar from '@/components/EditorAutocompleteToolbar';
 import MirrorEditToolbar from '@/components/MirrorEditToolbar';
 import ImageToolbar from '@/components/ImageToolbar';
@@ -29,6 +28,7 @@ import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import ImageLinkModal from '@/components/modals/ImageLinkModal';
 import FootnoteComposeModal from '@/components/modals/FootnoteComposeModal';
 import ImageClipCropModal from '@/components/modals/ImageClipCropModal';
+import WhiteboardCreateModal from '@/components/modals/WhiteboardCreateModal';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
 import {
@@ -311,6 +311,9 @@ const ALT_VIM_NAVIGATION_KEY_BINDINGS = [
     run: (view) => runAltVimNavigation(view, cursorCharRight),
   },
 ];
+
+await ensureMdEditorConfig();
+const { MdEditor, config } = await import('md-editor-rt');
 
 config({
   editorConfig: {
@@ -614,19 +617,21 @@ export default function MarkdownEditor({
   }, [value, currentFile, theme]);
 
   useEffect(() => {
+    if (!isSurfaceLive) return undefined;
     const { issues } = parseNoteCover(value ?? '');
     if (!issues.length) {
       coverIssuesAlertSigRef.current = '';
-      return;
+      return undefined;
     }
     const sig = formatNoteCoverIssues(issues);
-    if (sig === coverIssuesAlertSigRef.current) return;
+    if (sig === coverIssuesAlertSigRef.current) return undefined;
     coverIssuesAlertSigRef.current = sig;
     showAlert({
       title: 'Cover syntax error',
       message: `note-cover has invalid syntax.\n\n${sig}`,
     });
-  }, [value, showAlert]);
+    return undefined;
+  }, [value, showAlert, isSurfaceLive]);
 
   const navigateToExportPdf = useCallback((options = {}) => {
     const content = valueRef.current ?? '';
@@ -677,6 +682,7 @@ export default function MarkdownEditor({
     onChangeWithUndoHistoryRef.current = onChangeWithUndoHistory;
   }, [onChangeWithUndoHistory]);
   const [clipCropFile, setClipCropFile] = useState(null);
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [freeTransformState, setFreeTransformState] = useState(null);
   const [freeTransformConfirmOpen, setFreeTransformConfirmOpen] = useState(false);
   const [freeTransformOverlayRect, setFreeTransformOverlayRect] = useState(null);
@@ -685,7 +691,7 @@ export default function MarkdownEditor({
   const [catalogHandleBox, setCatalogHandleBox] = useState(null);
   const activeTransformRef = useRef(null);
   const [wrapTitles, setWrapTitles] = useTocTitleWrap();
-  const [foldBase64Images, setFoldBase64Images] = useBase64ImageFold();
+  const [foldBase64Images] = useBase64ImageFold();
   const [autocompleteEnabled, setAutocompleteEnabled] = useEditorAutocomplete();
   const [mirrorEditPref, setMirrorEditEnabled] = useMirrorEdit();
   // Safari: skip Mirror Edit (unstable). Dual-pane scroll still uses previewScrollFollow.
@@ -833,9 +839,43 @@ export default function MarkdownEditor({
       };
       input.click();
     };
+    handlers['editor-create-whiteboard'] = () => {
+      if (typeof onUploadImage !== 'function' || isUploadingEditorImage) return;
+      setWhiteboardOpen(true);
+    };
     handlers['editor-convert-all-images-to-wiki'] = () => {
       if (typeof onRequestConvertAllImagesToWiki === 'function') {
         onRequestConvertAllImagesToWiki();
+      }
+    };
+    handlers['editor-catalog'] = () => {
+      const root = containerRef.current;
+      if (!root) return;
+      const byAria = root.querySelector(
+        [
+          '.md-editor-toolbar-item[aria-label="카탈로그"]',
+          '.md-editor-toolbar-item[aria-label="catalog"]',
+          '.md-editor-toolbar-item[aria-label="目录"]',
+          '.md-editor-toolbar-item[data-md-tip="카탈로그"]',
+          '.md-editor-toolbar-item[data-md-tip="catalog"]',
+          '.md-editor-toolbar-item[data-md-tip="目录"]',
+        ].join(', '),
+      );
+      if (byAria instanceof HTMLElement) {
+        byAria.click();
+        return;
+      }
+      const items = root.querySelectorAll('.md-editor-toolbar-item');
+      for (const el of items) {
+        const tip =
+          el.getAttribute('aria-label') ||
+          el.getAttribute('data-md-tip') ||
+          el.getAttribute('title') ||
+          '';
+        if (/카탈로그|catalog|目录|목차/i.test(tip)) {
+          if (el instanceof HTMLElement) el.click();
+          break;
+        }
       }
     };
     handlers['editor-insert-footnote'] = () => {
@@ -875,9 +915,10 @@ export default function MarkdownEditor({
   }, [previewOnly, isSurfaceLive, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki, llmAssist]);
 
   // Register active markdown editor with the global LLM Assist host.
+  // Keep bridge while this file is active (including frozen settle before demote).
   const registerBridge = llmAssist?.registerEditorBridge;
   useEffect(() => {
-    if (previewOnly || !isActiveFile || !isSurfaceLive || !registerBridge) return undefined;
+    if (previewOnly || !isActiveFile || !registerBridge) return undefined;
     const getEditorApi = () => {
       const current = editorRef.current;
       if (!current) return null;
@@ -902,8 +943,19 @@ export default function MarkdownEditor({
         const view = api?.getEditorView?.();
         return view?.state?.doc?.toString?.() ?? valueRef.current ?? '';
       },
+      documentKey:
+        currentFile?.type && currentFile?.id
+          ? `${currentFile.type}:${currentFile.id}`
+          : undefined,
     });
-  }, [previewOnly, isActiveFile, isSurfaceLive, registerBridge, onChangeWithUndoHistory]);
+  }, [
+    previewOnly,
+    isActiveFile,
+    registerBridge,
+    onChangeWithUndoHistory,
+    currentFile?.type,
+    currentFile?.id,
+  ]);
 
   useEffect(() => {
     if (previewOnly || !isSurfaceLive) return undefined;
@@ -1006,6 +1058,7 @@ export default function MarkdownEditor({
   }, [snippetConfig]);
 
   useEffect(() => {
+    if (!isSurfaceLive) return undefined;
     const apply = () => {
       const api = editorRef.current?.value ?? editorRef.current;
       const view = api?.getEditorView?.();
@@ -1021,7 +1074,7 @@ export default function MarkdownEditor({
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [foldBase64Images]);
+  }, [foldBase64Images, isSurfaceLive]);
 
   useEffect(() => {
     if (!isSurfaceLive) {
@@ -1185,6 +1238,11 @@ export default function MarkdownEditor({
   useEffect(() => {
     if (previewOnly) return undefined;
 
+    const documentKey =
+      currentFile?.type && currentFile?.id
+        ? `${currentFile.type}:${currentFile.id}`
+        : null;
+
     let detach = null;
     let attachedView = null;
 
@@ -1194,7 +1252,7 @@ export default function MarkdownEditor({
       if (!view || view === attachedView) return Boolean(view);
       detach?.();
       attachedView = view;
-      detach = attachMdEditorSourceFocusTracking(view);
+      detach = attachMdEditorSourceFocusTracking(view, documentKey);
       return true;
     };
 
@@ -1209,7 +1267,7 @@ export default function MarkdownEditor({
       timers.forEach((t) => clearTimeout(t));
       detach?.();
     };
-  }, [previewOnly, currentFile?.id]);
+  }, [previewOnly, currentFile?.id, currentFile?.type]);
 
   // Preview heading fold chevrons (persist collapsed ids per document).
   // Do not depend on `value` ? tearing down on every keystroke flashes chevrons.
@@ -1606,13 +1664,15 @@ export default function MarkdownEditor({
 
   // Remember CM + preview scroll per file so split-pane remount / focus keeps place.
   useEffect(() => {
-    if (previewOnly) return undefined;
+    if (previewOnly || !isSurfaceLive) return undefined;
     const key = editorScrollMemoryKeyFromFile(currentFile);
     if (!key) return undefined;
 
     const root = containerRef.current;
     let saveTimer = 0;
     let restoreGen = 0;
+    /** Last DOM-read snapshot while live — used on freeze cleanup (DOM may already be 0). */
+    let lastKnownSnap = recallEditorScroll(key);
 
     const getView = () => {
       const api = editorRef.current?.value ?? editorRef.current;
@@ -1646,25 +1706,41 @@ export default function MarkdownEditor({
       return true;
     };
 
-    const persist = () => {
+    const persistFromDom = () => {
       const snap = readSnapshot();
-      if (snap) rememberEditorScroll(key, snap);
+      if (!snap) return;
+      lastKnownSnap = snap;
+      rememberEditorScroll(key, snap);
+    };
+
+    /** Freeze/unmount: prefer last known live scroll — DOM may already be reset to 0. */
+    const persistLastKnown = () => {
+      if (lastKnownSnap) {
+        rememberEditorScroll(key, lastKnownSnap);
+        return;
+      }
+      persistFromDom();
     };
 
     const schedulePersist = () => {
       if (saveTimer) window.clearTimeout(saveTimer);
       saveTimer = window.setTimeout(() => {
         saveTimer = 0;
-        persist();
+        persistFromDom();
       }, 80);
     };
 
     const snap = recallEditorScroll(key);
     if (snap) {
+      lastKnownSnap = snap;
       const gen = ++restoreGen;
       const attempt = (triesLeft) => {
         if (restoreGen !== gen) return;
-        if (applySnapshot(snap)) return;
+        if (applySnapshot(snap)) {
+          lastKnownSnap = snap;
+          rememberEditorScroll(key, snap);
+          return;
+        }
         if (triesLeft <= 0) return;
         window.setTimeout(() => attempt(triesLeft - 1), 50);
       };
@@ -1678,7 +1754,7 @@ export default function MarkdownEditor({
       restoreGen += 1;
       if (saveTimer) window.clearTimeout(saveTimer);
       root?.removeEventListener('scroll', onScroll, true);
-      persist();
+      persistLastKnown();
     };
   }, [previewOnly, currentFile?.type, currentFile?.id, isSurfaceLive]);
 
@@ -1721,7 +1797,7 @@ export default function MarkdownEditor({
   }, [value, currentFile?.id, mirrorEditEnabled, safariMdEditor]);
 
   useEffect(() => {
-    if (previewOnly) return;
+    if (previewOnly || !isSurfaceLive) return undefined;
     const registerPasteHandler = () => {
       const api = editorRef.current?.value ?? editorRef.current;
       if (!api?.domEventHandlers) return false;
@@ -1798,7 +1874,8 @@ export default function MarkdownEditor({
       const id = setTimeout(registerPasteHandler, 100);
       return () => clearTimeout(id);
     }
-  }, [previewOnly, onUploadImage, isUploadingEditorImage]);
+    return undefined;
+  }, [previewOnly, onUploadImage, isUploadingEditorImage, isSurfaceLive]);
 
   // ??? ???? ??? ?? ???(cmd+[, cmd+] ?)?? ?? ??: document ??? ??? ??
   useEffect(() => {
@@ -2523,12 +2600,6 @@ export default function MarkdownEditor({
       onChange={setWrapTitles}
       theme={theme}
     />,
-    <Base64ImageFoldToolbar
-      key="base64-image-fold"
-      checked={foldBase64Images}
-      onChange={setFoldBase64Images}
-      theme={theme}
-    />,
     <EditorAutocompleteToolbar
       key="editor-autocomplete"
       checked={autocompleteEnabled}
@@ -2552,6 +2623,9 @@ export default function MarkdownEditor({
         void handleToolbarImageUpload(files);
       }}
       onRequestClip={(file) => setClipCropFile(file)}
+      onRequestWhiteboard={() => {
+        if (typeof onUploadImage === 'function') setWhiteboardOpen(true);
+      }}
     />,
   ], [
     value,
@@ -2559,8 +2633,6 @@ export default function MarkdownEditor({
     currentFile,
     wrapTitles,
     setWrapTitles,
-    foldBase64Images,
-    setFoldBase64Images,
     autocompleteEnabled,
     setAutocompleteEnabled,
     safariMdEditor,
@@ -2598,7 +2670,11 @@ export default function MarkdownEditor({
     <div
       ref={containerRef}
       className={`h-full w-full flex flex-col relative${wrapTitles ? ' toc-titles-wrap' : ''}`}
-      style={{ '--md-catalog-width': `${catalogWidth}px`, ...documentFontStyleVars }}
+      style={{
+        '--md-catalog-width': `${catalogWidth}px`,
+        ...documentFontStyleVars,
+      }}
+      {...(!isSurfaceLive ? { inert: true } : {})}
     >
       {documentSettings?.webfontCss ? (
         <style data-s3haim-document-webfonts="1">{documentSettings.webfontCss}</style>
@@ -2662,8 +2738,8 @@ export default function MarkdownEditor({
         defToolbars={defToolbars}
         onUploadImg={onUploadImg}
       />
-      <MdEditorToolbarTooltips containerRef={containerRef} />
-      <PreviewFootnoteTooltips containerRef={containerRef} />
+      <MdEditorToolbarTooltips containerRef={containerRef} enabled={isSurfaceLive} />
+      <PreviewFootnoteTooltips containerRef={containerRef} enabled={isSurfaceLive} />
       <WikiImageSizeModal
         key={
           wikiImageModalState
@@ -2716,6 +2792,14 @@ export default function MarkdownEditor({
         file={clipCropFile}
         onClose={() => setClipCropFile(null)}
         onConfirm={handleToolbarImageClipConfirm}
+      />
+      <WhiteboardCreateModal
+        isOpen={whiteboardOpen}
+        onClose={() => setWhiteboardOpen(false)}
+        disabled={typeof onUploadImage !== 'function' || isUploadingEditorImage}
+        onConfirm={async (file) => {
+          await handleToolbarImageUpload([file]);
+        }}
       />
       <TableEditModal
         isOpen={haimTableEdit.isOpen}

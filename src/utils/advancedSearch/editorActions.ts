@@ -34,7 +34,10 @@ export type EditorActionId =
   | 'editor-checklist-progress'
   | 'editor-image-upload'
   | 'editor-image-clip'
-  | 'editor-convert-all-images-to-wiki';
+  | 'editor-create-qrcode'
+  | 'editor-create-whiteboard'
+  | 'editor-convert-all-images-to-wiki'
+  | 'editor-catalog';
 
 export type EditorActionHandler = (payload?: unknown) => void | Promise<void>;
 
@@ -334,6 +337,38 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     keywords: ['image', 'crop', 'clip', '자르기', '크롭', 'cropper'],
   },
   {
+    id: 'editor-create-qrcode',
+    title: 'QRCode 만들기',
+    description: '텍스트를 고화질 SVG QR로 만들어 wiki image로 삽입',
+    keywords: [
+      'qr',
+      'qrcode',
+      'QR',
+      'QRCode',
+      '큐알',
+      '큐알코드',
+      'barcode',
+      'svg',
+      'wiki image',
+    ],
+  },
+  {
+    id: 'editor-create-whiteboard',
+    title: '화이트보드 만들기',
+    description: '크기·배경색으로 빈 캔버스를 만들어 wiki image로 삽입',
+    keywords: [
+      'whiteboard',
+      '화이트보드',
+      '캔버스',
+      'canvas',
+      'blank',
+      '빈 이미지',
+      '그리기',
+      'ink',
+      'wiki image',
+    ],
+  },
+  {
     id: 'editor-convert-all-images-to-wiki',
     title: '모든 image를 wiki image로',
     description: '일반 마크다운 이미지를 wiki image(![[path]])로 일괄 변환',
@@ -348,5 +383,11 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
       '위키',
       'wiki image',
     ],
+  },
+  {
+    id: 'editor-catalog',
+    title: '목차보기',
+    description: '에디터 제목 목차 패널 보이기/숨기기',
+    keywords: ['toc', 'catalog', '목차', '목차보기', 'outline', 'heading'],
   },
 ] as const;

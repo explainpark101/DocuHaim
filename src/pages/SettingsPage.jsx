@@ -32,6 +32,57 @@ import {
   FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT,
 } from '@/utils/previewFootnotesSettings';
 import {
+  EDITOR_IMAGE_ALIGN_CHANGED_EVENT,
+  EDITOR_IMAGE_ALIGN_OPTIONS,
+  loadEditorImageAlign,
+  setEditorImageAlign,
+} from '@/utils/editorImageAlignSettings';
+import {
+  EDITOR_TYPE_CHANGED_EVENT,
+  EDITOR_TYPE_HAIM,
+  EDITOR_TYPE_OPTIONS,
+  loadEditorType,
+  saveEditorType,
+} from '@/utils/editorTypeSettings';
+import {
+  EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT,
+  EXPORT_PDF_PREVIEW_ENGINE_OPTIONS,
+  loadExportPdfPreviewEngine,
+  saveExportPdfPreviewEngine,
+} from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
+import {
+  HAIM_VIEW_MODE_CHANGED_EVENT,
+  HAIM_VIEW_MODE_OPTIONS,
+  loadHaimViewMode,
+  saveHaimViewMode,
+} from '@/utils/haimViewModeSettings';
+import {
+  HAIM_TOC_LAYOUT_CHANGED_EVENT,
+  HAIM_TOC_LAYOUT_DOCK,
+  HAIM_TOC_LAYOUT_OPTIONS,
+  HAIM_TOC_LAYOUT_OVERLAY,
+  loadHaimTocLayout,
+  saveHaimTocLayout,
+} from '@/utils/haimTocLayoutSettings';
+import {
+  HAIM_FOCUS_OUTLINE_CHANGED_EVENT,
+  loadHaimFocusOutlineEnabled,
+} from '@/utils/haimFocusOutlineSettings';
+import {
+  HAIM_LINK_OPEN_CHANGED_EVENT,
+  loadHaimLinkOpenOnClick,
+} from '@/utils/haimLinkOpenSettings';
+import {
+  HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT,
+  HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT,
+  loadHaimCodeLineNumbersEnabled,
+  loadHaimRawLineNumbersEnabled,
+} from '@/utils/haimWysiwygLineNumberSettings';
+import {
+  BASE64_IMAGE_FOLD_CHANGED_EVENT,
+  loadBase64ImageFoldEnabled,
+} from '@/utils/base64ImageFoldSettings';
+import {
   loadAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
@@ -77,7 +128,7 @@ import {
   syncLegacyLlmCredsFromProfiles,
 } from '@/utils/llmProviderProfiles';
 import { getLocalAppBuildId } from '@/utils/pwaUpdate';
-import { RadioGroup } from 'radix-ui';
+import { RadioGroup, Switch } from 'radix-ui';
 import {
   advancedSearchEngine,
   loadAdvancedSearchUiAnimationEnabled,
@@ -136,8 +187,8 @@ export default function SettingsPage({
   onSaveSnippetConfig,
   isSavingSnippets = false,
   snippetConfigLoaded = false,
-  editorType: _editorTypeProp,
-  onEditorTypeChange: _onEditorTypeChange,
+  editorType: editorTypeProp,
+  onEditorTypeChange,
   storageMode = STORAGE_MODE_S3,
   onStorageModeChange,
   localFolderName = '',
@@ -192,6 +243,32 @@ export default function SettingsPage({
   const [footnoteDisplayMode, setFootnoteDisplayModeState] = useState(() =>
     loadFootnoteDisplayMode(),
   );
+  const [editorImageAlign, setEditorImageAlignState] = useState(() =>
+    loadEditorImageAlign(),
+  );
+  const [editorType, setEditorTypeState] = useState(
+    () => editorTypeProp ?? loadEditorType(),
+  );
+  const [exportPdfPreviewEngine, setExportPdfPreviewEngineState] = useState(() =>
+    loadExportPdfPreviewEngine(),
+  );
+  const [haimViewMode, setHaimViewModeState] = useState(() => loadHaimViewMode());
+  const [haimTocLayout, setHaimTocLayoutState] = useState(() => loadHaimTocLayout());
+  const [haimFocusOutline, setHaimFocusOutlineState] = useState(() =>
+    loadHaimFocusOutlineEnabled(),
+  );
+  const [haimLinkOpenOnClick, setHaimLinkOpenOnClickState] = useState(() =>
+    loadHaimLinkOpenOnClick(),
+  );
+  const [haimCodeLineNumbers, setHaimCodeLineNumbersState] = useState(() =>
+    loadHaimCodeLineNumbersEnabled(),
+  );
+  const [haimRawLineNumbers, setHaimRawLineNumbersState] = useState(() =>
+    loadHaimRawLineNumbersEnabled(),
+  );
+  const [base64ImageFold, setBase64ImageFoldState] = useState(() =>
+    loadBase64ImageFoldEnabled(),
+  );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState(
@@ -227,6 +304,21 @@ export default function SettingsPage({
       else if (id === 'settings-composer-helper') setComposerHelperTextVisible(enabled);
       else if (id === 'settings-composer-autocomplete') setComposerAutocompleteEnabled(enabled);
       else if (id === 'settings-as-animation') setAdvancedSearchUiAnimation(enabled);
+      else if (id === 'settings-haim-toc-dock') {
+        setHaimTocLayoutState(
+          enabled ? HAIM_TOC_LAYOUT_DOCK : HAIM_TOC_LAYOUT_OVERLAY,
+        );
+      } else if (id === 'settings-haim-focus-outline') {
+        setHaimFocusOutlineState(enabled);
+      } else if (id === 'settings-haim-link-open-on-click') {
+        setHaimLinkOpenOnClickState(enabled);
+      } else if (id === 'settings-haim-code-line-numbers') {
+        setHaimCodeLineNumbersState(enabled);
+      } else if (id === 'settings-haim-raw-line-numbers') {
+        setHaimRawLineNumbersState(enabled);
+      } else if (id === 'settings-base64-image-fold') {
+        setBase64ImageFoldState(enabled);
+      }
     });
   }, []);
 
@@ -239,6 +331,114 @@ export default function SettingsPage({
     return () => {
       window.removeEventListener(FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT, onFootnoteDisplay);
     };
+  }, []);
+
+  useEffect(() => {
+    const onAlign = (event) => {
+      const align = event?.detail?.align ?? loadEditorImageAlign();
+      setEditorImageAlignState(align);
+    };
+    window.addEventListener(EDITOR_IMAGE_ALIGN_CHANGED_EVENT, onAlign);
+    return () => {
+      window.removeEventListener(EDITOR_IMAGE_ALIGN_CHANGED_EVENT, onAlign);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (editorTypeProp) setEditorTypeState(editorTypeProp);
+  }, [editorTypeProp]);
+
+  useEffect(() => {
+    const sync = () => setEditorTypeState(loadEditorType());
+    window.addEventListener(EDITOR_TYPE_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(EDITOR_TYPE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const engine = event?.detail?.engine ?? loadExportPdfPreviewEngine();
+      setExportPdfPreviewEngineState(engine);
+    };
+    window.addEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, sync);
+    return () => {
+      window.removeEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setHaimViewModeState(loadHaimViewMode());
+    window.addEventListener(HAIM_VIEW_MODE_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_VIEW_MODE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setHaimTocLayoutState(loadHaimTocLayout());
+    window.addEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimFocusOutlineEnabled();
+      setHaimFocusOutlineState(enabled);
+    };
+    window.addEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(HAIM_FOCUS_OUTLINE_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimLinkOpenOnClick();
+      setHaimLinkOpenOnClickState(enabled);
+    };
+    window.addEventListener(HAIM_LINK_OPEN_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_LINK_OPEN_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimCodeLineNumbersEnabled();
+      setHaimCodeLineNumbersState(enabled);
+    };
+    window.addEventListener(HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(HAIM_CODE_LINE_NUMBERS_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimRawLineNumbersEnabled();
+      setHaimRawLineNumbersState(enabled);
+    };
+    window.addEventListener(HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(HAIM_RAW_LINE_NUMBERS_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadBase64ImageFoldEnabled();
+      setBase64ImageFoldState(enabled);
+    };
+    window.addEventListener(BASE64_IMAGE_FOLD_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(BASE64_IMAGE_FOLD_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -967,13 +1167,251 @@ export default function SettingsPage({
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
           <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">마크다운 에디터</h3>
-          <p className="text-xs text-gray-600 dark:text-odp-muted mb-2">
-            .md 파일은 <span className="font-semibold text-gray-700 dark:text-odp-fg">md-editor-rt</span>로
-            편집합니다. 미리보기, 위키 이미지{' '}
-            <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path]]</code> /{' '}
-            <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">![[path|w=50%]]</code>,
-            스니펫 단축키가 이 구성에 맞춰져 있습니다.
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+            .md 파일 편집 엔진을 고릅니다. 저장 포맷은 항상 마크다운 소스입니다.
           </p>
+          <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">에디터 종류</p>
+          <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg mb-4">
+            {EDITOR_TYPE_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="editorType"
+                  value={opt.value}
+                  checked={editorType === opt.value}
+                  onChange={() => {
+                    setEditorTypeState(opt.value);
+                    saveEditorType(opt.value);
+                    onEditorTypeChange?.(opt.value);
+                  }}
+                  className="mt-0.5 shrink-0"
+                />
+                <span>
+                  <span className="font-semibold">{opt.label}</span>
+                  <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                    {opt.description}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div
+            id="settings-export-pdf-preview"
+            tabIndex={-1}
+            className="mt-4 scroll-mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong"
+          >
+            <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
+              Export PDF 미리보기 엔진
+            </p>
+            <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+              인쇄 미리보기(스테이징)에 쓸 렌더러입니다. 기본값은 마크다운 에디터 설정을 따릅니다.
+            </p>
+            <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg mb-4">
+              {EXPORT_PDF_PREVIEW_ENGINE_OPTIONS.map((opt) => (
+                <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="exportPdfPreviewEngine"
+                    value={opt.value}
+                    checked={exportPdfPreviewEngine === opt.value}
+                    onChange={() => {
+                      setExportPdfPreviewEngineState(opt.value);
+                      saveExportPdfPreviewEngine(opt.value);
+                    }}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <span>
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                      {opt.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+          {editorType === EDITOR_TYPE_HAIM ? (
+            <div className="mb-4 rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderStrong dark:bg-odp-bgSoft/40">
+              <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
+                Haim Editor 보기 모드
+              </p>
+              <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+                {HAIM_VIEW_MODE_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="haimViewMode"
+                      value={opt.value}
+                      checked={haimViewMode === opt.value}
+                      onChange={() => {
+                        setHaimViewModeState(opt.value);
+                        saveHaimViewMode(opt.value);
+                      }}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span>
+                      <span className="font-semibold">{opt.label}</span>
+                      <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                        {opt.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-3 text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
+                Haim Editor 목차 레이아웃
+              </p>
+              <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+                {HAIM_TOC_LAYOUT_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="haimTocLayout"
+                      value={opt.value}
+                      checked={haimTocLayout === opt.value}
+                      onChange={() => {
+                        setHaimTocLayoutState(opt.value);
+                        saveHaimTocLayout(opt.value);
+                      }}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span>
+                      <span className="font-semibold">{opt.label}</span>
+                      <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                        {opt.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    편집 블록 점선 테두리
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    WYSIWYG에서 현재 편집 중인 블록을 dashed border로 표시합니다.
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimFocusOutline
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimFocusOutline}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-focus-outline', next);
+                    setHaimFocusOutlineState(next);
+                  }}
+                  aria-label="편집 블록 점선 테두리"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    링크 클릭으로 열기
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    켜면 일반 클릭으로 링크를 엽니다. 끄면 Ctrl/Cmd+클릭으로만 엽니다(기본).
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimLinkOpenOnClick
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimLinkOpenOnClick}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-link-open-on-click', next);
+                    setHaimLinkOpenOnClickState(next);
+                  }}
+                  aria-label="링크 클릭으로 열기"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    코드 블록 줄 번호
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    WYSIWYG lowlight 코드 블록에 줄 번호를 표시합니다(기본 켜짐).
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimCodeLineNumbers
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimCodeLineNumbers}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-code-line-numbers', next);
+                    setHaimCodeLineNumbersState(next);
+                  }}
+                  aria-label="코드 블록 줄 번호"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+              <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    Raw 블록 줄 번호
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                    WYSIWYG raw markdown 블록에 줄 번호를 표시합니다(기본 켜짐).
+                  </p>
+                </div>
+                <Switch.Root
+                  className={
+                    haimRawLineNumbers
+                      ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                      : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+                  }
+                  checked={haimRawLineNumbers}
+                  onCheckedChange={(next) => {
+                    setSettingsToggle('settings-haim-raw-line-numbers', next);
+                    setHaimRawLineNumbersState(next);
+                  }}
+                  aria-label="Raw 블록 줄 번호"
+                >
+                  <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+                </Switch.Root>
+              </div>
+            </div>
+          ) : null}
+          <div className="mt-4 flex items-start justify-between gap-3 border-t border-gray-200 pt-4 dark:border-odp-borderStrong">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                base64 이미지 소스 접기
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                마크다운 소스에서 긴 data:image base64를 접습니다(기본 켜짐). 접힌 칩을 클릭하면
+                해당 페이로드만 펼칩니다.
+              </p>
+            </div>
+            <Switch.Root
+              className={
+                base64ImageFold
+                  ? 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-blue-500 bg-blue-500 shadow-sm outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400'
+                  : 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-transparent bg-gray-300 outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-borderStrong'
+              }
+              checked={base64ImageFold}
+              onCheckedChange={(next) => {
+                setSettingsToggle('settings-base64-image-fold', next);
+                setBase64ImageFoldState(next);
+              }}
+              aria-label="base64 이미지 소스 접기"
+            >
+              <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
+            </Switch.Root>
+          </div>
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong">
             <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
               문서 상단 <code className="px-0.5 rounded bg-gray-100 dark:bg-odp-bgSoft">{'<!-- footnotes {"v":1,"enabled":true} -->'}</code>
@@ -1004,6 +1442,44 @@ export default function SettingsPage({
                 </label>
               ))}
             </div>
+          </div>
+        </div>
+
+        <div
+          id="settings-image-align"
+          tabIndex={-1}
+          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
+        >
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">
+            이미지 정렬
+          </h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+            기존 에디터 미리보기에서 위키 이미지와 마크다운 이미지를 가로로 어떻게 배치할지
+            고릅니다. Haim Editor WYSIWYG·미리보기와 Export PDF는 항상 가운데 정렬입니다.
+            기본값은 가운데입니다.
+          </p>
+          <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+            {EDITOR_IMAGE_ALIGN_OPTIONS.map((opt) => (
+              <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="editorImageAlign"
+                  value={opt.value}
+                  checked={editorImageAlign === opt.value}
+                  onChange={() => {
+                    setEditorImageAlign(opt.value);
+                    setEditorImageAlignState(opt.value);
+                  }}
+                  className="mt-0.5 shrink-0"
+                />
+                <span>
+                  <span className="font-semibold">{opt.label}</span>
+                  <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                    {opt.description}
+                  </span>
+                </span>
+              </label>
+            ))}
           </div>
         </div>
 

@@ -83,7 +83,8 @@ export default function WorkspacePaneSoftCapSettings() {
         </span>
       </div>
       <p className="text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
-        한 워크스페이스에서 동시에 열 수 있는 분할 페인(창)의 최대 개수입니다. 기본값은 4입니다.
+        한 워크스페이스에서 동시에 열 수 있는 분할 페인(창)의 최대 개수입니다. 기본값은
+        4입니다. 페인마다 에디터 인스턴스 비용이 있으므로 상한을 낮추면 더 가벼워집니다.
       </p>
     </div>
   );

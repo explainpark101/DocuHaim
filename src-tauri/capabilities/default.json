@@ -17,6 +17,7 @@
     "core:window:allow-create",
     "core:window:allow-set-focus",
     "core:window:allow-center",
+    "core:window:allow-show",
     "shell:default",
     "core:webview:allow-print",
     "core:window:allow-close",

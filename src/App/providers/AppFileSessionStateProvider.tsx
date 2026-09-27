@@ -109,7 +109,7 @@ export function AppFileSessionStateProvider({ children }: { children: ReactNode 
   const [isSaving, setIsSaving] = useState(false);
   const [savingTabIds, setSavingTabIds] = useState<string[]>([]);
   const savingTabIdsRef = useRef(new Set<string>());
-  const [editorType, setEditorType] = useState(() => loadEditorType());
+  const [editorType, setEditorType] = useState<string>(() => loadEditorType());
   const [encMdPrompt, setEncMdPrompt] = useState<any>(null);
   const [isRefreshingFromDisk, setIsRefreshingFromDisk] = useState(false);
   const [isPullingFromRemote, setIsPullingFromRemote] = useState(false);

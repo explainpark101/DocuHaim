@@ -190,6 +190,19 @@ button {
   border-radius: 0 !important;
   background: transparent !important;
 }
+/* Haim TipTap composer: keep content inside the dock (no note-editor scroll padding). */
+.chat-composer-editor .chat-composer-haim {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.chat-composer-editor .chat-composer-haim .tiptap,
+.chat-composer-editor .chat-composer-haim .ProseMirror {
+  padding-bottom: 0.5rem !important;
+  min-height: 4rem !important;
+}
 .chat-composer-editor .md-editor-toolbar-wrapper,
 .chat-composer-editor .md-editor-toolbar {
   display: flex !important;

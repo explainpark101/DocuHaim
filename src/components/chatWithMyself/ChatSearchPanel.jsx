@@ -52,6 +52,7 @@ import {
   reactionsToSearchText,
   findGroup,
   resolveGroupId,
+  ensureSearchMarkdownRenderer,
 } from '@/utils/chatWithMyself';
 
 const searchFilterSwitchRootClass =
@@ -153,12 +154,22 @@ function SearchResultCard({
   );
   // Text only — do not fall back to raw body (avoids wiki tokens as markdown + duplicate media).
   const previewSource = text.trim();
+  const [mdReady, setMdReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void ensureSearchMarkdownRenderer().then(() => {
+      if (!cancelled) setMdReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const html = useMemo(
     () =>
       renderSearchResultHtml(previewSource, query, result.ogSearchText || '', {
         markdown: result.markdown === true || result.markdown === '1',
       }),
-    [previewSource, result.ogSearchText, result.markdown, query],
+    [previewSource, result.ogSearchText, result.markdown, query, mdReady],
   );
   const attachmentMarkdown = useMemo(
     () => chatAttachmentsToMarkdown(attachments),

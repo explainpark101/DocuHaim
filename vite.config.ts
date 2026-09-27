@@ -7,6 +7,13 @@ import { fileURLToPath } from 'node:url';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 import { VitePWA } from 'vite-plugin-pwa';
+import type { OutputAsset, OutputBundle, OutputChunk } from 'rollup';
+import {
+  BOOT_MANIFEST_SCRIPT_ID,
+  labelForBootFile,
+  type BootManifest,
+  type BootManifestAsset,
+} from './src/boot/bootManifest';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const isElectron = process.env.VITE_ELECTRON === 'true';
@@ -52,6 +59,196 @@ function emitBuildIdPlugin(): Plugin {
         fileName: 'build-id.json',
         source: payload,
       });
+    },
+  };
+}
+
+function collectBootAssetHrefs(html: string): string[] {
+  const hrefs: string[] = [];
+  const push = (raw: string | undefined) => {
+    if (!raw) return;
+    const href = raw.trim();
+    if (!href || href.startsWith('data:')) return;
+    hrefs.push(href);
+  };
+
+  for (const tag of html.matchAll(/<link\b[^>]*>/gi)) {
+    const el = tag[0] || '';
+    const rel = el.match(/\brel\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase() || '';
+    if (!rel.includes('modulepreload') && !rel.includes('stylesheet')) continue;
+    push(el.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1]);
+  }
+  for (const tag of html.matchAll(/<script\b[^>]*>/gi)) {
+    const el = tag[0] || '';
+    if (!/\btype\s*=\s*["']module["']/i.test(el)) continue;
+    push(el.match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1]);
+  }
+  return [...new Set(hrefs)];
+}
+
+function hrefToBundleFileName(href: string): string {
+  let pathPart = href.split('?')[0] || href;
+  try {
+    if (/^https?:\/\//i.test(pathPart)) {
+      pathPart = new URL(pathPart).pathname;
+    }
+  } catch {
+    // keep pathPart
+  }
+  const baseNoSlash = normalizedBase.replace(/\/$/, '') || '';
+  if (baseNoSlash && pathPart.startsWith(baseNoSlash)) {
+    pathPart = pathPart.slice(baseNoSlash.length);
+  }
+  return pathPart.replace(/^\//, '');
+}
+
+function bundleEntryBytes(entry: OutputChunk | OutputAsset): number {
+  if (entry.type === 'chunk') {
+    return Buffer.byteLength(entry.code, 'utf8');
+  }
+  if (typeof entry.source === 'string') {
+    return Buffer.byteLength(entry.source, 'utf8');
+  }
+  return entry.source.byteLength;
+}
+
+const EARLY_BOOT_ENTRY = path.resolve(rootDir, 'src/boot/earlyBoot.ts');
+const INDEX_HTML_ENTRY = path.resolve(rootDir, 'index.html');
+
+function findEarlyBootFileName(bundle?: OutputBundle): string | undefined {
+  if (!bundle) return undefined;
+  for (const item of Object.values(bundle)) {
+    if (item.type !== 'chunk' || !item.isEntry) continue;
+    if (item.name === 'earlyBoot') return item.fileName;
+    const facade = (item.facadeModuleId || '').replace(/\\/g, '/');
+    if (facade.includes('/boot/earlyBoot')) return item.fileName;
+  }
+  return undefined;
+}
+
+function toHtmlPublicUrl(fileOrPath: string): string {
+  const cleaned = fileOrPath.replace(/^\//, '');
+  const base = normalizedBase.endsWith('/') ? normalizedBase : `${normalizedBase}/`;
+  return `${base}${cleaned}`;
+}
+
+function htmlAlreadyHasEarlyBoot(html: string): boolean {
+  return /(?:\/src\/boot\/earlyBoot\.[^"']+|earlyBoot-[^"'/]+\.js)/i.test(html);
+}
+
+/** Ensure earlyBoot module runs before the main app graph (stable splash progress). */
+function injectEarlyBootScript(html: string, src: string): string {
+  if (htmlAlreadyHasEarlyBoot(html)) return html;
+  const tag = `    <script type="module" crossorigin src="${src}"></script>\n`;
+  const moduleSrcRe = /<script\b(?=[^>]*\btype\s*=\s*["']module["'])(?=[^>]*\bsrc\s*=)[^>]*>/i;
+  const match = moduleSrcRe.exec(html);
+  if (match?.index != null) {
+    return html.slice(0, match.index) + tag + html.slice(match.index);
+  }
+  return html.replace(/<\/head>/i, `${tag}  </head>`);
+}
+
+/**
+ * Build-time boot splash budget: sizes of index.html critical assets
+ * (modulepreload + entry modules + CSS). Embedded into HTML + boot-manifest.json.
+ * Also forces `earlyBoot` as a separate Rollup entry and injects it first.
+ */
+function bootManifestPlugin(): Plugin {
+  let lastManifest: BootManifest | null = null;
+
+  return {
+    name: 'boot-manifest',
+    config() {
+      // Replacing rollup input requires keeping index.html or Vite drops the HTML entry.
+      return {
+        build: {
+          rollupOptions: {
+            input: {
+              index: INDEX_HTML_ENTRY,
+              earlyBoot: EARLY_BOOT_ENTRY,
+            },
+          },
+        },
+      };
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const bundle: OutputBundle | undefined = ctx.bundle;
+        const earlyBootFile = findEarlyBootFileName(bundle);
+        const earlyBootSrc = earlyBootFile
+          ? toHtmlPublicUrl(earlyBootFile)
+          : '/src/boot/earlyBoot.ts';
+        let next = injectEarlyBootScript(html, earlyBootSrc);
+
+        const hrefs = collectBootAssetHrefs(next);
+        const assets: BootManifestAsset[] = [];
+        const seen = new Set<string>();
+
+        const pushAsset = (file: string, bytes: number) => {
+          const key = file.replace(/^\//, '');
+          if (!key || seen.has(key)) return;
+          seen.add(key);
+          assets.push({
+            file: key,
+            bytes,
+            label: labelForBootFile(key),
+          });
+        };
+
+        for (const href of hrefs) {
+          const file = hrefToBundleFileName(href);
+          if (!file || file.startsWith('src/')) {
+            // Dev: /src/main.tsx etc. — no stable size; skip byte budget.
+            continue;
+          }
+          const entry = bundle?.[file];
+          pushAsset(file, entry ? bundleEntryBytes(entry) : 0);
+        }
+
+        // Prefer assets with known sizes; if bundle missing (dev), keep empty.
+        const withSize = assets.filter((a) => a.bytes > 0);
+        const list = withSize.length > 0 ? withSize : assets;
+        const totalBytes = list.reduce((sum, a) => sum + a.bytes, 0);
+        const manifest: BootManifest = {
+          version: 1,
+          generatedAt: new Date().toISOString(),
+          totalBytes,
+          assets: list,
+        };
+        lastManifest = manifest;
+
+        const json = JSON.stringify(manifest);
+        const tag =
+          `<script type="application/json" id="${BOOT_MANIFEST_SCRIPT_ID}">` +
+          `${json}` +
+          `</script>`;
+        // Prefer putting the budget JSON before deferred module scripts so it
+        // is always in the DOM when earlyBoot reads it.
+        if (next.includes(`id="${BOOT_MANIFEST_SCRIPT_ID}"`)) {
+          next = next.replace(
+            new RegExp(
+              `<script type="application/json" id="${BOOT_MANIFEST_SCRIPT_ID}">[\\s\\S]*?</script>`,
+              'i',
+            ),
+            tag,
+          );
+        } else {
+          const earlyBootTagRe =
+            /<script\b[^>]*\bsrc\s*=\s*["'][^"']*earlyBoot[^"']*["'][^>]*>\s*<\/script>/i;
+          if (earlyBootTagRe.test(next)) {
+            next = next.replace(earlyBootTagRe, `${tag}\n$&`);
+          } else {
+            next = next.replace(/<\/head>/i, `    ${tag}\n  </head>`);
+          }
+        }
+        return next;
+      },
+    },
+    writeBundle(outputOptions) {
+      if (!lastManifest || !outputOptions.dir) return;
+      const outPath = path.join(outputOptions.dir, 'boot-manifest.json');
+      fs.writeFileSync(outPath, `${JSON.stringify(lastManifest, null, 2)}\n`, 'utf8');
     },
   };
 }
@@ -297,6 +494,7 @@ const plugins: PluginOption[] = [
   }),
   tailwindcss(),
   emitBuildIdPlugin(),
+  bootManifestPlugin(),
   docsTrailingSlashPlugin(),
   syncLucivyPublicAssetsPlugin(),
   coiHtmlPlugin(),
@@ -421,6 +619,43 @@ function manualChunks(id: string): string | undefined {
   const normalizedId = id.replace(/\\/g, '/');
   if (!normalizedId.includes('/node_modules/')) return;
 
+  // Keep markdown-it out of vendor-md-editor so Advanced Search boot
+  // does not modulepreload the full md-editor-rt graph.
+  if (normalizedId.includes('/node_modules/markdown-it')) {
+    return 'vendor-markdown-it';
+  }
+  if (normalizedId.includes('/node_modules/katex/')) {
+    return 'vendor-katex';
+  }
+  // Shared by TipTap code-block and @git-diff-view. Keeping these inside
+  // vendor-tiptap while also forcing vendor-git-diff-view creates
+  // Circular chunk: vendor-tiptap <-> vendor-git-diff-view and TDZ crashes
+  // ("Cannot access 'gr' before initialization").
+  if (
+    normalizedId.includes('/node_modules/highlight.js/') ||
+    normalizedId.includes('/node_modules/lowlight/') ||
+    normalizedId.includes('/node_modules/@git-diff-view/lowlight/')
+  ) {
+    return 'vendor-highlight';
+  }
+  if (
+    normalizedId.includes('/node_modules/@tiptap/') ||
+    normalizedId.includes('/node_modules/prosemirror-') ||
+    normalizedId.includes('/node_modules/yjs/') ||
+    normalizedId.includes('/node_modules/y-protocols/') ||
+    normalizedId.includes('/node_modules/lib0/')
+  ) {
+    return 'vendor-tiptap';
+  }
+  // Keep CodeMirror out of vendor-md-editor. Shared CM modules otherwise land in
+  // the md-editor TLA chunk; importers that do not await __tla see undefined
+  // StateField / Facet and crash on `.define()`.
+  if (
+    normalizedId.includes('/node_modules/@codemirror/') ||
+    normalizedId.includes('/node_modules/@lezer/')
+  ) {
+    return 'vendor-codemirror';
+  }
   if (
     normalizedId.includes('/node_modules/md-editor-rt/') ||
     normalizedId.includes('/node_modules/@vavt/')
@@ -436,6 +671,9 @@ function manualChunks(id: string): string | undefined {
   if (normalizedId.includes('/node_modules/pagedjs/')) {
     return 'vendor-pagedjs';
   }
+  if (normalizedId.includes('/node_modules/jsqr/')) {
+    return 'vendor-jsqr';
+  }
   if (
     normalizedId.includes('/node_modules/@aws-sdk/') ||
     normalizedId.includes('/node_modules/@smithy/')
@@ -449,7 +687,9 @@ function manualChunks(id: string): string | undefined {
     return 'vendor-monaco';
   }
   if (
-    normalizedId.includes('/node_modules/@git-diff-view/')
+    normalizedId.includes('/node_modules/@git-diff-view/core/') ||
+    normalizedId.includes('/node_modules/@git-diff-view/file/') ||
+    normalizedId.includes('/node_modules/@git-diff-view/react/')
   ) {
     return 'vendor-git-diff-view';
   }
@@ -501,6 +741,9 @@ function manualChunks(id: string): string | undefined {
     normalizedId.includes('/node_modules/react-dom/') ||
     normalizedId.includes('/node_modules/react-router/') ||
     normalizedId.includes('/node_modules/scheduler/') ||
+    // Shared by React 18+ and @git-diff-view; must not land in vendor-git-diff-view
+    // or vendor-tiptap will import that chunk and risk circular TDZ.
+    normalizedId.includes('/node_modules/use-sync-external-store/') ||
     /\/node_modules\/react\//.test(normalizedId)
   ) {
     return 'vendor-react';
