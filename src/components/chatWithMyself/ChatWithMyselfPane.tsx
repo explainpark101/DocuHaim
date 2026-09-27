@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useLocation } from 'react-router';
+import type { S3Client } from '@aws-sdk/client-s3';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import {
   CalendarDays,
@@ -28,6 +36,7 @@ import ChatRailShell from '@/components/chatWithMyself/ChatRailShell';
 import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
 import { ChatUiPrefsProvider } from '@/components/chatWithMyself/ChatUiPrefsContext';
+import type { ShareComposeClaimPayload } from '@/components/chatWithMyself/ShareTargetGate';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import PromptModal from '@/components/modals/PromptModal';
 import { useChatActivityStatus } from '@/components/chatWithMyself/useChatActivityStatus';
@@ -35,6 +44,7 @@ import {
   useChatRemoteSync,
   mergeMessagesForDate,
 } from '@/components/chatWithMyself/useChatRemoteSync';
+import type { ChatStorageCtx } from '@/utils/chatWithMyself/backends';
 import {
   SELF_GROUP,
   addGroup,
@@ -120,7 +130,81 @@ import {
 } from '@/utils/advancedSearch/settingsToggles';
 import { registerChatActions } from '@/utils/advancedSearch/chatActions';
 
-async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
+/** Loose vault tree node used by chat note/folder checks. */
+type ChatTreeNode = {
+  type?: string;
+  path?: string;
+  name?: string;
+  children?: ChatTreeNode[];
+  [key: string]: unknown;
+};
+
+type ChatMessageLike = {
+  id?: string;
+  at?: string;
+  group?: string;
+  body?: string;
+  reactions?: unknown;
+  [key: string]: unknown;
+};
+
+type ChatSearchFilters = {
+  groupFilter?: string;
+  dateFilter?: string;
+  fromDt?: string;
+  toDt?: string;
+  noReactionsOnly?: boolean;
+  query?: string;
+  [key: string]: unknown;
+};
+
+type OutgoingAttachment = {
+  file: File | Blob;
+  background: unknown;
+};
+
+export type ChatWithMyselfPaneProps = {
+  storageMode: string;
+  getS3Client?: (() => S3Client | null) | null;
+  s3Bucket?: string | null;
+  localRootHandle?: FileSystemDirectoryHandle | null;
+  webdavConfig?: ChatStorageCtx['webdavConfig'] | null;
+  theme?: string;
+  isMobileLayout?: boolean;
+  sidebarOpen?: boolean;
+  onOpenSidebar?: () => void;
+  s3Tree?: ChatTreeNode[];
+  localTree?: ChatTreeNode[];
+  webdavTree?: ChatTreeNode[];
+  idbTree?: ChatTreeNode[];
+  onRequestCreateFolderForNote?: (
+    parentPath: string,
+    parentDirHandle: FileSystemDirectoryHandle | null,
+  ) => void;
+  onRequestMoveFolder?: (...args: unknown[]) => unknown;
+  onCreateNoteFromMessage?: (...args: unknown[]) => unknown;
+  selectPathAfterCreateFolder?: string | null;
+  onSelectPathAfterCreateFolderApplied?: () => void;
+  getPresignedUrlForPath?: (path: string) => Promise<string | null> | string | null;
+  onDropOnFolder?: (...args: unknown[]) => unknown;
+  dropTarget?: unknown;
+  onLoadLocalFolderChildren?: (...args: unknown[]) => unknown;
+  localFolderLoadingPath?: string | null;
+  shareGroupSend?: ShareComposeClaimPayload | null;
+  onShareGroupSendConsumed?: (id: string) => void;
+  onOpenNote?: (...args: unknown[]) => unknown;
+  onAttachDropHostChange?: (node: HTMLElement | null) => void;
+  onRegisterTreeAttachDrop?: (...args: unknown[]) => unknown;
+  isActive?: boolean;
+};
+
+async function matchesFilters(
+  msg: ChatMessageLike,
+  dateStr: string,
+  filters: ChatSearchFilters | null | undefined,
+  ogStorage: unknown,
+  groups: unknown[] = [],
+): Promise<{ ok: boolean; ogSearchText: string }> {
   if (!filters) return { ok: true, ogSearchText: '' };
   if (filters.groupFilter && filters.groupFilter !== '__all__') {
     if (!groupMatches(groups, msg.group || SELF_GROUP, filters.groupFilter)) {
@@ -132,13 +216,13 @@ async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
   }
   if (filters.fromDt) {
     const from = new Date(filters.fromDt).getTime();
-    if (!Number.isNaN(from) && new Date(msg.at).getTime() < from) {
+    if (!Number.isNaN(from) && new Date(String(msg.at)).getTime() < from) {
       return { ok: false, ogSearchText: '' };
     }
   }
   if (filters.toDt) {
     const to = new Date(filters.toDt).getTime();
-    if (!Number.isNaN(to) && new Date(msg.at).getTime() > to) {
+    if (!Number.isNaN(to) && new Date(String(msg.at)).getTime() > to) {
       return { ok: false, ogSearchText: '' };
     }
   }
@@ -156,7 +240,10 @@ async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
     const localHaystacks = [
       body,
       group,
-      ...attachments.flatMap((att) => [att.name || '', att.path || '']),
+      ...attachments.flatMap((att: { name?: string; path?: string }) => [
+        att.name || '',
+        att.path || '',
+      ]),
       reactionSearchText,
     ];
     if (fuzzyMatchTokensInHaystacks(localHaystacks, filters.query)) {
@@ -171,19 +258,22 @@ async function matchesFilters(msg, dateStr, filters, ogStorage, groups = []) {
   return { ok: true, ogSearchText: '' };
 }
 
-function normalizeOutgoingAttachments(items) {
+function normalizeOutgoingAttachments(items: unknown): OutgoingAttachment[] {
   return (Array.isArray(items) ? items : [])
-    .map((item) => {
+    .map((item: unknown) => {
       if (!item) return null;
       if (item instanceof File || item instanceof Blob) {
         return { file: item, background: null };
       }
-      if (item.file instanceof File || item.file instanceof Blob) {
-        return { file: item.file, background: item.background || null };
+      if (typeof item === 'object' && item !== null && 'file' in item) {
+        const typed = item as { file?: unknown; background?: unknown };
+        if (typed.file instanceof File || typed.file instanceof Blob) {
+          return { file: typed.file, background: typed.background || null };
+        }
       }
       return null;
     })
-    .filter(Boolean);
+    .filter((item): item is OutgoingAttachment => Boolean(item));
 }
 
 /** Prefer enough history on first paint so viewport fill rarely day-steps. */
@@ -197,18 +287,17 @@ const FILL_BATCH_DAYS = 3;
  * message exists, then until minMessages / maxDays / end of keys.
  * Empty "today" must not hide older history. Short leftovers may still be
  * topped up by ChatMessageList silent fill when content does not overflow.
- *
- * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
- * @param {string[]} dayKeysNewestFirst
- * @param {{ minMessages?: number, maxDays?: number, startIndex?: number }} [opts]
- * @returns {Promise<{ messages: import('@/utils/chatWithMyself/format.js').ChatMessage[], loadedDayIndex: number }>}
  */
-async function readMessagesForInitialWindow(ctx, dayKeysNewestFirst, opts = {}) {
+async function readMessagesForInitialWindow(
+  ctx: ChatStorageCtx,
+  dayKeysNewestFirst: string[],
+  opts: { minMessages?: number; maxDays?: number; startIndex?: number } = {},
+): Promise<{ messages: ChatMessageLike[]; loadedDayIndex: number }> {
   const minMessages = Math.max(1, Number(opts.minMessages) || INITIAL_MIN_MESSAGES);
   const maxDays = Math.max(1, Number(opts.maxDays) || INITIAL_MAX_DAYS);
   const keys = Array.isArray(dayKeysNewestFirst) ? dayKeysNewestFirst : [];
   let loadedDayIndex = Math.max(0, Number(opts.startIndex) || 0);
-  let messages = [];
+  let messages: ChatMessageLike[] = [];
   let daysRead = 0;
 
   while (loadedDayIndex < keys.length && messages.length === 0) {
@@ -252,6 +341,7 @@ export default function ChatWithMyselfPane({
   s3Tree = [],
   localTree = [],
   webdavTree = [],
+  idbTree = [],
   onRequestCreateFolderForNote,
   onRequestMoveFolder,
   onCreateNoteFromMessage,
@@ -268,9 +358,12 @@ export default function ChatWithMyselfPane({
   onAttachDropHostChange,
   onRegisterTreeAttachDrop,
   isActive = true,
-}) {
+}: ChatWithMyselfPaneProps): ReactNode {
   const location = useLocation();
   const ctx = useMemo(() => {
+    if (storageMode === 'idb') {
+      return { mode: 'idb' };
+    }
     if (storageMode === 'local') {
       return { mode: 'local', localRootHandle };
     }
@@ -285,6 +378,7 @@ export default function ChatWithMyselfPane({
   }, [storageMode, getS3Client, s3Bucket, localRootHandle, webdavConfig]);
 
   const storageReady =
+    ctx.mode === 'idb' ||
     (ctx.mode === 's3' && ctx.client && ctx.bucket) ||
     (ctx.mode === 'local' && ctx.localRootHandle) ||
     (ctx.mode === 'webdav' &&
@@ -296,10 +390,11 @@ export default function ChatWithMyselfPane({
   );
 
   const fileTree = useMemo(() => {
+    if (storageMode === 'idb') return idbTree || [];
     if (storageMode === 'local') return localTree || [];
     if (storageMode === 'webdav') return webdavTree || [];
     return s3Tree || [];
-  }, [storageMode, s3Tree, localTree, webdavTree]);
+  }, [storageMode, s3Tree, localTree, webdavTree, idbTree]);
 
   const setAttachDropHostNode = useCallback(
     (node) => {
@@ -355,18 +450,22 @@ export default function ChatWithMyselfPane({
   const remotePoll = ctx.mode === 's3' || ctx.mode === 'webdav';
 
   const storageNotReadyHint =
-    storageMode === 'local'
-      ? '로컬 폴더를 연 뒤 채팅을 사용할 수 있습니다.'
-      : storageMode === 'webdav'
-        ? '설정에서 WebDAV 연결 정보를 저장한 뒤 채팅을 사용할 수 있습니다.'
-        : 'S3에 로그인한 뒤 채팅을 사용할 수 있습니다.';
+    storageMode === 'idb'
+      ? 'IDB Haim을 사용할 수 없습니다.'
+      : storageMode === 'local'
+        ? '로컬 폴더를 연 뒤 채팅을 사용할 수 있습니다.'
+        : storageMode === 'webdav'
+          ? '설정에서 WebDAV 연결 정보를 저장한 뒤 채팅을 사용할 수 있습니다.'
+          : 'S3에 로그인한 뒤 채팅을 사용할 수 있습니다.';
 
   const storageSendErrorHint =
-    storageMode === 'local'
-      ? '로컬 폴더를 먼저 열어주세요.'
-      : storageMode === 'webdav'
-        ? 'WebDAV 연결 정보가 필요합니다.'
-        : 'S3 자격 증명이 필요합니다.';
+    storageMode === 'idb'
+      ? 'IDB Haim 저장소를 사용할 수 없습니다.'
+      : storageMode === 'local'
+        ? '로컬 폴더를 먼저 열어주세요.'
+        : storageMode === 'webdav'
+          ? 'WebDAV 연결 정보가 필요합니다.'
+          : 'S3 자격 증명이 필요합니다.';
 
   const ogStorage = useMemo(
     () => (storageReady ? createOgStorageAdapters(ctx) : null),
@@ -2873,9 +2972,15 @@ export default function ChatWithMyselfPane({
       <ChatAddToNoteModal
         isOpen={Boolean(addToNoteMessage)}
         message={addToNoteMessage}
-        storageType={storageMode === 'local' ? 'local' : 's3'}
+        storageType={
+          storageMode === 'local' || storageMode === 'idb' || storageMode === 'webdav'
+            ? storageMode
+            : 's3'
+        }
         s3Tree={s3Tree}
         localTree={localTree}
+        idbTree={idbTree}
+        webdavTree={webdavTree}
         localRootHandle={localRootHandle}
         timeZone={timeZone}
         isSubmitting={addToNoteSubmitting}

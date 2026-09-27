@@ -74,6 +74,7 @@ import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
+  STORAGE_MODE_IDB,
 } from '@/utils/storageSettings';
 
 function isAbortOrNetworkError(e) {
@@ -113,6 +114,7 @@ export function useFileSessionDomain() {
     s3Tree,
     localTree,
     webdavTree,
+    idbTree,
     localRootHandle,
     localVaultFsPath,
     webdavConfig,
@@ -122,6 +124,7 @@ export function useFileSessionDomain() {
     loadS3Files,
     refreshLocalTree,
     refreshWebdavTree,
+    refreshIdbTree,
     upsertSessionWorkspace,
   } = useVault();
 
@@ -417,6 +420,28 @@ export function useFileSessionDomain() {
     };
 
     try {
+      if (type === 'idb') {
+        try {
+          const ok = markAsLoading();
+          if (!ok) return;
+
+          const backend = getBackendForType('idb');
+          const opened = await openPathFileFromBackend({ backend, type: 'idb', node });
+          if (!opened) return;
+          let { currentFile: openedFile, editorContent: content } = opened;
+          if (opened.needsEncMdPassword) {
+            const plain = await unlockEncMdOrPrompt(node.path, opened.encMdCiphertext);
+            if (plain == null) return;
+            content = plain;
+            openedFile = { ...openedFile, content: plain, encMd: true };
+          }
+          commit(openedFile, content);
+        } catch (err) {
+          console.error('IDB Read Error:', err);
+        }
+        return;
+      }
+
       if (type === 'webdav') {
       if (!webdavReady) return;
       try {
@@ -945,6 +970,8 @@ export function useFileSessionDomain() {
       } else if (type === STORAGE_MODE_WEBDAV) {
         node =
           findFileNodeByPath(webdavTree, path) || findNodeByPath(webdavTree, path);
+      } else if (type === STORAGE_MODE_IDB) {
+        node = findFileNodeByPath(idbTree, path) || findNodeByPath(idbTree, path);
       } else if (type === STORAGE_MODE_S3) {
         node = findFileNodeByPath(s3Tree, path) || findNodeByPath(s3Tree, path);
       }
@@ -958,6 +985,7 @@ export function useFileSessionDomain() {
       storageMode,
       localTree,
       webdavTree,
+      idbTree,
       s3Tree,
       localRootHandle,
       navigate,
@@ -1187,6 +1215,24 @@ export function useFileSessionDomain() {
           sessionFile: fileToSave,
           content: vaultBody,
         });
+      } else if (fileToSave.type === 'idb') {
+        const backend = getBackendForType('idb');
+        await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
+        await deleteMemoDraft(getDraftKey('idb', fileToSave.id));
+        await refreshIdbTree();
+        const savedByteLength = new TextEncoder().encode(vaultBody).length;
+        setCurrentFile((prev) => {
+          if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
+          const next = { ...prev, content: textToSave, size: savedByteLength };
+          currentFileRef.current = next;
+          return next;
+        });
+        applySavedContentToTab({ size: savedByteLength });
+        notifyAdvancedSearchChange({
+          type: 'file',
+          path: fileToSave.id,
+          content: isEncMdPath(fileToSave.id) ? '' : textToSave,
+        });
       } else if (fileToSave.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
         await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
@@ -1267,6 +1313,7 @@ export function useFileSessionDomain() {
     loadS3Files,
     webdavConfig,
     refreshWebdavTree,
+    refreshIdbTree,
     refreshLocalTree,
     getBackendForType,
     localVaultFsPath,
@@ -1387,7 +1434,13 @@ export function useFileSessionDomain() {
 
   const refreshRemoteFile = useCallback(async () => {
     const fileToRefresh = currentFileRef.current;
-    if (!fileToRefresh || (fileToRefresh.type !== 's3' && fileToRefresh.type !== 'webdav')) return;
+    if (
+      !fileToRefresh ||
+      (fileToRefresh.type !== 's3' &&
+        fileToRefresh.type !== 'webdav' &&
+        fileToRefresh.type !== 'idb')
+    )
+      return;
     if (isEncMdPath(fileToRefresh.id) || isEncMdPath(fileToRefresh.name)) return;
     const viewer = fileToRefresh.viewer || 'markdown';
     const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
@@ -1718,6 +1771,28 @@ export function useFileSessionDomain() {
             ...(hasUnsaved ? { content: editorContent } : {}),
           };
         }
+      } else if (currentFile.type === 'idb') {
+        const backend = getBackendForType('idb');
+        const oldKey = currentFile.id;
+        const lastSlash = oldKey.lastIndexOf('/');
+        const dirPrefix = lastSlash >= 0 ? oldKey.slice(0, lastSlash + 1) : '';
+        const newKey = dirPrefix + trimmed;
+        if (newKey !== oldKey) {
+          const hasUnsaved = currentFile.content !== editorContent;
+          if (hasUnsaved) {
+            await backend.writeText(newKey, editorContent, 'text/markdown');
+            await backend.delete(oldKey);
+          } else {
+            await backend.move(oldKey, newKey);
+          }
+          await refreshIdbTree();
+          updated = {
+            ...currentFile,
+            id: newKey,
+            name: trimmed,
+            ...(hasUnsaved ? { content: editorContent } : {}),
+          };
+        }
       }
       if (updated) {
         return applyOpenFileIdentityChange(updated);
@@ -1735,6 +1810,8 @@ export function useFileSessionDomain() {
     upsertSessionWorkspace,
     webdavConfig,
     refreshWebdavTree,
+    refreshIdbTree,
+    getBackendForType,
     applyOpenFileIdentityChange,
   ]);
 

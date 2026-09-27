@@ -1,4 +1,4 @@
-export type StorageScopeMode = 's3' | 'local' | 'webdav';
+export type StorageScopeMode = 's3' | 'local' | 'webdav' | 'idb';
 
 export type StorageScopeInput = {
   mode?: string | null;
@@ -12,16 +12,19 @@ export type StorageScopeInput = {
 };
 
 function normalizeMode(mode?: string | null): StorageScopeMode {
-  if (mode === 'local' || mode === 'webdav') return mode;
+  if (mode === 'local' || mode === 'webdav' || mode === 'idb') return mode;
   return 's3';
 }
 
 /**
  * Stable cache/identity key for the active storage backend.
- * Keeps S3 / Local / WebDAV (and distinct buckets/folders/servers) isolated.
+ * Keeps S3 / Local / WebDAV / IDB (and distinct buckets/folders/servers) isolated.
  */
 export function getStorageScopeId(input?: StorageScopeInput | null): string {
   const mode = normalizeMode(input?.mode);
+  if (mode === 'idb') {
+    return 'idb:default';
+  }
   if (mode === 'local') {
     const name = String(input?.localRootHandle?.name || '').trim();
     return name ? `local:${encodeURIComponent(name)}` : 'local';
@@ -42,6 +45,9 @@ export function tryGetStorageScopeId(
   input?: StorageScopeInput | null,
 ): string | null {
   const mode = normalizeMode(input?.mode);
+  if (mode === 'idb') {
+    return 'idb:default';
+  }
   if (mode === 'local') {
     const name = String(input?.localRootHandle?.name || '').trim();
     return name ? `local:${encodeURIComponent(name)}` : null;

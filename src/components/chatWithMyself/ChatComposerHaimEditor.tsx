@@ -82,6 +82,8 @@ export default function ChatComposerHaimEditor({
   onChangeRef.current = onChange;
   const valueRef = useRef(value);
   valueRef.current = value;
+  /** Skip parent value echo so in-flight typing is not stomped. */
+  const lastEmittedMdRef = useRef(value || '');
   const composingRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -114,7 +116,11 @@ export default function ChatComposerHaimEditor({
   const emitMarkdown = useCallback(() => {
     if (!editor) return;
     const md = getCachedMarkdown(editor);
-    if (md !== valueRef.current) onChangeRef.current(md);
+    lastEmittedMdRef.current = md;
+    if (md !== valueRef.current) {
+      valueRef.current = md;
+      onChangeRef.current(md);
+    }
   }, [editor]);
 
   useEffect(() => {
@@ -136,7 +142,7 @@ export default function ChatComposerHaimEditor({
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;
         emitMarkdown();
-      }, 120);
+      }, 300);
     };
     editor.on('update', onUpdate);
     return () => {
@@ -147,13 +153,19 @@ export default function ChatComposerHaimEditor({
     };
   }, [editor, emitMarkdown]);
 
-  // External value (clear after send, edit target load)
+  // External value (clear after send, edit target load) — never re-apply our echo.
   useEffect(() => {
     if (!editor) return;
+    const next = value || '';
+    if (next === lastEmittedMdRef.current) return;
     const current = getCachedMarkdown(editor);
-    if (current === (value || '')) return;
+    if (current === next) {
+      lastEmittedMdRef.current = next;
+      return;
+    }
+    lastEmittedMdRef.current = next;
     invalidateMarkdownCache(editor);
-    editor.commands.setContent(value || '', {
+    editor.commands.setContent(next, {
       contentType: 'markdown',
       emitUpdate: false,
     } as never);

@@ -39,6 +39,7 @@ export type MoveFileModalProps = {
   s3Tree?: MoveFileTreeNode[] | null;
   localTree?: MoveFileTreeNode[] | null;
   webdavTree?: MoveFileTreeNode[] | null;
+  idbTree?: MoveFileTreeNode[] | null;
   localRootHandle?: FileSystemDirectoryHandle | null;
   currentFile?: MoveFileSubject | null;
   fileToMove?: MoveFileSubject | null;
@@ -172,6 +173,7 @@ export function MoveFileModal({
   s3Tree,
   localTree,
   webdavTree = [],
+  idbTree = [],
   localRootHandle,
   currentFile,
   fileToMove,
@@ -186,7 +188,8 @@ export function MoveFileModal({
 
   const isS3 = storageType === 's3';
   const isWebdav = storageType === 'webdav';
-  const tree = isS3 ? s3Tree : isWebdav ? webdavTree : localTree;
+  const isIdb = storageType === 'idb';
+  const tree = isS3 ? s3Tree : isWebdav ? webdavTree : isIdb ? idbTree : localTree;
 
   const [selectedFolder, setSelectedFolder] = useState<MoveFileTreeNode | null>(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
@@ -268,7 +271,7 @@ export function MoveFileModal({
 
   const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
   const parentDirHandle = selectedRoot ? localRootHandle : selectedFolder?.handle;
-  const canCreateFolder = isS3 || isWebdav || parentDirHandle != null;
+  const canCreateFolder = isS3 || isWebdav || isIdb || parentDirHandle != null;
 
   const handleRequestCreateFolder = () => {
     if (!canCreateFolder || !onRequestCreateFolder) return;
@@ -278,7 +281,7 @@ export function MoveFileModal({
   const handleSubmit = () => {
     if (!onConfirm) return;
 
-    if (isS3 || isWebdav) {
+    if (isS3 || isWebdav || isIdb) {
       const destPath = selectedRoot ? '' : selectedFolder?.path || '';
       void onConfirm({
         path: destPath,
@@ -294,7 +297,9 @@ export function MoveFileModal({
   };
 
   const canSubmit =
-    isS3 || isWebdav ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
+    isS3 || isWebdav || isIdb
+      ? true
+      : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
 
   return (
     <Modal

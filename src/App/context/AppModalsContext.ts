@@ -91,6 +91,24 @@ export type AppModalsValue = {
   createModalTree: any;
   ensureCreateModalFolderLoaded: (...args: any[]) => any;
   handleCreateItemSubmit: (...args: any[]) => any;
+  firstNoteWelcomeOpen: boolean;
+  dismissFirstNoteWelcome: () => void;
+  handleCreateFirstNote: () => void;
+  idbSyncLocalConfirm: {
+    isOpen: boolean;
+    dirHandle: FileSystemDirectoryHandle | null;
+    tauriPath: string | null;
+  };
+  handleConfirmOpenAsLocalHaim: () => void | Promise<void>;
+  handleCancelOpenAsLocalHaim: () => void;
+  zipInstructOpen: boolean;
+  handleCloseZipInstruct: () => void;
+  handleExportVaultToFolder: () => void | Promise<unknown>;
+  handleExportVaultAsZip: () => void | Promise<unknown>;
+  handleIdbSyncToLocalFolder: () => void | Promise<unknown>;
+  canUseDirectoryExport: boolean;
+  isVaultExportReady: boolean;
+  exportBusy: boolean;
 };
 
 export const AppModalsContext = createContext<AppModalsValue | null>(null);

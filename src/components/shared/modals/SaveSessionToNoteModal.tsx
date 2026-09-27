@@ -16,6 +16,7 @@ type Props = {
   s3Tree?: TreeNodeLike[];
   localTree?: TreeNodeLike[];
   webdavTree?: TreeNodeLike[];
+  idbTree?: TreeNodeLike[];
   localRootHandle?: FileSystemDirectoryHandle | null;
   defaultFileName?: string;
   /** Vault-relative parent folder (trailing `/`) to pre-select on open. */
@@ -129,6 +130,7 @@ export default function SaveSessionToNoteModal({
   s3Tree = [],
   localTree = [],
   webdavTree = [],
+  idbTree = [],
   localRootHandle = null,
   defaultFileName = 'untitled.md',
   defaultParentPath = '',
@@ -141,7 +143,8 @@ export default function SaveSessionToNoteModal({
 }: Props) {
   const isS3 = storageType === 's3';
   const isWebdav = storageType === 'webdav';
-  const tree = isS3 ? s3Tree : isWebdav ? webdavTree : localTree;
+  const isIdb = storageType === 'idb';
+  const tree = isS3 ? s3Tree : isWebdav ? webdavTree : isIdb ? idbTree : localTree;
   const [selectedRoot, setSelectedRoot] = useState(true);
   const [selectedFolder, setSelectedFolder] = useState<TreeNodeLike | null>(null);
   const [fileName, setFileName] = useState(defaultFileName);
@@ -200,7 +203,10 @@ export default function SaveSessionToNoteModal({
 
   const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
   const parentDirHandle = selectedRoot ? localRootHandle : selectedFolder?.handle || null;
-  const canSubmit = isS3 || isWebdav ? true : Boolean(selectedRoot ? localRootHandle : selectedFolder?.handle);
+  const canSubmit =
+    isS3 || isWebdav || isIdb
+      ? true
+      : Boolean(selectedRoot ? localRootHandle : selectedFolder?.handle);
   const pathToExpand = selectPathAfterCreate || selectedFolder?.path || defaultParentPath || '';
   const expandedPaths = pathToExpand
     ? new Set(getAncestorPathsToExpand(pathToExpand))

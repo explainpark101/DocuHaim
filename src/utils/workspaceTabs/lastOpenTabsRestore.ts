@@ -66,7 +66,7 @@ function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
   }
   if (
     v.kind === 'file' &&
-    (v.type === 's3' || v.type === 'local' || v.type === 'webdav') &&
+    (v.type === 's3' || v.type === 'local' || v.type === 'webdav' || v.type === 'idb') &&
     typeof v.path === 'string' &&
     v.path
   ) {
@@ -124,7 +124,7 @@ function isClosedTabEntry(value: unknown): value is ClosedTabEntry {
   }
   if (
     v.kind === 'file' &&
-    (v.storageType === 's3' || v.storageType === 'local' || v.storageType === 'webdav') &&
+    (v.storageType === 's3' || v.storageType === 'local' || v.storageType === 'webdav' || v.storageType === 'idb') &&
     typeof v.path === 'string' &&
     v.path
   ) {

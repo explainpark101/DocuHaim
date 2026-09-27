@@ -81,7 +81,7 @@ import {
   IconRefresh,
   IconCheck,
 } from '@/components/icons';
-import { ArrowRightToLine, ChevronsLeft, Download, Loader2, MessageCircle, X } from 'lucide-react';
+import { ArrowRightToLine, ChevronsLeft, Download, HardDrive, Loader2, MessageCircle, X } from 'lucide-react';
 import AdvancedSearchSidebarTrigger from '@/components/advancedSearch/AdvancedSearchSidebarTrigger';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 import SessionTreeList from '@/components/SessionTreeList';
@@ -95,6 +95,7 @@ import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
+  STORAGE_MODE_IDB,
   getAppNameByStorageMode,
 } from '@/utils/storageSettings';
 import { isLocalVaultReady } from '@/utils/localVaultReady';
@@ -107,7 +108,7 @@ import { buildSessionTree, parseSessionFileKey, sessionFileKey } from '@/utils/s
 type TreeNodeDropHandler = NonNullable<ComponentProps<typeof TreeNode>['onDropOnFolder']>;
 type RootDropHandler = NonNullable<ComponentProps<typeof RootDropZone>['onDropOnFolder']>;
 
-export type SidebarStorageMode = 's3' | 'local' | 'webdav';
+export type SidebarStorageMode = 's3' | 'local' | 'webdav' | 'idb';
 
 type SidebarCurrentFile = {
   type?: string;
@@ -206,6 +207,11 @@ export type SidebarProps = {
   webdavFolderLoadingPath?: string | null;
   onRefreshWebdav?: () => void | Promise<void>;
   onLoadWebdavFolderChildren?: (node: SidebarTreeNode) => void | Promise<void>;
+  idbTree?: SidebarTreeNode[];
+  isIdbTreeLoading?: boolean;
+  idbFolderLoadingPath?: string | null;
+  onRefreshIdb?: () => void | Promise<void>;
+  onLoadIdbFolderChildren?: (node: SidebarTreeNode) => void | Promise<void>;
   currentFile?: SidebarCurrentFile;
   selectedIds: Set<string>;
   onSelectFile?: (
@@ -280,6 +286,7 @@ export type SidebarProps = {
 const EMPTY_SELECTED_IDS = new Set<string>();
 
 const BRAND_STORAGE_MODES = [
+  STORAGE_MODE_IDB,
   STORAGE_MODE_S3,
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_WEBDAV,
@@ -422,6 +429,7 @@ function getSelectedFolderForMove(
   s3Tree: SidebarTreeNode[],
   localTree: SidebarTreeNode[],
   webdavTree: SidebarTreeNode[],
+  idbTree: SidebarTreeNode[],
 ): SelectedFolderForMove {
   if (!selectedIds?.size) return null;
   for (const key of selectedIds) {
@@ -433,6 +441,8 @@ function getSelectedFolderForMove(
         ? s3Tree
         : storageType === 'webdav'
           ? webdavTree
+          : storageType === 'idb'
+            ? idbTree
           : localTree;
     const node = findNodeByPath(tree, path) as SidebarTreeNode | null;
     if (node?.type === 'folder' && path !== '.trash/') {
@@ -448,6 +458,7 @@ function expandedSetForStorageType(
 ): Set<string> {
   if (storageType === 's3') return expanded.s3;
   if (storageType === 'webdav') return expanded.webdav;
+  if (storageType === 'idb') return expanded.idb;
   return expanded.local;
 }
 
@@ -469,6 +480,11 @@ export default function Sidebar({
   webdavFolderLoadingPath = null,
   onRefreshWebdav,
   onLoadWebdavFolderChildren,
+  idbTree = [],
+  isIdbTreeLoading = false,
+  idbFolderLoadingPath = null,
+  onRefreshIdb,
+  onLoadIdbFolderChildren,
   currentFile = null,
   selectedIds,
   onSelectFile,
@@ -549,6 +565,7 @@ export default function Sidebar({
   const [lastFocusedS3FolderPath, setLastFocusedS3FolderPath] = useState<string | null>(null);
   const [lastFocusedLocalFolder, setLastFocusedLocalFolder] = useState<FocusedLocalFolder | null>(null);
   const [lastFocusedWebdavFolderPath, setLastFocusedWebdavFolderPath] = useState<string | null>(null);
+  const [lastFocusedIdbFolderPath, setLastFocusedIdbFolderPath] = useState<string | null>(null);
 
   // While Chat with Myself is open, tree must not show another file/folder as selected.
   const treeSelectedIds = chatWithMyselfActive ? EMPTY_SELECTED_IDS : selectedIds;
@@ -653,10 +670,12 @@ export default function Sidebar({
           ? s3Tree
           : storageType === 'webdav'
             ? webdavTree
+            : storageType === 'idb'
+              ? idbTree
             : localTree;
       return findNodeByPath(tree, path) as SidebarTreeNode | null;
     },
-    [s3Tree, localTree, webdavTree, sessionWorkspaces],
+    [s3Tree, localTree, webdavTree, idbTree, sessionWorkspaces],
   );
 
   const resolveDropTargetNode = useCallback(
@@ -1040,6 +1059,7 @@ export default function Sidebar({
         s3: new Set(prev.s3),
         local: new Set(prev.local),
         webdav: new Set(prev.webdav),
+        idb: new Set(prev.idb),
       };
       const set = expandedSetForStorageType(next, storageType);
       if (isOpen) set.add(path);
@@ -1061,7 +1081,14 @@ export default function Sidebar({
         void onLoadWebdavFolderChildren(node);
       }
     }
-  }, [localTree, webdavTree, onLoadLocalFolderChildren, onLoadWebdavFolderChildren]);
+
+    if (storageType === 'idb' && isOpen && onLoadIdbFolderChildren) {
+      const node = findNodeByPath(idbTree, path) as SidebarTreeNode | null;
+      if (node?.type === 'folder' && node.childrenLoaded !== true) {
+        void onLoadIdbFolderChildren(node);
+      }
+    }
+  }, [localTree, webdavTree, idbTree, onLoadLocalFolderChildren, onLoadWebdavFolderChildren, onLoadIdbFolderChildren]);
 
   handleExpandedChangeRef.current = handleExpandedChange;
 
@@ -1099,6 +1126,23 @@ export default function Sidebar({
     visit(webdavTree);
   }, [webdavTree, expandedPaths.webdav, onLoadWebdavFolderChildren]);
 
+  useEffect(() => {
+    if (!onLoadIdbFolderChildren || !idbTree?.length) return;
+    const expanded = expandedPaths.idb;
+    if (!expanded?.size) return;
+
+    const visit = (nodes: SidebarTreeNode[]) => {
+      for (const node of nodes) {
+        if (node?.type !== 'folder') continue;
+        if (expanded.has(node.path) && node.childrenLoaded !== true) {
+          void onLoadIdbFolderChildren(node);
+        }
+        if (node.children?.length) visit(node.children);
+      }
+    };
+    visit(idbTree);
+  }, [idbTree, expandedPaths.idb, onLoadIdbFolderChildren]);
+
   const expandPathsForNewItem = useCallback((storageType: string, paths: string[]) => {
     if (!paths?.length) return;
     setExpandedPaths((prev) => {
@@ -1106,6 +1150,7 @@ export default function Sidebar({
         s3: new Set(prev.s3),
         local: new Set(prev.local),
         webdav: new Set(prev.webdav),
+        idb: new Set(prev.idb),
       };
       const set = expandedSetForStorageType(next, storageType);
       paths.forEach((p) => set.add(p));
@@ -1153,6 +1198,16 @@ export default function Sidebar({
       }),
     [webdavTree, searchTerm, showHiddenFolders, showTrashFolder, hideRecordingCompanions],
   );
+  const filteredIdbTree = useMemo(
+    () =>
+      filterTree(idbTree, {
+        hideDotFolders: !showHiddenFolders,
+        hideTrashFolder: !showTrashFolder,
+        hideRecordingCompanionFiles: hideRecordingCompanions,
+        searchTerm,
+      }),
+    [idbTree, searchTerm, showHiddenFolders, showTrashFolder, hideRecordingCompanions],
+  );
 
   /** 필터 전 원본 트리 기준 — 숨김 옵션과 무관하게 녹음 연결 여부 표시 */
   const recordingBasePathSet = useMemo(
@@ -1160,8 +1215,9 @@ export default function Sidebar({
       buildRecordingBasePathSetFromTrees(s3Tree, [
         ...(localTree || []),
         ...(webdavTree || []),
+        ...(idbTree || []),
       ]),
-    [s3Tree, localTree, webdavTree],
+    [s3Tree, localTree, webdavTree, idbTree],
   );
 
   const collectFolderPaths = (nodes: SidebarTreeNode[]): Set<string> => {
@@ -1187,12 +1243,17 @@ export default function Sidebar({
     () => (searchTerm ? collectFolderPaths(filteredWebdavTree) : expandedPaths.webdav),
     [searchTerm, filteredWebdavTree, expandedPaths.webdav],
   );
+  const effectiveExpandedIdb = useMemo(
+    () => (searchTerm ? collectFolderPaths(filteredIdbTree) : expandedPaths.idb),
+    [searchTerm, filteredIdbTree, expandedPaths.idb],
+  );
 
   const selectedFolderForMove = getSelectedFolderForMove(
     selectedIds,
     s3Tree,
     localTree,
     webdavTree,
+    idbTree,
   );
 
   const contextMenuNode = contextMenu?.node;
@@ -1246,6 +1307,7 @@ export default function Sidebar({
       lastFocusedLocalFolder,
       lastFocusedS3FolderPath,
       lastFocusedWebdavFolderPath,
+      lastFocusedIdbFolderPath,
       localRootHandle,
     ],
   );
@@ -1253,6 +1315,7 @@ export default function Sidebar({
   const isS3Mode = storageMode === 's3';
   const isLocalMode = storageMode === 'local';
   const isWebdavMode = storageMode === 'webdav';
+  const isIdbMode = storageMode === 'idb';
   const localVaultReady = isLocalVaultReady(localRootHandle, localVaultFsPath);
 
   const activateTreeNode = useCallback((storageType: string, node: SidebarTreeNode) => {
@@ -1341,7 +1404,8 @@ export default function Sidebar({
         if (
           (isS3Mode && storageType !== 's3') ||
           (isLocalMode && storageType !== 'local') ||
-          (isWebdavMode && storageType !== 'webdav')
+          (isWebdavMode && storageType !== 'webdav') ||
+          (isIdbMode && storageType !== 'idb')
         ) {
           return;
         }
@@ -1412,13 +1476,21 @@ export default function Sidebar({
           ) {
             storageType = 'webdav';
             node = findTreeNode('webdav', lastFocusedWebdavFolderPath);
+          } else if (
+            isIdbMode &&
+            lastFocusedIdbFolderPath != null &&
+            lastFocusedIdbFolderPath !== ''
+          ) {
+            storageType = 'idb';
+            node = findTreeNode('idb', lastFocusedIdbFolderPath);
           }
         }
         if (!node || !storageType) return;
         if (
           (isS3Mode && storageType !== 's3') ||
           (isLocalMode && storageType !== 'local') ||
-          (isWebdavMode && storageType !== 'webdav')
+          (isWebdavMode && storageType !== 'webdav') ||
+          (isIdbMode && storageType !== 'idb')
         ) {
           return;
         }
@@ -1676,7 +1748,13 @@ export default function Sidebar({
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={isWebdavMode ? '파일명 검색 (WebDAV)' : '파일명 검색'}
+            placeholder={
+              isWebdavMode
+                ? '파일명 검색 (WebDAV)'
+                : isIdbMode
+                  ? '파일명 검색 (IDB)'
+                  : '파일명 검색'
+            }
             className="min-w-0 flex-1 bg-transparent border-none outline-none text-sm font-bold placeholder:font-normal placeholder:text-gray-400 dark:placeholder:text-gray-500"
             aria-label="파일명 검색"
           />
@@ -2140,6 +2218,153 @@ export default function Sidebar({
               ) : (
                 <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
               )
+            ) : null}
+          </div>
+        </div>
+        )}
+
+
+        {isIdbMode && (
+        <div>
+          <div className="sticky top-0 bg-white dark:bg-odp-bgSoft px-3 py-2 flex items-center justify-between text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 z-9999 border-b border-gray-100 dark:border-odp-surface">
+            <span className="flex items-center gap-1">
+              <HardDrive size={14} aria-hidden /> IDB Haim
+            </span>
+            <div className="flex gap-1">
+              {onRefreshIdb && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isIdbTreeLoading) return;
+                    void onRefreshIdb();
+                  }}
+                  disabled={isIdbTreeLoading}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation disabled:pointer-events-none disabled:opacity-70"
+                  title="파일 구조 새로고침"
+                >
+                  <IconRefresh
+                    size={22}
+                    className={`shrink-0 w-5 h-5 md:w-[14px] md:h-[14px] ${
+                      isIdbTreeLoading ? 'animate-spin' : ''
+                    }`}
+                  />
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  const { parentPath } = getCreateTargetForStorage('idb');
+                  onRequestUploadFile?.('idb', parentPath, null);
+                }}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                title="선택된 폴더에 파일 업로드 (여러 개 선택 가능)"
+              >
+                <IconUpload size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+              </button>
+              <button
+                onClick={() => {
+                  const { parentPath } = getCreateTargetForStorage('idb');
+                  onRequestUploadFolder?.('idb', parentPath, null);
+                }}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                title="선택된 폴더에 폴더 업로드 (폴더 전체)"
+              >
+                <IconFolder size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+              </button>
+              <button
+                onClick={() => {
+                  const target = getCreateTargetForStorage('idb');
+                  onCreateItem('idb', target.parentPath, target.parentDirHandle, 'file');
+                }}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                title="선택된 폴더에 파일 생성"
+              >
+                <IconFilePlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+              </button>
+              <button
+                onClick={() => {
+                  const target = getCreateTargetForStorage('idb');
+                  onCreateItem('idb', target.parentPath, target.parentDirHandle, 'folder');
+                }}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2.5 md:min-w-0 md:min-h-0 md:p-1 hover:text-blue-500 touch-manipulation"
+                title="선택된 폴더에 폴더 생성"
+              >
+                <IconFolderPlus size={22} className="shrink-0 w-5 h-5 md:w-[14px] md:h-[14px]" />
+              </button>
+            </div>
+          </div>
+          <div className="space-y-0.5">
+            <ChatWithMyselfEntry
+              isActive={chatWithMyselfActive}
+              onOpen={onOpenChatWithMyself}
+            />
+            <RootDropZone
+              storageType="idb"
+              localRootHandle={null}
+              onDropOnFolder={handleRootDropOnFolder}
+              dropTarget={dropTarget}
+              isFocused={!chatWithMyselfActive && lastFocusedIdbFolderPath === ''}
+              onFocusRoot={() => setLastFocusedIdbFolderPath('')}
+              onContextMenu={(e, rootNode) => {
+                setLastFocusedIdbFolderPath('');
+                openTreeContextMenu('idb', rootNode, e);
+              }}
+              mobileTree={mobileTree}
+            />
+            {isIdbTreeLoading && !filteredIdbTree.length && (
+              <p className="text-xs text-gray-400 px-4 py-2">폴더 목록을 불러오는 중…</p>
+            )}
+            {filteredIdbTree.length > 0 ? (
+              filteredIdbTree.map((node) => (
+                <TreeNode
+                  key={node.path}
+                  node={node}
+                  level={0}
+                  rootDropNode={{ path: '', type: 'folder', handle: null }}
+                  onSelect={onSelectFile}
+                  storageType="idb"
+                  selectedIds={treeSelectedIds}
+                  currentFile={treeCurrentFile}
+                  onCreateFile={(...args: unknown[]) =>
+                    onCreateItem('idb', args[0] as string, null, 'file')
+                  }
+                  onCreateFolder={(...args: unknown[]) =>
+                    onCreateItem('idb', args[0] as string, null, 'folder')
+                  }
+                  onRequestMoveFolder={onRequestMoveFolder}
+                  onDelete={(n, t) => requestDeleteNode(n, t)}
+                  onRename={onRenameItem}
+                  deletingFolderPath={deletingFolderPath}
+                  isDeletingFolder={isDeletingFolder}
+                  transferBusyItems={transferBusyItems}
+                  isSearching={!!searchTerm}
+                  expandedPaths={effectiveExpandedIdb}
+                  onExpandedChange={handleExpandedChange}
+                  onFolderFocus={(node) =>
+                    setLastFocusedIdbFolderPath(node ? node.path || '' : null)
+                  }
+                  focusedFolderPath={
+                    chatWithMyselfActive ? undefined : (lastFocusedIdbFolderPath ?? undefined)
+                  }
+                  onDropOnFolder={onDropOnFolder}
+                  dropTarget={dropTarget}
+                  activeDragItemIds={activeDragItemIds}
+                  isCopyDrag={isCopyDrag}
+                  onOpenContextMenu={(e, n) => openTreeContextMenu('idb', n, e)}
+                  onActivate={(n) => activateTreeNode('idb', n)}
+                  isFolderLoading={idbFolderLoadingPath}
+                  renameTarget={renameTarget}
+                  onClearRenameTarget={() => setRenameTarget(null)}
+                  recordingBasePathSet={recordingBasePathSet}
+                  stickyFoldersEnabled={treeStickyFolderPathEnabled}
+                  showModifiedDate={showTreeModifiedDate}
+                  stickyTopOffset={TREE_STICKY_SECTION_TOP}
+                  mobileTree={mobileTree}
+                  indexEnabled={indexFolderEnabled}
+                  indexExcludedFolders={indexExcludedFolders}
+                />
+              ))
+            ) : !isIdbTreeLoading ? (
+              <p className="text-xs text-gray-400 px-4 py-2">파일이 없습니다.</p>
             ) : null}
           </div>
         </div>

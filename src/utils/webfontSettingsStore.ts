@@ -1,5 +1,6 @@
 import { deleteObject, getObjectBody, headObject, listObjectsV2, putObject } from '@/utils/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 
 const WEBFONTS_DIR = '.settings/webfonts';
 const WEBFONTS_INDEX_KEY = `${WEBFONTS_DIR}/index.json`;
@@ -273,6 +274,18 @@ async function storageReadText(key: string): Promise<string | null> {
       return null;
     }
   }
+  if (mode === 'idb') {
+    try {
+      const backend = createIdbBackend();
+      const head = await backend.head(key);
+      if (!head) return null;
+      const { text } = await backend.readText(key);
+      return text;
+    } catch (e) {
+      console.warn('Webfont read IDB failed:', key, e);
+      return null;
+    }
+  }
   const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
   const bucket = store.s3Creds?.bucket;
   if (!client || !bucket) return null;
@@ -310,6 +323,11 @@ async function storageWriteText(key: string, text: string, contentType: string):
     const writable = await fileHandle.createWritable();
     await writable.write(text);
     await writable.close();
+    return;
+  }
+  if (mode === 'idb') {
+    const backend = createIdbBackend();
+    await backend.writeText(key, text, contentType);
     return;
   }
   const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
@@ -351,6 +369,15 @@ async function storageDelete(key: string): Promise<void> {
       if ((e as { name?: string })?.name !== 'NotFound') {
         console.warn('Webfont delete local failed:', key, e);
       }
+    }
+    return;
+  }
+  if (mode === 'idb') {
+    try {
+      const backend = createIdbBackend();
+      await backend.delete(key);
+    } catch (e) {
+      console.warn('Webfont delete IDB failed:', key, e);
     }
     return;
   }

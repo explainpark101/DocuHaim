@@ -94,6 +94,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const { showAlert } = useAlertModal();
   const navigate = useNavigate();
   const location = useLocation();
+  const {
+    handleExportVaultToFolder,
+    handleExportVaultAsZip,
+    handleIdbSyncToLocalFolder,
+    canUseDirectoryExport,
+    isVaultExportReady,
+    exportBusy,
+  } = modals;
 
   const {
     sidebarOpen,
@@ -189,6 +197,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     s3Tree,
     localTree,
     webdavTree,
+    idbTree,
     localRootHandle,
     localVaultFsPath,
     webdavConfig,
@@ -284,10 +293,12 @@ export function AppLayout({ children }: { children?: ReactNode }) {
           ? s3Tree
           : storageType === 'webdav'
             ? webdavTree
+            : storageType === 'idb'
+              ? idbTree
             : localTree;
       return findNodeByPath(tree, path);
     },
-    [s3Tree, localTree, webdavTree, sessionWorkspaces],
+    [s3Tree, localTree, webdavTree, idbTree, sessionWorkspaces],
   );
 
   const handleDropToWorkspacePane = useCallback(
@@ -437,6 +448,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     currentFile?.type === 's3' ||
     currentFile?.type === 'local' ||
     currentFile?.type === 'webdav' ||
+    currentFile?.type === 'idb' ||
     currentFile?.type === SESSION_STORAGE_TYPE;
 
   const tauriMobileSidebar = isTauriDesktopPlatform() && isMobile;
@@ -784,6 +796,12 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     onSaveS3Creds: handleSaveS3Creds,
                     storageMode,
                     onStorageModeChange: setStorageMode,
+                    onExportVaultToFolder: handleExportVaultToFolder,
+                    onExportVaultAsZip: handleExportVaultAsZip,
+                    onIdbSyncToLocalFolder: handleIdbSyncToLocalFolder,
+                    canUseDirectoryExport,
+                    isVaultExportReady,
+                    vaultExportBusy: exportBusy,
                     localFolderName:
                       localRootHandle?.name ||
                       basenameFromVaultPath(localVaultFsPath) ||
@@ -894,7 +912,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                       paneFile?.type === 'local' ? refreshLocalFileFromDisk : undefined,
                     isRefreshingFromDisk,
                     onPullFromRemote:
-                      (paneFile?.type === 's3' || paneFile?.type === 'webdav') &&
+                      (paneFile?.type === 's3' ||
+                        paneFile?.type === 'webdav' ||
+                        paneFile?.type === 'idb') &&
                       !isEncMdPath(paneFile?.id) &&
                       !isEncMdPath(paneFile?.name)
                         ? refreshRemoteFile
@@ -991,6 +1011,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     s3Tree,
                     localTree,
                     webdavTree,
+                    idbTree,
                     shareGroupSend,
                     onShareGroupSendConsumed: handleShareGroupSendConsumed,
                     onOpenNote: handleOpenNoteFromChat,
@@ -999,7 +1020,10 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     onRequestCreateFolderForNote: (parentPath: string, parentDirHandle: FileSystemDirectoryHandle | null) => {
                       setCreateModalContext({
                         storageType:
-                          storageMode === 'local' || storageMode === 'webdav' || storageMode === 's3'
+                          storageMode === 'local' ||
+                          storageMode === 'webdav' ||
+                          storageMode === 'idb' ||
+                          storageMode === 's3'
                             ? storageMode
                             : 's3',
                         parentPath,
@@ -1024,6 +1048,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     s3Tree,
                     localTree,
                     webdavTree,
+                    idbTree,
                     sessionWorkspaces,
                     onOpenFile: openAdvancedSearchFile,
                   }}
@@ -1085,7 +1110,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     ? `S3 (${s3Creds.bucket || '-'})`
                     : currentFile?.type === 'local'
                       ? '로컬'
-                    : currentFile?.type === 'webdav'
+                    : currentFile?.type === 'webdav' || currentFile?.type === 'idb'
                       ? 'WebDAV'
                       : currentFile?.type === SESSION_STORAGE_TYPE
                         ? '다운로드 세션'
@@ -1096,7 +1121,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                       ? 'S3'
                       : currentFile?.type === 'local'
                         ? '로컬'
-                        : currentFile?.type === 'webdav'
+                        : currentFile?.type === 'webdav' || currentFile?.type === 'idb'
                           ? 'WebDAV'
                           : currentFile?.type === SESSION_STORAGE_TYPE
                             ? '세션'
@@ -1110,7 +1135,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                         ? `S3`
                         : currentFile?.type === 'local'
                           ? '로컬'
-                          : currentFile?.type === 'webdav'
+                          : currentFile?.type === 'webdav' || currentFile?.type === 'idb'
                             ? 'WebDAV'
                             : currentFile?.type === SESSION_STORAGE_TYPE
                               ? '다운로드 세션'
@@ -1144,7 +1169,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                       ? '로컬'
                       : storageMode === 'webdav'
                         ? 'WebDAV'
-                        : ''}
+                        : storageMode === 'idb'
+                          ? 'IDB'
+                          : ''}
                 </span>
               </span>
             )}
@@ -1160,14 +1187,17 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                       ? '채팅 메시지는 로컬 폴더에 저장됩니다'
                       : storageMode === 'webdav'
                         ? '채팅 메시지는 WebDAV에 저장·동기화됩니다'
-                        : '저장소 미연결'
+                        : storageMode === 'idb'
+                          ? '채팅 메시지는 IDB Haim에 저장됩니다'
+                          : '저장소 미연결'
                 }
               >
                 <span
                   className={`h-2 w-2 shrink-0 rounded-full md:h-2.5 md:w-2.5 ${
                     (storageMode === 's3' && s3Creds.bucket) ||
                     (storageMode === 'local' && localRootHandle) ||
-                    (storageMode === 'webdav' && webdavReady)
+                    (storageMode === 'webdav' && webdavReady) ||
+                    storageMode === 'idb'
                       ? 'bg-emerald-500'
                       : 'bg-amber-400'
                   }`}
@@ -1176,7 +1206,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                 <span className="md:hidden">
                   {(storageMode === 's3' && s3Creds.bucket) ||
                   (storageMode === 'local' && localRootHandle) ||
-                  (storageMode === 'webdav' && webdavReady)
+                  (storageMode === 'webdav' && webdavReady) || storageMode === 'idb'
                     ? '동기화'
                     : '대기'}
                 </span>
@@ -1184,11 +1214,13 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                   채팅 동기화:{' '}
                   {(storageMode === 's3' && s3Creds.bucket) ||
                   (storageMode === 'local' && localRootHandle) ||
-                  (storageMode === 'webdav' && webdavReady)
+                  (storageMode === 'webdav' && webdavReady) || storageMode === 'idb'
                     ? storageMode === 's3'
                       ? 'S3 연결됨'
                       : storageMode === 'webdav'
                         ? 'WebDAV 연결됨'
+                        : storageMode === 'idb'
+                          ? 'IDB 준비됨'
                         : '로컬 준비됨'
                     : '연결 필요'}
                 </span>
@@ -1219,7 +1251,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                 <span
                   className="hidden md:inline"
                   title={
-                    currentFile?.type === 's3' || currentFile?.type === 'webdav'
+                    currentFile?.type === 's3' ||
+                    currentFile?.type === 'webdav' ||
+                    currentFile?.type === 'idb'
                       ? lastAutoSyncAt
                         ? `동기화 ${formatTime(lastAutoSyncAt)}`
                         : '대기 중'

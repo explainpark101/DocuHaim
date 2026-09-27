@@ -2,11 +2,12 @@ import { createS3Backend } from '@/utils/storage/s3Backend.js';
 import { createLocalBackend } from '@/utils/storage/localBackend.js';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
 import { createTauriLocalBackend } from '@/utils/storage/tauriLocalBackend';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 import { getStorageCapabilities } from '@/utils/storage/capabilities.js';
 
 /**
  * @typedef {Object} StorageBackendDeps
- * @property {'s3'|'local'|'webdav'} mode
+ * @property {'s3'|'local'|'webdav'|'idb'} mode
  * @property {() => import('@aws-sdk/client-s3').S3Client | null} [getS3Client]
  * @property {{ bucket?: string } | null} [s3Creds]
  * @property {FileSystemDirectoryHandle | null} [localRootHandle]
@@ -19,6 +20,9 @@ import { getStorageCapabilities } from '@/utils/storage/capabilities.js';
  */
 export function createStorageBackend(deps) {
   const mode = deps?.mode || 's3';
+  if (mode === 'idb') {
+    return createIdbBackend();
+  }
   if (mode === 'local') {
     const vaultPath = String(deps.localVaultFsPath || '').trim();
     if (vaultPath) {

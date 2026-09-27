@@ -181,6 +181,7 @@ export function useDownloadSessionDomain() {
   const connectedHaimStorageType = () => {
     if (storageMode === 'local') return 'local';
     if (storageMode === 'webdav') return 'webdav';
+    if (storageMode === 'idb') return 'idb';
     return 's3';
   };
 
@@ -188,6 +189,7 @@ export function useDownloadSessionDomain() {
     if (storageMode === 's3') return Boolean(s3Creds.bucket);
     if (storageMode === 'local') return Boolean(localRootHandle);
     if (storageMode === 'webdav') return Boolean(webdavReady);
+    if (storageMode === 'idb') return true;
     return false;
   };
 
@@ -733,7 +735,7 @@ export function useDownloadSessionDomain() {
         return;
       }
 
-      if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
+      if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav' && storageType !== 'idb') return;
       const notePath = currentFile.id || '';
       const backend = getBackendForType(storageType);
       const { text } = await backend.readText(notePath);
@@ -783,7 +785,7 @@ export function useDownloadSessionDomain() {
       setDownloadModalMode('default');
       return;
     }
-    if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav') return;
+    if (storageType !== 's3' && storageType !== 'local' && storageType !== 'webdav' && storageType !== 'idb') return;
     const fileName = currentFile.name || currentFile.id?.split('/').filter(Boolean).pop() || 'download';
     const notePath = currentFile.id || '';
     try {

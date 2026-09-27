@@ -29,6 +29,7 @@ import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
+  STORAGE_MODE_IDB,
 } from '@/utils/storageSettings';
 import type { StorageTreeNode } from '@/utils/storageUsageAnalysis';
 
@@ -45,6 +46,7 @@ const coverageMenuContentClass = `${DESKTOP_CONTEXT_MENU_Z_CLASS} min-w-[200px] 
 function storageLabel(mode: string | undefined): string {
   if (mode === STORAGE_MODE_LOCAL) return 'Local Haim';
   if (mode === STORAGE_MODE_WEBDAV) return 'WebDAV Haim';
+  if (mode === STORAGE_MODE_IDB) return 'IDB Haim';
   if (mode === STORAGE_MODE_S3) return 'S3 Haim';
   return '저장소';
 }

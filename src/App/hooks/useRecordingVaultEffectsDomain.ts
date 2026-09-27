@@ -15,7 +15,7 @@ import {
 import { listObjectsV2, getObjectBody } from '@/utils/s3Client';
 import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
 import { decodeSyncData } from '@/utils/syncProto';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV, STORAGE_MODE_IDB } from '@/utils/storageSettings';
 import { createWebdavBackend, createStorageBackend } from '@/utils/storage';
 import { tryRestoreLocalRootHandle } from '@/utils/localFolderStore';
 import {
@@ -39,6 +39,7 @@ export function useRecordingVaultEffectsDomain() {
     localVaultFsPath,
     refreshLocalTree,
     refreshWebdavTree,
+    refreshIdbTree,
     s3Tree,
     setS3Tree,
     setStorageMode,
@@ -47,6 +48,7 @@ export function useRecordingVaultEffectsDomain() {
     webdavConfig,
     webdavReady,
     webdavTree,
+    idbTree,
   } = useVault();
   const { currentFile, currentFileRef, s3TreeRef, setCurrentFile, setEditorContent, webdavTreeRef } = useFileSessionOwned();
   const { selectedRecordingKey, setRecordingAudioUrl, setRecordingSyncData, setRecordingsList, setSelectedRecordingKey } = useRecordingOwned();
@@ -57,7 +59,7 @@ export function useRecordingVaultEffectsDomain() {
   const currentFileType = currentFile?.type;
   const currentFileViewer = currentFile?.viewer;
   useEffect(() => {
-    const pathStorageTypes = ['s3', 'local', 'webdav'];
+    const pathStorageTypes = ['s3', 'local', 'webdav', 'idb'];
     if (
       currentFileId == null ||
       !pathStorageTypes.includes(currentFileType) ||
@@ -75,11 +77,13 @@ export function useRecordingVaultEffectsDomain() {
         ? s3Tree
         : currentFileType === 'webdav'
           ? webdavTree
+          : currentFileType === 'idb'
+            ? idbTree
           : localTree;
     const list = getRecordingKeysFromTree(tree, noteKey);
     setRecordingsList(list);
     setSelectedRecordingKey(list.length > 0 ? list[0]!.key : null);
-  }, [currentFileId, currentFileType, currentFileViewer, s3Tree, localTree, webdavTree]);
+  }, [currentFileId, currentFileType, currentFileViewer, s3Tree, localTree, webdavTree, idbTree]);
 
   useEffect(() => {
     if (!selectedRecordingKey || !currentFileType) {
@@ -88,7 +92,7 @@ export function useRecordingVaultEffectsDomain() {
       return;
     }
     const storageType = currentFileType;
-    if (!['s3', 'local', 'webdav'].includes(storageType)) {
+    if (!['s3', 'local', 'webdav', 'idb'].includes(storageType)) {
       setRecordingAudioUrl('');
       setRecordingSyncData([]);
       return;
@@ -260,6 +264,8 @@ export function useRecordingVaultEffectsDomain() {
           ? 'local'
           : storageMode === STORAGE_MODE_WEBDAV
             ? 'webdav'
+            : storageMode === STORAGE_MODE_IDB
+              ? 'idb'
             : 's3',
       getS3Client,
       s3Creds: s3Creds as any,
@@ -301,6 +307,8 @@ export function useRecordingVaultEffectsDomain() {
             ? localTree
             : storageMode === STORAGE_MODE_WEBDAV
               ? webdavTree
+              : storageMode === STORAGE_MODE_IDB
+                ? idbTree
               : s3Tree;
         const updatedPaths = await rewriteDuplicateImageReferencesInVault({
           tree: activeTree,
@@ -334,6 +342,7 @@ export function useRecordingVaultEffectsDomain() {
       }
       if (storageMode === STORAGE_MODE_LOCAL) await refreshLocalTree();
       else if (storageMode === STORAGE_MODE_WEBDAV) await refreshWebdavTree();
+      else if (storageMode === STORAGE_MODE_IDB) await refreshIdbTree();
       else loadS3Files();
     },
     // refreshLocalTree is a stable-enough function declaration in this component body
@@ -343,10 +352,12 @@ export function useRecordingVaultEffectsDomain() {
       storageMode,
       localTree,
       webdavTree,
+      idbTree,
       s3Tree,
       currentFileRef,
       setEditorContent,
       refreshWebdavTree,
+      refreshIdbTree,
       loadS3Files,
       localRootHandle,
     ],
@@ -356,6 +367,11 @@ export function useRecordingVaultEffectsDomain() {
     if (storageMode !== STORAGE_MODE_WEBDAV || !webdavReady || !isUnlocked) return;
     refreshWebdavTree();
   }, [storageMode, webdavReady, isUnlocked, refreshWebdavTree]);
+
+  useEffect(() => {
+    if (storageMode !== STORAGE_MODE_IDB || !isUnlocked) return;
+    refreshIdbTree();
+  }, [storageMode, isUnlocked, refreshIdbTree]);
 
   const handleConfirmRestoreLocalFolder = async () => {
     setShowRestoreLocalFolderModal(false);

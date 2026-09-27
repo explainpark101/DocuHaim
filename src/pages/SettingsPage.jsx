@@ -111,9 +111,11 @@ import {
   subscribeSettingsToggles,
 } from '@/utils/advancedSearch/settingsToggles';
 import {
+  STORAGE_MODE_IDB,
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
+  getAppNameByStorageMode,
 } from '@/utils/storageSettings';
 import {
   DEFAULT_TREE_HOVER_EXPAND,
@@ -194,13 +196,19 @@ export default function SettingsPage({
   snippetConfigLoaded = false,
   editorType: editorTypeProp,
   onEditorTypeChange,
-  storageMode = STORAGE_MODE_S3,
+  storageMode = STORAGE_MODE_IDB,
   onStorageModeChange,
   localFolderName = '',
   localVaultFsPath = '',
   onOpenLocalFolder,
   webdavConfig,
   onSaveWebdavConfig,
+  onExportVaultToFolder,
+  onExportVaultAsZip,
+  onIdbSyncToLocalFolder,
+  canUseDirectoryExport = false,
+  isVaultExportReady = false,
+  vaultExportBusy = false,
   isMobileLayout = false,
   sidebarOpen = true,
   sidebarCollapsed = false,
@@ -660,11 +668,22 @@ export default function SettingsPage({
           tabIndex={-1}
           className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
         >
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">기본 저장소 선택 (3중 택1)</h3>
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">기본 저장소 선택 (4중 택1)</h3>
           <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
             앱에서 기본으로 동작할 저장소를 선택합니다. 선택은 저장되어 다음 접속 시 자동 복원됩니다.
+            신규 사용자는 기본적으로 IDB Haim으로 시작합니다.
           </p>
           <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="storageMode"
+                value={STORAGE_MODE_IDB}
+                checked={storageMode === STORAGE_MODE_IDB}
+                onChange={() => onStorageModeChange?.(STORAGE_MODE_IDB)}
+              />
+              <span className="font-semibold">IDB Haim</span>
+            </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
@@ -696,6 +715,64 @@ export default function SettingsPage({
               <span className="font-semibold">WebDAV Haim</span>
             </label>
           </div>
+        </div>
+
+        <div
+          id="settings-vault-export"
+          tabIndex={-1}
+          className="scroll-mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface"
+        >
+          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong">
+            Vault 전체 다운로드
+          </h3>
+          <p className="text-xs text-gray-600 dark:text-odp-muted">
+            현재 저장소({getAppNameByStorageMode(storageMode)})의 모든 파일을 폴더로 내보내거나 ZIP으로
+            다운로드합니다. Storage API를 지원하지 않는 환경에서는 ZIP만 사용할 수 있습니다.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {canUseDirectoryExport && (
+              <button
+                type="button"
+                disabled={!isVaultExportReady || vaultExportBusy}
+                onClick={() => onExportVaultToFolder?.()}
+                className="inline-flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg"
+              >
+                <IconFolder size={14} />
+                폴더로 내보내기
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={!isVaultExportReady || vaultExportBusy}
+              onClick={() => onExportVaultAsZip?.()}
+              className="inline-flex items-center gap-2 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-50 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-fg"
+            >
+              <IconDownload size={14} />
+              ZIP으로 다운로드
+            </button>
+          </div>
+          {!canUseDirectoryExport && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              이 브라우저는 Storage API 폴더 쓰기를 지원하지 않습니다. ZIP을 받은 뒤 압축을 해제하고
+              Local Haim으로 폴더를 열어 주세요.
+            </p>
+          )}
+          {storageMode === STORAGE_MODE_IDB && (
+            <div className="space-y-2 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+              <p className="text-xs text-gray-600 dark:text-odp-muted">
+                IDB Haim 데이터를 로컬 폴더에 동기화한 뒤 Local Haim으로 열 수 있습니다.
+              </p>
+              <button
+                type="button"
+                disabled={!isVaultExportReady || vaultExportBusy}
+                onClick={() => onIdbSyncToLocalFolder?.()}
+                className="inline-flex items-center gap-2 rounded border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 disabled:opacity-50 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200"
+              >
+                <IconUpload size={14} />
+                로컬 폴더로 동기화
+              </button>
+            </div>
+          )}
         </div>
 
 

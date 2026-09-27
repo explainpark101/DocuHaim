@@ -12,6 +12,8 @@ export type VaultOwnedApi = {
   setLocalTree: (tree: any[] | ((prev: any[]) => any[])) => void;
   webdavTree: any[];
   setWebdavTree: (tree: any[] | ((prev: any[]) => any[])) => void;
+  idbTree: any[];
+  setIdbTree: (tree: any[] | ((prev: any[]) => any[])) => void;
   sessionWorkspaces: Record<string, import('@/utils/sessionWorkspace').SessionWorkspace>;
   setSessionWorkspaces: (
     ws:
@@ -40,6 +42,12 @@ export type VaultOwnedApi = {
   setWebdavFolderLoadingPath: (
     p: string | null | ((prev: string | null) => string | null),
   ) => void;
+  isIdbTreeLoading: boolean;
+  setIsIdbTreeLoading: (v: boolean | ((prev: boolean) => boolean)) => void;
+  idbFolderLoadingPath: string | null;
+  setIdbFolderLoadingPath: (
+    p: string | null | ((prev: string | null) => string | null),
+  ) => void;
 };
 
 const VaultOwnedContext = createContext<VaultOwnedApi | null>(null);
@@ -52,10 +60,11 @@ export function useVaultOwned(): VaultOwnedApi {
 
 /** Owns vault React state (trees, storageMode, handles) outside the main controller. */
 export function AppVaultStateProvider({ children }: { children: ReactNode }) {
-  const [storageMode, setStorageMode] = useState(() => loadStorageMode());
+  const [storageMode, setStorageMode] = useState<string>(() => loadStorageMode());
   const [s3Tree, setS3Tree] = useState<any[]>([]);
   const [localTree, setLocalTree] = useState<any[]>([]);
   const [webdavTree, setWebdavTree] = useState<any[]>([]);
+  const [idbTree, setIdbTree] = useState<any[]>([]);
   const [sessionWorkspaces, setSessionWorkspaces] = useState<
     Record<string, import('@/utils/sessionWorkspace').SessionWorkspace>
   >({});
@@ -66,8 +75,10 @@ export function AppVaultStateProvider({ children }: { children: ReactNode }) {
   const [webdavConfig, setWebdavConfig] = useState(() => ({ ...DEFAULT_WEBDAV_CONFIG }));
   const [isLocalTreeLoading, setIsLocalTreeLoading] = useState(false);
   const [isWebdavTreeLoading, setIsWebdavTreeLoading] = useState(false);
+  const [isIdbTreeLoading, setIsIdbTreeLoading] = useState(false);
   const [localFolderLoadingPath, setLocalFolderLoadingPath] = useState<string | null>(null);
   const [webdavFolderLoadingPath, setWebdavFolderLoadingPath] = useState<string | null>(null);
+  const [idbFolderLoadingPath, setIdbFolderLoadingPath] = useState<string | null>(null);
 
   const upsertSessionWorkspace = (
     workspace: import('@/utils/sessionWorkspace').SessionWorkspace,
@@ -97,6 +108,8 @@ export function AppVaultStateProvider({ children }: { children: ReactNode }) {
       setLocalTree,
       webdavTree,
       setWebdavTree,
+      idbTree,
+      setIdbTree,
       sessionWorkspaces,
       setSessionWorkspaces,
       upsertSessionWorkspace,
@@ -115,20 +128,27 @@ export function AppVaultStateProvider({ children }: { children: ReactNode }) {
       setLocalFolderLoadingPath,
       webdavFolderLoadingPath,
       setWebdavFolderLoadingPath,
+      isIdbTreeLoading,
+      setIsIdbTreeLoading,
+      idbFolderLoadingPath,
+      setIdbFolderLoadingPath,
     }),
     [
       storageMode,
       s3Tree,
       localTree,
       webdavTree,
+      idbTree,
       sessionWorkspaces,
       localRootHandle,
       localVaultFsPath,
       webdavConfig,
       isLocalTreeLoading,
       isWebdavTreeLoading,
+      isIdbTreeLoading,
       localFolderLoadingPath,
       webdavFolderLoadingPath,
+      idbFolderLoadingPath,
     ],
   );
 

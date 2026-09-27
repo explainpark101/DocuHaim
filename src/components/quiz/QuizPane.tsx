@@ -108,6 +108,7 @@ import { findFileNodeByPath, findNodeByPath } from "@/utils/s3Tree";
 import { resolveQuizSourceMdPaths } from "@/utils/quiz/quizTreeSourceDrop";
 import type { TreeAttachSourceItem } from "@/utils/chatWithMyself/treeAttachDrop";
 import {
+  STORAGE_MODE_IDB,
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_WEBDAV,
 } from "@/utils/storageSettings";
@@ -232,10 +233,12 @@ export default function QuizPane({
     s3Tree,
     localTree,
     webdavTree,
+    idbTree,
     localRootHandle,
     getBackendForType,
     loadLocalFolderChildren,
     loadWebdavFolderChildren,
+    loadIdbFolderChildren,
   } = useVault();
   const { openAdvancedSearchFile, selectFileRaw } = useFileSession();
 
@@ -289,15 +292,18 @@ export default function QuizPane({
   const vaultTree = useMemo(() => {
     if (storageMode === STORAGE_MODE_LOCAL) return localTree;
     if (storageMode === STORAGE_MODE_WEBDAV) return webdavTree;
+    if (storageMode === STORAGE_MODE_IDB) return idbTree;
     return s3Tree;
-  }, [storageMode, localTree, webdavTree, s3Tree]);
+  }, [storageMode, localTree, webdavTree, idbTree, s3Tree]);
 
   const storageType =
     storageMode === STORAGE_MODE_LOCAL
       ? "local"
       : storageMode === STORAGE_MODE_WEBDAV
         ? "webdav"
-        : "s3";
+        : storageMode === STORAGE_MODE_IDB
+          ? "idb"
+          : "s3";
 
   const vaultStorageType = storageType as VaultStorageType;
 
@@ -326,6 +332,7 @@ export default function QuizPane({
         storageType: vaultStorageType,
         localTree,
         webdavTree,
+        idbTree,
         s3Tree,
         localRootHandle,
       });
@@ -339,6 +346,7 @@ export default function QuizPane({
       vaultStorageType,
       localTree,
       webdavTree,
+      idbTree,
       s3Tree,
       localRootHandle,
       selectFileRaw,
@@ -408,9 +416,11 @@ export default function QuizPane({
         await loadLocalFolderChildren?.(node);
       } else if (storageMode === STORAGE_MODE_WEBDAV) {
         await loadWebdavFolderChildren?.(node);
+      } else if (storageMode === STORAGE_MODE_IDB) {
+        await loadIdbFolderChildren?.(node);
       }
     },
-    [storageMode, loadLocalFolderChildren, loadWebdavFolderChildren],
+    [storageMode, loadLocalFolderChildren, loadWebdavFolderChildren, loadIdbFolderChildren],
   );
   const [doc, setDoc] = useState<QuizDocument>(() =>
     parseQuizDocument(content),

@@ -1,11 +1,11 @@
-/** @typedef {'s3' | 'local' | 'webdav'} StorageMode */
+/** @typedef {'s3' | 'local' | 'webdav' | 'idb'} StorageMode */
 
 /**
  * @typedef {Object} StorageCapabilities
  * @property {boolean} supportsRemoteSync - idle pull, mobile poll, pending remote uploads
  * @property {boolean} supportsLazyTree
  * @property {string} label
- * @property {'cloud' | 'folder' | 'webdav'} icon
+ * @property {'cloud' | 'folder' | 'webdav' | 'idb'} icon
  */
 
 /** @type {Record<StorageMode, StorageCapabilities>} */
@@ -28,6 +28,12 @@ export const STORAGE_CAPABILITIES = {
     label: 'WebDAV',
     icon: 'webdav',
   },
+  idb: {
+    supportsRemoteSync: false,
+    supportsLazyTree: true,
+    label: 'IDB',
+    icon: 'idb',
+  },
 };
 
 /**
@@ -37,6 +43,7 @@ export const STORAGE_CAPABILITIES = {
 export function getStorageCapabilities(mode) {
   if (mode === 'local') return STORAGE_CAPABILITIES.local;
   if (mode === 'webdav') return STORAGE_CAPABILITIES.webdav;
+  if (mode === 'idb') return STORAGE_CAPABILITIES.idb;
   return STORAGE_CAPABILITIES.s3;
 }
 
