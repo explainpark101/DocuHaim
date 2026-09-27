@@ -1,15 +1,43 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/components/modals/Modal';
+import Button from '@/components/Button';
 import FontFamilyInput from '@/components/FontFamilyInput';
-import { buildFontFamilyOptions } from '@/utils/fontOptions';
+import { IconBack, IconCheck, IconRefresh } from '@/components/icons';
 import {
   DEFAULT_DOCUMENT_SETTINGS_META,
   DEFAULT_SOURCE_LIST_TITLE,
+  type DocumentSettingsMeta,
 } from '@/utils/documentSettingsMeta';
+import { buildFontFamilyOptions } from '@/utils/fontOptions';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 
-export default function DocumentSettingsModal({ isOpen, onClose, settings, onApply }) {
-  const [local, setLocal] = useState(() => settings ?? DEFAULT_DOCUMENT_SETTINGS_META);
+export type DocumentSettingsModalProps = {
+  isOpen: boolean;
+  onClose?: (() => void) | undefined;
+  settings?: DocumentSettingsMeta | null | undefined;
+  onApply?: ((settings: DocumentSettingsMeta) => void) | undefined;
+};
+
+const FONT_FIELDS = [
+  ['body', '본문', '예: Noto Sans KR, serif'],
+  ['heading', '제목', '예: Noto Serif KR, Georgia'],
+  ['bold', '굵은 글씨', '예: Noto Sans KR, sans-serif'],
+  ['code', '코드', '예: JetBrains Mono, monospace'],
+] as const;
+
+/**
+ * Per-document footnote / font settings. Uses max-w (not bare w-[min]) so
+ * Modal's w-full does not expand to the viewport and kill corner-resize room.
+ */
+export default function DocumentSettingsModal({
+  isOpen,
+  onClose,
+  settings,
+  onApply,
+}: DocumentSettingsModalProps) {
+  const [local, setLocal] = useState<DocumentSettingsMeta>(
+    () => settings ?? DEFAULT_DOCUMENT_SETTINGS_META,
+  );
   const [fontOptionsTick, setFontOptionsTick] = useState(0);
 
   useEffect(() => {
@@ -28,14 +56,14 @@ export default function DocumentSettingsModal({ isOpen, onClose, settings, onApp
     [fontOptionsTick],
   );
 
-  const updateSourceList = (patch) => {
+  const updateSourceList = (patch: Partial<DocumentSettingsMeta['sourceList']>) => {
     setLocal((prev) => ({
       ...prev,
       sourceList: { ...prev.sourceList, ...patch },
     }));
   };
 
-  const updateFont = (key, value) => {
+  const updateFont = (key: keyof DocumentSettingsMeta['fonts'], value: string) => {
     setLocal((prev) => ({
       ...prev,
       fonts: { ...prev.fonts, [key]: value },
@@ -69,7 +97,7 @@ export default function DocumentSettingsModal({ isOpen, onClose, settings, onApp
       onClose={onClose}
       onConfirm={handleApply}
       ignoreEnterInFields
-      contentClassName="w-[min(92vw,720px)] max-h-[90vh]"
+      contentClassName="max-w-[min(92vw,720px)] max-h-[90vh]"
     >
       <div className="flex max-h-[90vh] flex-col gap-5 overflow-y-auto p-6">
         <div>
@@ -109,25 +137,17 @@ export default function DocumentSettingsModal({ isOpen, onClose, settings, onApp
         </section>
 
         <section className="grid gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+            <h3 className="shrink-0 text-sm font-semibold whitespace-nowrap text-gray-800 dark:text-odp-fgStrong">
               문서 폰트
             </h3>
-            <button
-              type="button"
-              onClick={handleResetFonts}
-              className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-odp-muted dark:hover:text-odp-fg"
-            >
+            <Button type="button" variant="tertiary" size="sm" onClick={handleResetFonts}>
+              <IconRefresh size={14} />
               폰트 초기화
-            </button>
+            </Button>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {[
-              ['body', '본문', '예: Noto Sans KR, serif'],
-              ['heading', '제목', '예: Noto Serif KR, Georgia'],
-              ['bold', '굵은 글씨', '예: Noto Sans KR, sans-serif'],
-              ['code', '코드', '예: JetBrains Mono, monospace'],
-            ].map(([key, label, placeholder]) => (
+            {FONT_FIELDS.map(([key, label, placeholder]) => (
               <label key={key} className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-odp-fgStrong">
                   {label}
@@ -159,20 +179,14 @@ export default function DocumentSettingsModal({ isOpen, onClose, settings, onApp
         </label>
 
         <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200 dark:bg-odp-bgSoft dark:text-odp-fgStrong dark:hover:bg-odp-focusBg"
-          >
+          <Button type="button" variant="secondary" size="md" onClick={onClose}>
+            <IconBack size={16} />
             취소
-          </button>
-          <button
-            type="button"
-            onClick={handleApply}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-          >
+          </Button>
+          <Button type="button" variant="primary" size="md" onClick={handleApply}>
+            <IconCheck size={16} />
             적용
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>
