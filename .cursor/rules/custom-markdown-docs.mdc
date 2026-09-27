@@ -9,7 +9,7 @@ When adding or changing **app-specific Markdown syntax** (beyond stock md-editor
 
 ## What counts
 
-- New markdown-it / marked / TipTap rules that introduce user-facing markup
+- New markdown-it / TipTap rules that introduce user-facing markup
 - New wiki/shortcode tokens (e.g. `![[…]]`, `[[file:…]]`, `<pgbr/>`)
 - HTML comment file formats that authors or exporters rely on (`<!-- note-cover -->`, `<!-- chat-msg -->`, …)
 - Behavior changes to an existing custom syntax (options, caption rules, render output)

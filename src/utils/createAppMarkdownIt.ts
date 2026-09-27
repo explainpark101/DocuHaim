@@ -10,7 +10,9 @@ import {
 export type AppMarkdownItPreset =
   | 'preview'
   | 'search'
-  | 'print-heading';
+  | 'print-heading'
+  /** Lean GFM-ish inline only (captions, short strings). No app plugins. */
+  | 'inline';
 
 export type CreateAppMarkdownItOptions = {
   preset?: AppMarkdownItPreset;
@@ -19,6 +21,7 @@ export type CreateAppMarkdownItOptions = {
 let previewMarkdownIt: MarkdownItInstance | null = null;
 let searchMarkdownIt: MarkdownItInstance | null = null;
 let printHeadingMarkdownIt: MarkdownItInstance | null = null;
+let inlineMarkdownIt: MarkdownItInstance | null = null;
 
 function buildMarkdownIt(preset: AppMarkdownItPreset): MarkdownItInstance {
   const md = new MarkdownIt();
@@ -40,6 +43,14 @@ function buildMarkdownIt(preset: AppMarkdownItPreset): MarkdownItInstance {
     case 'print-heading': {
       md.set({ html: true, linkify: false });
       applyPrintHeadingMarkdownItPlugins(md);
+      return md;
+    }
+    case 'inline': {
+      // Match typical caption / inline MD: links, emphasis, code — no raw HTML.
+      md.set({ html: false, breaks: false, linkify: true });
+      if (md.linkify) {
+        md.linkify.set({ fuzzyLink: true });
+      }
       return md;
     }
     default: {
@@ -67,6 +78,9 @@ export function getAppMarkdownIt(preset: AppMarkdownItPreset = 'preview'): Markd
     case 'print-heading':
       printHeadingMarkdownIt ??= buildMarkdownIt('print-heading');
       return printHeadingMarkdownIt;
+    case 'inline':
+      inlineMarkdownIt ??= buildMarkdownIt('inline');
+      return inlineMarkdownIt;
     default: {
       const _exhaustive: never = preset;
       return _exhaustive;
@@ -86,4 +100,13 @@ export function renderAppMarkdown(
     srcLines: Array.isArray(env.srcLines) ? env.srcLines : src.split('\n'),
   };
   return md.render(src, renderEnv);
+}
+
+/** Inline Markdown → HTML (no wrapping `<p>`). Uses the `inline` preset. */
+export function renderAppMarkdownInline(
+  source: string,
+  env: Record<string, unknown> = {},
+): string {
+  const md = getAppMarkdownIt('inline');
+  return md.renderInline(String(source ?? ''), env);
 }
