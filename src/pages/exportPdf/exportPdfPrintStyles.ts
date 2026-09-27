@@ -120,11 +120,11 @@ export const printFontStyles = `
     --md-theme-code-before-bg-color: #f0f0f0;
     display: block;
     width: 100%;
-    max-width: 100%;
+    max-width: none;
     box-sizing: border-box;
     margin: 1.25em 0;
     border: 2px solid #6b7280;
-    border-radius: 6px;
+    border-radius: 0;
     overflow: visible;
     box-shadow: none !important;
     background-color: #fafafa;
@@ -151,9 +151,10 @@ export const printFontStyles = `
     color: unset;
     display: block;
     width: 100%;
+    max-width: none;
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
     overflow: visible;
   }
   /* Haim TipTap code/raw: always wrap in Export PDF (ignore editor wrap pref). */
@@ -167,8 +168,9 @@ export const printFontStyles = `
   .export-pdf-preview-stage .haim-code-block [data-node-view-content],
   .export-pdf-preview-stage .haim-raw-md__pre {
     white-space: pre-wrap !important;
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    max-width: none !important;
   }
   /* Haim code chrome in Export PDF: no shadow, stronger border, full width. */
   :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block:not(.haim-mermaid-block),
@@ -176,18 +178,18 @@ export const printFontStyles = `
   .export-pdf-preview-stage .haim-code-block:not(.haim-mermaid-block) {
     display: block;
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: none !important;
     box-sizing: border-box;
     box-shadow: none !important;
     border: 2px solid #6b7280 !important;
-    border-radius: 6px;
+    border-radius: 0;
     overflow: visible;
   }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block__body,
   [data-export-pdf-pages] .haim-code-block__body,
   .export-pdf-preview-stage .haim-code-block__body {
     width: 100%;
-    max-width: 100%;
+    max-width: none;
     min-width: 0;
   }
   /* Line-number gutter: same surface as code (no tinted bg). */
@@ -525,11 +527,11 @@ export const printFontStyles = `
   .export-pdf-preview-stage .export-pdf-page-slot-clone .md-editor-code {
     display: block;
     width: 100%;
-    max-width: 100%;
+    max-width: none;
     box-sizing: border-box;
     margin: 1.25em 0;
     border: 2px solid #6b7280;
-    border-radius: 6px;
+    border-radius: 0;
     overflow: visible;
     box-shadow: none !important;
     background-color: #fafafa;
@@ -623,6 +625,9 @@ export const printFontStyles = `
   [data-export-pdf-pages] .pagedjs_page_content .export-pdf-code-line,
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-line {
     display: block;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -653,10 +658,12 @@ export const printFontStyles = `
   .export-pdf-preview-stage .export-pdf-page-slot-clone .export-pdf-code-content {
     display: inline-block;
     width: calc(100% - 3.5em);
+    max-width: calc(100% - 3.5em);
     vertical-align: top;
+    box-sizing: border-box;
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 
   .export-pdf-paper .md-pgbr {
