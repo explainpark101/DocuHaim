@@ -307,6 +307,24 @@ export function buildExportPdfPagedStyles(
 .export-pdf-paged-source .md-editor-code pre code .md-editor-code-block,
 .pagedjs_page_content .md-editor-code pre code .md-editor-code-block {
   color: unset;
+  display: block;
+  width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow: visible;
+}
+
+/* Haim TipTap code/raw: always wrap in Export PDF (ignore editor wrap pref). */
+.export-pdf-paged-source .haim-code-block code,
+.export-pdf-paged-source .haim-code-block [data-node-view-content],
+.export-pdf-paged-source .haim-raw-md__pre,
+.pagedjs_page_content .haim-code-block code,
+.pagedjs_page_content .haim-code-block [data-node-view-content],
+.pagedjs_page_content .haim-raw-md__pre {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 /* Per-line rows: avoid flex (paged.js break-token bugs); allow splitting tall wraps. */

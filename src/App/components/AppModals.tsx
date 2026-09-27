@@ -522,9 +522,12 @@ export function AppModals() {
         setMoveFileTarget(null);
       }}
       onConfirm={moveFileTarget ? handleConfirmMoveFileFromSidebar : handleConfirmMove}
-      onRequestCreateFolder={
-        (moveFileTarget || currentFile)
-          ? (parentPath: string, parentDirHandle: FileSystemDirectoryHandle | null) => {
+      {...((moveFileTarget || currentFile)
+        ? {
+            onRequestCreateFolder: (
+              parentPath: string,
+              parentDirHandle: FileSystemDirectoryHandle | null | undefined,
+            ) => {
               const st = moveFileTarget ? moveFileTarget.storageType : currentFile.type;
               setCreateModalContext({
                 storageType: st,
@@ -534,9 +537,9 @@ export function AppModals() {
                 fromMoveModal: true,
               });
               setCreateModalOpen(true);
-            }
-          : undefined
-      }
+            },
+          }
+        : {})}
       selectPathAfterCreate={moveModalSelectPath}
       onSelectPathAfterCreateApplied={() => setMoveModalSelectPath(null)}
     />

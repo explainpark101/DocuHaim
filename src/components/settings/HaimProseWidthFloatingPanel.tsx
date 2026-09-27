@@ -9,6 +9,7 @@ import {
 import { createPortal } from 'react-dom';
 import { GripHorizontal, PanelRightOpen, X } from 'lucide-react';
 import HaimProseWidthControls from '@/components/settings/HaimProseWidthControls';
+import HaimCodeWrapControls from '@/components/settings/HaimCodeWrapControls';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import { subscribeSettingsToggles } from '@/utils/advancedSearch/settingsToggles';
 import {
@@ -27,6 +28,10 @@ import {
   loadHaimProseWidthSettings,
   type HaimProseWidthSettings,
 } from '@/utils/haimProseWidthSettings';
+import {
+  HAIM_CODE_WRAP_CHANGED_EVENT,
+  loadHaimCodeWrapEnabled,
+} from '@/utils/haimCodeWrapSettings';
 
 /**
  * Draggable floating panel for live Haim WYSIWYG prose max-width tuning.
@@ -38,6 +43,7 @@ export default function HaimProseWidthFloatingPanel() {
   const [settings, setSettings] = useState<HaimProseWidthSettings>(() =>
     loadHaimProseWidthSettings(),
   );
+  const [codeWrap, setCodeWrap] = useState(() => loadHaimCodeWrapEnabled());
   const [position, setPosition] = useState(() => loadHaimProseWidthPanelPosition());
   const panelRef = useRef<HTMLDivElement | null>(null);
   const anchoredRef = useRef(hasStoredHaimProseWidthPanelPosition());
@@ -53,14 +59,19 @@ export default function HaimProseWidthFloatingPanel() {
 
   useEffect(() => {
     if (!open) return;
-    const sync = () => setSettings(loadHaimProseWidthSettings());
-    sync();
-    window.addEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, sync);
+    const syncWidth = () => setSettings(loadHaimProseWidthSettings());
+    const syncWrap = () => setCodeWrap(loadHaimCodeWrapEnabled());
+    syncWidth();
+    syncWrap();
+    window.addEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, syncWidth);
+    window.addEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, syncWrap);
     const unsub = subscribeSettingsToggles((id) => {
-      if (id === 'settings-haim-prose-width-clamp') sync();
+      if (id === 'settings-haim-prose-width-clamp') syncWidth();
+      if (id === 'settings-haim-code-wrap') syncWrap();
     });
     return () => {
-      window.removeEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, sync);
+      window.removeEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, syncWidth);
+      window.removeEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, syncWrap);
       unsub();
     };
   }, [open]);
@@ -132,7 +143,7 @@ export default function HaimProseWidthFloatingPanel() {
       style={{ left: `${position.leftVw}vw`, top: `${position.topVh}vh` }}
       role="dialog"
       aria-modal="false"
-      aria-label="WYSIWYG 본문 너비"
+      aria-label="보기 설정"
     >
       <div
         className="flex cursor-grab items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/90 px-3 py-2 active:cursor-grabbing dark:border-odp-borderSoft dark:bg-odp-bgSoft/80"
@@ -141,7 +152,7 @@ export default function HaimProseWidthFloatingPanel() {
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-800 dark:text-odp-fgStrong">
           <GripHorizontal size={16} className="shrink-0 opacity-50" aria-hidden />
           <PanelRightOpen size={15} className="shrink-0" aria-hidden />
-          <span className="truncate">본문 너비</span>
+          <span className="truncate">보기 설정</span>
         </div>
         <button
           type="button"
@@ -153,8 +164,11 @@ export default function HaimProseWidthFloatingPanel() {
           <X size={15} />
         </button>
       </div>
-      <div className="p-3">
+      <div className="space-y-3 p-3">
         <HaimProseWidthControls settings={settings} compact />
+        <div className="border-t border-slate-200 pt-3 dark:border-odp-borderSoft">
+          <HaimCodeWrapControls enabled={codeWrap} compact />
+        </div>
       </div>
     </div>,
     document.body,

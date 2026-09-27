@@ -152,6 +152,20 @@ export const printFontStyles = `
     word-break: break-word;
     overflow: visible;
   }
+  /* Haim TipTap code/raw: always wrap in Export PDF (ignore editor wrap pref). */
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block code,
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-code-block [data-node-view-content],
+  :is(#export-pdf-preview, [data-export-pdf-preview]) .haim-raw-md__pre,
+  [data-export-pdf-pages] .haim-code-block code,
+  [data-export-pdf-pages] .haim-code-block [data-node-view-content],
+  [data-export-pdf-pages] .haim-raw-md__pre,
+  .export-pdf-preview-stage .haim-code-block code,
+  .export-pdf-preview-stage .haim-code-block [data-node-view-content],
+  .export-pdf-preview-stage .haim-raw-md__pre {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
   :is(#export-pdf-preview, [data-export-pdf-preview]) .md-editor-preview :not(pre) > code {
     background-color: rgba(135, 131, 120, 0.15);
     color: #eb5757;

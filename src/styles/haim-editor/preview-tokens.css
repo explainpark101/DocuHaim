@@ -301,6 +301,68 @@ html[data-haim-focus-outline='1'] .haim-editor .tiptap .haim-node-focused {
   padding: 0;
   line-height: 1.55;
   white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/*
+ * TipTap NodeViewContent sets inline white-space:pre-wrap.
+ * html[data-haim-code-wrap] controls editor wrap; preview-only / Export PDF always wrap.
+ */
+.haim-editor .haim-code-block [data-node-view-content] {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+html[data-haim-code-wrap='0']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-code-block
+  code,
+html[data-haim-code-wrap='0']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-code-block
+  [data-node-view-content] {
+  white-space: pre !important;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+html[data-haim-code-wrap='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-code-block
+  code,
+html[data-haim-code-wrap='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-code-block
+  [data-node-view-content] {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+html[data-haim-code-wrap='0']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-raw-md__pre {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+html[data-haim-code-wrap='1']
+  .haim-editor:not([data-haim-preview-only])
+  .haim-raw-md__pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Export PDF / read-only Haim preview: always soft-wrap code + raw */
+.haim-editor[data-haim-preview-only] .haim-code-block code,
+.haim-editor[data-haim-preview-only] .haim-code-block [data-node-view-content],
+.haim-editor[data-haim-preview-only] .haim-raw-md__pre {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Shared gutter — visibility via html[data-haim-*-line-numbers] */

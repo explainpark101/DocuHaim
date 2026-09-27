@@ -2707,25 +2707,13 @@ export default function ChatWithMyselfPane({
               autoFit={Boolean(editTarget)}
               fitKey={editTarget?.id || ''}
             >
-              <div
-                className={
-                  editTarget
-                    ? 'mx-auto flex w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3'
-                    : 'mx-auto flex h-full min-h-0 w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3'
-                }
-              >
-                <div
-                  className={
-                    editTarget
-                      ? 'flex w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5'
-                      : 'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5'
-                  }
-                >
+              <div className="mx-auto flex h-full min-h-0 w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3">
+                <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5">
                   <ChatComposer
                     ref={composerRef}
                     key={storageScope || 'pending'}
                     bare
-                    fillParent={!editTarget}
+                    fillParent
                     draftScope={storageScope}
                     autoFocusOnMount={autoFocusComposer}
                     groups={groups}

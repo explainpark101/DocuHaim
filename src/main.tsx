@@ -15,6 +15,7 @@ import { initEditorImageAlignDom } from '@/utils/editorImageAlignSettings'
 import { initHaimFocusOutlineDom } from '@/utils/haimFocusOutlineSettings'
 import { initHaimProseWidthDom } from '@/utils/haimProseWidthSettings'
 import { initHaimWysiwygLineNumbersDom } from '@/utils/haimWysiwygLineNumberSettings'
+import { initHaimCodeWrapDom } from '@/utils/haimCodeWrapSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
 import { initDesktopViewport } from '@/utils/initDesktopViewport'
@@ -32,6 +33,7 @@ initEditorImageAlignDom()
 initHaimFocusOutlineDom()
 initHaimProseWidthDom()
 initHaimWysiwygLineNumbersDom()
+initHaimCodeWrapDom()
 initTouchLongPressHaptics()
 initDesktopViewport()
 initDesktopWindowCloseGuard()
