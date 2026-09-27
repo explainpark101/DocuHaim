@@ -167,6 +167,12 @@ export default function HaimEditor({
   const imageUploadingRef = useRef(false);
   const [tableEdit, setTableEdit] = useState<HaimTableEditSession | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const showImageUploadOverlay =
+    Boolean(isUploadingEditorImage) || localImageUploading;
+  const uploadPercentLabel = Math.max(
+    0,
+    Math.min(100, Math.round(Number(uploadImagePercent) || 0)),
+  );
 
   const effectiveMode: HaimViewMode = viewMode;
   const showSource =
@@ -810,13 +816,6 @@ export default function HaimEditor({
     });
     return () => registerHaimAnnotateUpload(null);
   }, [onUploadImage, previewOnly]);
-
-  const showImageUploadOverlay =
-    Boolean(isUploadingEditorImage) || localImageUploading;
-  const uploadPercentLabel = Math.max(
-    0,
-    Math.min(100, Math.round(Number(uploadImagePercent) || 0)),
-  );
 
   const toggleInvisibleChars = useCallback(() => {
     if (!editor) return;
