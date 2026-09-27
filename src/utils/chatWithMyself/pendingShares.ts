@@ -39,12 +39,14 @@ export type SharePrompt = {
   files?: File[];
 };
 
-/** Minimal storage context accepted by appendChatMessage. */
-export type ChatStorageCtxLike =
-  | { mode: 's3'; client: unknown; bucket: string }
-  | { mode: 'local'; localRootHandle: unknown }
-  | { mode: 'webdav'; webdavConfig: unknown }
-  | { mode: 'idb' };
+/** Minimal storage context accepted by appendChatMessage / share flush. */
+export type ChatStorageCtxLike = {
+  mode: 's3' | 'local' | 'webdav' | 'idb';
+  client?: unknown;
+  bucket?: string;
+  localRootHandle?: unknown;
+  webdavConfig?: unknown;
+};
 
 type SearchLike =
   | string

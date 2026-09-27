@@ -57,7 +57,6 @@ import {
   resolveGroupLabel,
   resolveGroupId,
   appendChatMessages,
-  appendChatMessage,
   appendShareChatMessage,
   createOgStorageAdapters,
   deleteChatMessage,
@@ -236,7 +235,9 @@ async function matchesFilters(
     const body = msg.body || '';
     const group = msg.group || '';
     const { attachments } = extractChatBodyAttachments(body);
-    const reactionSearchText = reactionsToSearchText(msg.reactions);
+    const reactionSearchText = reactionsToSearchText(
+      msg.reactions as Parameters<typeof reactionsToSearchText>[0],
+    );
     const localHaystacks = [
       body,
       group,
@@ -259,21 +260,21 @@ async function matchesFilters(
 }
 
 function normalizeOutgoingAttachments(items: unknown): OutgoingAttachment[] {
-  return (Array.isArray(items) ? items : [])
-    .map((item: unknown) => {
-      if (!item) return null;
-      if (item instanceof File || item instanceof Blob) {
-        return { file: item, background: null };
+  const out: OutgoingAttachment[] = [];
+  for (const item of Array.isArray(items) ? items : []) {
+    if (!item) continue;
+    if (item instanceof File || item instanceof Blob) {
+      out.push({ file: item, background: null });
+      continue;
+    }
+    if (typeof item === 'object' && item !== null && 'file' in item) {
+      const typed = item as { file?: unknown; background?: unknown };
+      if (typed.file instanceof File || typed.file instanceof Blob) {
+        out.push({ file: typed.file, background: typed.background ?? null });
       }
-      if (typeof item === 'object' && item !== null && 'file' in item) {
-        const typed = item as { file?: unknown; background?: unknown };
-        if (typed.file instanceof File || typed.file instanceof Blob) {
-          return { file: typed.file, background: typed.background || null };
-        }
-      }
-      return null;
-    })
-    .filter((item): item is OutgoingAttachment => Boolean(item));
+    }
+  }
+  return out;
 }
 
 /** Prefer enough history on first paint so viewport fill rarely day-steps. */
@@ -360,27 +361,31 @@ export default function ChatWithMyselfPane({
   isActive = true,
 }: ChatWithMyselfPaneProps): ReactNode {
   const location = useLocation();
-  const ctx = useMemo(() => {
+  const ctx = useMemo((): ChatStorageCtx => {
     if (storageMode === 'idb') {
       return { mode: 'idb' };
     }
     if (storageMode === 'local') {
-      return { mode: 'local', localRootHandle };
+      const next: ChatStorageCtx = { mode: 'local' };
+      if (localRootHandle) next.localRootHandle = localRootHandle;
+      return next;
     }
     if (storageMode === 'webdav') {
-      return { mode: 'webdav', webdavConfig };
+      const next: ChatStorageCtx = { mode: 'webdav' };
+      if (webdavConfig) next.webdavConfig = webdavConfig;
+      return next;
     }
-    return {
-      mode: 's3',
-      client: getS3Client?.(),
-      bucket: s3Bucket,
-    };
+    const next: ChatStorageCtx = { mode: 's3' };
+    const client = getS3Client?.() ?? undefined;
+    if (client) next.client = client;
+    if (s3Bucket) next.bucket = s3Bucket;
+    return next;
   }, [storageMode, getS3Client, s3Bucket, localRootHandle, webdavConfig]);
 
   const storageReady =
     ctx.mode === 'idb' ||
-    (ctx.mode === 's3' && ctx.client && ctx.bucket) ||
-    (ctx.mode === 'local' && ctx.localRootHandle) ||
+    (ctx.mode === 's3' && Boolean(ctx.client && ctx.bucket)) ||
+    (ctx.mode === 'local' && Boolean(ctx.localRootHandle)) ||
     (ctx.mode === 'webdav' &&
       Boolean(ctx.webdavConfig?.endpoint && ctx.webdavConfig?.username));
 
@@ -397,7 +402,7 @@ export default function ChatWithMyselfPane({
   }, [storageMode, s3Tree, localTree, webdavTree, idbTree]);
 
   const setAttachDropHostNode = useCallback(
-    (node) => {
+    (node: HTMLElement | null) => {
       onAttachDropHostChange?.(node);
     },
     [onAttachDropHostChange],
@@ -408,7 +413,7 @@ export default function ChatWithMyselfPane({
   }, [onAttachDropHostChange]);
 
   const noteExists = useCallback(
-    (path) => {
+    (path: string) => {
       const p = normalizeStoragePath(path);
       if (!p || p.startsWith('.trash/')) return false;
       return Boolean(findFileNodeByPath(fileTree, p));
@@ -417,7 +422,7 @@ export default function ChatWithMyselfPane({
   );
 
   const folderExists = useCallback(
-    (path) => {
+    (path: string) => {
       const raw = normalizeStoragePath(path);
       if (!raw || raw.startsWith('.trash/')) return false;
       const withSlash = raw.endsWith('/') ? raw : `${raw}/`;
@@ -426,14 +431,14 @@ export default function ChatWithMyselfPane({
         findNodeByPath(fileTree, withSlash) ||
         findNodeByPath(fileTree, without) ||
         findNodeByPath(fileTree, raw);
-      return Boolean(node && node.type === 'folder');
+      return Boolean(node && (node as ChatTreeNode).type === 'folder');
     },
     [fileTree],
   );
 
   const listFolderFiles = useCallback(
-    (folderPath) =>
-      listFilesUnderFolderPath(fileTree, folderPath, (path) => {
+    (folderPath: string) =>
+      listFilesUnderFolderPath(fileTree, folderPath, (path: string) => {
         const raw = normalizeStoragePath(path);
         const withSlash = raw.endsWith('/') ? raw : `${raw}/`;
         const without = withSlash.replace(/\/+$/, '');
@@ -472,18 +477,18 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx],
   );
 
-  const [groups, setGroups] = useState([]);
+  const [groups, setGroups] = useState<any[]>([]);
   const [timeZone, setTimeZone] = useState(detectTimeZone);
   const [selectedGroup, setSelectedGroup] = useState(SELF_GROUP);
   /** null = show all groups; otherwise only that group's messages */
-  const [viewGroupFilter, setViewGroupFilter] = useState(null);
-  const [dayKeys, setDayKeys] = useState([]);
-  const [dayCounts, setDayCounts] = useState({});
+  const [viewGroupFilter, setViewGroupFilter] = useState<string | null>(null);
+  const [dayKeys, setDayKeys] = useState<string[]>([]);
+  const [dayCounts, setDayCounts] = useState<Record<string, number>>({});
   /** Inclusive index of newest day currently in the message window. */
   const [windowNewestIndex, setWindowNewestIndex] = useState(0);
   /** Exclusive end index of oldest day in the window (same role as former loadedDayIndex). */
   const [loadedDayIndex, setLoadedDayIndex] = useState(0);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [loadingNewer, setLoadingNewer] = useState(false);
   const [booting, setBooting] = useState(false);
@@ -525,9 +530,9 @@ export default function ChatWithMyselfPane({
     loadChatComposerAutocompleteEnabled,
   );
   const [composerSettingsOpen, setComposerSettingsOpen] = useState(false);
-  const [activeJumpDate, setActiveJumpDate] = useState(null);
-  const [searchFilters, setSearchFilters] = useState(null);
-  const [searchResults, setSearchResults] = useState([]);
+  const [activeJumpDate, setActiveJumpDate] = useState<string | null>(null);
+  const [searchFilters, setSearchFilters] = useState<any>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchCursor, setSearchCursor] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
   // Persist across rail/drawer unmount so open/close never wipes the search form.
@@ -538,48 +543,48 @@ export default function ChatWithMyselfPane({
   const [searchToDt, setSearchToDt] = useState('');
   const [searchNoReactionsOnly, setSearchNoReactionsOnly] = useState(false);
   const [searchFiltersUiOpen, setSearchFiltersUiOpen] = useState(false);
-  const [highlightId, setHighlightId] = useState(null);
-  const [replyTo, setReplyTo] = useState(null);
-  const [editTarget, setEditTarget] = useState(null);
-  const [addToNoteMessage, setAddToNoteMessage] = useState(null);
-  const [historyMessage, setHistoryMessage] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<any>(null);
+  const [editTarget, setEditTarget] = useState<any>(null);
+  const [addToNoteMessage, setAddToNoteMessage] = useState<any>(null);
+  const [historyMessage, setHistoryMessage] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deletingCount, setDeletingCount] = useState(0);
   /** @type {[Record<string, string>, Function]} session-only decrypted plaintext by message id */
-  const [decryptedById, setDecryptedById] = useState({});
-  const [decryptTarget, setDecryptTarget] = useState(null);
+  const [decryptedById, setDecryptedById] = useState<Record<string, string>>({});
+  const [decryptTarget, setDecryptTarget] = useState<any>(null);
   const [decryptError, setDecryptError] = useState('');
   const [addToNoteSubmitting, setAddToNoteSubmitting] = useState(false);
-  const [composerSeed, setComposerSeed] = useState(null);
-  const [shareGroupModal, setShareGroupModal] = useState(null);
-  const [pinnedResults, setPinnedResults] = useState([]);
-  const [notedResults, setNotedResults] = useState([]);
-  const [editedResults, setEditedResults] = useState([]);
-  const [linkResults, setLinkResults] = useState([]);
-  const [fileResults, setFileResults] = useState([]);
-  const [photoResults, setPhotoResults] = useState([]);
+  const [composerSeed, setComposerSeed] = useState<any>(null);
+  const [shareGroupModal, setShareGroupModal] = useState<any>(null);
+  const [pinnedResults, setPinnedResults] = useState<any[]>([]);
+  const [notedResults, setNotedResults] = useState<any[]>([]);
+  const [editedResults, setEditedResults] = useState<any[]>([]);
+  const [linkResults, setLinkResults] = useState<any[]>([]);
+  const [fileResults, setFileResults] = useState<any[]>([]);
+  const [photoResults, setPhotoResults] = useState<any[]>([]);
   const [pinnedLoading, setPinnedLoading] = useState(false);
-  const searchDayKeysRef = useRef([]);
+  const searchDayKeysRef = useRef<string[]>([]);
   const searchGenRef = useRef(0);
-  const pinnedDayKeysRef = useRef([]);
+  const pinnedDayKeysRef = useRef<string[]>([]);
   const messagesRef = useRef(messages);
   const dayKeysRef = useRef(dayKeys);
   const loadedDayIndexRef = useRef(loadedDayIndex);
   const windowNewestIndexRef = useRef(windowNewestIndex);
-  const sendQueueRef = useRef([]);
+  const sendQueueRef = useRef<any[]>([]);
   const flushingSendRef = useRef(false);
-  const reactionChainRef = useRef(new Map());
-  const reactionGenRef = useRef(new Map());
-  const reactionBaseRef = useRef(new Map());
-  const syncApiRef = useRef(null);
-  const localTombstonesRef = useRef(new Set());
+  const reactionChainRef = useRef<Map<string, Promise<unknown>>>(new Map());
+  const reactionGenRef = useRef<Map<string, number>>(new Map());
+  const reactionBaseRef = useRef<Map<string, any>>(new Map());
+  const syncApiRef = useRef<any>(null);
+  const localTombstonesRef = useRef<Set<string>>(new Set());
   const loadingOlderRef = useRef(false);
   const loadingNewerRef = useRef(false);
   /** @type {React.MutableRefObject<import('@/utils/chatWithMyself/scrollToMessage').ChatMessageListHandle | null>} */
-  const messageListRef = useRef(null);
-  const composerRef = useRef(null);
+  const messageListRef = useRef<any>(null);
+  const composerRef = useRef<any>(null);
 
-  const noteLocalDayWrite = useCallback((dateStr) => {
+  const noteLocalDayWrite = useCallback((dateStr: string) => {
     if (dateStr) syncApiRef.current?.invalidateDay(dateStr);
   }, []);
   const noteLocalMetaWrite = useCallback(() => {
@@ -587,10 +592,10 @@ export default function ChatWithMyselfPane({
   }, []);
 
   const handleTreeAttachDrop = useCallback(
-    (items) => {
+    (items: unknown) => {
       if (!storageReady) return;
       try {
-        const shareItems = buildTreeShareItems(items, (_storageType, path) =>
+        const shareItems = buildTreeShareItems(items, (_storageType: string, path: string) =>
           findNodeByPath(fileTree, path) || findFileNodeByPath(fileTree, path),
         );
         if (!shareItems.length) return;
@@ -604,7 +609,9 @@ export default function ChatWithMyselfPane({
 
   useEffect(() => {
     onRegisterTreeAttachDrop?.(handleTreeAttachDrop);
-    return () => onRegisterTreeAttachDrop?.(null);
+    return () => {
+      onRegisterTreeAttachDrop?.(null);
+    };
   }, [handleTreeAttachDrop, onRegisterTreeAttachDrop]);
 
   useEffect(() => {
@@ -647,8 +654,8 @@ export default function ChatWithMyselfPane({
   // Once groups load, map legacy draft/selected names → stable ids.
   useEffect(() => {
     if (!groups.length) return;
-    setSelectedGroup((prev) => resolveGroupId(groups, prev || SELF_GROUP));
-    setViewGroupFilter((prev) =>
+    setSelectedGroup((prev: any) => resolveGroupId(groups, prev || SELF_GROUP));
+    setViewGroupFilter((prev: any) =>
       prev ? resolveGroupId(groups, prev) : prev,
     );
   }, [groups]);
@@ -663,43 +670,43 @@ export default function ChatWithMyselfPane({
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  const toggleComposerToolbar = useCallback((next) => {
+  const toggleComposerToolbar = useCallback((next: any) => {
     const value = typeof next === 'boolean' ? next : !composerToolbarOpen;
     setComposerToolbarOpen(value);
     writeComposerToolbarPref(value);
   }, [composerToolbarOpen]);
 
-  const toggleComposerLineNumbers = useCallback((next) => {
+  const toggleComposerLineNumbers = useCallback((next: any) => {
     const value = typeof next === 'boolean' ? next : !composerLineNumbers;
     setComposerLineNumbers(value);
     writeComposerLineNumbersPref(value);
   }, [composerLineNumbers]);
 
-  const toggleOpenLinksInNewWindow = useCallback((next) => {
+  const toggleOpenLinksInNewWindow = useCallback((next: any) => {
     const value = typeof next === 'boolean' ? next : !openLinksInNewWindow;
     setOpenLinksInNewWindow(value);
     writeOpenLinksInNewWindowPref(value);
   }, [openLinksInNewWindow]);
 
-  const togglePerfReduceLayoutAnim = useCallback((next) => {
+  const togglePerfReduceLayoutAnim = useCallback((next: any) => {
     const value = typeof next === 'boolean' ? next : !perfReduceLayoutAnim;
     setPerfReduceLayoutAnim(value);
     writePerfReduceLayoutAnimPref(value);
   }, [perfReduceLayoutAnim]);
 
-  const togglePerfReduceBubblePressFx = useCallback((next) => {
+  const togglePerfReduceBubblePressFx = useCallback((next: any) => {
     const value = typeof next === 'boolean' ? next : !perfReduceBubblePressFx;
     setPerfReduceBubblePressFx(value);
     writePerfReduceBubblePressFxPref(value);
   }, [perfReduceBubblePressFx]);
 
-  const toggleComposerLightweight = useCallback((next) => {
+  const toggleComposerLightweight = useCallback((next: any) => {
     const value = typeof next === 'boolean' ? next : !composerLightweight;
     setComposerLightweight(value);
     writeComposerLightweightPref(value);
   }, [composerLightweight]);
 
-  const toggleComposerAutocomplete = useCallback((next) => {
+  const toggleComposerAutocomplete = useCallback((next: any) => {
     const value = typeof next === 'boolean' ? next : !composerAutocompleteEnabled;
     setSettingsToggle('settings-composer-autocomplete', value);
   }, [composerAutocompleteEnabled]);
@@ -718,18 +725,18 @@ export default function ChatWithMyselfPane({
   const visibleMessages = useMemo(() => {
     const source = !viewGroupFilter
       ? messages
-      : messages.filter((m) =>
+      : messages.filter((m: any) =>
           groupMatches(groups, m.group || SELF_GROUP, viewGroupFilter),
         );
     return dedupeMessagesById(source);
   }, [messages, viewGroupFilter, groups]);
 
   const pendingSend = useMemo(
-    () => messages.some((m) => m.pendingSync === 'send'),
+    () => messages.some((m: any) => m.pendingSync === 'send'),
     [messages],
   );
   const pendingEdit = useMemo(
-    () => messages.some((m) => m.pendingSync === 'edit'),
+    () => messages.some((m: any) => m.pendingSync === 'edit'),
     [messages],
   );
   const deleting = deletingCount > 0;
@@ -803,7 +810,7 @@ export default function ChatWithMyselfPane({
     let cancelled = false;
     (async () => {
       const entries = await Promise.all(
-        dayKeys.map(async (dateStr) => {
+        dayKeys.map(async (dateStr: string) => {
           try {
             const msgs = await readDayMessages(ctx, dateStr);
             return [dateStr, msgs.length];
@@ -837,12 +844,12 @@ export default function ChatWithMyselfPane({
       const wEnd = loadedDayIndexRef.current;
       let loadDates =
         prevKeys.length && wEnd > wStart
-          ? prevKeys.slice(wStart, wEnd).filter((d) => unique.includes(d))
+          ? prevKeys.slice(wStart, wEnd).filter((d: any) => unique.includes(d))
           : [];
       if (!loadDates.length && unique[0]) loadDates = [unique[0]];
 
       const parts = await Promise.all(
-        loadDates.map((d) => readDayMessages(ctx, d)),
+        loadDates.map((d: any) => readDayMessages(ctx, d)),
       );
       // dayKeys order is newest→oldest; messages are chronological (oldest first).
       let msgs = [];
@@ -942,14 +949,14 @@ export default function ChatWithMyselfPane({
     return keys[0] ? [keys[0]] : [];
   }, []);
 
-  const handleRemoteDayMerged = useCallback((dateStr, remoteMessages, remoteParsed) => {
+  const handleRemoteDayMerged = useCallback((dateStr: any, remoteMessages: any, remoteParsed: any) => {
     const remoteDeleted = remoteParsed?.deletedIds || [];
     if (remoteDeleted.length) {
       for (const id of remoteDeleted) {
         localTombstonesRef.current.delete(id);
       }
     }
-    setMessages((prev) => {
+    setMessages((prev: any) => {
       const next = mergeMessagesForDate(
         prev,
         dateStr,
@@ -957,9 +964,9 @@ export default function ChatWithMyselfPane({
         remoteParsed,
         localTombstonesRef.current,
       );
-      const count = next.filter((m) => m.dateStr === dateStr).length;
+      const count = next.filter((m: any) => m.dateStr === dateStr).length;
       queueMicrotask(() => {
-        setDayCounts((prevCounts) => ({
+        setDayCounts((prevCounts: any) => ({
           ...prevCounts,
           [dateStr]: count,
         }));
@@ -968,12 +975,12 @@ export default function ChatWithMyselfPane({
     });
   }, []);
 
-  const handleRemoteMeta = useCallback((meta) => {
+  const handleRemoteMeta = useCallback((meta: any) => {
     setGroups(meta.groups || []);
     setTimeZone(meta.timezone || detectTimeZone());
   }, []);
 
-  const handleRemoteDayKeys = useCallback((keys) => {
+  const handleRemoteDayKeys = useCallback((keys: any) => {
     const today = localDateString(new Date(), detectTimeZone());
     const ordered = [...new Set(keys.includes(today) ? keys : [today, ...keys])];
     const prev = dayKeysRef.current;
@@ -986,8 +993,8 @@ export default function ChatWithMyselfPane({
 
     if (!loadedDates.length) return;
     const newIndexes = loadedDates
-      .map((d) => ordered.indexOf(d))
-      .filter((i) => i >= 0);
+      .map((d: any) => ordered.indexOf(d))
+      .filter((i: any) => i >= 0);
     if (!newIndexes.length) return;
     setWindowNewestIndex(Math.min(...newIndexes));
     setLoadedDayIndex(Math.max(...newIndexes) + 1);
@@ -1015,7 +1022,7 @@ export default function ChatWithMyselfPane({
       Array.isArray(shareGroupSend.files) && shareGroupSend.files.length > 0;
     if (!hasBody && !hasFiles) return;
     setEditTarget(null);
-    setShareGroupModal((prev) =>
+    setShareGroupModal((prev: any) =>
       prev?.id === shareGroupSend.id ? prev : shareGroupSend,
     );
   }, [shareGroupSend]);
@@ -1059,7 +1066,7 @@ export default function ChatWithMyselfPane({
       loadedDayIndexRef.current = nextIdx;
       setLoadedDayIndex(nextIdx);
       if (olderHead.length) {
-        setMessages((prev) => prependUniqueMessages(olderHead, prev));
+        setMessages((prev: any) => prependUniqueMessages(olderHead, prev));
       }
       return nextIdx > startIdx;
     } catch (e) {
@@ -1092,7 +1099,7 @@ export default function ChatWithMyselfPane({
     setWindowNewestIndex(nextIdx);
     try {
       const newer = await readDayMessages(ctx, dateStr);
-      setMessages((prev) => appendUniqueMessages(prev, newer));
+      setMessages((prev: any) => appendUniqueMessages(prev, newer));
     } catch (e) {
       windowNewestIndexRef.current = newestIdx;
       setWindowNewestIndex(newestIdx);
@@ -1143,13 +1150,13 @@ export default function ChatWithMyselfPane({
   const scrollToDayFirstMessage = useCallback((dateStr, messageId = null) => {
     const id =
       messageId ||
-      messagesRef.current.find((m) => m.dateStr === dateStr)?.id ||
+      messagesRef.current.find((m: any) => m.dateStr === dateStr)?.id ||
       null;
     if (id) {
       if (messageId) setViewGroupFilter(null);
       setHighlightId(id);
       window.setTimeout(
-        () => setHighlightId((cur) => (cur === id ? null : cur)),
+        () => setHighlightId((cur: any) => (cur === id ? null : cur)),
         2200,
       );
       return;
@@ -1190,14 +1197,14 @@ export default function ChatWithMyselfPane({
         setLoadedDayIndex(end);
         const targetId =
           messageId ||
-          msgs.find((m) => m.dateStr === dateStr)?.id ||
+          msgs.find((m: any) => m.dateStr === dateStr)?.id ||
           msgs[0]?.id ||
           null;
         if (targetId) {
           if (messageId) setViewGroupFilter(null);
           setHighlightId(targetId);
           window.setTimeout(
-            () => setHighlightId((cur) => (cur === targetId ? null : cur)),
+            () => setHighlightId((cur: any) => (cur === targetId ? null : cur)),
             2200,
           );
         } else {
@@ -1336,14 +1343,14 @@ export default function ChatWithMyselfPane({
     ].includes(raw);
   }, [location.hash]);
 
-  const confirmPendingMessages = useCallback((msgs, dateStr) => {
+  const confirmPendingMessages = useCallback((msgs: any, dateStr: any) => {
     if (!msgs?.length || !dateStr) return;
-    const byId = new Map(msgs.map((m) => [m.id, m]));
-    setMessages((prev) => {
+    const byId = new Map(msgs.map((m: any) => [m.id, m]));
+    setMessages((prev: any) => {
       if (windowNewestIndexRef.current !== 0) {
-        return prev.filter((m) => !byId.has(m.id));
+        return prev.filter((m: any) => !byId.has(m.id));
       }
-      return prev.map((m) => {
+      return prev.map((m: any) => {
         const confirmed = byId.get(m.id);
         if (!confirmed) return m;
         const next = { ...m, ...confirmed, dateStr };
@@ -1351,18 +1358,18 @@ export default function ChatWithMyselfPane({
         return next;
       });
     });
-    setDayCounts((prev) => ({
+    setDayCounts((prev: any) => ({
       ...prev,
       [dateStr]: (prev[dateStr] || 0) + msgs.length,
     }));
     if (dayKeysRef.current.includes(dateStr)) return;
-    setDayKeys((prev) => [dateStr, ...prev.filter((d) => d !== dateStr)]);
+    setDayKeys((prev: any) => [dateStr, ...prev.filter((d: any) => d !== dateStr)]);
     if (windowNewestIndexRef.current === 0) {
       setWindowNewestIndex(0);
-      setLoadedDayIndex((i) => Math.max(i, 1));
+      setLoadedDayIndex((i: any) => Math.max(i, 1));
     } else {
-      setWindowNewestIndex((i) => i + 1);
-      setLoadedDayIndex((i) => i + 1);
+      setWindowNewestIndex((i: any) => i + 1);
+      setLoadedDayIndex((i: any) => i + 1);
     }
   }, []);
 
@@ -1373,7 +1380,7 @@ export default function ChatWithMyselfPane({
       while (sendQueueRef.current.length > 0) {
         const batch = sendQueueRef.current.splice(0, sendQueueRef.current.length);
         setError('');
-        const batchIds = batch.map((item) => item.clientId);
+        const batchIds = batch.map((item: any) => item.clientId);
         try {
           const prepared = [];
           for (const item of batch) {
@@ -1395,8 +1402,8 @@ export default function ChatWithMyselfPane({
               );
               encrypted = true;
             }
-            setMessages((prev) =>
-              prev.map((m) =>
+            setMessages((prev: any) =>
+              prev.map((m: any) =>
                 m.id === item.clientId
                   ? {
                       ...m,
@@ -1432,7 +1439,7 @@ export default function ChatWithMyselfPane({
             postChatSyncEvent('day', { dateStr });
           }
         } catch (e) {
-          setMessages((prev) => prev.filter((m) => !batchIds.includes(m.id)));
+          setMessages((prev: any) => prev.filter((m: any) => !batchIds.includes(m.id)));
           setError(e?.message || '전송 실패');
         }
       }
@@ -1498,12 +1505,12 @@ export default function ChatWithMyselfPane({
       };
 
       if (windowNewestIndexRef.current === 0) {
-        setMessages((prev) => [...prev, optimistic]);
+        setMessages((prev: any) => [...prev, optimistic]);
       }
       if (!dayKeysRef.current.includes(dateStr)) {
-        setDayKeys((prev) => [dateStr, ...prev.filter((d) => d !== dateStr)]);
+        setDayKeys((prev: any) => [dateStr, ...prev.filter((d: any) => d !== dateStr)]);
         setWindowNewestIndex(0);
-        setLoadedDayIndex((i) => Math.max(i, 1));
+        setLoadedDayIndex((i: any) => Math.max(i, 1));
       }
 
       sendQueueRef.current.push({
@@ -1523,7 +1530,7 @@ export default function ChatWithMyselfPane({
     [storageReady, storageSendErrorHint, flushSendQueue],
   );
 
-  const handleReply = useCallback((message) => {
+  const handleReply = useCallback((message: any) => {
     setEditTarget(null);
     const locked =
       isChatMessageEncrypted(message) && !decryptedById[message.id];
@@ -1561,7 +1568,7 @@ export default function ChatWithMyselfPane({
     [groups, decryptedById],
   );
 
-  const handleRequestDecrypt = useCallback((message) => {
+  const handleRequestDecrypt = useCallback((message: any) => {
     if (!message?.id || !isChatMessageEncrypted(message)) return;
     if (decryptedById[message.id]) return;
     if (!parseEncryptedChatPayload(message.body)) return;
@@ -1574,7 +1581,7 @@ export default function ChatWithMyselfPane({
       if (!decryptTarget?.id) return;
       try {
         const plain = await decryptChatMessageBody(decryptTarget.body, password);
-        setDecryptedById((prev) => ({
+        setDecryptedById((prev: any) => ({
           ...prev,
           [decryptTarget.id]: plain,
         }));
@@ -1604,7 +1611,7 @@ export default function ChatWithMyselfPane({
         options.markdown === 'true';
       if (!text && files.length === 0 && !existingMarkdown) return;
 
-      const snapshot = messagesRef.current.find((m) => m.id === target.id) || target;
+      const snapshot = messagesRef.current.find((m: any) => m.id === target.id) || target;
       const attachHint =
         files.length > 0
           ? `(첨부 ${files.length}개 업로드 중…)`
@@ -1614,8 +1621,8 @@ export default function ChatWithMyselfPane({
 
       setEditTarget(null);
       setError('');
-      setMessages((prev) =>
-        prev.map((m) =>
+      setMessages((prev: any) =>
+        prev.map((m: any) =>
           m.id === target.id
             ? {
                 ...m,
@@ -1644,8 +1651,8 @@ export default function ChatWithMyselfPane({
           .filter(Boolean)
           .join('\n\n');
         if (finalBody !== optimisticBody) {
-          setMessages((prev) =>
-            prev.map((m) =>
+          setMessages((prev: any) =>
+            prev.map((m: any) =>
               m.id === target.id
                 ? { ...m, body: finalBody, encrypted: false, pendingSync: 'edit' }
                 : m,
@@ -1660,51 +1667,51 @@ export default function ChatWithMyselfPane({
           encrypted: false,
         });
         if (!updated) {
-          setMessages((prev) =>
-            prev.map((m) => (m.id === target.id ? { ...snapshot } : m)),
+          setMessages((prev: any) =>
+            prev.map((m: any) => (m.id === target.id ? { ...snapshot } : m)),
           );
           setError('메시지를 찾지 못했습니다.');
           return;
         }
-        setDecryptedById((prev) => {
+        setDecryptedById((prev: any) => {
           if (!(target.id in prev)) return prev;
           const next = { ...prev };
           delete next[target.id];
           return next;
         });
-        setMessages((prev) =>
-          prev.map((m) => {
+        setMessages((prev: any) =>
+          prev.map((m: any) => {
             if (m.id !== target.id) return m;
             const next = { ...m, ...updated, dateStr };
             delete next.pendingSync;
             return next;
           }),
         );
-        setEditedResults((prev) => {
+        setEditedResults((prev: any) => {
           const row = { ...updated, dateStr };
-          const next = prev.filter((m) => m.id !== target.id);
+          const next = prev.filter((m: any) => m.id !== target.id);
           return [row, ...next];
         });
-        setPinnedResults((prev) =>
-          prev.map((m) =>
+        setPinnedResults((prev: any) =>
+          prev.map((m: any) =>
             m.id === target.id ? { ...m, ...updated, dateStr } : m,
           ),
         );
-        setNotedResults((prev) =>
-          prev.map((m) =>
+        setNotedResults((prev: any) =>
+          prev.map((m: any) =>
             m.id === target.id ? { ...m, ...updated, dateStr } : m,
           ),
         );
         {
           const row = { ...updated, dateStr };
           const media = getCollectionMediaFlags(updated.body);
-          setLinkResults((prev) =>
+          setLinkResults((prev: any) =>
             upsertCollectionMembership(prev, row, media.hasLinks),
           );
-          setFileResults((prev) =>
+          setFileResults((prev: any) =>
             upsertCollectionMembership(prev, row, media.hasFiles),
           );
-          setPhotoResults((prev) =>
+          setPhotoResults((prev: any) =>
             upsertCollectionMembership(prev, row, media.hasPhotos),
           );
         }
@@ -1719,8 +1726,8 @@ export default function ChatWithMyselfPane({
           }
         }
       } catch (e) {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === target.id ? { ...snapshot } : m)),
+        setMessages((prev: any) =>
+          prev.map((m: any) => (m.id === target.id ? { ...snapshot } : m)),
         );
         setError(e?.message || '수정 실패');
       }
@@ -1740,33 +1747,33 @@ export default function ChatWithMyselfPane({
       // Close confirm immediately; keep bubble in a disabled deleting state.
       setDeleteTarget(null);
       setError('');
-      setMessages((prev) =>
-        prev.map((m) =>
+      setMessages((prev: any) =>
+        prev.map((m: any) =>
           m.id === message.id ? { ...m, pendingSync: 'delete' } : m,
         ),
       );
       if (replyTo?.id === message.id) setReplyTo(null);
       if (editTarget?.id === message.id) setEditTarget(null);
       if (historyMessage?.id === message.id) setHistoryMessage(null);
-      setDeletingCount((c) => c + 1);
+      setDeletingCount((c: any) => c + 1);
 
       try {
         const ok = await deleteChatMessage(ctx, dateStr, message.id);
         if (!ok) {
-          setMessages((prev) =>
-            prev.map((m) => (m.id === message.id ? { ...snapshot } : m)),
+          setMessages((prev: any) =>
+            prev.map((m: any) => (m.id === message.id ? { ...snapshot } : m)),
           );
           setError('메시지를 찾지 못했습니다.');
           return;
         }
-        setMessages((prev) => prev.filter((m) => m.id !== message.id));
-        setPinnedResults((prev) => prev.filter((m) => m.id !== message.id));
-        setNotedResults((prev) => prev.filter((m) => m.id !== message.id));
-        setEditedResults((prev) => prev.filter((m) => m.id !== message.id));
-        setLinkResults((prev) => prev.filter((m) => m.id !== message.id));
-        setFileResults((prev) => prev.filter((m) => m.id !== message.id));
-        setPhotoResults((prev) => prev.filter((m) => m.id !== message.id));
-        setDayCounts((prev) => ({
+        setMessages((prev: any) => prev.filter((m: any) => m.id !== message.id));
+        setPinnedResults((prev: any) => prev.filter((m: any) => m.id !== message.id));
+        setNotedResults((prev: any) => prev.filter((m: any) => m.id !== message.id));
+        setEditedResults((prev: any) => prev.filter((m: any) => m.id !== message.id));
+        setLinkResults((prev: any) => prev.filter((m: any) => m.id !== message.id));
+        setFileResults((prev: any) => prev.filter((m: any) => m.id !== message.id));
+        setPhotoResults((prev: any) => prev.filter((m: any) => m.id !== message.id));
+        setDayCounts((prev: any) => ({
           ...prev,
           [dateStr]: Math.max(0, (prev[dateStr] || 1) - 1),
         }));
@@ -1774,12 +1781,12 @@ export default function ChatWithMyselfPane({
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
       } catch (e) {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...snapshot } : m)),
+        setMessages((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...snapshot } : m)),
         );
         setError(e?.message || '삭제 실패');
       } finally {
-        setDeletingCount((c) => Math.max(0, c - 1));
+        setDeletingCount((c: any) => Math.max(0, c - 1));
       }
     },
     [storageReady, ctx, replyTo, editTarget, historyMessage, noteLocalDayWrite],
@@ -1807,14 +1814,14 @@ export default function ChatWithMyselfPane({
 
   const ensureMessageLoaded = useCallback(
     async (messageId) => {
-      const existing = messagesRef.current.find((m) => m.id === messageId);
+      const existing = messagesRef.current.find((m: any) => m.id === messageId);
       if (existing) return existing;
 
       const hit = await findMessageById(ctx, messageId);
       if (!hit?.msg) return null;
 
       if (!dayKeysRef.current.includes(hit.dateStr)) {
-        setDayKeys((prev) => {
+        setDayKeys((prev: any) => {
           const next = [...prev, hit.dateStr];
           next.sort().reverse();
           return next;
@@ -1828,7 +1835,7 @@ export default function ChatWithMyselfPane({
 
       await jumpToDate(hit.dateStr, messageId);
       return (
-        messagesRef.current.find((m) => m.id === messageId) || hit.msg
+        messagesRef.current.find((m: any) => m.id === messageId) || hit.msg
       );
     },
     [ctx, jumpToDate],
@@ -1848,7 +1855,7 @@ export default function ChatWithMyselfPane({
           align: 'center',
         });
       });
-      window.setTimeout(() => setHighlightId((id) => (id === replyToId ? null : id)), 2200);
+      window.setTimeout(() => setHighlightId((id: any) => (id === replyToId ? null : id)), 2200);
     },
     [ensureMessageLoaded],
   );
@@ -1925,20 +1932,20 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx],
   );
 
-  const applyUpdatedHistoryMessage = useCallback((messageId, updated, dateStr) => {
+  const applyUpdatedHistoryMessage = useCallback((messageId: any, updated: any, dateStr: any) => {
     if (!updated) return;
-    setMessages((prev) =>
-      prev.map((m) =>
+    setMessages((prev: any) =>
+      prev.map((m: any) =>
         m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
       ),
     );
-    setHistoryMessage((prev) =>
+    setHistoryMessage((prev: any) =>
       prev?.id === messageId
         ? { ...prev, ...updated, dateStr: dateStr || prev.dateStr }
         : prev,
     );
-    setEditedResults((prev) =>
-      prev.map((m) =>
+    setEditedResults((prev: any) =>
+      prev.map((m: any) =>
         m.id === messageId ? { ...m, ...updated, dateStr: dateStr || m.dateStr } : m,
       ),
     );
@@ -1948,13 +1955,13 @@ export default function ChatWithMyselfPane({
       dateStr: dateStr || updated.dateStr,
     };
     const media = getCollectionMediaFlags(updated.body);
-    setLinkResults((prev) =>
+    setLinkResults((prev: any) =>
       upsertCollectionMembership(prev, mediaRow, media.hasLinks),
     );
-    setFileResults((prev) =>
+    setFileResults((prev: any) =>
       upsertCollectionMembership(prev, mediaRow, media.hasFiles),
     );
-    setPhotoResults((prev) =>
+    setPhotoResults((prev: any) =>
       upsertCollectionMembership(prev, mediaRow, media.hasPhotos),
     );
   }, []);
@@ -2014,33 +2021,33 @@ export default function ChatWithMyselfPane({
           setError('메시지를 찾지 못했습니다.');
           return;
         }
-        setMessages((prev) =>
-          prev.map((m) =>
+        setMessages((prev: any) =>
+          prev.map((m: any) =>
             m.id === message.id ? { ...m, ...updated, dateStr } : m,
           ),
         );
-        setPinnedResults((prev) => {
+        setPinnedResults((prev: any) => {
           if (!nextPinnedAt) {
-            return prev.filter((m) => m.id !== message.id);
+            return prev.filter((m: any) => m.id !== message.id);
           }
-          const next = prev.filter((m) => m.id !== message.id);
+          const next = prev.filter((m: any) => m.id !== message.id);
           return [{ ...updated, dateStr }, ...next];
         });
         const pinPatch = { ...updated, dateStr };
-        setLinkResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        setLinkResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
-        setFileResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        setFileResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
-        setPhotoResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        setPhotoResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
-        setNotedResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        setNotedResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
-        setEditedResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
+        setEditedResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...pinPatch } : m)),
         );
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
@@ -2067,29 +2074,29 @@ export default function ChatWithMyselfPane({
           return;
         }
         const patch = { ...updated, dateStr };
-        setMessages((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        setMessages((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        setPinnedResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        setPinnedResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        setNotedResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        setNotedResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        setEditedResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        setEditedResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        setLinkResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        setLinkResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        setFileResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        setFileResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        setPhotoResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        setPhotoResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
-        setSearchResults((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, ...patch } : m)),
+        setSearchResults((prev: any) =>
+          prev.map((m: any) => (m.id === message.id ? { ...m, ...patch } : m)),
         );
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
@@ -2100,9 +2107,9 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx, noteLocalDayWrite],
   );
 
-  const applyMessageLists = useCallback((messageId, updater) => {
+  const applyMessageLists = useCallback((messageId: any, updater: any) => {
     const apply = (prev) =>
-      prev.map((m) => (m.id === messageId ? updater(m) : m));
+      prev.map((m: any) => (m.id === messageId ? updater(m) : m));
     setMessages(apply);
     setPinnedResults(apply);
     setNotedResults(apply);
@@ -2120,8 +2127,8 @@ export default function ChatWithMyselfPane({
       if (!normalized) return;
       const key = reactionKey(normalized);
       const latest =
-        messagesRef.current.find((m) => m.id === message.id) || message;
-      if ((latest.reactions || []).some((r) => reactionKey(r) === key && r.pending)) {
+        messagesRef.current.find((m: any) => m.id === message.id) || message;
+      if ((latest.reactions || []).some((r: any) => reactionKey(r) === key && r.pending)) {
         return;
       }
 
@@ -2130,11 +2137,11 @@ export default function ChatWithMyselfPane({
         message.dateStr ||
         localDateString(new Date(latest.at || message.at), detectTimeZone());
       const prevReactions = Array.isArray(latest.reactions)
-        ? latest.reactions.map((r) => ({ ...r }))
+        ? latest.reactions.map((r: any) => ({ ...r }))
         : [];
       const prevReactionsAt = latest.reactionsAt || '';
       const existed = hasReaction(prevReactions, normalized);
-      const nextReactions = toggleReaction(prevReactions, normalized).map((r) =>
+      const nextReactions = toggleReaction(prevReactions, normalized).map((r: any) =>
         !existed && reactionKey(r) === key ? { ...r, pending: true } : { ...r },
       );
       const reactionsAt =
@@ -2144,8 +2151,8 @@ export default function ChatWithMyselfPane({
       if (!reactionBaseRef.current.has(message.id)) {
         reactionBaseRef.current.set(message.id, {
           reactions: prevReactions
-            .filter((r) => !r.pending)
-            .map((r) => normalizeReaction(r))
+            .filter((r: any) => !r.pending)
+            .map((r: any) => normalizeReaction(r))
             .filter(Boolean),
           reactionsAt: prevReactionsAt,
         });
@@ -2157,14 +2164,14 @@ export default function ChatWithMyselfPane({
         pendingReactionSync: true,
         dateStr,
       };
-      messagesRef.current = messagesRef.current.map((m) =>
+      messagesRef.current = messagesRef.current.map((m: any) =>
         m.id === message.id ? { ...m, ...optimistic } : m,
       );
       applyMessageLists(message.id, (m) => ({ ...m, ...optimistic }));
 
       const persist = async () => {
         const toWrite = nextReactions
-          .map((r) => normalizeReaction(r))
+          .map((r: any) => normalizeReaction(r))
           .filter(Boolean);
         const rollbackToBase = () => {
           const base = reactionBaseRef.current.get(message.id) || {
@@ -2178,7 +2185,7 @@ export default function ChatWithMyselfPane({
             pendingReactionSync: false,
             dateStr,
           };
-          messagesRef.current = messagesRef.current.map((m) =>
+          messagesRef.current = messagesRef.current.map((m: any) =>
             m.id === message.id ? { ...m, ...rolled } : m,
           );
           applyMessageLists(message.id, (m) => ({ ...m, ...rolled }));
@@ -2202,7 +2209,7 @@ export default function ChatWithMyselfPane({
           if (reactionGenRef.current.get(message.id) !== gen) return;
           reactionBaseRef.current.delete(message.id);
           const confirmed = (updated.reactions || [])
-            .map((r) => normalizeReaction(r))
+            .map((r: any) => normalizeReaction(r))
             .filter(Boolean);
           const patch = {
             ...updated,
@@ -2210,7 +2217,7 @@ export default function ChatWithMyselfPane({
             reactions: confirmed,
             pendingReactionSync: false,
           };
-          messagesRef.current = messagesRef.current.map((m) =>
+          messagesRef.current = messagesRef.current.map((m: any) =>
             m.id === message.id ? { ...m, ...patch } : m,
           );
           applyMessageLists(message.id, (m) => ({ ...m, ...patch }));
@@ -2309,7 +2316,7 @@ export default function ChatWithMyselfPane({
         postChatSyncEvent('day', { dateStr });
         const msgs = await readDayMessages(ctx, dateStr);
         setMessages(msgs);
-        setDayKeys((prev) =>
+        setDayKeys((prev: any) =>
           prev.includes(dateStr) ? prev : [dateStr, ...prev].sort().reverse(),
         );
         setWindowNewestIndex(0);
@@ -2433,7 +2440,7 @@ export default function ChatWithMyselfPane({
   const toggleMobileRail = useCallback(
     (rail, open, setOpen) => {
       if (!isMobileLayout) {
-        setOpen((v) => !v);
+        setOpen((v: any) => !v);
         return;
       }
       if (open) {
@@ -2456,7 +2463,7 @@ export default function ChatWithMyselfPane({
   const openSearchRail = useCallback(() => {
     if (isMobileLayout) closeOtherMobileRails('search');
     setSearchOpen(true);
-    setSearchFocusTick((n) => n + 1);
+    setSearchFocusTick((n: any) => n + 1);
   }, [isMobileLayout, closeOtherMobileRails]);
 
   // Only while chat tab is active. Keep-alive mounts this pane under file tabs;
@@ -2492,7 +2499,7 @@ export default function ChatWithMyselfPane({
     'chat-rail',
   );
 
-  const handleSearchGroupFilterChange = useCallback((next) => {
+  const handleSearchGroupFilterChange = useCallback((next: any) => {
     const value = next || '__all__';
     setSearchGroupFilter(value);
     // Keep sidebar view lock aligned with the search group filter.
@@ -2613,7 +2620,7 @@ export default function ChatWithMyselfPane({
       (pinnedOpen ? 1 : 0),
   );
 
-  const handleComposerFilesDrop = useCallback((files) => {
+  const handleComposerFilesDrop = useCallback((files: any) => {
     void composerRef.current?.enqueueFiles?.(files);
   }, []);
 
@@ -2856,7 +2863,7 @@ export default function ChatWithMyselfPane({
                   dayCounts={dayCounts}
                   activeDate={activeJumpDate}
                   timeZone={timeZone}
-                  onSelectDate={(dateStr) => {
+                  onSelectDate={(dateStr: string) => {
                     void jumpToDate(dateStr);
                   }}
                   onClose={() => setDateOpen(false)}
@@ -2931,7 +2938,7 @@ export default function ChatWithMyselfPane({
                   dayCounts={dayCounts}
                   activeDate={activeJumpDate}
                   timeZone={timeZone}
-                  onSelectDate={(dateStr) => {
+                  onSelectDate={(dateStr: string) => {
                     void jumpToDate(dateStr);
                     setDateOpen(false);
                   }}
@@ -3008,13 +3015,13 @@ export default function ChatWithMyselfPane({
                   detectTimeZone(),
                 );
               const nextMsg = { ...payload.message, notePath, dateStr };
-              setMessages((prev) =>
-                prev.map((m) =>
+              setMessages((prev: any) =>
+                prev.map((m: any) =>
                   m.id === payload.message.id ? { ...m, notePath } : m,
                 ),
               );
-              setNotedResults((prev) => {
-                const next = prev.filter((m) => m.id !== payload.message.id);
+              setNotedResults((prev: any) => {
+                const next = prev.filter((m: any) => m.id !== payload.message.id);
                 return [nextMsg, ...next];
               });
             }
@@ -3061,10 +3068,10 @@ export default function ChatWithMyselfPane({
         open={Boolean(historyMessage)}
         message={
           historyMessage
-            ? messages.find((m) => m.id === historyMessage.id) || historyMessage
+            ? messages.find((m: any) => m.id === historyMessage.id) || historyMessage
             : null
         }
-        onOpenChange={(next) => {
+        onOpenChange={(next: any) => {
           if (!next) setHistoryMessage(null);
         }}
         timeZone={timeZone}
@@ -3112,7 +3119,7 @@ export default function ChatWithMyselfPane({
           setDecryptTarget(null);
           setDecryptError('');
         }}
-        onConfirm={(password) => {
+        onConfirm={(password: any) => {
           void handleConfirmDecrypt(password);
         }}
       />
