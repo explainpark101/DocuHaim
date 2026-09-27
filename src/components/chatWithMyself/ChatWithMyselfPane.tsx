@@ -19,20 +19,20 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
-import ChatComposer from '@/components/chatWithMyself/ChatComposer';
-import ChatComposerDock from '@/components/chatWithMyself/ChatComposerDock';
+import ChatComposerRaw from '@/components/chatWithMyself/ChatComposer';
+import ChatComposerDockRaw from '@/components/chatWithMyself/ChatComposerDock';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
-import ChatDatePanel from '@/components/chatWithMyself/ChatDatePanel';
+import ChatDatePanelRaw from '@/components/chatWithMyself/ChatDatePanel';
 import ChatFileDropOverlay from '@/components/chatWithMyself/ChatFileDropOverlay';
-import ChatGroupPanel from '@/components/chatWithMyself/ChatGroupPanel';
-import ChatMessageList from '@/components/chatWithMyself/ChatMessageList';
+import ChatGroupPanelRaw from '@/components/chatWithMyself/ChatGroupPanel';
+import ChatMessageListRaw from '@/components/chatWithMyself/ChatMessageList';
 import ChatMobileDrawer from '@/components/chatWithMyself/ChatMobileDrawer';
-import ChatSearchPanel from '@/components/chatWithMyself/ChatSearchPanel';
-import ChatPinnedPanel from '@/components/chatWithMyself/ChatPinnedPanel';
+import ChatSearchPanelRaw from '@/components/chatWithMyself/ChatSearchPanel';
+import ChatPinnedPanelRaw from '@/components/chatWithMyself/ChatPinnedPanel';
 import ChatShareGroupSendModal from '@/components/chatWithMyself/ChatShareGroupSendModal';
 import ChatAddToNoteModal from '@/components/chatWithMyself/ChatAddToNoteModal';
 import ChatEditHistoryModal from '@/components/chatWithMyself/ChatEditHistoryModal';
-import ChatRailShell from '@/components/chatWithMyself/ChatRailShell';
+import ChatRailShellRaw from '@/components/chatWithMyself/ChatRailShell';
 import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import { ChatImageLightboxProvider } from '@/components/chatWithMyself/ChatImageLightbox';
 import { ChatUiPrefsProvider } from '@/components/chatWithMyself/ChatUiPrefsContext';
@@ -45,6 +45,16 @@ import {
   mergeMessagesForDate,
 } from '@/components/chatWithMyself/useChatRemoteSync';
 import type { ChatStorageCtx } from '@/utils/chatWithMyself/backends';
+
+/** Untyped JSX child panels — cast until those modules are migrated. */
+const ChatComposer = ChatComposerRaw as any;
+const ChatComposerDock = ChatComposerDockRaw as any;
+const ChatDatePanel = ChatDatePanelRaw as any;
+const ChatGroupPanel = ChatGroupPanelRaw as any;
+const ChatMessageList = ChatMessageListRaw as any;
+const ChatSearchPanel = ChatSearchPanelRaw as any;
+const ChatPinnedPanel = ChatPinnedPanelRaw as any;
+const ChatRailShell = ChatRailShellRaw as any;
 import {
   SELF_GROUP,
   addGroup,
@@ -178,22 +188,24 @@ export type ChatWithMyselfPaneProps = {
   idbTree?: ChatTreeNode[];
   onRequestCreateFolderForNote?: (
     parentPath: string,
-    parentDirHandle: FileSystemDirectoryHandle | null,
+    parentDirHandle?: FileSystemDirectoryHandle | null,
   ) => void;
-  onRequestMoveFolder?: (...args: unknown[]) => unknown;
-  onCreateNoteFromMessage?: (...args: unknown[]) => unknown;
+  onRequestMoveFolder?: (...args: any[]) => any;
+  onCreateNoteFromMessage?: (...args: any[]) => any;
   selectPathAfterCreateFolder?: string | null;
   onSelectPathAfterCreateFolderApplied?: () => void;
-  getPresignedUrlForPath?: (path: string) => Promise<string | null> | string | null;
-  onDropOnFolder?: (...args: unknown[]) => unknown;
-  dropTarget?: unknown;
-  onLoadLocalFolderChildren?: (...args: unknown[]) => unknown;
+  getPresignedUrlForPath?: (
+    path: string,
+  ) => Promise<string | null | undefined> | string | null | undefined;
+  onDropOnFolder?: (...args: any[]) => any;
+  dropTarget?: any;
+  onLoadLocalFolderChildren?: (...args: any[]) => any;
   localFolderLoadingPath?: string | null;
   shareGroupSend?: ShareComposeClaimPayload | null;
-  onShareGroupSendConsumed?: (id: string) => void;
-  onOpenNote?: (...args: unknown[]) => unknown;
+  onShareGroupSendConsumed?: () => void;
+  onOpenNote?: (...args: any[]) => any;
   onAttachDropHostChange?: (node: HTMLElement | null) => void;
-  onRegisterTreeAttachDrop?: (...args: unknown[]) => unknown;
+  onRegisterTreeAttachDrop?: (...args: any[]) => any;
   isActive?: boolean;
 };
 
@@ -595,12 +607,14 @@ export default function ChatWithMyselfPane({
     (items: unknown) => {
       if (!storageReady) return;
       try {
-        const shareItems = buildTreeShareItems(items, (_storageType: string, path: string) =>
-          findNodeByPath(fileTree, path) || findFileNodeByPath(fileTree, path),
+        const shareItems = buildTreeShareItems(
+          items as any,
+          (_storageType: string, path: string) =>
+            findNodeByPath(fileTree, path) || findFileNodeByPath(fileTree, path),
         );
         if (!shareItems.length) return;
         composerRef.current?.enqueueShareItems?.(shareItems);
-      } catch (err) {
+      } catch (err: any) {
         console.warn('Tree → chat share stage failed:', err);
       }
     },
@@ -647,8 +661,9 @@ export default function ChatWithMyselfPane({
     }
     if (meta.group) setSelectedGroup(meta.group);
     else setSelectedGroup(SELF_GROUP);
-    if (meta.replyTo?.id) setReplyTo(meta.replyTo);
-    else setReplyTo(null);
+    if (meta.replyTo && typeof meta.replyTo === 'object' && (meta.replyTo as any).id) {
+      setReplyTo(meta.replyTo);
+    } else setReplyTo(null);
   }, [storageScope]);
 
   // Once groups load, map legacy draft/selected names → stable ids.
@@ -742,7 +757,7 @@ export default function ChatWithMyselfPane({
   const deleting = deletingCount > 0;
 
   const handleToggleViewGroup = useCallback(
-    (group) => {
+    (group: any) => {
       const next = viewGroupFilter === group ? null : group;
       setViewGroupFilter(next);
       // Keep composer send-group in sync with sidebar selection, but never
@@ -775,7 +790,7 @@ export default function ChatWithMyselfPane({
       const meta = await touchTimezone(ctx);
       setGroups(meta.groups || []);
       setTimeZone(meta.timezone || detectTimeZone());
-    } catch (e) {
+    } catch (e: any) {
       setError(e?.message || 'meta 로드 실패');
     }
   }, [storageReady, ctx]);
@@ -797,7 +812,7 @@ export default function ChatWithMyselfPane({
       setWindowNewestIndex(0);
       setLoadedDayIndex(end);
       setActiveJumpDate(unique[0] || null);
-    } catch (e) {
+    } catch (e: any) {
       setError(e?.message || '채팅 로드 실패');
     } finally {
       setBooting(false);
@@ -862,8 +877,10 @@ export default function ChatWithMyselfPane({
       let windowEnd = 0;
       let jumpDate = null;
       if (loadDates.length) {
-        const firstIdx = unique.indexOf(loadDates[0]);
-        const lastIdx = unique.indexOf(loadDates[loadDates.length - 1]);
+        const firstDate = loadDates[0] as string;
+        const lastDate = loadDates[loadDates.length - 1] as string;
+        const firstIdx = unique.indexOf(firstDate);
+        const lastIdx = unique.indexOf(lastDate);
         windowNewest = firstIdx >= 0 ? firstIdx : 0;
         windowEnd = lastIdx >= 0 ? lastIdx + 1 : unique[0] ? 1 : 0;
         jumpDate = loadDates[0] || unique[0] || null;
@@ -882,7 +899,7 @@ export default function ChatWithMyselfPane({
       setWindowNewestIndex(windowNewest);
       setLoadedDayIndex(windowEnd);
       setActiveJumpDate(jumpDate);
-    } catch (e) {
+    } catch (e: any) {
       setError(e?.message || '새로고침 실패');
     } finally {
       const elapsed = Date.now() - started;
@@ -982,7 +999,8 @@ export default function ChatWithMyselfPane({
 
   const handleRemoteDayKeys = useCallback((keys: any) => {
     const today = localDateString(new Date(), detectTimeZone());
-    const ordered = [...new Set(keys.includes(today) ? keys : [today, ...keys])];
+    const keyList: string[] = Array.isArray(keys) ? keys.map(String) : [];
+    const ordered = [...new Set(keyList.includes(today) ? keyList : [today, ...keyList])];
     const prev = dayKeysRef.current;
     const oldStart = windowNewestIndexRef.current;
     const oldEnd = loadedDayIndexRef.current;
@@ -1039,7 +1057,7 @@ export default function ChatWithMyselfPane({
    *   maxDays — how many day files to read in one prepend (default 1)
    * @returns {Promise<boolean>} true if the window advanced
    */
-  const handleLoadOlder = useCallback(async (opts = {}) => {
+  const handleLoadOlder = useCallback(async (opts: any = {}) => {
     const silent = Boolean(opts?.silent);
     const maxDays = Math.max(1, Number(opts?.maxDays) || 1);
     if (!storageReady || loadingOlderRef.current) return false;
@@ -1052,7 +1070,7 @@ export default function ChatWithMyselfPane({
 
     let nextIdx = startIdx;
     /** @type {import('@/utils/chatWithMyself/format.js').ChatMessage[]} */
-    let olderHead = [];
+    let olderHead: any[] = [];
     try {
       let daysAttempted = 0;
       while (nextIdx < keys.length && daysAttempted < maxDays) {
@@ -1069,7 +1087,7 @@ export default function ChatWithMyselfPane({
         setMessages((prev: any) => prependUniqueMessages(olderHead, prev));
       }
       return nextIdx > startIdx;
-    } catch (e) {
+    } catch (e: any) {
       loadedDayIndexRef.current = startIdx;
       setLoadedDayIndex(startIdx);
       setError(e?.message || '이전 대화 로드 실패');
@@ -1100,7 +1118,7 @@ export default function ChatWithMyselfPane({
     try {
       const newer = await readDayMessages(ctx, dateStr);
       setMessages((prev: any) => appendUniqueMessages(prev, newer));
-    } catch (e) {
+    } catch (e: any) {
       windowNewestIndexRef.current = newestIdx;
       setWindowNewestIndex(newestIdx);
       setError(e?.message || '이후 대화 로드 실패');
@@ -1132,7 +1150,7 @@ export default function ChatWithMyselfPane({
           messageListRef.current?.scrollToBottom?.();
         });
       });
-    } catch (e) {
+    } catch (e: any) {
       setError(e?.message || '최신 대화로 이동 실패');
     } finally {
       setJumping(false);
@@ -1147,7 +1165,8 @@ export default function ChatWithMyselfPane({
     });
   }, [jumpToLatest]);
 
-  const scrollToDayFirstMessage = useCallback((dateStr, messageId = null) => {
+  const scrollToDayFirstMessage = useCallback(
+    (dateStr: string, messageId: string | null = null) => {
     const id =
       messageId ||
       messagesRef.current.find((m: any) => m.dateStr === dateStr)?.id ||
@@ -1172,7 +1191,7 @@ export default function ChatWithMyselfPane({
    * days load via infinite scroll.
    */
   const jumpToDate = useCallback(
-    async (dateStr, messageId = null) => {
+    async (dateStr: string, messageId: string | null = null) => {
       if (!storageReady || !dateStr) return;
       setActiveJumpDate(dateStr);
       const keys = dayKeysRef.current;
@@ -1212,7 +1231,7 @@ export default function ChatWithMyselfPane({
             messageListRef.current?.scrollToDateStr(dateStr);
           });
         }
-      } catch (e) {
+      } catch (e: any) {
         setError(e?.message || '날짜 이동 실패');
       } finally {
         setJumping(false);
@@ -1287,7 +1306,7 @@ export default function ChatWithMyselfPane({
     const raw = hashRaw.toLowerCase();
     if (!raw || raw.startsWith('msg-')) return undefined;
 
-    const openRail = (kind) => {
+    const openRail = (kind: any) => {
       if (isMobileLayout) {
         setGroupOpen(kind === 'group');
         setDateOpen(kind === 'date');
@@ -1386,7 +1405,7 @@ export default function ChatWithMyselfPane({
           for (const item of batch) {
             const uploaded = [];
             for (const attachment of item.files) {
-              const uploadedItem = await uploadChatAttachment(ctx, attachment.file);
+              const uploadedItem = await uploadChatAttachment(ctx, attachment.file as File);
               uploaded.push({
                 ...uploadedItem,
                 background: attachment.background || null,
@@ -1438,7 +1457,7 @@ export default function ChatWithMyselfPane({
             noteLocalDayWrite(dateStr);
             postChatSyncEvent('day', { dateStr });
           }
-        } catch (e) {
+        } catch (e: any) {
           setMessages((prev: any) => prev.filter((m: any) => !batchIds.includes(m.id)));
           setError(e?.message || '전송 실패');
         }
@@ -1452,7 +1471,7 @@ export default function ChatWithMyselfPane({
   }, [ctx, confirmPendingMessages, noteLocalDayWrite]);
 
   const handleSend = useCallback(
-    (body, group, replyTarget = null, imageFiles = [], options = {}) => {
+    (body: any, group: any, replyTarget: any = null, imageFiles: any[] = [], options: any = {}) => {
       if (!storageReady) {
         setError(storageSendErrorHint);
         return;
@@ -1547,7 +1566,7 @@ export default function ChatWithMyselfPane({
   }, [decryptedById]);
 
   const handleEdit = useCallback(
-    (message) => {
+    (message: any) => {
       if (!message?.id) return;
       if (isChatMessageEncrypted(message)) {
         const plain = decryptedById[message.id];
@@ -1577,7 +1596,7 @@ export default function ChatWithMyselfPane({
   }, [decryptedById]);
 
   const handleConfirmDecrypt = useCallback(
-    async (password) => {
+    async (password: any) => {
       if (!decryptTarget?.id) return;
       try {
         const plain = await decryptChatMessageBody(decryptTarget.body, password);
@@ -1595,7 +1614,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleSaveEdit = useCallback(
-    async (body, group, target, imageFiles = [], options = {}) => {
+    async (body: any, group: any, target: any, imageFiles: any[] = [], options: any = {}) => {
       if (!storageReady || !target?.id) return;
       const dateStr =
         target.dateStr || localDateString(new Date(target.at), detectTimeZone());
@@ -1640,13 +1659,13 @@ export default function ChatWithMyselfPane({
       try {
         const uploaded = [];
         for (const attachment of files) {
-          const item = await uploadChatAttachment(ctx, attachment.file);
+          const item = await uploadChatAttachment(ctx, attachment.file as File);
           uploaded.push({
             ...item,
             background: attachment.background || null,
           });
         }
-        const uploadedMd = chatAttachmentsToMarkdown(uploaded);
+        const uploadedMd = chatAttachmentsToMarkdown(uploaded as any);
         const finalBody = [existingMarkdown, uploadedMd, text]
           .filter(Boolean)
           .join('\n\n');
@@ -1703,8 +1722,8 @@ export default function ChatWithMyselfPane({
           ),
         );
         {
-          const row = { ...updated, dateStr };
-          const media = getCollectionMediaFlags(updated.body);
+          const row = { ...updated, dateStr } as any;
+          const media = getCollectionMediaFlags((updated as any).body);
           setLinkResults((prev: any) =>
             upsertCollectionMembership(prev, row, media.hasLinks),
           );
@@ -1725,7 +1744,7 @@ export default function ChatWithMyselfPane({
             /* best-effort storage cleanup */
           }
         }
-      } catch (e) {
+      } catch (e: any) {
         setMessages((prev: any) =>
           prev.map((m: any) => (m.id === target.id ? { ...snapshot } : m)),
         );
@@ -1736,7 +1755,7 @@ export default function ChatWithMyselfPane({
   );
 
   const performDeleteMessage = useCallback(
-    async (message) => {
+    async (message: any) => {
       if (!storageReady || !message?.id) return;
       if (message.pendingSync === 'delete') return;
       const dateStr =
@@ -1780,7 +1799,7 @@ export default function ChatWithMyselfPane({
         localTombstonesRef.current.add(message.id);
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
-      } catch (e) {
+      } catch (e: any) {
         setMessages((prev: any) =>
           prev.map((m: any) => (m.id === message.id ? { ...snapshot } : m)),
         );
@@ -1793,7 +1812,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleDelete = useCallback(
-    (message, options = {}) => {
+    (message: any, options: any = {}) => {
       if (!storageReady || !message?.id) return;
       if (message.pendingSync === 'delete') return;
       if (options.skipConfirm) {
@@ -1813,7 +1832,7 @@ export default function ChatWithMyselfPane({
   }, [deleteTarget, performDeleteMessage]);
 
   const ensureMessageLoaded = useCallback(
-    async (messageId) => {
+    async (messageId: any) => {
       const existing = messagesRef.current.find((m: any) => m.id === messageId);
       if (existing) return existing;
 
@@ -1842,7 +1861,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleOpenReplyTarget = useCallback(
-    async (replyToId) => {
+    async (replyToId: any) => {
       if (!replyToId) return;
       const found = await ensureMessageLoaded(replyToId);
       if (!found) {
@@ -1861,7 +1880,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleAddGroup = useCallback(
-    async (name, options = {}) => {
+    async (name: any, options: any = {}) => {
       let iconPath =
         typeof options.iconPath === 'string' && options.iconPath.trim()
           ? options.iconPath.trim()
@@ -1869,7 +1888,7 @@ export default function ChatWithMyselfPane({
       if (options.iconFile) {
         try {
           iconPath = await uploadGroupIcon(ctx, options.iconFile);
-        } catch (e) {
+        } catch (e: any) {
           // Keep the group name; fall back to initials if icon upload fails.
           setError(e?.message || '그룹 아이콘 업로드 실패 (그룹은 추가됩니다)');
         }
@@ -1884,7 +1903,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleSetGroupIcon = useCallback(
-    async (groupId, file) => {
+    async (groupId: any, file: any) => {
       if (!file) return;
       try {
         const iconPath = await uploadGroupIcon(ctx, file);
@@ -1892,7 +1911,7 @@ export default function ChatWithMyselfPane({
         setGroups(next);
         noteLocalMetaWrite();
         postChatSyncEvent('meta');
-      } catch (e) {
+      } catch (e: any) {
         setError(e?.message || '그룹 아이콘 변경 실패');
         throw e;
       }
@@ -1901,14 +1920,14 @@ export default function ChatWithMyselfPane({
   );
 
   const handleRenameGroup = useCallback(
-    async (groupId, newName) => {
+    async (groupId: any, newName: any) => {
       try {
         const next = await renameGroup(ctx, groupId, newName);
         setGroups(next);
         noteLocalMetaWrite();
         postChatSyncEvent('meta');
         return next;
-      } catch (e) {
+      } catch (e: any) {
         setError(e?.message || '그룹 이름 변경 실패');
         throw e;
       }
@@ -1917,7 +1936,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleLoadEditHistoryPage = useCallback(
-    async (message, { offset = 0, limit = 10 } = {}) => {
+    async (message: any, { offset = 0, limit = 10 }: { offset?: number; limit?: number } = {}) => {
       if (!storageReady || !message?.id) {
         return { entries: [], nextOffset: 0, hasMore: false, total: 0 };
       }
@@ -1967,7 +1986,7 @@ export default function ChatWithMyselfPane({
   }, []);
 
   const handleDeleteEditHistoryEntry = useCallback(
-    async (message, entry) => {
+    async (message: any, entry: any) => {
       if (!storageReady || !message?.id || !entry) return;
       const dateStr =
         message.dateStr ||
@@ -1988,7 +2007,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleDeleteAllEditHistory = useCallback(
-    async (message) => {
+    async (message: any) => {
       if (!storageReady || !message?.id) return;
       const dateStr =
         message.dateStr ||
@@ -2008,7 +2027,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleTogglePin = useCallback(
-    async (message) => {
+    async (message: any) => {
       if (!storageReady || !message?.id) return;
       const dateStr =
         message.dateStr || localDateString(new Date(message.at), detectTimeZone());
@@ -2051,7 +2070,7 @@ export default function ChatWithMyselfPane({
         );
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
-      } catch (e) {
+      } catch (e: any) {
         setError(e?.message || '고정 변경 실패');
       }
     },
@@ -2059,7 +2078,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleToggleCollapse = useCallback(
-    async (message) => {
+    async (message: any) => {
       if (!storageReady || !message?.id) return;
       const dateStr =
         message.dateStr || localDateString(new Date(message.at), detectTimeZone());
@@ -2100,7 +2119,7 @@ export default function ChatWithMyselfPane({
         );
         noteLocalDayWrite(dateStr);
         postChatSyncEvent('day', { dateStr });
-      } catch (e) {
+      } catch (e: any) {
         setError(e?.message || '접기 상태 변경 실패');
       }
     },
@@ -2108,7 +2127,7 @@ export default function ChatWithMyselfPane({
   );
 
   const applyMessageLists = useCallback((messageId: any, updater: any) => {
-    const apply = (prev) =>
+    const apply = (prev: any) =>
       prev.map((m: any) => (m.id === messageId ? updater(m) : m));
     setMessages(apply);
     setPinnedResults(apply);
@@ -2121,7 +2140,7 @@ export default function ChatWithMyselfPane({
   }, []);
 
   const handleToggleReaction = useCallback(
-    async (message, reaction) => {
+    async (message: any, reaction: any) => {
       if (!storageReady || !message?.id || !reaction) return;
       const normalized = normalizeReaction(reaction);
       if (!normalized) return;
@@ -2167,7 +2186,7 @@ export default function ChatWithMyselfPane({
       messagesRef.current = messagesRef.current.map((m: any) =>
         m.id === message.id ? { ...m, ...optimistic } : m,
       );
-      applyMessageLists(message.id, (m) => ({ ...m, ...optimistic }));
+      applyMessageLists(message.id, (m: any) => ({ ...m, ...optimistic }));
 
       const persist = async () => {
         const toWrite = nextReactions
@@ -2188,7 +2207,7 @@ export default function ChatWithMyselfPane({
           messagesRef.current = messagesRef.current.map((m: any) =>
             m.id === message.id ? { ...m, ...rolled } : m,
           );
-          applyMessageLists(message.id, (m) => ({ ...m, ...rolled }));
+          applyMessageLists(message.id, (m: any) => ({ ...m, ...rolled }));
         };
         try {
           const updated = await patchChatMessageMeta(ctx, dateStr, message.id, {
@@ -2208,7 +2227,7 @@ export default function ChatWithMyselfPane({
           });
           if (reactionGenRef.current.get(message.id) !== gen) return;
           reactionBaseRef.current.delete(message.id);
-          const confirmed = (updated.reactions || [])
+          const confirmed = ((updated as any).reactions || [])
             .map((r: any) => normalizeReaction(r))
             .filter(Boolean);
           const patch = {
@@ -2220,10 +2239,10 @@ export default function ChatWithMyselfPane({
           messagesRef.current = messagesRef.current.map((m: any) =>
             m.id === message.id ? { ...m, ...patch } : m,
           );
-          applyMessageLists(message.id, (m) => ({ ...m, ...patch }));
+          applyMessageLists(message.id, (m: any) => ({ ...m, ...patch }));
           noteLocalDayWrite(dateStr);
           postChatSyncEvent('day', { dateStr });
-        } catch (e) {
+        } catch (e: any) {
           if (reactionGenRef.current.get(message.id) !== gen) return;
           rollbackToBase();
           setError(e?.message || '반응 변경 실패');
@@ -2272,15 +2291,15 @@ export default function ChatWithMyselfPane({
         }
       }
       pinned.sort(
-        (a, b) =>
+        (a: any, b: any) =>
           (Date.parse(b.pinnedAt || b.at) || 0) -
           (Date.parse(a.pinnedAt || a.at) || 0),
       );
-      const byAtDesc = (a, b) =>
+      const byAtDesc = (a: any, b: any) =>
         (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0);
       noted.sort(byAtDesc);
       edited.sort(
-        (a, b) =>
+        (a: any, b: any) =>
           (Date.parse(b.editedAt || b.at) || 0) -
           (Date.parse(a.editedAt || a.at) || 0),
       );
@@ -2304,7 +2323,7 @@ export default function ChatWithMyselfPane({
   }, [pinnedOpen, storageReady, runPinnedScan]);
 
   const handleShareGroupSend = useCallback(
-    async (body, group, files = []) => {
+    async (body: any, group: any, files: any[] = []) => {
       if (!storageReady) throw new Error(storageSendErrorHint);
       const { dateStr } = await appendShareChatMessage(ctx, {
         body,
@@ -2328,7 +2347,7 @@ export default function ChatWithMyselfPane({
   );
 
   const runSearchScan = useCallback(
-    async (filters, fromIndex, accumulate) => {
+    async (filters: any, fromIndex: any, accumulate: any) => {
       if (!storageReady) return { results: accumulate, nextIndex: fromIndex, hasMore: false };
       const keys = searchDayKeysRef.current.length
         ? searchDayKeysRef.current
@@ -2341,6 +2360,7 @@ export default function ChatWithMyselfPane({
         const end = Math.min(i + batchSize, keys.length);
         for (; i < end; i++) {
           const dateStr = keys[i];
+          if (!dateStr) continue;
           const msgs = await readDayMessages(ctx, dateStr);
           for (const msg of msgs) {
             const hit = await matchesFilters(
@@ -2368,7 +2388,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleSearch = useCallback(
-    async (filters) => {
+    async (filters: any) => {
       const gen = ++searchGenRef.current;
       setSearchFilters(filters);
       const active =
@@ -2416,7 +2436,7 @@ export default function ChatWithMyselfPane({
   }, [searchFilters, searchLoading, searchCursor, searchResults, runSearchScan]);
 
   const handleSelectResult = useCallback(
-    async (result) => {
+    async (result: any) => {
       if (isMobileLayout) {
         setSearchOpen(false);
         setPinnedOpen(false);
@@ -2427,7 +2447,7 @@ export default function ChatWithMyselfPane({
   );
 
   const closeOtherMobileRails = useCallback(
-    (except) => {
+    (except: any) => {
       if (!isMobileLayout) return;
       if (except !== 'group') setGroupOpen(false);
       if (except !== 'date') setDateOpen(false);
@@ -2438,7 +2458,7 @@ export default function ChatWithMyselfPane({
   );
 
   const toggleMobileRail = useCallback(
-    (rail, open, setOpen) => {
+    (rail: any, open: any, setOpen: any) => {
       if (!isMobileLayout) {
         setOpen((v: any) => !v);
         return;
@@ -2470,7 +2490,7 @@ export default function ChatWithMyselfPane({
   // a capture Ctrl/Cmd+F listener would steal in-editor search (md-editor-rt / CM).
   useEffect(() => {
     if (!isActive) return undefined;
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: any) => {
       if (e.defaultPrevented || e.isComposing) return;
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
       if (e.key !== 'f' && e.key !== 'F') return;
@@ -2518,7 +2538,7 @@ export default function ChatWithMyselfPane({
   const searchHasMore = searchCursor < (searchDayKeysRef.current.length || 0);
   const effectiveSearchGroupFilter = viewGroupFilter || searchGroupFilter;
 
-  const toolbarBtnClass = (active) =>
+  const toolbarBtnClass = (active: boolean) =>
     `rounded p-1.5 ${
       active
         ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30'
@@ -2536,7 +2556,7 @@ export default function ChatWithMyselfPane({
     onRenameGroup: handleRenameGroup,
     onSetGroupIcon: handleSetGroupIcon,
     getPresignedUrl: getPresignedUrlForPath,
-    onAfterAddGroup: (id) => {
+    onAfterAddGroup: (id: any) => {
       const key = id || SELF_GROUP;
       setSelectedGroup(key);
       setViewGroupFilter(key);
@@ -2583,7 +2603,7 @@ export default function ChatWithMyselfPane({
     if (!viewGroupFilter) {
       return { linkResults, fileResults, photoResults };
     }
-    const inGroup = (m) =>
+    const inGroup = (m: any) =>
       groupMatches(groups, m.group || SELF_GROUP, viewGroupFilter);
     return {
       linkResults: linkResults.filter(inGroup),
@@ -2977,59 +2997,79 @@ export default function ChatWithMyselfPane({
       )}
 
       <ChatAddToNoteModal
-        isOpen={Boolean(addToNoteMessage)}
-        message={addToNoteMessage}
-        storageType={
-          storageMode === 'local' || storageMode === 'idb' || storageMode === 'webdav'
-            ? storageMode
-            : 's3'
-        }
-        s3Tree={s3Tree}
-        localTree={localTree}
-        idbTree={idbTree}
-        webdavTree={webdavTree}
-        localRootHandle={localRootHandle}
-        timeZone={timeZone}
-        isSubmitting={addToNoteSubmitting}
-        selectPathAfterCreate={selectPathAfterCreateFolder}
-        onSelectPathAfterCreateApplied={onSelectPathAfterCreateFolderApplied}
-        onClose={() => {
-          if (!addToNoteSubmitting) setAddToNoteMessage(null);
-        }}
-        onRequestCreateFolder={onRequestCreateFolderForNote}
-        onRequestMoveFolder={onRequestMoveFolder}
-        onDropOnFolder={onDropOnFolder}
-        dropTarget={dropTarget}
-        onLoadLocalFolderChildren={onLoadLocalFolderChildren}
-        localFolderLoadingPath={localFolderLoadingPath}
-        onConfirm={async (payload) => {
-          if (!onCreateNoteFromMessage) return;
-          setAddToNoteSubmitting(true);
-          try {
-            const notePath = await onCreateNoteFromMessage(payload);
-            if (notePath && payload?.message?.id) {
-              const dateStr =
-                payload.message.dateStr ||
-                localDateString(
-                  new Date(payload.message.at || Date.now()),
-                  detectTimeZone(),
+        {...({
+          isOpen: Boolean(addToNoteMessage),
+          message: addToNoteMessage,
+          storageType:
+            storageMode === 'local' ||
+            storageMode === 'idb' ||
+            storageMode === 'webdav'
+              ? storageMode
+              : 's3',
+          s3Tree,
+          localTree,
+          idbTree,
+          webdavTree,
+          ...(localRootHandle != null ? { localRootHandle } : {}),
+          ...(timeZone != null ? { timeZone } : {}),
+          isSubmitting: addToNoteSubmitting,
+          ...(selectPathAfterCreateFolder != null
+            ? { selectPathAfterCreate: selectPathAfterCreateFolder }
+            : {}),
+          ...(onSelectPathAfterCreateFolderApplied
+            ? {
+                onSelectPathAfterCreateApplied:
+                  onSelectPathAfterCreateFolderApplied,
+              }
+            : {}),
+          onClose: () => {
+            if (!addToNoteSubmitting) setAddToNoteMessage(null);
+          },
+          ...(onRequestCreateFolderForNote
+            ? { onRequestCreateFolder: onRequestCreateFolderForNote }
+            : {}),
+          ...(onRequestMoveFolder
+            ? { onRequestMoveFolder: onRequestMoveFolder as any }
+            : {}),
+          ...(onDropOnFolder ? { onDropOnFolder: onDropOnFolder as any } : {}),
+          ...(dropTarget != null ? { dropTarget } : {}),
+          ...(onLoadLocalFolderChildren
+            ? { onLoadLocalFolderChildren: onLoadLocalFolderChildren as any }
+            : {}),
+          ...(localFolderLoadingPath != null
+            ? { localFolderLoadingPath }
+            : {}),
+          onConfirm: async (payload: any) => {
+            if (!onCreateNoteFromMessage) return;
+            setAddToNoteSubmitting(true);
+            try {
+              const notePath = await onCreateNoteFromMessage(payload);
+              if (notePath && payload?.message?.id) {
+                const dateStr =
+                  payload.message.dateStr ||
+                  localDateString(
+                    new Date(payload.message.at || Date.now()),
+                    detectTimeZone(),
+                  );
+                const nextMsg = { ...payload.message, notePath, dateStr };
+                setMessages((prev: any) =>
+                  prev.map((m: any) =>
+                    m.id === payload.message.id ? { ...m, notePath } : m,
+                  ),
                 );
-              const nextMsg = { ...payload.message, notePath, dateStr };
-              setMessages((prev: any) =>
-                prev.map((m: any) =>
-                  m.id === payload.message.id ? { ...m, notePath } : m,
-                ),
-              );
-              setNotedResults((prev: any) => {
-                const next = prev.filter((m: any) => m.id !== payload.message.id);
-                return [nextMsg, ...next];
-              });
+                setNotedResults((prev: any) => {
+                  const next = prev.filter(
+                    (m: any) => m.id !== payload.message.id,
+                  );
+                  return [nextMsg, ...next];
+                });
+              }
+              setAddToNoteMessage(null);
+            } finally {
+              setAddToNoteSubmitting(false);
             }
-            setAddToNoteMessage(null);
-          } finally {
-            setAddToNoteSubmitting(false);
-          }
-        }}
+          },
+        } as any)}
       />
       <ChatShareGroupSendModal
         isOpen={Boolean(
@@ -3044,7 +3084,11 @@ export default function ChatWithMyselfPane({
         onAddGroup={handleAddGroup}
         onSend={handleShareGroupSend}
         onClose={clearShareGroupSend}
-        getPresignedUrl={getPresignedUrlForPath}
+        getPresignedUrl={
+          getPresignedUrlForPath
+            ? async (path: string) => (await getPresignedUrlForPath(path)) ?? null
+            : undefined
+        }
       />
       <ChatComposerSettingsModal
         open={composerSettingsOpen}
@@ -3075,7 +3119,11 @@ export default function ChatWithMyselfPane({
           if (!next) setHistoryMessage(null);
         }}
         timeZone={timeZone}
-        getPresignedUrl={getPresignedUrlForPath}
+        getPresignedUrl={
+          getPresignedUrlForPath
+            ? async (path: string) => (await getPresignedUrlForPath(path)) ?? null
+            : undefined
+        }
         groups={groups}
         onLoadHistoryPage={handleLoadEditHistoryPage}
         onDeleteHistoryEntry={handleDeleteEditHistoryEntry}
