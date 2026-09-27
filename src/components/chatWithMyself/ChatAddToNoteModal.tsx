@@ -1,14 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ComponentProps,
+} from 'react';
 import {
   DndContext,
   DragOverlay,
   MouseSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
 import { Switch } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import TreeNode from '@/components/TreeNode';
+import { type SidebarTreeNode } from '@/components/shell/TreeNode';
 import {
   RootDropZone,
   TreeDragOverlayPreview,
@@ -27,12 +39,13 @@ import {
   toTreeSelectKey,
 } from '@/utils/treeMove';
 import { useTreeCopyDragModifier } from '@/hooks/useTreeCopyDragModifier';
+import type { TreeCopyModifierEvent } from '@/utils/treeCopy';
 import {
   detectTimeZone,
   formatMessageFileNameBase,
 } from '@/utils/chatWithMyself';
 
-const EMPTY_SELECTED_IDS = new Set();
+const EMPTY_SELECTED_IDS: Set<string> = new Set();
 
 /** Above Modal / ConfirmModal (`z-100000`) so the drag preview stays visible. */
 const DRAG_OVERLAY_Z_INDEX = 100050;
@@ -43,8 +56,99 @@ const switchRootClass =
 const switchThumbClass =
   'block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]';
 
+export type ChatAddToNoteMessage = {
+  id?: string;
+  at?: string;
+  replyTo?: string | null;
+  [key: string]: unknown;
+};
 
-function useIsMobileDragDisabled() {
+export type ChatAddToNoteTreeNode = SidebarTreeNode & {
+  childrenLoaded?: boolean;
+  handle?: FileSystemDirectoryHandle | null;
+};
+
+export type ChatAddToNoteConfirmPayload = {
+  parentPath: string;
+  parentHandle?: FileSystemDirectoryHandle | null | undefined;
+  fileName: string;
+  message: ChatAddToNoteMessage;
+  includeReplyThread: boolean;
+};
+
+type TreeMoveItem = {
+  storageType: string;
+  path: string;
+  nodeType?: string;
+  name?: string;
+};
+
+type DropTarget = {
+  storageType: string;
+  folderPath: string;
+} | null;
+
+type DropOnFolderAction = 'dragOver' | 'dragLeave' | 'drop';
+
+type DropOnFolderPayload = {
+  items?: TreeMoveItem[];
+  copy?: boolean;
+};
+
+type RootFolderNode = {
+  path: '';
+  type: 'folder';
+  name: 'root';
+  handle: FileSystemDirectoryHandle | null;
+};
+
+type PendingMove = {
+  targetNode: ChatAddToNoteTreeNode | RootFolderNode;
+  targetStorageType: string;
+  items: TreeMoveItem[];
+  copy: boolean;
+};
+
+export type ChatAddToNoteModalProps = {
+  isOpen: boolean;
+  message?: ChatAddToNoteMessage | null;
+  storageType: string;
+  s3Tree?: ChatAddToNoteTreeNode[] | null;
+  localTree?: ChatAddToNoteTreeNode[] | null;
+  localRootHandle?: FileSystemDirectoryHandle | null;
+  timeZone?: string | null;
+  onClose?: (() => void) | undefined;
+  onConfirm?:
+    | ((payload: ChatAddToNoteConfirmPayload) => Promise<void> | void)
+    | undefined;
+  onRequestCreateFolder?:
+    | ((
+        parentPath: string,
+        parentDirHandle?: FileSystemDirectoryHandle | null,
+      ) => void)
+    | undefined;
+  onRequestMoveFolder?:
+    | ((node: ChatAddToNoteTreeNode, storageType: string) => void)
+    | undefined;
+  selectPathAfterCreate?: string | null;
+  onSelectPathAfterCreateApplied?: (() => void) | undefined;
+  isSubmitting?: boolean;
+  onDropOnFolder?:
+    | ((
+        targetNode: ChatAddToNoteTreeNode | RootFolderNode | SidebarTreeNode | null,
+        targetStorageType: string | null,
+        action: DropOnFolderAction,
+        payload?: DropOnFolderPayload,
+      ) => void)
+    | undefined;
+  dropTarget?: DropTarget;
+  onLoadLocalFolderChildren?:
+    | ((node: ChatAddToNoteTreeNode) => Promise<void> | void)
+    | undefined;
+  localFolderLoadingPath?: string | null;
+};
+
+function useIsMobileDragDisabled(): boolean {
   const [disabled, setDisabled] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
@@ -64,11 +168,11 @@ function useIsMobileDragDisabled() {
   return disabled;
 }
 
-function getAncestorPathsToExpand(path) {
+function getAncestorPathsToExpand(path: string): string[] {
   if (!path || path === '') return [];
   const parts = path.replace(/\/$/, '').split('/').filter(Boolean);
   if (parts.length <= 1) return [];
-  const result = [];
+  const result: string[] = [];
   let acc = '';
   for (let i = 0; i < parts.length - 1; i++) {
     acc += parts[i] + '/';
@@ -77,21 +181,30 @@ function getAncestorPathsToExpand(path) {
   return result;
 }
 
-function formatMoveTargetLabel(targetNode, storageType) {
+function formatMoveTargetLabel(
+  targetNode: ChatAddToNoteTreeNode | RootFolderNode | null | undefined,
+  storageType: string,
+): string {
   if (!targetNode || targetNode.path === '') {
     return storageType === 's3' ? '루트 (버킷 최상위)' : '루트 폴더';
   }
   return targetNode.name || targetNode.path;
 }
 
-function formatMoveConfirmMessage(items, targetNode, storageType, { copy = false } = {}) {
+function formatMoveConfirmMessage(
+  items: TreeMoveItem[] | null | undefined,
+  targetNode: ChatAddToNoteTreeNode | RootFolderNode | null | undefined,
+  storageType: string,
+  { copy = false }: { copy?: boolean } = {},
+): string {
   const targetLabel = formatMoveTargetLabel(targetNode, storageType);
   const verb = copy ? '복제' : '이동';
   if (!items?.length) {
     return `"${targetLabel}"(으)로 ${verb}할까요?`;
   }
   if (items.length === 1) {
-    const name = items[0].name || items[0].path || '항목';
+    const first = items[0]!;
+    const name = first.name || first.path || '항목';
     return `"${name}"을(를) "${targetLabel}"(으)로 ${verb}할까요?`;
   }
   return `${items.length}개 항목을 "${targetLabel}"(으)로 ${verb}할까요?`;
@@ -119,7 +232,7 @@ export default function ChatAddToNoteModal({
   dropTarget,
   onLoadLocalFolderChildren,
   localFolderLoadingPath = null,
-}) {
+}: ChatAddToNoteModalProps) {
   const isS3 = storageType === 's3';
   const tree = isS3 ? s3Tree : localTree;
   const tz = timeZone || detectTimeZone();
@@ -129,19 +242,19 @@ export default function ChatAddToNoteModal({
   );
 
   const [fileName, setFileName] = useState('');
-  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState<ChatAddToNoteTreeNode | null>(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
   const [error, setError] = useState('');
   const [confirmReplaceName, setConfirmReplaceName] = useState(false);
-  const [pendingMove, setPendingMove] = useState(null);
-  const [expandedPaths, setExpandedPaths] = useState(() => new Set());
-  const [activeDragItems, setActiveDragItems] = useState(null);
+  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+  const [expandedPaths, setExpandedPaths] = useState(() => new Set<string>());
+  const [activeDragItems, setActiveDragItems] = useState<TreeMoveItem[] | null>(null);
   const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
     useTreeCopyDragModifier(Boolean(activeDragItems?.length));
   const [includeReplyThread, setIncludeReplyThread] = useState(true);
   const hasInitializedRef = useRef(false);
-  const activeDragItemsRef = useRef(null);
-  const scrollContainerRef = useRef(null);
+  const activeDragItemsRef = useRef<TreeMoveItem[] | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const dragDisabled = useIsMobileDragDisabled();
 
   // Mouse only — touch/mobile must not start tree reorder drags.
@@ -171,7 +284,7 @@ export default function ChatAddToNoteModal({
     if (!isOpen || !tree?.length || hasInitializedRef.current) return;
 
     if (selectPathAfterCreate) {
-      const node = findNodeByPath(tree, selectPathAfterCreate);
+      const node = findNodeByPath(tree, selectPathAfterCreate) as ChatAddToNoteTreeNode | null;
       if (node && node.type === 'folder') {
         setSelectedFolder(node);
         setSelectedRoot(false);
@@ -189,7 +302,7 @@ export default function ChatAddToNoteModal({
 
   useEffect(() => {
     if (!isOpen || !selectPathAfterCreate || !tree?.length) return;
-    const node = findNodeByPath(tree, selectPathAfterCreate);
+    const node = findNodeByPath(tree, selectPathAfterCreate) as ChatAddToNoteTreeNode | null;
     if (node && node.type === 'folder') {
       setSelectedFolder(node);
       setSelectedRoot(false);
@@ -230,23 +343,23 @@ export default function ChatAddToNoteModal({
   }, [activeDragItems]);
 
   const findTreeNode = useCallback(
-    (type, path) => {
+    (type: string, path: string): ChatAddToNoteTreeNode | RootFolderNode | null => {
       if (path === '') {
         return {
           path: '',
           type: 'folder',
           name: 'root',
-          handle: type === 'local' ? localRootHandle : null,
+          handle: type === 'local' ? localRootHandle ?? null : null,
         };
       }
-      const source = type === 's3' ? s3Tree : localTree;
-      return findNodeByPath(source, path);
+      const source = (type === 's3' ? s3Tree : localTree) ?? [];
+      return (findNodeByPath(source, path) as ChatAddToNoteTreeNode | null) ?? null;
     },
     [s3Tree, localTree, localRootHandle],
   );
 
   const resolveDropTargetNode = useCallback(
-    (type, path) => {
+    (type: string, path: string): ChatAddToNoteTreeNode | RootFolderNode | null => {
       const node = findTreeNode(type, path);
       if (!node) return null;
       if (node.type === 'folder') return node;
@@ -255,7 +368,7 @@ export default function ChatAddToNoteModal({
           path: '',
           type: 'folder',
           name: 'root',
-          handle: type === 'local' ? localRootHandle : null,
+          handle: type === 'local' ? localRootHandle ?? null : null,
         };
       }
       return node;
@@ -264,7 +377,7 @@ export default function ChatAddToNoteModal({
   );
 
   const handleExpandedChange = useCallback(
-    (_type, path, isOpenNext) => {
+    (_type: string, path: string, isOpenNext: boolean) => {
       setExpandedPaths((prev) => {
         const next = new Set(prev);
         if (isOpenNext) next.add(path);
@@ -273,7 +386,7 @@ export default function ChatAddToNoteModal({
       });
 
       if (storageType === 'local' && isOpenNext && onLoadLocalFolderChildren) {
-        const node = findNodeByPath(localTree, path);
+        const node = findNodeByPath(localTree ?? [], path) as ChatAddToNoteTreeNode | null;
         if (node?.type === 'folder' && node.childrenLoaded !== true) {
           void onLoadLocalFolderChildren(node);
         }
@@ -283,7 +396,7 @@ export default function ChatAddToNoteModal({
   );
 
   const handleSelectFolder = useCallback(
-    (_type, node) => {
+    (_type: string, node: ChatAddToNoteTreeNode) => {
       if (!node || node.type !== 'folder') return;
       setSelectedRoot(false);
       setSelectedFolder(node);
@@ -292,19 +405,19 @@ export default function ChatAddToNoteModal({
   );
 
   const handleDndDragStart = useCallback(
-    (event) => {
+    (event: DragStartEvent) => {
       if (dragDisabled) return;
       const activeId = String(event.active.id);
-      const items = resolveDragItems(activeId, selectedIds, findTreeNode);
+      const items = resolveDragItems(activeId, selectedIds, findTreeNode) as TreeMoveItem[];
       activeDragItemsRef.current = items;
       setActiveDragItems(items);
-      syncCopyModifierFromEvent(event.activatorEvent);
+      syncCopyModifierFromEvent(event.activatorEvent as TreeCopyModifierEvent | null);
     },
     [dragDisabled, selectedIds, findTreeNode, syncCopyModifierFromEvent],
   );
 
   const handleDndDragOver = useCallback(
-    (event) => {
+    (event: DragOverEvent) => {
       if (dragDisabled) return;
       const { over } = event;
       if (!over) {
@@ -321,7 +434,7 @@ export default function ChatAddToNoteModal({
   );
 
   const handleDndDragEnd = useCallback(
-    (event) => {
+    (event: DragEndEvent) => {
       const { over } = event;
       const items = activeDragItemsRef.current;
       activeDragItemsRef.current = null;
@@ -381,7 +494,7 @@ export default function ChatAddToNoteModal({
   };
 
   const handleSubmit = async () => {
-    if (!onConfirm || isSubmitting) return;
+    if (!onConfirm || isSubmitting || !message) return;
     const raw = (fileName.trim() || defaultBaseName).replace(/\.md$/i, '');
     if (!raw) {
       setError('파일명을 입력하세요.');
@@ -400,12 +513,15 @@ export default function ChatAddToNoteModal({
         message,
         includeReplyThread: isReplyMessage ? includeReplyThread : false,
       });
-    } catch (e) {
-      setError(e?.message || '노트 생성 실패');
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : '노트 생성 실패';
+      setError(errMsg || '노트 생성 실패');
     }
   };
 
-  const folderRoots = (tree || []).filter((n) => n.type === 'folder');
+  const folderRoots = (tree || []).filter(
+    (n): n is ChatAddToNoteTreeNode => n.type === 'folder',
+  );
 
   return (
     <>
@@ -426,7 +542,7 @@ export default function ChatAddToNoteModal({
           <div className="flex items-center gap-1">
             <input
               value={fileName}
-              onChange={(e) => setFileName(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setFileName(e.target.value)}
               placeholder={defaultBaseName}
               className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
               autoFocus
@@ -450,7 +566,7 @@ export default function ChatAddToNoteModal({
               <button
                 type="button"
                 onClick={() => {
-                  if (!canMoveFolder) return;
+                  if (!canMoveFolder || !selectedFolder) return;
                   onRequestMoveFolder(selectedFolder, storageType);
                 }}
                 disabled={!canMoveFolder}
@@ -492,7 +608,9 @@ export default function ChatAddToNoteModal({
               <RootDropZone
                 storageType={storageType}
                 localRootHandle={localRootHandle}
-                onDropOnFolder={onDropOnFolder}
+                onDropOnFolder={
+                  onDropOnFolder as ComponentProps<typeof RootDropZone>['onDropOnFolder']
+                }
                 dropTarget={dropTarget}
                 isSelected={selectedRoot}
                 onFocusRoot={() => {
@@ -509,7 +627,7 @@ export default function ChatAddToNoteModal({
                     rootDropNode={{
                       path: '',
                       type: 'folder',
-                      handle: isS3 ? null : localRootHandle,
+                      handle: isS3 ? null : (localRootHandle ?? null),
                     }}
                     onSelect={handleSelectFolder}
                     storageType={storageType}
@@ -517,7 +635,9 @@ export default function ChatAddToNoteModal({
                     onRequestMoveFolder={onRequestMoveFolder}
                     expandedPaths={expandedPaths}
                     onExpandedChange={handleExpandedChange}
-                    onDropOnFolder={onDropOnFolder}
+                    onDropOnFolder={
+                      onDropOnFolder as ComponentProps<typeof TreeNode>['onDropOnFolder']
+                    }
                     dropTarget={dropTarget}
                     activeDragItemIds={activeDragItemIds}
                     isCopyDrag={isCopyDrag}
@@ -562,7 +682,7 @@ export default function ChatAddToNoteModal({
               id="chat-add-to-note-include-thread"
               className={switchRootClass}
               checked={includeReplyThread}
-              onCheckedChange={(next) => setIncludeReplyThread(Boolean(next))}
+              onCheckedChange={(next: boolean) => setIncludeReplyThread(Boolean(next))}
               aria-label="원본 메시지 쓰레드도 노트에 포함"
             >
               <Switch.Thumb className={switchThumbClass} />

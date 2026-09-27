@@ -5,21 +5,57 @@ import Modal from '@/components/modals/Modal';
 
 const CLOSE_ANIMATION_MS = 200;
 
+export type DeleteTargetNode = {
+  path?: string | undefined;
+  name?: string | undefined;
+  type?: string | undefined;
+};
+
+export type DeleteTargetItem = {
+  node: DeleteTargetNode;
+  type: string;
+};
+
+export type DeleteTarget =
+  | DeleteTargetItem
+  | { targets: DeleteTargetItem[] }
+  | null
+  | undefined;
+
+export type DeleteConfirmOptions = {
+  deleteWithRecordings?: boolean | undefined;
+};
+
 /**
  * Normalize deleteTarget shapes:
  * - { node, type }
  * - { targets: [{ node, type }, ...] }
- * @param {unknown} target
- * @returns {Array<{ node: { path?: string, name?: string, type?: string }, type: string }>}
  */
-export function normalizeDeleteTargets(target) {
-  if (!target) return [];
-  if (Array.isArray(target.targets) && target.targets.length) {
-    return target.targets.filter((t) => t?.node && t?.type);
+export function normalizeDeleteTargets(target: unknown): DeleteTargetItem[] {
+  if (!target || typeof target !== 'object') return [];
+  const t = target as Record<string, unknown>;
+  if (Array.isArray(t.targets) && t.targets.length) {
+    return (t.targets as unknown[]).filter(
+      (item): item is DeleteTargetItem => {
+        if (!item || typeof item !== 'object') return false;
+        const row = item as Record<string, unknown>;
+        return Boolean(row.node && row.type);
+      },
+    );
   }
-  if (target.node && target.type) return [target];
+  if (t.node && t.type) {
+    return [target as DeleteTargetItem];
+  }
   return [];
 }
+
+export type DeleteConfirmModalProps = {
+  target: DeleteTarget;
+  associatedRecordings?: unknown[] | undefined;
+  onCancel: () => void;
+  onConfirm: (options: DeleteConfirmOptions) => void;
+  isProcessing?: boolean | undefined;
+};
 
 export function DeleteConfirmModal({
   target,
@@ -27,18 +63,21 @@ export function DeleteConfirmModal({
   onCancel,
   onConfirm,
   isProcessing = false,
-}) {
-  const [displayTarget, setDisplayTarget] = useState(null);
+}: DeleteConfirmModalProps) {
+  const [displayTarget, setDisplayTarget] = useState<DeleteTarget>(null);
   const [deleteWithRecordings, setDeleteWithRecordings] = useState(true);
 
   useEffect(() => {
     if (target) {
       setDisplayTarget(target);
       setDeleteWithRecordings(true);
-    } else if (displayTarget) {
-      const t = setTimeout(() => setDisplayTarget(null), CLOSE_ANIMATION_MS);
-      return () => clearTimeout(t);
+      return undefined;
     }
+    if (displayTarget) {
+      const timer = setTimeout(() => setDisplayTarget(null), CLOSE_ANIMATION_MS);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
   }, [target, displayTarget]);
 
   if (!target && !displayTarget) return null;
@@ -49,9 +88,11 @@ export function DeleteConfirmModal({
 
   const isMulti = targets.length > 1;
   const primary = targets[0];
-  const isInTrash = targets.every((t) => t.node.path?.startsWith('.trash/'));
+  if (!primary) return null;
+
+  const isInTrash = targets.every((item) => item.node.path?.startsWith('.trash/'));
   const isTrashRoot = !isMulti && primary.node.path === '.trash/';
-  const hasFolder = targets.some((t) => t.node.type === 'folder');
+  const hasFolder = targets.some((item) => item.node.type === 'folder');
   const hasRecordings = associatedRecordings.length > 0;
 
   const handleConfirm = () => {
@@ -59,7 +100,7 @@ export function DeleteConfirmModal({
   };
 
   const nameListPreview = () => {
-    const names = targets.map((t) => t.node.name).filter(Boolean);
+    const names = targets.map((item) => item.node.name).filter(Boolean);
     if (names.length <= 3) return names.join(', ');
     return `${names.slice(0, 3).join(', ')} 외 ${names.length - 3}개`;
   };
@@ -70,7 +111,8 @@ export function DeleteConfirmModal({
       onClose={isProcessing ? undefined : onCancel}
       onConfirm={isProcessing || !target ? undefined : handleConfirm}
       ignoreEnterInFields
-    >      <div className="p-6">
+    >
+      <div className="p-6">
         <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong mb-2 flex items-center gap-2">
           <IconTrash />{' '}
           {isTrashRoot

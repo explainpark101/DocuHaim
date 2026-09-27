@@ -1,4 +1,13 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
 import { motion as Motion, useAnimationControls } from 'motion/react';
 import { Folder } from 'lucide-react';
 import { IconFilePlus, IconFolderPlus } from '@/components/icons';
@@ -14,24 +23,30 @@ import {
   listCreateItemFolderSuggestions,
   resolveCreateItemAutocompleteContext,
   resolveCreateItemPath,
+  type FolderSuggestItem,
 } from '@/utils/createItemPath';
+import type { BrowseTreeNode } from '@/utils/advancedSearch/browseDirectory';
 import { vibrateErrorFeedback } from '@/utils/hapticFeedback';
 
 const SHAKE_X = [0, -8, 8, -6, 6, -3, 3, 0];
 
+export type CreateItemModalType = 'file' | 'folder';
+
+export type CreateItemModalProps = {
+  isOpen: boolean;
+  type?: CreateItemModalType | null;
+  parentLabel?: string;
+  parentPath?: string;
+  storageType?: string;
+  tree?: BrowseTreeNode[] | null;
+  ensureFolderLoaded?: (folderPath: string) => void | Promise<void>;
+  onClose: () => void;
+  onSubmit: (name: string) => void | Promise<void>;
+  isSubmitting?: boolean;
+};
+
 /**
- * @param {{
- *   isOpen: boolean;
- *   type?: 'file' | 'folder' | null;
- *   parentLabel?: string;
- *   parentPath?: string;
- *   storageType?: string;
- *   tree?: unknown[] | null;
- *   ensureFolderLoaded?: (folderPath: string) => void | Promise<void>;
- *   onClose: () => void;
- *   onSubmit: (name: string) => void | Promise<void>;
- *   isSubmitting?: boolean;
- * }} props
+ * Create file/folder dialog with relative-path autocomplete and format badges.
  */
 export function CreateItemModal({
   isOpen,
@@ -44,7 +59,7 @@ export function CreateItemModal({
   onClose,
   onSubmit,
   isSubmitting = false,
-}) {
+}: CreateItemModalProps) {
   const listboxId = useId();
   const [name, setName] = useState('');
   const [fileFormatId, setFileFormatId] = useState(
@@ -54,7 +69,7 @@ export function CreateItemModal({
   const [activeSuggest, setActiveSuggest] = useState(0);
   const [folderLoadTick, setFolderLoadTick] = useState(0);
   const wasBlockedRef = useRef(false);
-  const wrapRef = useRef(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const shakeControls = useAnimationControls();
 
   useEffect(() => {
@@ -68,7 +83,7 @@ export function CreateItemModal({
     }
   }, [isOpen, type, shakeControls]);
 
-  const itemType = type === 'folder' ? 'folder' : 'file';
+  const itemType: CreateItemModalType = type === 'folder' ? 'folder' : 'file';
   const trees = useMemo(() => [tree], [tree]);
   const pathOptions = useMemo(
     () => (itemType === 'file' ? { fileFormat: fileFormatId } : undefined),
@@ -95,7 +110,7 @@ export function CreateItemModal({
 
   const isOutsideRoot = resolved?.ok === false && resolved.reason === 'outside-root';
   const isDuplicate =
-    Boolean(resolved?.ok)
+    resolved?.ok === true
     && isCreateItemPathTaken(trees, resolved, itemType);
   const isBlocked = isOutsideRoot || isDuplicate;
 
@@ -106,7 +121,7 @@ export function CreateItemModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    const dirs = new Set();
+    const dirs = new Set<string>();
     if (autocomplete.ok) dirs.add(autocomplete.listDir);
     if (resolved?.ok) dirs.add(resolved.parentDirPath);
 
@@ -167,14 +182,14 @@ export function CreateItemModal({
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
-    const onPointerDown = (e) => {
-      if (!el.contains(e.target)) setSuggestOpen(false);
+    const onPointerDown = (e: MouseEvent) => {
+      if (!el.contains(e.target as Node)) setSuggestOpen(false);
     };
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
-  const applySuggestion = (item) => {
+  const applySuggestion = (item: FolderSuggestItem) => {
     if (!autocomplete.ok) return;
     const next = `${autocomplete.stem}${item.name}/`;
     setName(next);
@@ -182,13 +197,13 @@ export function CreateItemModal({
     setActiveSuggest(0);
   };
 
-  const selectFileFormat = (formatId) => {
+  const selectFileFormat = (formatId: string) => {
     setFileFormatId(formatId);
     if (!name.trim()) return;
     setName(applyCreateFileFormat(name, formatId));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -212,10 +227,10 @@ export function CreateItemModal({
       itemType === 'file'
         ? applyCreateFileFormat(trimmed, fileFormatId) || trimmed
         : trimmed;
-    onSubmit(toSubmit);
+    void onSubmit(toSubmit);
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (!suggestOpen || suggestions.length === 0) return;
 
     if (e.key === 'ArrowDown') {
@@ -246,6 +261,11 @@ export function CreateItemModal({
       return;
     }
     onClose();
+  };
+
+  const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    setSuggestOpen(true);
   };
 
   const isFolder = itemType === 'folder';
@@ -297,10 +317,7 @@ export function CreateItemModal({
               <input
                 type="text"
                 value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setSuggestOpen(true);
-                }}
+                onChange={handleNameChange}
                 onFocus={() => setSuggestOpen(true)}
                 onKeyDown={handleKeyDown}
                 placeholder={

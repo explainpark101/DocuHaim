@@ -4,6 +4,27 @@ import { getWebAuthnEncryptLabel } from '@/utils/webauthnLabel';
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import Modal from '@/components/modals/Modal';
 
+function errorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'message' in err) {
+    const msg = (err as { message?: unknown }).message;
+    if (typeof msg === 'string' && msg) return msg;
+  }
+  return fallback;
+}
+
+/** Credentials blob passed through to the WebAuthn save handler. */
+export type SaveMethodCreds = Record<string, unknown>;
+
+export type SaveMethodModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  creds?: SaveMethodCreds | null | undefined;
+  /** Initial hint; actual availability is re-checked when open. */
+  webauthnSupported?: boolean | undefined;
+  onSaveWithWebAuthn?: ((creds: SaveMethodCreds) => void | Promise<void>) | undefined;
+  onSaveWithPassword?: (() => void) | undefined;
+};
+
 export function SaveMethodModal({
   isOpen,
   onClose,
@@ -11,7 +32,7 @@ export function SaveMethodModal({
   webauthnSupported,
   onSaveWithWebAuthn,
   onSaveWithPassword,
-}) {
+}: SaveMethodModalProps) {
   const [webauthnLoading, setWebauthnLoading] = useState(false);
   const [webauthnAvailable, setWebauthnAvailable] = useState(webauthnSupported ?? false);
   const webauthnLabel = getWebAuthnEncryptLabel();
@@ -22,16 +43,18 @@ export function SaveMethodModal({
     isWebAuthnAvailableForSave().then((supported) => {
       if (!cancelled) setWebauthnAvailable(supported);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   const handleWebAuthnClick = async () => {
     if (!onSaveWithWebAuthn || !creds) return;
-    let promise;
+    let promise: void | Promise<void>;
     try {
       promise = onSaveWithWebAuthn(creds);
     } catch (e) {
-      alert(e?.message || '저장에 실패했습니다.');
+      alert(errorMessage(e, '저장에 실패했습니다.'));
       return;
     }
     setWebauthnLoading(true);
@@ -39,7 +62,7 @@ export function SaveMethodModal({
       await promise;
       onClose();
     } catch (e) {
-      alert(e?.message || '저장에 실패했습니다.');
+      alert(errorMessage(e, '저장에 실패했습니다.'));
     } finally {
       setWebauthnLoading(false);
     }

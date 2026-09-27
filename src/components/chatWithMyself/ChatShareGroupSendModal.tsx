@@ -12,7 +12,31 @@ import {
 
 const PREVIEW_MAX = 280;
 
-function truncatePreview(body) {
+export type ChatShareGroupLike = {
+  id: string;
+  name: string;
+  iconPath?: string;
+};
+
+export type ChatShareGroupSendModalProps = {
+  isOpen: boolean;
+  body?: string;
+  files?: File[];
+  groups?: ChatShareGroupLike[];
+  onAddGroup?:
+    | ((name: string) => Promise<ChatShareGroupLike[] | void> | ChatShareGroupLike[] | void)
+    | undefined;
+  onSend?:
+    | ((body: string, groupId: string, files: File[]) => Promise<void> | void)
+    | undefined;
+  onClose?: (() => void) | undefined;
+  getPresignedUrl?:
+    | ((path: string) => Promise<string | null | undefined>)
+    | null
+    | undefined;
+};
+
+function truncatePreview(body: string): string {
   const text = String(body || '').trim();
   if (!text) return '';
   if (text.length <= PREVIEW_MAX) return text;
@@ -31,14 +55,14 @@ export default function ChatShareGroupSendModal({
   onSend,
   onClose,
   getPresignedUrl,
-}) {
+}: ChatShareGroupSendModalProps) {
   const [selectedGroup, setSelectedGroup] = useState(SELF_GROUP);
   const [inlineAddOpen, setInlineAddOpen] = useState(false);
   const [inlineGroupName, setInlineGroupName] = useState('');
   const [addingGroup, setAddingGroup] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const inlineGroupInputRef = useRef(null);
+  const inlineGroupInputRef = useRef<HTMLInputElement | null>(null);
   const preview = truncatePreview(body);
   const fileList = useMemo(
     () => (Array.isArray(files) ? files.filter(Boolean) : []),
@@ -50,11 +74,14 @@ export default function ChatShareGroupSendModal({
   const groupOptions = useMemo(
     () => [
       { value: SELF_GROUP, label: SELF_GROUP },
-      ...sortedGroups.map((g) => ({
-        value: g.id,
-        label: g.name,
-        iconPath: g.iconPath,
-      })),
+      ...sortedGroups.map((g) => {
+        const option: { value: string; label: string; iconPath?: string } = {
+          value: g.id,
+          label: g.name,
+        };
+        if (g.iconPath) option.iconPath = g.iconPath;
+        return option;
+      }),
       { value: ADD_GROUP_VALUE, label: '직접추가' },
     ],
     [sortedGroups],
@@ -81,7 +108,7 @@ export default function ChatShareGroupSendModal({
     return () => window.cancelAnimationFrame(id);
   }, [inlineAddOpen]);
 
-  const handleGroupChange = (next) => {
+  const handleGroupChange = (next: string) => {
     if (next === ADD_GROUP_VALUE) {
       setInlineAddOpen(true);
       setInlineGroupName('');
@@ -180,7 +207,7 @@ export default function ChatShareGroupSendModal({
               onValueChange={handleGroupChange}
               options={groupOptions}
               showGroupAvatars
-              getPresignedUrl={getPresignedUrl}
+              getPresignedUrl={getPresignedUrl ?? null}
               triggerClassName="w-full"
               className="min-w-0 flex-1"
             />

@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { IconUpload } from '@/components/icons';
 import Modal from '@/components/modals/Modal';
 
-export function ImportPasswordModal({ isOpen, onConfirm, onCancel }) {
+export type ImportPasswordModalProps = {
+  isOpen: boolean;
+  onConfirm: (password: string) => void;
+  onCancel: () => void;
+};
+
+export function ImportPasswordModal({
+  isOpen,
+  onConfirm,
+  onCancel,
+}: ImportPasswordModalProps) {
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!password.trim()) return;
     onConfirm(password.trim());

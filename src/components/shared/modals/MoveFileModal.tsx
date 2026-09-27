@@ -1,20 +1,73 @@
-import { useState, useEffect, useRef } from 'react';
+import {
+  useState,
+  useEffect,
+  useRef,
+  type MouseEvent,
+  type RefObject,
+} from 'react';
 import Modal from '@/components/modals/Modal';
 import { IconFolder, IconFolderPlus } from '@/components/icons';
 import { findNodeByPath } from '@/utils/s3Tree';
 
-function getParentFolderPath(filePath) {
+/** Vault tree node shape used by the move-file folder picker. */
+export type MoveFileTreeNode = {
+  name: string;
+  type: string;
+  path: string;
+  handle?: FileSystemDirectoryHandle;
+  children?: MoveFileTreeNode[];
+};
+
+/** Open-file or sidebar node passed as the move subject. */
+export type MoveFileSubject = {
+  /** Editor open-file path identity. */
+  id?: string;
+  name?: string;
+  /** Tree node path (sidebar move). */
+  path?: string;
+};
+
+/** Destination folder chosen in the modal. */
+export type MoveFileDestination = {
+  path: string;
+  handle?: FileSystemDirectoryHandle | null | undefined;
+};
+
+export type MoveFileModalProps = {
+  isOpen: boolean;
+  storageType?: string | null;
+  s3Tree?: MoveFileTreeNode[] | null;
+  localTree?: MoveFileTreeNode[] | null;
+  webdavTree?: MoveFileTreeNode[] | null;
+  localRootHandle?: FileSystemDirectoryHandle | null;
+  currentFile?: MoveFileSubject | null;
+  fileToMove?: MoveFileSubject | null;
+  onClose: () => void;
+  onConfirm: (dest: MoveFileDestination) => void | Promise<void>;
+  onRequestCreateFolder?: (
+    parentPath: string,
+    parentDirHandle: FileSystemDirectoryHandle | null | undefined,
+  ) => void;
+  selectPathAfterCreate?: string | null;
+  onSelectPathAfterCreateApplied?: () => void;
+};
+
+function subjectParentKey(file: MoveFileSubject): string | undefined {
+  return file.id || file.path;
+}
+
+function getParentFolderPath(filePath: string | undefined): string {
   if (!filePath || typeof filePath !== 'string') return '';
   const parts = filePath.split('/').filter(Boolean);
   if (parts.length <= 1) return '';
   return parts.slice(0, -1).join('/') + '/';
 }
 
-function getAncestorPathsToExpand(path) {
+function getAncestorPathsToExpand(path: string): string[] {
   if (!path || path === '') return [];
   const parts = path.replace(/\/$/, '').split('/').filter(Boolean);
   if (parts.length <= 1) return [];
-  const result = [];
+  const result: string[] = [];
   let acc = '';
   for (let i = 0; i < parts.length - 1; i++) {
     acc += parts[i] + '/';
@@ -23,7 +76,23 @@ function getAncestorPathsToExpand(path) {
   return result;
 }
 
-function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, selectedRowRef }) {
+type FolderNodeProps = {
+  node: MoveFileTreeNode;
+  level: number;
+  onSelect: (node: MoveFileTreeNode) => void;
+  selectedPath: string | null | undefined;
+  expandedPaths: Set<string> | null;
+  selectedRowRef: RefObject<HTMLDivElement | null>;
+};
+
+function FolderNode({
+  node,
+  level,
+  onSelect,
+  selectedPath,
+  expandedPaths,
+  selectedRowRef,
+}: FolderNodeProps) {
   if (node.type !== 'folder') return null;
 
   const mustBeOpen = expandedPaths?.has(node.path);
@@ -32,7 +101,7 @@ function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, select
   const paddingLeft = `${level * 12 + 8}px`;
   const isSelected = selectedPath === node.path;
 
-  const rowRef = (el) => {
+  const rowRef = (el: HTMLDivElement | null) => {
     if (isSelected && selectedRowRef && el) {
       selectedRowRef.current = el;
     }
@@ -43,7 +112,7 @@ function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, select
     setUserOpen((prev) => !prev);
   };
 
-  const handleSelect = (e) => {
+  const handleSelect = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onSelect(node);
   };
@@ -94,30 +163,15 @@ function FolderNode({ node, level, onSelect, selectedPath, expandedPaths, select
   );
 }
 
-/** @typedef {{ name: string, type: string, path: string, handle?: FileSystemDirectoryHandle, children?: TreeNodeLike[] }} TreeNodeLike */
-
 /**
- * @param {object} props
- * @param {boolean} props.isOpen
- * @param {string} props.storageType
- * @param {TreeNodeLike[]} [props.s3Tree]
- * @param {TreeNodeLike[]} [props.localTree]
- * @param {TreeNodeLike[]} [props.webdavTree]
- * @param {FileSystemDirectoryHandle | null} [props.localRootHandle]
- * @param {object | null} [props.currentFile]
- * @param {object | null} [props.fileToMove]
- * @param {() => void} props.onClose
- * @param {(folder: object) => void | Promise<void>} props.onConfirm
- * @param {(parentPath: string, parentDirHandle: FileSystemDirectoryHandle | null) => void} [props.onRequestCreateFolder]
- * @param {string | null} [props.selectPathAfterCreate]
- * @param {() => void} [props.onSelectPathAfterCreateApplied]
+ * Pick a destination folder for moving a file (S3 / WebDAV / local).
  */
 export function MoveFileModal({
   isOpen,
   storageType,
   s3Tree,
   localTree,
-  webdavTree = /** @type {TreeNodeLike[]} */ ([]),
+  webdavTree = [],
   localRootHandle,
   currentFile,
   fileToMove,
@@ -126,7 +180,7 @@ export function MoveFileModal({
   onRequestCreateFolder,
   selectPathAfterCreate,
   onSelectPathAfterCreateApplied,
-}) {
+}: MoveFileModalProps) {
   const effectiveFile = fileToMove || currentFile;
   if (!effectiveFile) return null;
 
@@ -134,11 +188,11 @@ export function MoveFileModal({
   const isWebdav = storageType === 'webdav';
   const tree = isS3 ? s3Tree : isWebdav ? webdavTree : localTree;
 
-  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState<MoveFileTreeNode | null>(null);
   const [selectedRoot, setSelectedRoot] = useState(true);
   const hasInitializedRef = useRef(false);
-  const selectedRowRef = useRef(null);
-  const scrollContainerRef = useRef(null);
+  const selectedRowRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     hasInitializedRef.current = false;
@@ -148,7 +202,7 @@ export function MoveFileModal({
     if (!isOpen || !tree?.length || hasInitializedRef.current) return;
 
     if (selectPathAfterCreate) {
-      const node = findNodeByPath(tree, selectPathAfterCreate);
+      const node = findNodeByPath(tree, selectPathAfterCreate) as MoveFileTreeNode | null;
       if (node && node.type === 'folder') {
         setSelectedFolder(node);
         setSelectedRoot(false);
@@ -158,12 +212,13 @@ export function MoveFileModal({
       return;
     }
 
-    const parentPath = getParentFolderPath(effectiveFile.id);
+    // Editor files use `id`; sidebar tree nodes typically use `path`.
+    const parentPath = getParentFolderPath(subjectParentKey(effectiveFile));
     if (!parentPath) {
       setSelectedRoot(true);
       setSelectedFolder(null);
     } else {
-      const node = findNodeByPath(tree, parentPath);
+      const node = findNodeByPath(tree, parentPath) as MoveFileTreeNode | null;
       if (node && node.type === 'folder') {
         setSelectedFolder(node);
         setSelectedRoot(false);
@@ -173,7 +228,14 @@ export function MoveFileModal({
       }
     }
     hasInitializedRef.current = true;
-  }, [isOpen, selectPathAfterCreate, tree, effectiveFile?.id, onSelectPathAfterCreateApplied]);
+  }, [
+    isOpen,
+    selectPathAfterCreate,
+    tree,
+    effectiveFile.id,
+    effectiveFile.path,
+    onSelectPathAfterCreateApplied,
+  ]);
 
   const pathToExpand = selectPathAfterCreate || selectedFolder?.path;
   const expandedPaths = pathToExpand
@@ -199,7 +261,7 @@ export function MoveFileModal({
     setSelectedFolder(null);
   };
 
-  const handleSelectFolder = (node) => {
+  const handleSelectFolder = (node: MoveFileTreeNode) => {
     setSelectedRoot(false);
     setSelectedFolder(node);
   };
@@ -218,13 +280,13 @@ export function MoveFileModal({
 
     if (isS3 || isWebdav) {
       const destPath = selectedRoot ? '' : selectedFolder?.path || '';
-      onConfirm({
+      void onConfirm({
         path: destPath,
       });
     } else {
       const destPath = selectedRoot ? '' : selectedFolder?.path || '';
       const destHandle = selectedRoot ? localRootHandle : selectedFolder?.handle;
-      onConfirm({
+      void onConfirm({
         path: destPath,
         handle: destHandle,
       });
@@ -325,4 +387,3 @@ export function MoveFileModal({
     </Modal>
   );
 }
-
