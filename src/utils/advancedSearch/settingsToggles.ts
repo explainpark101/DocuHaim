@@ -118,6 +118,10 @@ import {
   saveHaimFocusOutlineEnabled,
 } from '@/utils/haimFocusOutlineSettings';
 import {
+  loadHaimProseWidthClampEnabled,
+  saveHaimProseWidthClampEnabled,
+} from '@/utils/haimProseWidthSettings';
+import {
   loadHaimLinkOpenOnClick,
   saveHaimLinkOpenOnClick,
 } from '@/utils/haimLinkOpenSettings';
@@ -163,6 +167,7 @@ export type SettingsToggleId =
   | 'settings-haim-double-scroll-sync'
   | 'settings-haim-toc-dock'
   | 'settings-haim-focus-outline'
+  | 'settings-haim-prose-width-clamp'
   | 'settings-haim-link-open-on-click'
   | 'settings-haim-code-line-numbers'
   | 'settings-haim-raw-line-numbers'
@@ -276,6 +281,29 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimFocusOutlineEnabled,
     save: saveHaimFocusOutlineEnabled,
+  },
+  {
+    id: 'settings-haim-prose-width-clamp',
+    enableTitle: 'Haim WYSIWYG 본문 너비 제한 켜기',
+    disableTitle: 'Haim WYSIWYG 본문 너비 제한 끄기',
+    description:
+      '노트 Haim Editor WYSIWYG 본문을 설정한 max-width(px)로 가운데 정렬합니다',
+    keywords: [
+      'haim',
+      'prose',
+      'width',
+      'max-width',
+      'clamp',
+      'container',
+      '본문',
+      '너비',
+      '폭',
+      'reading',
+      'reading width',
+      'wysiwyg',
+    ],
+    load: loadHaimProseWidthClampEnabled,
+    save: saveHaimProseWidthClampEnabled,
   },
   {
     id: 'settings-haim-link-open-on-click',
