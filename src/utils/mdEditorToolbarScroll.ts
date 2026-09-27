@@ -1,4 +1,6 @@
-export const MD_EDITOR_TOOLBAR_WRAPPER_SELECTOR = '.md-editor-toolbar-wrapper';
+/** md-editor-rt + Haim TipTap toolbars that scroll horizontally on overflow. */
+export const MD_EDITOR_TOOLBAR_WRAPPER_SELECTOR =
+  '.md-editor-toolbar-wrapper, .haim-toolbar';
 
 const AXIS_LOCK_PX = 8;
 const OVERFLOW_EPSILON = 1;
