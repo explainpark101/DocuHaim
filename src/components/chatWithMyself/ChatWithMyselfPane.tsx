@@ -2860,6 +2860,7 @@ export default function ChatWithMyselfPane({
                     showToolbar={composerToolbarOpen && !composerLightweight}
                     showLineNumbers={composerLineNumbers && !composerLightweight}
                     lightweight={composerLightweight}
+                    isMobileLayout={isMobileLayout}
                     seedBody={composerSeed}
                     onSeedConsumed={() => setComposerSeed(null)}
                   />

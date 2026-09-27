@@ -49,6 +49,8 @@ import { prepareChatComposerAttachment } from '@/utils/chatWithMyself/prepareCha
 import { resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import { registerChatActions } from '@/utils/advancedSearch/chatActions';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
+import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
+import ChatComposerPlainTextarea from '@/components/chatWithMyself/ChatComposerPlainTextarea';
 
 const ChatComposerMdEditor = lazy(
   () => import('@/components/chatWithMyself/ChatComposerMdEditor'),
@@ -90,25 +92,6 @@ function getComposerContentMaxH({ editing = false } = {}) {
   // Keep room for chat nav, status bar, group row, and reply chrome.
   const capped = Math.floor(vvH * 0.28);
   return Math.max(COMPOSER_MIN_H, Math.min(COMPOSER_MAX_H, capped));
-}
-
-function useIsCoarsePointer() {
-  const [coarse, setCoarse] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
-  });
-  useEffect(() => {
-    const mq = window.matchMedia('(pointer: coarse)');
-    const onChange = () =>
-      setCoarse(mq.matches || window.innerWidth < 768);
-    mq.addEventListener('change', onChange);
-    window.addEventListener('resize', onChange);
-    return () => {
-      mq.removeEventListener('change', onChange);
-      window.removeEventListener('resize', onChange);
-    };
-  }, []);
-  return coarse;
 }
 
 /** macOS / iOS / iPadOS — Cmd is the primary modifier. */
@@ -193,6 +176,8 @@ const ChatComposer = forwardRef(function ChatComposer(
     showLineNumbers = false,
     /** Prefer native textarea over MdEditor/CodeMirror (perf). */
     lightweight = false,
+    /** App mobile layout (narrow / phone shell) — always use native textarea. */
+    isMobileLayout = false,
     /** Share-target (or similar) seed: replace compose body once consumed. */
     seedBody = null,
     onSeedConsumed,
@@ -218,8 +203,6 @@ const ChatComposer = forwardRef(function ChatComposer(
   const [draftReady, setDraftReady] = useState(false);
   const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
   const [encryptPromptOpen, setEncryptPromptOpen] = useState(false);
-  /** Markdown messages prefer MdEditor so toolbar formatting matches render. */
-  const useLightweightEditor = lightweight && !markdownEnabled;
   const openChatImage = useChatImageLightbox();
   const wrapRef = useRef(null);
   const textareaRef = useRef(null);
@@ -241,6 +224,11 @@ const ChatComposer = forwardRef(function ChatComposer(
   const appTheme = useDocumentTheme();
   const resolvedTheme = theme || appTheme;
   const isMobile = useIsCoarsePointer();
+  /** Mobile layout or coarse/narrow — never mount the rich editor chunk. */
+  const forcePlainTextarea = Boolean(isMobileLayout) || isMobile;
+  /** Markdown messages prefer MdEditor so toolbar formatting matches render (desktop only). */
+  const useLightweightEditor =
+    forcePlainTextarea || (lightweight && !markdownEnabled);
   const applePlatform = useMemo(() => isApplePlatform(), []);
   const sendModLabel = applePlatform ? 'Cmd+Enter' : 'Ctrl+Enter';
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
@@ -615,7 +603,13 @@ const ChatComposer = forwardRef(function ChatComposer(
       if (view) {
         view.focus();
       } else {
-        root.querySelector('.cm-content')?.focus?.();
+        const tiptap = root.querySelector('.ProseMirror');
+        if (tiptap) {
+          tiptap.focus?.();
+        } else {
+          // Editor chunk still loading — focus the Suspense textarea fallback.
+          root.querySelector('textarea[data-chat-composer-textarea]')?.focus?.();
+        }
       }
     }
     // Undo mobile browser scroll-into-view that pushes chat chrome off-screen.
@@ -953,7 +947,9 @@ const ChatComposer = forwardRef(function ChatComposer(
 
       // Safari lightweight: promote textarea → MdEditor only on Space/Enter
       // once markdown markup is already present (do not auto-switch on detect).
+      // Skip on mobile — always keep the native textarea.
       if (
+        !forcePlainTextarea &&
         safariDeferMdEditor &&
         useLightweightEditor &&
         !markdownEnabledRef.current &&
@@ -1022,6 +1018,7 @@ const ChatComposer = forwardRef(function ChatComposer(
     doSend,
     openEncryptSendPrompt,
     isMobile,
+    forcePlainTextarea,
     editTarget,
     applePlatform,
     setMarkdownFromUser,
@@ -1463,26 +1460,22 @@ const ChatComposer = forwardRef(function ChatComposer(
               }
             >
               {useLightweightEditor ? (
-                <textarea
+                <ChatComposerPlainTextarea
                   ref={textareaRef}
-                  data-chat-composer-textarea=""
                   value={value}
-                  onChange={(e) => applyComposerValue(e.target.value)}
-                  placeholder="메시지 입력…"
-                  className="box-border h-full min-h-0 w-full resize-none border-0 bg-transparent px-2.5 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-odp-fgStrong dark:placeholder:text-gray-500"
-                  style={
-                    fillParent
-                      ? { height: '100%' }
-                      : { height: '100%', minHeight: COMPOSER_MIN_H }
-                  }
-                  aria-label="메시지 입력"
+                  onChange={applyComposerValue}
+                  fillParent={fillParent}
+                  minHeight={COMPOSER_MIN_H}
                 />
               ) : (
                 <Suspense
                   fallback={
-                    <div className="flex h-full items-center px-2.5 text-sm text-gray-400">
-                      에디터 불러오는 중…
-                    </div>
+                    <ChatComposerPlainTextarea
+                      value={value}
+                      onChange={applyComposerValue}
+                      fillParent={fillParent}
+                      minHeight={COMPOSER_MIN_H}
+                    />
                   }
                 >
                   <ChatComposerMdEditor
