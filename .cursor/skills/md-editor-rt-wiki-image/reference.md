@@ -10,7 +10,7 @@
 | 역할 | 파일 경로 |
 |------|------------|
 | S3 이미지 업로드 (path 반환) | `src/utils/editorImageUpload.js` |
-| markdown-it 플러그인 (![[path]] → img) | `src/utils/wikiImageMarkdownIt.js` |
+| markdown-it 플러그인 (![[path]] → img) | `src/utils/wikiImageMarkdownIt.ts` |
 | Preview URL 캐시 (IndexedDB) | `src/utils/wikiImageCacheDb.js` |
 | 에디터 + Preview Hydration | `src/components/MarkdownEditor.jsx` |
 | 상위 레이아웃 / props 전달 | `src/components/EditorPane.jsx` |
@@ -60,7 +60,7 @@
 
 ### 3.1 markdown-it 플러그인
 
-- **파일**: `src/utils/wikiImageMarkdownIt.js`
+- **파일**: `src/utils/wikiImageMarkdownIt.ts`
 - **함수**: `wikiImagePlugin(md)` — 인자로 markdown-it 인스턴스 받음
 - **정규식**: `WIKI_IMAGE_RE = /!\[\[([^[\]]+)\]\]/g`
 - **동작**  

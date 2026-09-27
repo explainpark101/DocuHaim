@@ -1,9 +1,9 @@
 import StarterKit from '@tiptap/starter-kit';
-import { Markdown } from '@tiptap/markdown';
-import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import HaimStockImageView from '@/components/haimEditor/extensions/HaimStockImageView';
+import { HaimLink } from '@/components/haimEditor/extensions/HaimLink';
+import { HaimMarkdown } from '@/components/haimEditor/extensions/HaimMarkdown';
 import { TableKit } from '@tiptap/extension-table';
 import { ListKit } from '@tiptap/extension-list';
 import { TextStyleKit } from '@tiptap/extension-text-style';
@@ -37,6 +37,8 @@ import {
 import { NodeRange } from '@tiptap/extension-node-range';
 import { PageBreak } from '@/components/haimEditor/extensions/PageBreak';
 import { WikiImage } from '@/components/haimEditor/extensions/WikiImage';
+import { WikiFigure } from '@/components/haimEditor/extensions/WikiFigure';
+import { Figcaption } from '@/components/haimEditor/extensions/Figcaption';
 import { NoteCover } from '@/components/haimEditor/extensions/NoteCover';
 import { RawMarkdownBlock } from '@/components/haimEditor/extensions/RawMarkdownBlock';
 import { DeepHeading } from '@/components/haimEditor/extensions/DeepHeading';
@@ -99,16 +101,9 @@ export function createHaimExtensions(
   const base: Extensions = [
     starterKit,
     HaimParagraph,
-    Markdown,
+    HaimMarkdown,
     HaimSourceLine.configure({ getMetaPrefix }),
-    Link.configure({
-      openOnClick: false,
-      autolink: true,
-      HTMLAttributes: {
-        rel: 'noopener noreferrer',
-        target: '_blank',
-      },
-    }),
+    HaimLink,
     Image.extend({
       parseHTML() {
         return [
@@ -148,6 +143,8 @@ export function createHaimExtensions(
     // DocuHaim custom
     PageBreak,
     WikiImage,
+    Figcaption,
+    WikiFigure,
     ...(isNote ? [NoteCover] : []),
     RawMarkdownBlock,
     DeepHeading,

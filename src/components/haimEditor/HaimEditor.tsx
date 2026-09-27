@@ -12,6 +12,7 @@ import { invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import HaimToolbar from '@/components/haimEditor/HaimToolbar';
 import HaimSourcePane from '@/components/haimEditor/HaimSourcePane';
 import HaimTocPanel from '@/components/haimEditor/HaimTocPanel';
+import HaimLinkHoverHint from '@/components/haimEditor/HaimLinkHoverHint';
 import { getHaimSelectedPlainText } from '@/components/haimEditor/getHaimSelectedPlainText';
 import {
   HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
@@ -167,10 +168,7 @@ export default function HaimEditor({
   const [tableEdit, setTableEdit] = useState<HaimTableEditSession | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const effectiveMode: HaimViewMode =
-    isMobileLayout && viewMode === HAIM_VIEW_MODE_DOUBLE && !previewOnly
-      ? HAIM_VIEW_MODE_WYSIWYG
-      : viewMode;
+  const effectiveMode: HaimViewMode = viewMode;
   const showSource =
     !previewOnly &&
     (effectiveMode === HAIM_VIEW_MODE_DOUBLE ||
@@ -180,6 +178,8 @@ export default function HaimEditor({
     effectiveMode === HAIM_VIEW_MODE_WYSIWYG ||
     effectiveMode === HAIM_VIEW_MODE_DOUBLE;
   const doublePane = showSource && showWysiwyg;
+  /** Narrow / mobile: stack source above WYSIWYG instead of hiding double mode. */
+  const stackDouble = Boolean(doublePane && isMobileLayout);
 
   const llmAssist = useLlmAssistSessionOptional();
   const navigate = useNavigate();
@@ -1174,11 +1174,19 @@ export default function HaimEditor({
               ) : null}
             </div>
           ) : null}
-          <div className="relative flex min-h-0 min-w-0 flex-1">
+          <div
+            className={`relative flex min-h-0 min-w-0 flex-1 ${
+              stackDouble ? 'flex-col' : ''
+            }`}
+          >
             {showSource ? (
               <div
                 className={`min-h-0 shrink-0 ${
-                  doublePane ? 'w-1/2' : 'w-full'
+                  doublePane
+                    ? stackDouble
+                      ? 'h-1/2 w-full border-b border-slate-200 dark:border-odp-borderStrong'
+                      : 'w-1/2'
+                    : 'w-full'
                 }`}
               >
                 <HaimSourcePane
@@ -1206,7 +1214,11 @@ export default function HaimEditor({
               <div
                 ref={wysiwygScrollRef}
                 className={`relative min-h-0 overflow-auto ${
-                  doublePane ? 'w-1/2 flex-1' : 'flex-1'
+                  doublePane
+                    ? stackDouble
+                      ? 'h-1/2 w-full flex-1'
+                      : 'w-1/2 flex-1'
+                    : 'flex-1'
                 }`}
               >
                 {!previewOnly && isSurfaceLive ? (
@@ -1221,6 +1233,10 @@ export default function HaimEditor({
                   </Suspense>
                 ) : null}
                 <EditorContent editor={editor} className="haim-editor-content h-full" />
+                <HaimLinkHoverHint
+                  editor={editor}
+                  enabled={!previewOnly && isSurfaceLive}
+                />
               </div>
             ) : (
               <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden>

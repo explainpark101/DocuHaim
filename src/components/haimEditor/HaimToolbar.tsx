@@ -191,7 +191,8 @@ export default function HaimToolbar({
   const s = state;
 
   const setMode = (mode: HaimViewMode) => {
-    saveHaimViewMode(mode);
+    // Persist as default for new editors; do not broadcast so split panes stay independent.
+    saveHaimViewMode(mode, { broadcast: false });
     onViewModeChange(mode);
   };
 

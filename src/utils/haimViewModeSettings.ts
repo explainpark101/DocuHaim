@@ -83,14 +83,20 @@ export function loadHaimViewMode(): HaimViewMode {
   return HAIM_VIEW_MODE_DEFAULT;
 }
 
-export function saveHaimViewMode(mode: HaimViewMode): void {
+export function saveHaimViewMode(
+  mode: HaimViewMode,
+  options?: { broadcast?: boolean },
+): void {
   if (typeof window === 'undefined') return;
   if (!isHaimViewMode(mode)) return;
+  const broadcast = options?.broadcast !== false;
   try {
     window.localStorage.setItem(LOCAL_STORAGE_KEY, mode);
-    window.dispatchEvent(
-      new CustomEvent(HAIM_VIEW_MODE_CHANGED_EVENT, { detail: { mode } }),
-    );
+    if (broadcast) {
+      window.dispatchEvent(
+        new CustomEvent(HAIM_VIEW_MODE_CHANGED_EVENT, { detail: { mode } }),
+      );
+    }
   } catch {
     // ignore
   }
