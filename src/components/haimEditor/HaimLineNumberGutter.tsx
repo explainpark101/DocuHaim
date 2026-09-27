@@ -8,14 +8,17 @@ import {
   HAIM_CODE_WRAP_CHANGED_EVENT,
   loadHaimCodeWrapEnabled,
 } from '@/utils/haimCodeWrapSettings';
-import { measureHaimHardLineHeights } from '@/utils/measureHaimHardLineHeights';
+import {
+  haimCodeHostSoftWraps,
+  measureHaimHardLineHeights,
+} from '@/utils/measureHaimHardLineHeights';
 
 type HaimLineNumberGutterProps = {
   text: string;
   className?: string;
   /**
    * Root that contains the wrapped text (`pre` / content host).
-   * Prefer `[data-node-view-content]` / `code` child when present.
+   * Prefer TipTap contentDOM / `[data-node-view-content]` when present.
    */
   contentRootRef?: RefObject<HTMLElement | null>;
 };
@@ -23,6 +26,7 @@ type HaimLineNumberGutterProps = {
 function resolveMeasureTarget(root: HTMLElement | null): HTMLElement | null {
   if (!root) return null;
   return (
+    root.querySelector<HTMLElement>('[data-node-view-content-react]') ??
     root.querySelector<HTMLElement>('[data-node-view-content]') ??
     root.querySelector<HTMLElement>('code') ??
     root
@@ -30,15 +34,14 @@ function resolveMeasureTarget(root: HTMLElement | null): HTMLElement | null {
 }
 
 function shouldSyncWrapHeights(el: HTMLElement): boolean {
-  if (loadHaimCodeWrapEnabled()) return true;
-  // Export PDF / read-only preview always soft-wraps regardless of pref.
-  return Boolean(el.closest('.haim-editor[data-haim-preview-only]'));
+  if (haimCodeHostSoftWraps(el)) return true;
+  return loadHaimCodeWrapEnabled();
 }
 
 /**
  * Non-interactive line-number column. Visibility is gated by
  * `html[data-haim-*-line-numbers]` CSS (see preview-tokens.css).
- * When code wrap is on, each number's height matches its hard line
+ * When code soft-wraps, each number's height matches its hard line
  * (including soft-wrap continuation rows).
  */
 export default function HaimLineNumberGutter({
@@ -77,11 +80,26 @@ export default function HaimLineNumberGutter({
     ro = new ResizeObserver(sync);
     ro.observe(el);
     if (root && root !== el) ro.observe(root);
+
+    const mo = new MutationObserver(sync);
+    mo.observe(el, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+
+    // TipTap may mount contentDOM one frame later.
+    const boot = window.setTimeout(sync, 0);
+
     window.addEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
+    window.addEventListener('resize', sync);
     return () => {
       cancelAnimationFrame(raf);
+      window.clearTimeout(boot);
       ro?.disconnect();
+      mo.disconnect();
       window.removeEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
+      window.removeEventListener('resize', sync);
     };
   }, [text, count, contentRootRef]);
 
@@ -96,7 +114,7 @@ export default function HaimLineNumberGutter({
           className="haim-line-numbers__n"
           style={
             heights?.[i] != null && heights[i]! > 0
-              ? { height: heights[i] }
+              ? { height: heights[i], minHeight: heights[i] }
               : undefined
           }
         >

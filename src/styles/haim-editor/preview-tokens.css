@@ -397,8 +397,12 @@ html[data-haim-code-wrap='1']
 
 .haim-editor .haim-line-numbers__n {
   display: block;
+  flex: 0 0 auto;
+  box-sizing: border-box;
   text-align: right;
   white-space: nowrap;
+  /* Keep the digit at the top of a soft-wrapped hard line band. */
+  line-height: 1.55;
 }
 
 html[data-haim-code-line-numbers='0'] .haim-editor .haim-code-block__line-numbers {

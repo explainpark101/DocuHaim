@@ -259,12 +259,12 @@ export function buildExportPdfPagedStyles(
   --md-theme-code-before-bg-color: #f0f0f0;
   display: block;
   width: 100%;
-  max-width: 100%;
+  max-width: none;
   box-sizing: border-box;
   margin: 1.25em 0;
   padding: 0;
   border: 2px solid #6b7280;
-  border-radius: 6px;
+  border-radius: 0;
   overflow: visible;
   box-shadow: none !important;
   background-color: #fafafa;
@@ -312,9 +312,10 @@ export function buildExportPdfPagedStyles(
   color: unset;
   display: block;
   width: 100%;
+  max-width: none;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
   overflow: visible;
 }
 
@@ -326,26 +327,27 @@ export function buildExportPdfPagedStyles(
 .pagedjs_page_content .haim-code-block [data-node-view-content],
 .pagedjs_page_content .haim-raw-md__pre {
   white-space: pre-wrap !important;
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  max-width: none !important;
 }
 
 .export-pdf-paged-source .haim-code-block:not(.haim-mermaid-block),
 .pagedjs_page_content .haim-code-block:not(.haim-mermaid-block) {
   display: block;
   width: 100% !important;
-  max-width: 100% !important;
+  max-width: none !important;
   box-sizing: border-box;
   box-shadow: none !important;
   border: 2px solid #6b7280 !important;
-  border-radius: 6px;
+  border-radius: 0;
   overflow: visible;
 }
 
 .export-pdf-paged-source .haim-code-block__body,
 .pagedjs_page_content .haim-code-block__body {
   width: 100%;
-  max-width: 100%;
+  max-width: none;
   min-width: 0;
 }
 
@@ -469,6 +471,9 @@ export function buildExportPdfPagedStyles(
 .export-pdf-paged-source .export-pdf-code-line,
 .pagedjs_page_content .export-pdf-code-line {
   display: block;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   break-inside: avoid;
   page-break-inside: avoid;
 }
@@ -503,12 +508,15 @@ export function buildExportPdfPagedStyles(
 
 .export-pdf-paged-source .export-pdf-code-content,
 .pagedjs_page_content .export-pdf-code-content {
+  /* Parent .export-pdf-code-line has width:100% so % resolves (no shrink-wrap clamp). */
   display: inline-block;
   width: calc(100% - 3.5em);
+  max-width: calc(100% - 3.5em);
   vertical-align: top;
+  box-sizing: border-box;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .export-pdf-paged-source table,
