@@ -115,6 +115,8 @@ export type ChatAddToNoteModalProps = {
   storageType: string;
   s3Tree?: ChatAddToNoteTreeNode[] | null;
   localTree?: ChatAddToNoteTreeNode[] | null;
+  webdavTree?: ChatAddToNoteTreeNode[] | null;
+  idbTree?: ChatAddToNoteTreeNode[] | null;
   localRootHandle?: FileSystemDirectoryHandle | null;
   timeZone?: string | null;
   onClose?: (() => void) | undefined;
@@ -219,6 +221,8 @@ export default function ChatAddToNoteModal({
   storageType,
   s3Tree,
   localTree,
+  webdavTree,
+  idbTree,
   localRootHandle,
   timeZone,
   onClose,
@@ -233,8 +237,16 @@ export default function ChatAddToNoteModal({
   onLoadLocalFolderChildren,
   localFolderLoadingPath = null,
 }: ChatAddToNoteModalProps) {
-  const isS3 = storageType === 's3';
-  const tree = isS3 ? s3Tree : localTree;
+  const vaultWithoutHandle =
+    storageType === 's3' || storageType === 'webdav' || storageType === 'idb';
+  const tree =
+    storageType === 's3'
+      ? (s3Tree ?? [])
+      : storageType === 'webdav'
+        ? (webdavTree ?? [])
+        : storageType === 'idb'
+          ? (idbTree ?? [])
+          : (localTree ?? []);
   const tz = timeZone || detectTimeZone();
   const defaultBaseName = useMemo(
     () => formatMessageFileNameBase(message?.at || new Date().toISOString(), tz),
@@ -481,8 +493,10 @@ export default function ChatAddToNoteModal({
   const isReplyMessage = Boolean(message.replyTo);
   const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
   const parentDirHandle = selectedRoot ? localRootHandle : selectedFolder?.handle;
-  const canCreateFolder = isS3 || parentDirHandle != null;
-  const canSubmit = isS3 ? true : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
+  const canCreateFolder = vaultWithoutHandle || parentDirHandle != null;
+  const canSubmit = vaultWithoutHandle
+    ? true
+    : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
   const canMoveFolder = !selectedRoot && selectedFolder?.type === 'folder';
 
   const applyDefaultFileName = () => {
@@ -627,7 +641,7 @@ export default function ChatAddToNoteModal({
                     rootDropNode={{
                       path: '',
                       type: 'folder',
-                      handle: isS3 ? null : (localRootHandle ?? null),
+                      handle: vaultWithoutHandle ? null : (localRootHandle ?? null),
                     }}
                     onSelect={handleSelectFolder}
                     storageType={storageType}

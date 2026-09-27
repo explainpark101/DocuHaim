@@ -1,6 +1,8 @@
 import { listObjectsV2, deleteObjects, putObject } from '@/utils/s3Client';
 import { webdavPropfindDeep } from '@/utils/webdavClient';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
+import { listAllFiles } from '@/utils/vault/idbVaultStore';
 import {
   filterTrashEntries,
   isTrashRootKey,
@@ -111,8 +113,40 @@ async function collectWebdavTrashEntries(config: {
  * Permanently delete trash entries matching the given options.
  * @returns number of deleted entries
  */
+async function collectIdbTrashEntries(): Promise<TrashFileEntry[]> {
+  const all = await listAllFiles();
+  const entries: TrashFileEntry[] = [];
+  const dirPaths = new Set<string>();
+  for (const file of all) {
+    if (!file.path.startsWith('.trash/')) continue;
+    const key = file.path;
+    if (isTrashRootKey(key)) continue;
+    entries.push({
+      path: key,
+      name: key.replace(/\/$/, '').split('/').pop() || key,
+      size: typeof file.size === 'number' ? file.size : null,
+      isFolder: false,
+    });
+    const parts = key.replace(/^\.trash\//, '').split('/').filter(Boolean);
+    let acc = '.trash/';
+    for (let i = 0; i < parts.length - 1; i++) {
+      acc += `${parts[i]}/`;
+      dirPaths.add(acc);
+    }
+  }
+  for (const dir of dirPaths) {
+    entries.push({
+      path: dir,
+      name: dir.replace(/\/$/, '').split('/').pop() || dir,
+      size: null,
+      isFolder: true,
+    });
+  }
+  return entries;
+}
+
 export async function executeEmptyTrash(args: {
-  storageType: 's3' | 'local' | 'webdav';
+  storageType: 's3' | 'local' | 'webdav' | 'idb';
   options: EmptyTrashOptions;
   getS3Client?: () => import('@aws-sdk/client-s3').S3Client | null;
   bucket?: string;
@@ -197,6 +231,52 @@ export async function executeEmptyTrash(args: {
         deletedPaths.push(entry.path);
       } catch {
         /* skip missing */
+      }
+    }
+    return {
+      deletedCount: deletedPaths.length,
+      deletedPaths,
+      emptiedAll: false,
+    };
+  }
+
+  if (storageType === 'idb') {
+    const backend = createIdbBackend();
+
+    if (options.mode === 'all') {
+      const entries = await collectIdbTrashEntries();
+      const sorted = [...entries].sort((a, b) => b.path.length - a.path.length);
+      const deletedPaths: string[] = [];
+      for (const entry of sorted) {
+        try {
+          if (entry.isFolder) await backend.deletePrefix(entry.path);
+          else await backend.delete(entry.path);
+          deletedPaths.push(entry.path);
+        } catch {
+          /* missing ok */
+        }
+      }
+      try {
+        await backend.mkdir('.trash');
+      } catch {
+        /* ignore */
+      }
+      return {
+        deletedCount: deletedPaths.length,
+        deletedPaths,
+        emptiedAll: true,
+      };
+    }
+
+    const entries = await collectIdbTrashEntries();
+    const matched = filterTrashEntries(entries, options).filter((e) => !e.isFolder);
+    const deletedPaths: string[] = [];
+    for (const entry of matched) {
+      try {
+        await backend.delete(entry.path);
+        deletedPaths.push(entry.path);
+      } catch {
+        /* missing ok */
       }
     }
     return {

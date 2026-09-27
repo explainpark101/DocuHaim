@@ -1,4 +1,4 @@
-import { createChatBackend } from '@/utils/chatWithMyself/backends/index.js';
+import { createChatBackend } from '@/utils/chatWithMyself/backends';
 import { uploadLocalEditorImage } from '@/utils/localEditorImage';
 import {
   sniffImageMimeFromFile,
@@ -16,7 +16,7 @@ const MAX_GROUP_ICON_BYTES = 5 * 1024 * 1024;
 
 /**
  * Upload an image for chat-with-myself. Uploads only when send is pressed (caller timing).
- * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
+ * @param {import('@/utils/chatWithMyself/backends').ChatStorageCtx} ctx
  * @param {File} file
  * @param {{ dateStr?: string, onProgress?: (n: number) => void, signal?: AbortSignal }} [options]
  * @returns {Promise<string>} object key / relative path
@@ -78,7 +78,7 @@ export function chatImagesToMarkdown(paths) {
 
 /**
  * Upload a cropped group avatar (JPEG preferred).
- * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
+ * @param {import('@/utils/chatWithMyself/backends').ChatStorageCtx} ctx
  * @param {File} file
  * @param {{ onProgress?: (n: number) => void, signal?: AbortSignal }} [options]
  * @returns {Promise<string>} object key / relative path

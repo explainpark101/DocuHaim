@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import type { S3Client } from '@aws-sdk/client-s3';
 import ChatShareTargetModal from '@/components/chatWithMyself/ChatShareTargetModal';
+import type { ChatStorageCtx } from '@/utils/chatWithMyself/backends';
 import {
   claimComposePendingShares,
   enqueuePendingShare,
@@ -13,6 +15,8 @@ import {
   removePendingShare,
   shareBodyFromSearch,
   sharePromptHasContent,
+  type PendingShareRow,
+  type SharePrompt,
 } from '@/utils/chatWithMyself/pendingShares';
 import {
   canOpenShareFilesAsSession,
@@ -25,14 +29,46 @@ import {
   postChatLocalSyncEvent,
   postChatSyncEvent,
 } from '@/utils/chatWithMyself';
+import type { SessionOrigin } from '@/utils/sessionWorkspace';
 
-function pendingChooseToPrompt(choose) {
+export type ShareComposeClaimPayload = {
+  id: string;
+  body: string;
+  files: File[];
+};
+
+export type ShareTargetGateProps = {
+  isUnlocked: boolean;
+  storageReady: boolean;
+  chatCtx: ChatStorageCtx | null;
+  onBlockingChange?: (blocking: boolean) => void;
+  onComposeClaimed?: (payload: ShareComposeClaimPayload) => void;
+  onOpenAsSession?: (
+    files: File[],
+    origin: SessionOrigin,
+  ) => boolean | Promise<boolean>;
+};
+
+export type UseChatStorageCtxArgs = {
+  storageMode: string;
+  getS3Client?: (() => S3Client | null) | null;
+  s3Bucket?: string | null;
+  localRootHandle?: FileSystemDirectoryHandle | null;
+  webdavConfig?: ChatStorageCtx['webdavConfig'] | null;
+};
+
+export type ChatStorageReadyState =
+  | { ready: true; ctx: ChatStorageCtx }
+  | { ready: false; ctx: null };
+
+function pendingChooseToPrompt(choose: PendingShareRow | null | undefined): SharePrompt | null {
   if (!choose || !sharePromptHasContent(choose)) return null;
-  return {
-    id: choose.id,
+  const prompt: SharePrompt = {
     body: choose.body || '',
     files: normalizeShareFiles(choose.files),
   };
+  if (choose.id != null) prompt.id = choose.id;
+  return prompt;
 }
 
 /**
@@ -50,19 +86,19 @@ export default function ShareTargetGate({
   onBlockingChange,
   onComposeClaimed,
   onOpenAsSession,
-}) {
+}: ShareTargetGateProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const initialShareUrl =
     typeof window !== 'undefined' && hasShareSearchParams(window.location.search);
-  const [prompt, setPrompt] = useState(() => readSharePromptFromWindow());
+  const [prompt, setPrompt] = useState<SharePrompt | null>(() => readSharePromptFromWindow());
   const [bootstrapDone, setBootstrapDone] = useState(() => Boolean(initialShareUrl));
   const [shareIntakePending, setShareIntakePending] = useState(() =>
     Boolean(initialShareUrl),
   );
   const urlClearedRef = useRef(false);
   const actionLockRef = useRef(false);
-  const ensureChatOpenRef = useRef(() => {});
+  const ensureChatOpenRef = useRef<() => void>(() => {});
   const onComposeClaimedRef = useRef(onComposeClaimed);
 
   const blocking =
@@ -93,18 +129,21 @@ export default function ShareTargetGate({
       { replace: true },
     );
     void (async () => {
-      let files = [];
+      let files: File[] = [];
       try {
         files = await loadShareTargetFiles();
       } catch {
         files = [];
       }
       if (body || files.length) {
-        setPrompt((prev) => ({
-          id: prev?.id,
-          body: body || prev?.body || '',
-          files,
-        }));
+        setPrompt((prev) => {
+          const next: SharePrompt = {
+            body: body || prev?.body || '',
+            files,
+          };
+          if (prev?.id != null) next.id = prev.id;
+          return next;
+        });
       } else {
         setPrompt(null);
       }
@@ -135,7 +174,7 @@ export default function ShareTargetGate({
     };
   }, [bootstrapDone, prompt]);
 
-  const clearPromptRecord = useCallback(async (current) => {
+  const clearPromptRecord = useCallback(async (current: SharePrompt | null | undefined) => {
     if (current?.id != null) {
       try {
         await removePendingShare(current.id);
@@ -163,8 +202,8 @@ export default function ShareTargetGate({
     const current = prompt;
     if (!sharePromptHasContent(current) || actionLockRef.current) return;
     actionLockRef.current = true;
-    const body = String(current.body || '').trim();
-    const files = normalizeShareFiles(current.files);
+    const body = String(current?.body || '').trim();
+    const files = normalizeShareFiles(current?.files);
     let appended = false;
     try {
       if (isUnlocked && storageReady && chatCtx) {
@@ -211,11 +250,11 @@ export default function ShareTargetGate({
     const current = prompt;
     if (!sharePromptHasContent(current) || actionLockRef.current) return;
     actionLockRef.current = true;
-    const body = String(current.body || '').trim();
-    const files = normalizeShareFiles(current.files);
+    const body = String(current?.body || '').trim();
+    const files = normalizeShareFiles(current?.files);
     try {
       await clearPromptRecord(current);
-      const payload = {
+      const payload: ShareComposeClaimPayload = {
         id: `share-group-send-${Date.now()}`,
         body,
         files,
@@ -252,7 +291,7 @@ export default function ShareTargetGate({
     const current = prompt;
     if (!sharePromptHasContent(current) || actionLockRef.current) return false;
     if (typeof onOpenAsSession !== 'function') return false;
-    const files = filesForShareTargetSession(normalizeShareFiles(current.files));
+    const files = filesForShareTargetSession(normalizeShareFiles(current?.files));
     if (!files.length) return false;
     actionLockRef.current = true;
     try {
@@ -345,20 +384,23 @@ export function useChatStorageCtx({
   s3Bucket,
   localRootHandle,
   webdavConfig,
-}) {
-  return useMemo(() => {
+}: UseChatStorageCtxArgs): ChatStorageReadyState {
+  return useMemo((): ChatStorageReadyState => {
+    if (storageMode === 'idb') {
+      return { ready: true, ctx: { mode: 'idb' } };
+    }
     if (storageMode === 'local') {
       if (!localRootHandle) return { ready: false, ctx: null };
       return { ready: true, ctx: { mode: 'local', localRootHandle } };
     }
     if (storageMode === 'webdav') {
       const ready = Boolean(webdavConfig?.endpoint && webdavConfig?.username);
-      if (!ready) return { ready: false, ctx: null };
+      if (!ready || !webdavConfig) return { ready: false, ctx: null };
       return { ready: true, ctx: { mode: 'webdav', webdavConfig } };
     }
     const client = typeof getS3Client === 'function' ? getS3Client() : null;
     const ready = Boolean(client && s3Bucket);
-    if (!ready) return { ready: false, ctx: null };
+    if (!ready || !client || !s3Bucket) return { ready: false, ctx: null };
     return { ready: true, ctx: { mode: 's3', client, bucket: s3Bucket } };
   }, [storageMode, getS3Client, s3Bucket, localRootHandle, webdavConfig]);
 }

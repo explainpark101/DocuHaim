@@ -2,6 +2,7 @@ import { createS3Backend } from '@/utils/storage/s3Backend.js';
 import { createLocalBackend } from '@/utils/storage/localBackend.js';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
 import { createTauriLocalBackend } from '@/utils/storage/tauriLocalBackend';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 import {
   getStorageCapabilities,
   supportsRemoteSync,
@@ -14,6 +15,7 @@ export {
   createLocalBackend,
   createWebdavBackend,
   createTauriLocalBackend,
+  createIdbBackend,
   createStorageBackend,
   createStorageBackendForType,
   getStorageCapabilities,

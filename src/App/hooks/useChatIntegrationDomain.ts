@@ -63,7 +63,7 @@ export function useChatIntegrationDomain() {
   // IndexedDB recording upload retry: on app start / network recovery (S3/WebDAV only)
   useEffect(() => {
     if (!isUnlocked) return;
-    if (storageMode === 'local') {
+    if (storageMode === 'local' || storageMode === 'idb') {
       getRecordingQueueStats().then(setRecordingQueueStats).catch(() => {});
       return;
     }
@@ -154,6 +154,7 @@ export function useChatIntegrationDomain() {
   useEffect(() => {
     if (!isUnlocked) return;
     const ready =
+      storageMode === 'idb' ||
       (storageMode === 'local' && isLocalVaultReady(localRootHandle, localVaultFsPath)) ||
       (storageMode === 'webdav' && webdavReady) ||
       (storageMode === 's3' && s3Creds.bucket);

@@ -6,6 +6,7 @@ use tauri::{
     App, Emitter, Manager, Runtime, State,
 };
 
+pub const OPEN_IDB_HAIM_ID: &str = "open-idb-haim";
 pub const OPEN_S3_HAIM_ID: &str = "open-s3-haim";
 pub const OPEN_WEBDAV_HAIM_ID: &str = "open-webdav-haim";
 pub const OPEN_LOCAL_HAIM_ID: &str = "open-local-haim";
@@ -47,6 +48,7 @@ fn reload_focused_or_main(app: &tauri::AppHandle) {
 pub fn install_desktop_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
 
+    let open_idb = MenuItem::with_id(handle, OPEN_IDB_HAIM_ID, "IDB Haim 열기", true, None::<&str>)?;
     let open_s3 = MenuItem::with_id(handle, OPEN_S3_HAIM_ID, "S3 Haim 열기", true, None::<&str>)?;
     let open_webdav = MenuItem::with_id(
         handle,
@@ -92,6 +94,7 @@ pub fn install_desktop_menu(app: &App) -> Result<(), Box<dyn std::error::Error>>
     if let Some(file) = find_submenu_by_text(&menu, "File") {
         file.insert_items(
             &[
+                &open_idb,
                 &open_s3,
                 &open_webdav,
                 &open_local,
@@ -133,7 +136,8 @@ pub fn on_desktop_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
     }
     if matches!(
         id,
-        OPEN_S3_HAIM_ID
+        OPEN_IDB_HAIM_ID
+            | OPEN_S3_HAIM_ID
             | OPEN_WEBDAV_HAIM_ID
             | OPEN_LOCAL_HAIM_ID
             | OPEN_LOCAL_HAIM_FOLDER_ID

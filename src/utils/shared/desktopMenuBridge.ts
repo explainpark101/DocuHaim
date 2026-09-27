@@ -7,12 +7,14 @@ import {
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_S3,
   STORAGE_MODE_WEBDAV,
+  STORAGE_MODE_IDB,
 } from '@/utils/storageSettings';
 import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
 import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
 
 export const DESKTOP_MENU_ACTION_EVENT = 'desktop-menu-action';
 
+export const DESKTOP_MENU_OPEN_IDB_HAIM = 'open-idb-haim';
 export const DESKTOP_MENU_OPEN_S3_HAIM = 'open-s3-haim';
 export const DESKTOP_MENU_OPEN_WEBDAV_HAIM = 'open-webdav-haim';
 export const DESKTOP_MENU_OPEN_LOCAL_HAIM = 'open-local-haim';
@@ -68,6 +70,9 @@ export function handleDesktopMenuAction(
   handlers: DesktopMenuActionHandlers,
 ): void {
   switch (actionId) {
+    case DESKTOP_MENU_OPEN_IDB_HAIM:
+      handlers.setStorageMode(STORAGE_MODE_IDB);
+      return;
     case DESKTOP_MENU_OPEN_S3_HAIM:
       handlers.setStorageMode(STORAGE_MODE_S3);
       return;

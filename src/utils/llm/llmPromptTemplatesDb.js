@@ -31,7 +31,7 @@ llmPromptTemplatesDb.version(1).stores({
  * @property {() => import('@aws-sdk/client-s3').S3Client | null} [getS3Client]
  * @property {{ bucket?: string } | null} [s3Creds]
  * @property {FileSystemDirectoryHandle | null} [localRootHandle]
- * @property {'s3' | 'local' | 'webdav'} [storageMode]
+ * @property {'s3' | 'local' | 'webdav' | 'idb'} [storageMode]
  * @property {{ endpoint: string, username: string, password: string, basePath: string } | null} [webdavConfig]
  */
 

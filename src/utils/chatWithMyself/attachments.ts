@@ -1,4 +1,4 @@
-import { createChatBackend } from '@/utils/chatWithMyself/backends/index.js';
+import { createChatBackend } from '@/utils/chatWithMyself/backends';
 import {
   getLocalDirectoryHandleForPath,
   getLocalFileHandleForPath,

@@ -1,9 +1,9 @@
 import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
+import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV, STORAGE_MODE_IDB } from '@/utils/storageSettings';
 import { vaultPathBasename } from '@/utils/vault/vaultPathBasename';
 
-export type VaultStorageType = 's3' | 'local' | 'webdav';
+export type VaultStorageType = 's3' | 'local' | 'webdav' | 'idb';
 
 export type VaultFileNode = {
   type: 'file';
@@ -16,6 +16,7 @@ type ResolveVaultFileNodeOptions = {
   storageType: VaultStorageType;
   localTree: unknown[] | null | undefined;
   webdavTree: unknown[] | null | undefined;
+  idbTree?: unknown[] | null | undefined;
   s3Tree: unknown[] | null | undefined;
   localRootHandle?: FileSystemDirectoryHandle | null;
 };
@@ -27,7 +28,7 @@ export async function resolveVaultFileNode(
   const trimmed = String(path || '').trim();
   if (!trimmed) return null;
 
-  const { storageType, localTree, webdavTree, s3Tree, localRootHandle } = options;
+  const { storageType, localTree, webdavTree, idbTree, s3Tree, localRootHandle } = options;
   let node: { type?: string; path?: string; name?: string; lastModified?: Date | number } | null =
     null;
 
@@ -40,6 +41,10 @@ export async function resolveVaultFileNode(
     node =
       findFileNodeByPath(webdavTree as never, trimmed) ||
       findNodeByPath(webdavTree as never, trimmed);
+  } else if (storageType === STORAGE_MODE_IDB) {
+    node =
+      findFileNodeByPath(idbTree as never, trimmed) ||
+      findNodeByPath(idbTree as never, trimmed);
   } else {
     node =
       findFileNodeByPath(s3Tree as never, trimmed) ||

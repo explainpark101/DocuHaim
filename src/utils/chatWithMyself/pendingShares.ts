@@ -43,7 +43,8 @@ export type SharePrompt = {
 export type ChatStorageCtxLike =
   | { mode: 's3'; client: unknown; bucket: string }
   | { mode: 'local'; localRootHandle: unknown }
-  | { mode: 'webdav'; webdavConfig: unknown };
+  | { mode: 'webdav'; webdavConfig: unknown }
+  | { mode: 'idb' };
 
 type SearchLike =
   | string

@@ -1,6 +1,7 @@
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 import type {
   HaimTableStyleSettings,
   HaimTableTemplate,
@@ -244,6 +245,19 @@ async function loadFromLocal(): Promise<HaimTableStyleSettings | null> {
   }
 }
 
+async function loadFromIdb(): Promise<HaimTableStyleSettings | null> {
+  try {
+    const backend = createIdbBackend();
+    const head = await backend.head(TABLE_STYLES_KEY);
+    if (!head) return null;
+    const { text } = await backend.readText(TABLE_STYLES_KEY);
+    return parseTableStyleYaml(text);
+  } catch (e) {
+    console.warn('Table style settings load from IDB failed:', e);
+    return null;
+  }
+}
+
 export async function loadTableStylesFromStorage(): Promise<HaimTableStyleSettings> {
   const fallback = loadFromLocalStorage() ?? { ...DEFAULT_TABLE_STYLE_SETTINGS, templates: [] };
   const mode = store.storageMode || 's3';
@@ -251,6 +265,7 @@ export async function loadTableStylesFromStorage(): Promise<HaimTableStyleSettin
   let remote: HaimTableStyleSettings | null = null;
   if (mode === 'webdav') remote = await loadFromWebdav();
   else if (mode === 'local') remote = await loadFromLocal();
+  else if (mode === 'idb') remote = await loadFromIdb();
   else remote = await loadFromS3();
 
   const next = remote ?? fallback;
@@ -281,6 +296,9 @@ export async function saveTableStylesToStorage(
       await writable.write(payload);
       await writable.close();
     }
+  } else if (mode === 'idb') {
+    const backend = createIdbBackend();
+    await backend.writeText(TABLE_STYLES_KEY, payload, 'text/yaml');
   } else {
     const client = typeof store.getS3Client === 'function' ? store.getS3Client() : null;
     const bucket = store.s3Creds?.bucket;

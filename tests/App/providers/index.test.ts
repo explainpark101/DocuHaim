@@ -35,8 +35,9 @@ describe('App provider public API', () => {
   });
 
   it('classifies vault path storage types', () => {
-    expect(VAULT_PATH_STORAGE_TYPES).toEqual(['s3', 'local', 'webdav']);
+    expect(VAULT_PATH_STORAGE_TYPES).toEqual(['s3', 'local', 'webdav', 'idb']);
     expect(isVaultPathStorageType('s3')).toBe(true);
+    expect(isVaultPathStorageType('idb')).toBe(true);
     expect(isVaultPathStorageType('session')).toBe(false);
   });
 

@@ -13,6 +13,21 @@ export const CHAT_ACTIVITY_IDS = {
   boot: 'chat-boot',
   note: 'chat-add-note',
   error: 'chat-error',
+} as const;
+
+export type UseChatActivityStatusParams = {
+  storageReady: boolean;
+  storageMode: string;
+  pendingSend?: boolean;
+  pendingEdit?: boolean;
+  deleting?: boolean;
+  loadingOlder?: boolean;
+  loadingNewer?: boolean;
+  searchLoading?: boolean;
+  jumping?: boolean;
+  booting?: boolean;
+  noteSubmitting?: boolean;
+  error?: string;
 };
 
 /**
@@ -31,9 +46,9 @@ export function useChatActivityStatus({
   booting = false,
   noteSubmitting = false,
   error = '',
-}) {
+}: UseChatActivityStatusParams): void {
   const { addIndicator, removeIndicator, updateIndicator } = useActivityIndicator();
-  const timersRef = useRef([]);
+  const timersRef = useRef<number[]>([]);
 
   useEffect(() => {
     return () => {
@@ -43,7 +58,7 @@ export function useChatActivityStatus({
     };
   }, [removeIndicator]);
 
-  const scheduleRemove = (id, ms = 1400) => {
+  const scheduleRemove = (id: string, ms = 1400) => {
     const t = window.setTimeout(() => removeIndicator(id), ms);
     timersRef.current.push(t);
   };
@@ -51,24 +66,27 @@ export function useChatActivityStatus({
   // Persistent sync / storage chip.
   useEffect(() => {
     const detail = !storageReady
-      ? storageMode === 'local'
-        ? '로컬 폴더를 연 뒤 채팅을 사용할 수 있습니다.'
-        : storageMode === 'webdav'
-          ? '설정에서 WebDAV 연결 정보를 저장한 뒤 채팅을 사용할 수 있습니다.'
-          : 'S3에 로그인한 뒤 채팅을 사용할 수 있습니다.'
-      : storageMode === 'local'
-        ? '로컬 · 준비됨'
-        : storageMode === 'webdav'
-          ? 'WebDAV · 동기화 가능'
-          : 'S3 · 동기화 가능';
+      ? storageMode === 'idb'
+        ? 'IDB Haim을 사용할 수 없습니다.'
+        : storageMode === 'local'
+          ? '로컬 폴더를 연 뒤 채팅을 사용할 수 있습니다.'
+          : storageMode === 'webdav'
+            ? '설정에서 WebDAV 연결 정보를 저장한 뒤 채팅을 사용할 수 있습니다.'
+            : 'S3에 로그인한 뒤 채팅을 사용할 수 있습니다.'
+      : storageMode === 'idb'
+        ? 'IDB · 준비됨'
+        : storageMode === 'local'
+          ? '로컬 · 준비됨'
+          : storageMode === 'webdav'
+            ? 'WebDAV · 동기화 가능'
+            : 'S3 · 동기화 가능';
 
     const payload = {
       id: CHAT_ACTIVITY_IDS.sync,
       type: ActivityTypes.CHAT_SYNC,
       label: '채팅',
       detail,
-      status: storageReady ? 'done' : 'error',
-      pin: true,
+      status: (storageReady ? 'done' : 'error') as 'done' | 'error',
     };
     addIndicator(payload);
     // ADD is no-op when the id already exists; keep status/detail in sync.
@@ -76,8 +94,6 @@ export function useChatActivityStatus({
       detail: payload.detail,
       status: payload.status,
       label: payload.label,
-      type: payload.type,
-      pin: true,
     });
   }, [storageReady, storageMode, addIndicator, updateIndicator]);
 
@@ -213,6 +229,6 @@ export function useChatActivityStatus({
       status: 'error',
     });
     scheduleRemove(CHAT_ACTIVITY_IDS.error, 4000);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-surface when error text changes
   }, [error, addIndicator, removeIndicator]);
 }

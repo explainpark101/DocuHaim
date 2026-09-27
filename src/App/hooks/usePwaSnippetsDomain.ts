@@ -19,7 +19,7 @@ import {
 } from '@/utils/tauriDesktopUpdater';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
-import { createWebdavBackend } from '@/utils/storage';
+import { createWebdavBackend, createIdbBackend } from '@/utils/storage';
 
 /** Owned setters/state passed from AppPwaSnippetsStateProvider (avoids circular import). */
 export type PwaSnippetsOwnedForDomain = {
@@ -79,6 +79,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   const [snippetLoadedFromS3, setSnippetLoadedFromS3] = useState(false);
   const [snippetLoadedFromLocal, setSnippetLoadedFromLocal] = useState(false);
   const [snippetLoadedFromWebdav, setSnippetLoadedFromWebdav] = useState(false);
+  const [snippetLoadedFromIdb, setSnippetLoadedFromIdb] = useState(false);
   const [isSavingSnippets, setIsSavingSnippets] = useState(false);
 
   const {
@@ -334,9 +335,31 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
     }
   }, [webdavConfig, webdavReady, setSnippetConfig]);
 
+  const loadSnippetConfigFromIdb = useCallback(async () => {
+    try {
+      const backend = createIdbBackend();
+      const head = await backend.head('.settings/snippets.json');
+      if (!head) {
+        setSnippetLoadedFromIdb(true);
+        return;
+      }
+      const { text } = await backend.readText('.settings/snippets.json');
+      const parsed = JSON.parse(text);
+      if (parsed && Array.isArray(parsed.snippets)) {
+        setSnippetConfig({ snippets: parsed.snippets });
+      }
+      setSnippetLoadedFromIdb(true);
+    } catch (e) {
+      console.error('Snippet settings load from IDB failed:', e);
+      setSnippetLoadedFromIdb(true);
+    }
+  }, [setSnippetConfig]);
+
   useEffect(() => {
     if (!scriptsLoaded || !isUnlocked) return;
-    if (storageMode === 'local' && localRootHandle && !snippetLoadedFromLocal) {
+    if (storageMode === 'idb' && !snippetLoadedFromIdb) {
+      loadSnippetConfigFromIdb();
+    } else if (storageMode === 'local' && localRootHandle && !snippetLoadedFromLocal) {
       loadSnippetConfigFromLocal();
     } else if (storageMode === 'webdav' && webdavReady && !snippetLoadedFromWebdav) {
       loadSnippetConfigFromWebdav();
@@ -353,9 +376,11 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
     snippetLoadedFromS3,
     snippetLoadedFromLocal,
     snippetLoadedFromWebdav,
+    snippetLoadedFromIdb,
     loadSnippetConfigFromS3,
     loadSnippetConfigFromLocal,
     loadSnippetConfigFromWebdav,
+    loadSnippetConfigFromIdb,
   ]);
 
   const saveSnippetConfigToS3 = useCallback(
@@ -412,6 +437,20 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
     [webdavConfig, webdavReady],
   );
 
+  const saveSnippetConfigToIdb = useCallback(async (config: any) => {
+    try {
+      const backend = createIdbBackend();
+      await backend.writeText(
+        '.settings/snippets.json',
+        JSON.stringify(config ?? { snippets: [] }, null, 2),
+        'application/json',
+      );
+    } catch (e) {
+      console.error('Snippet settings save to IDB failed:', e);
+      throw e;
+    }
+  }, []);
+
   const handleChangeSnippetConfig = useCallback(
     (nextConfig: any) => {
       setSnippetConfig(nextConfig ?? { snippets: [] });
@@ -430,6 +469,8 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
           await saveSnippetConfigToLocal(toSave);
         } else if (storageMode === 'webdav') {
           await saveSnippetConfigToWebdav(toSave);
+        } else if (storageMode === 'idb') {
+          await saveSnippetConfigToIdb(toSave);
         }
         setOperationStatus('스니펫 설정이 저장되었습니다.');
       } catch (e: any) {
@@ -444,6 +485,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
       saveSnippetConfigToS3,
       saveSnippetConfigToLocal,
       saveSnippetConfigToWebdav,
+      saveSnippetConfigToIdb,
       setOperationStatus,
     ],
   );

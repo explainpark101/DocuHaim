@@ -4,22 +4,22 @@ overview: 새 vault 모드 `idb`(IDB Haim, 기본 모드)와, 모든 Haim에서 
 todos:
   - id: idb-store-backend
     content: Add idbVaultStore (Dexie) + createIdbBackend + capabilities/factory/STORAGE_MODE_IDB; DEFAULT_STORAGE_MODE = idb
-    status: pending
+    status: completed
   - id: vault-wiring
     content: Wire idb into VaultContext, storageScope, App vault state/tree, file open/save ready paths
-    status: pending
+    status: completed
   - id: chat-settings-ui
     content: Chat backend for idb; Settings/Sidebar/desktop menu radio + labels (IDB Haim)
-    status: pending
+    status: completed
   - id: vault-full-export
     content: Shared full-vault export (Storage API folder write or ZIP via buildZipBlob) for s3/local/webdav/idb; Settings UI
-    status: pending
+    status: completed
   - id: export-confirm-local
     content: IDB sync uses full export; FSA/Tauri → ConfirmModal open Local; ZIP → unzip+Local Haim instruction modal
-    status: pending
+    status: completed
   - id: first-run-onboarding
     content: First-visit resizable={false} Modal that induces CreateItemModal / new note; gate with first-run flag + empty IDB vault
-    status: pending
+    status: completed
 isProject: false
 ---
 

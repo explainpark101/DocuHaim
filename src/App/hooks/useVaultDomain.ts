@@ -8,6 +8,7 @@ import {
   createWebdavBackend,
 } from '@/utils/storage';
 import {
+  STORAGE_MODE_IDB,
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
@@ -18,6 +19,11 @@ import {
   readLocalDirectoryLevel,
   readLocalDirectoryTree,
 } from '@/utils/localTree';
+import {
+  patchIdbTreeChildren,
+  readIdbDirectoryLevel,
+  readIdbDirectoryTree,
+} from '@/utils/vault/idbTree';
 import { loadExpandedFolderPaths } from '@/utils/expandedFoldersStore';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
@@ -52,6 +58,8 @@ export function useVaultDomain(): VaultValue {
     setLocalTree,
     webdavTree,
     setWebdavTree,
+    idbTree,
+    setIdbTree,
     sessionWorkspaces,
     localRootHandle,
     setLocalRootHandle,
@@ -63,13 +71,18 @@ export function useVaultDomain(): VaultValue {
     setIsLocalTreeLoading,
     isWebdavTreeLoading,
     setIsWebdavTreeLoading,
+    isIdbTreeLoading,
+    setIsIdbTreeLoading,
     localFolderLoadingPath,
     setLocalFolderLoadingPath,
     webdavFolderLoadingPath,
     setWebdavFolderLoadingPath,
+    idbFolderLoadingPath,
+    setIdbFolderLoadingPath,
   } = owned;
 
   const localFolderLoadInFlightRef = useRef<Set<string>>(new Set());
+  const idbFolderLoadInFlightRef = useRef<Set<string>>(new Set());
 
   const webdavReady = Boolean(webdavConfig?.endpoint && webdavConfig?.username);
 
@@ -120,6 +133,39 @@ export function useVaultDomain(): VaultValue {
       }
     },
     [webdavReady, webdavConfig, setWebdavFolderLoadingPath, setWebdavTree],
+  );
+
+  const refreshIdbTree = useCallback(async () => {
+    setIsIdbTreeLoading(true);
+    try {
+      const children = await readIdbDirectoryLevel('');
+      setIdbTree(children);
+    } catch (err) {
+      console.error('IDB tree load error:', err);
+    } finally {
+      setIsIdbTreeLoading(false);
+    }
+  }, [setIsIdbTreeLoading, setIdbTree]);
+
+  const loadIdbFolderChildren = useCallback(
+    async (folderNode: any) => {
+      if (!folderNode?.path || folderNode.childrenLoaded === true) return;
+      const folderPath = folderNode.path as string;
+      if (idbFolderLoadInFlightRef.current.has(folderPath)) return;
+      idbFolderLoadInFlightRef.current.add(folderPath);
+      setIdbFolderLoadingPath(folderPath);
+      try {
+        const base = folderPath.replace(/\/+$/, '');
+        const children = await readIdbDirectoryLevel(base);
+        setIdbTree((prev) => patchIdbTreeChildren(prev, folderPath, children));
+      } finally {
+        idbFolderLoadInFlightRef.current.delete(folderPath);
+        setIdbFolderLoadingPath((current) =>
+          current === folderPath ? null : current,
+        );
+      }
+    },
+    [setIdbFolderLoadingPath, setIdbTree],
   );
 
   const loadS3Files = useCallback(
@@ -262,6 +308,9 @@ export function useVaultDomain(): VaultValue {
   }, [localVaultFsPath, localRootHandle, setIsLocalTreeLoading, setLocalTree]);
 
   const scanActiveStorageUsageTree = useCallback(async () => {
+    if (storageMode === STORAGE_MODE_IDB) {
+      return readIdbDirectoryTree('');
+    }
     if (storageMode === STORAGE_MODE_LOCAL) {
       if (isDesktopApp() && localVaultFsPath) {
         return readTauriLocalDirectoryTree(localVaultFsPath);
@@ -289,11 +338,13 @@ export function useVaultDomain(): VaultValue {
   ]);
 
   const canScanStorageUsage =
+    storageMode === STORAGE_MODE_IDB ||
     (storageMode === STORAGE_MODE_LOCAL &&
       Boolean(localRootHandle || localVaultFsPath)) ||
     (storageMode === STORAGE_MODE_WEBDAV && webdavReady) ||
     (storageMode !== STORAGE_MODE_LOCAL &&
       storageMode !== STORAGE_MODE_WEBDAV &&
+      storageMode !== STORAGE_MODE_IDB &&
       Boolean(s3Creds.bucket));
 
   return useMemo(
@@ -303,6 +354,7 @@ export function useVaultDomain(): VaultValue {
       s3Tree,
       localTree,
       webdavTree,
+      idbTree,
       sessionWorkspaces,
       localRootHandle,
       localVaultFsPath,
@@ -310,15 +362,19 @@ export function useVaultDomain(): VaultValue {
       setWebdavConfig,
       isLocalTreeLoading,
       isWebdavTreeLoading,
+      isIdbTreeLoading,
       localFolderLoadingPath,
       webdavFolderLoadingPath,
+      idbFolderLoadingPath,
       getBackendForType,
       getS3Client,
       loadS3Files,
       refreshLocalTree,
       refreshWebdavTree,
+      refreshIdbTree,
       loadLocalFolderChildren,
       loadWebdavFolderChildren,
+      loadIdbFolderChildren,
       openLocalFolder,
       webdavReady,
       attachLocalRootFolder,
@@ -328,6 +384,7 @@ export function useVaultDomain(): VaultValue {
       setS3Tree,
       setLocalTree,
       setWebdavTree,
+      setIdbTree,
       setSessionWorkspaces: owned.setSessionWorkspaces,
       upsertSessionWorkspace: owned.upsertSessionWorkspace,
       removeSessionWorkspace: owned.removeSessionWorkspace,
@@ -335,6 +392,7 @@ export function useVaultDomain(): VaultValue {
       setLocalVaultFsPath,
       setIsLocalTreeLoading,
       setIsWebdavTreeLoading,
+      setIsIdbTreeLoading,
     }),
     [
       storageMode,
@@ -342,6 +400,7 @@ export function useVaultDomain(): VaultValue {
       s3Tree,
       localTree,
       webdavTree,
+      idbTree,
       sessionWorkspaces,
       localRootHandle,
       localVaultFsPath,
@@ -349,15 +408,19 @@ export function useVaultDomain(): VaultValue {
       setWebdavConfig,
       isLocalTreeLoading,
       isWebdavTreeLoading,
+      isIdbTreeLoading,
       localFolderLoadingPath,
       webdavFolderLoadingPath,
+      idbFolderLoadingPath,
       getBackendForType,
       getS3Client,
       loadS3Files,
       refreshLocalTree,
       refreshWebdavTree,
+      refreshIdbTree,
       loadLocalFolderChildren,
       loadWebdavFolderChildren,
+      loadIdbFolderChildren,
       openLocalFolder,
       webdavReady,
       attachLocalRootFolder,
@@ -366,6 +429,7 @@ export function useVaultDomain(): VaultValue {
       setS3Tree,
       setLocalTree,
       setWebdavTree,
+      setIdbTree,
       owned.setSessionWorkspaces,
       owned.upsertSessionWorkspace,
       owned.removeSessionWorkspace,
@@ -373,6 +437,7 @@ export function useVaultDomain(): VaultValue {
       setLocalVaultFsPath,
       setIsLocalTreeLoading,
       setIsWebdavTreeLoading,
+      setIsIdbTreeLoading,
     ],
   );
 }

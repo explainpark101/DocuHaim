@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 
-export const VAULT_PATH_STORAGE_TYPES = ['s3', 'local', 'webdav'] as const;
+export const VAULT_PATH_STORAGE_TYPES = ['s3', 'local', 'webdav', 'idb'] as const;
 export type VaultPathStorageType = (typeof VAULT_PATH_STORAGE_TYPES)[number];
 
 export function isVaultPathStorageType(
@@ -18,6 +18,7 @@ export type VaultValue = {
   s3Tree: any[];
   localTree: any[];
   webdavTree: any[];
+  idbTree: any[];
   sessionWorkspaces: SessionWorkspacesMap;
   setSessionWorkspaces: (
     ws: SessionWorkspacesMap | ((prev: SessionWorkspacesMap) => SessionWorkspacesMap),
@@ -30,15 +31,19 @@ export type VaultValue = {
   setWebdavConfig: (cfg: any) => void;
   isLocalTreeLoading: boolean;
   isWebdavTreeLoading: boolean;
+  isIdbTreeLoading: boolean;
   localFolderLoadingPath: string | null;
   webdavFolderLoadingPath: string | null;
+  idbFolderLoadingPath: string | null;
   getBackendForType: (type: string) => any;
   getS3Client: (...args: any[]) => any;
   loadS3Files: (...args: any[]) => any;
   refreshLocalTree: (...args: any[]) => any;
   refreshWebdavTree: (...args: any[]) => any;
+  refreshIdbTree: (...args: any[]) => any;
   loadLocalFolderChildren: (...args: any[]) => any;
   loadWebdavFolderChildren: (...args: any[]) => any;
+  loadIdbFolderChildren: (...args: any[]) => any;
   openLocalFolder: (...args: any[]) => any;
   webdavReady: boolean;
   attachLocalRootFolder: (...args: any[]) => any;
@@ -47,10 +52,12 @@ export type VaultValue = {
   setS3Tree: (...args: any[]) => any;
   setLocalTree: (...args: any[]) => any;
   setWebdavTree: (...args: any[]) => any;
+  setIdbTree: (...args: any[]) => any;
   setLocalRootHandle: (...args: any[]) => any;
   setLocalVaultFsPath: (...args: any[]) => any;
   setIsLocalTreeLoading: (...args: any[]) => any;
   setIsWebdavTreeLoading: (...args: any[]) => any;
+  setIsIdbTreeLoading: (...args: any[]) => any;
 };
 
 export const VaultContext = createContext<VaultValue | null>(null);

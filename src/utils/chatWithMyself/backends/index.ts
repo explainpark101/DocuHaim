@@ -1,7 +1,8 @@
 /**
- * Chat storage backends: S3 / Local / WebDAV.
+ * Chat storage backends: S3 / Local / WebDAV / IDB.
  */
 
+import type { S3Client } from '@aws-sdk/client-s3';
 import {
   getObjectBody,
   headObject,
@@ -28,6 +29,8 @@ import {
 import { CHAT_FOLDER, chatFolderPrefix } from '@/utils/chatWithMyself/paths.js';
 
 export class ChatPreconditionFailedError extends Error {
+  status: number;
+
   constructor(message = 'Precondition Failed') {
     super(message);
     this.name = 'ChatPreconditionFailedError';
@@ -35,49 +38,172 @@ export class ChatPreconditionFailedError extends Error {
   }
 }
 
-function decodeBody(body) {
-  if (typeof body === 'string') return body;
-  return new TextDecoder().decode(body);
+export type ChatFileMeta = {
+  etag: string | null;
+  mtime: number | null;
+};
+
+export type ChatBackend = {
+  ensureChatFolder: () => Promise<void>;
+  getText: (key: string) => Promise<string | null>;
+  headMeta: (key: string) => Promise<ChatFileMeta | null>;
+  putTextIfMatch: (
+    key: string,
+    content: string,
+    contentType?: string,
+    etag?: string | null,
+  ) => Promise<{ etag: string | null }>;
+  putTextOverwrite: (
+    key: string,
+    content: string,
+    contentType?: string,
+  ) => Promise<{ etag: string | null }>;
+  putBinary: (
+    key: string,
+    body: Uint8Array | Blob | File,
+    contentType?: string,
+  ) => Promise<void>;
+  getBinaryBlobUrl: (key: string) => Promise<string | null>;
+  deleteKey: (key: string) => Promise<void>;
+  listDayKeys: () => Promise<string[]>;
+  listKeys: (prefix: string) => Promise<string[]>;
+};
+
+export type ChatStorageCtx = {
+  mode: 's3' | 'local' | 'webdav' | 'idb';
+  client?: S3Client;
+  bucket?: string;
+  localRootHandle?: FileSystemDirectoryHandle;
+  webdavConfig?: {
+    endpoint: string;
+    username: string;
+    password: string;
+    basePath: string;
+  };
+};
+
+type AwsLikeError = {
+  name?: string;
+  Code?: string;
+  status?: number;
+  message?: string;
+  $metadata?: { httpStatusCode?: number };
+};
+
+function asAwsError(e: unknown): AwsLikeError {
+  return e && typeof e === 'object' ? (e as AwsLikeError) : {};
 }
 
-function normalizeEtag(etag) {
+function decodeBody(body: unknown): string {
+  if (typeof body === 'string') return body;
+  if (body instanceof Uint8Array) return new TextDecoder().decode(body);
+  if (body instanceof ArrayBuffer) return new TextDecoder().decode(new Uint8Array(body));
+  return new TextDecoder().decode(new Uint8Array(body as ArrayBufferLike));
+}
+
+function normalizeEtag(etag: unknown): string | null {
   if (!etag) return null;
   return String(etag).trim();
 }
 
-/**
- * @typedef {Object} ChatFileMeta
- * @property {string | null} etag
- * @property {number | null} mtime
- */
-
-/**
- * @typedef {Object} ChatBackend
- * @property {() => Promise<void>} ensureChatFolder
- * @property {(key: string) => Promise<string | null>} getText
- * @property {(key: string) => Promise<ChatFileMeta | null>} headMeta
- * @property {(key: string, content: string, contentType?: string, etag?: string | null) => Promise<{ etag: string | null }>} putTextIfMatch
- * @property {(key: string, content: string, contentType?: string) => Promise<{ etag: string | null }>} putTextOverwrite
- * @property {(key: string, body: Uint8Array | Blob | File, contentType?: string) => Promise<void>} putBinary
- * @property {(key: string) => Promise<string | null>} getBinaryBlobUrl
- * @property {(key: string) => Promise<void>} deleteKey
- * @property {() => Promise<string[]>} listDayKeys
- * @property {(prefix: string) => Promise<string[]>} listKeys
- */
-
-/**
- * @param {import('@/utils/chatWithMyself/storage.js').ChatStorageCtx} ctx
- * @returns {ChatBackend}
- */
-export function createChatBackend(ctx) {
+export function createChatBackend(ctx: ChatStorageCtx): ChatBackend {
   if (!ctx?.mode) throw new Error('Chat storage context is required');
   if (ctx.mode === 's3') return createS3Backend(ctx);
   if (ctx.mode === 'webdav') return createWebdavBackend(ctx);
   if (ctx.mode === 'local') return createLocalBackend(ctx);
-  throw new Error(`Unsupported chat storage mode: ${ctx.mode}`);
+  if (ctx.mode === 'idb') return createIdbChatBackend();
+  throw new Error(`Unsupported chat storage mode: ${(ctx as ChatStorageCtx).mode}`);
 }
 
-function createS3Backend(ctx) {
+function createIdbChatBackend(): ChatBackend {
+  /** Lazy import avoids circular deps with storage package barrel. */
+  const getVault = () => import('@/utils/vault/idbVaultStore');
+
+  return {
+    async ensureChatFolder() {
+      const { mkdir } = await getVault();
+      await mkdir(CHAT_FOLDER);
+    },
+
+    async getText(key) {
+      const { getEntry } = await getVault();
+      const entry = await getEntry(key);
+      if (!entry || entry.kind !== 'file' || !entry.blob) return null;
+      return entry.blob.text();
+    },
+
+    async headMeta(key) {
+      const { getEntry } = await getVault();
+      const entry = await getEntry(key);
+      if (!entry || entry.kind !== 'file') return null;
+      return {
+        etag: `idb-${entry.updatedAt}-${entry.size ?? 0}`,
+        mtime: entry.updatedAt,
+      };
+    },
+
+    async putTextIfMatch(key, content, contentType = 'text/plain; charset=utf-8', etag = null) {
+      void etag;
+      const { putFile, getEntry } = await getVault();
+      await putFile(key, content, contentType);
+      const entry = await getEntry(key);
+      return { etag: entry ? `idb-${entry.updatedAt}-${entry.size ?? 0}` : null };
+    },
+
+    async putTextOverwrite(key, content, contentType = 'text/plain; charset=utf-8') {
+      return this.putTextIfMatch(key, content, contentType, null);
+    },
+
+    async putBinary(key, body, contentType = 'application/octet-stream') {
+      const { putFile } = await getVault();
+      await putFile(key, body, contentType);
+    },
+
+    async getBinaryBlobUrl(key) {
+      const { getEntry } = await getVault();
+      const entry = await getEntry(key);
+      if (!entry || entry.kind !== 'file' || !entry.blob) return null;
+      return URL.createObjectURL(entry.blob);
+    },
+
+    async deleteKey(key) {
+      const { deletePath } = await getVault();
+      await deletePath(key);
+    },
+
+    async listDayKeys() {
+      const { listChildren } = await getVault();
+      try {
+        const children = await listChildren(CHAT_FOLDER);
+        return children
+          .filter((c) => c.type === 'file' && /^\d{4}-\d{2}-\d{2}\.md$/.test(c.name))
+          .map((c) => c.name.slice(0, -3))
+          .sort()
+          .reverse();
+      } catch {
+        return [];
+      }
+    },
+
+    async listKeys(prefix) {
+      const p = String(prefix || '').replace(/\/+$/, '');
+      if (!p) return [];
+      const { listChildren } = await getVault();
+      try {
+        const children = await listChildren(p);
+        return children
+          .filter((c) => c.type === 'file')
+          .map((c) => `${p}/${c.name}`)
+          .sort()
+          .reverse();
+      } catch {
+        return [];
+      }
+    },
+  };
+}
+
+function createS3Backend(ctx: ChatStorageCtx): ChatBackend {
   if (!ctx.client || !ctx.bucket) {
     throw new Error('S3 credentials are required');
   }
@@ -98,10 +224,11 @@ function createS3Backend(ctx) {
         const { body } = await getObjectBody(client, bucket, key);
         return decodeBody(body);
       } catch (e) {
+        const err = asAwsError(e);
         if (
-          e?.name === 'NoSuchKey' ||
-          e?.$metadata?.httpStatusCode === 404 ||
-          e?.Code === 'NoSuchKey'
+          err.name === 'NoSuchKey' ||
+          err.$metadata?.httpStatusCode === 404 ||
+          err.Code === 'NoSuchKey'
         ) {
           return null;
         }
@@ -126,7 +253,7 @@ function createS3Backend(ctx) {
           Body: '',
         });
       }
-      const params = {
+      const params: Record<string, unknown> = {
         Bucket: bucket,
         Key: key,
         Body: content,
@@ -138,18 +265,19 @@ function createS3Backend(ctx) {
         params.IfNoneMatch = '*';
       }
       try {
-        const result = await putObject(client, params);
-        return { etag: normalizeEtag(result?.ETag) };
+        const result = await putObject(client, params as never);
+        return { etag: normalizeEtag((result as { ETag?: string } | undefined)?.ETag) };
       } catch (e) {
-        if (e instanceof S3PreconditionFailedError || e?.status === 412) {
-          throw new ChatPreconditionFailedError(e.message);
+        const err = asAwsError(e);
+        if (e instanceof S3PreconditionFailedError || err.status === 412) {
+          throw new ChatPreconditionFailedError(err.message || 'Precondition Failed');
         }
-        const status = e?.$metadata?.httpStatusCode;
+        const status = err.$metadata?.httpStatusCode;
         const unsupported =
           !etag &&
-          (e?.name === 'NotImplemented' ||
-            e?.Code === 'NotImplemented' ||
-            e?.Code === 'InvalidArgument' ||
+          (err.name === 'NotImplemented' ||
+            err.Code === 'NotImplemented' ||
+            err.Code === 'InvalidArgument' ||
             status === 400 ||
             status === 501);
         if (unsupported) {
@@ -159,7 +287,7 @@ function createS3Backend(ctx) {
             Body: content,
             ContentType: contentType,
           });
-          return { etag: normalizeEtag(result?.ETag) };
+          return { etag: normalizeEtag((result as { ETag?: string } | undefined)?.ETag) };
         }
         throw e;
       }
@@ -179,7 +307,7 @@ function createS3Backend(ctx) {
         Body: content,
         ContentType: contentType,
       });
-      return { etag: normalizeEtag(result?.ETag) };
+      return { etag: normalizeEtag((result as { ETag?: string } | undefined)?.ETag) };
     },
 
     async putBinary(key, body, contentType = 'application/octet-stream') {
@@ -192,10 +320,16 @@ function createS3Backend(ctx) {
           ContentType: 'application/x-directory',
         });
       }
+      const payload =
+        body instanceof Uint8Array
+          ? body
+          : body instanceof ArrayBuffer
+            ? new Uint8Array(body)
+            : new Uint8Array(await body.arrayBuffer());
       await putObject(client, {
         Bucket: bucket,
         Key: key,
-        Body: body,
+        Body: payload,
         ContentType: contentType,
       });
     },
@@ -203,16 +337,22 @@ function createS3Backend(ctx) {
     async getBinaryBlobUrl(key) {
       try {
         const { body, ContentType } = await getObjectBody(client, bucket, key);
-        const bytes = body instanceof Uint8Array ? body : new TextEncoder().encode(decodeBody(body));
-        const blob = new Blob([bytes], {
+        const bytes =
+          body instanceof Uint8Array
+            ? body
+            : new TextEncoder().encode(decodeBody(body));
+        const copy = new Uint8Array(bytes.byteLength);
+        copy.set(bytes);
+        const blob = new Blob([copy], {
           type: ContentType || 'application/octet-stream',
         });
         return URL.createObjectURL(blob);
       } catch (e) {
+        const err = asAwsError(e);
         if (
-          e?.name === 'NoSuchKey' ||
-          e?.$metadata?.httpStatusCode === 404 ||
-          e?.Code === 'NoSuchKey'
+          err.name === 'NoSuchKey' ||
+          err.$metadata?.httpStatusCode === 404 ||
+          err.Code === 'NoSuchKey'
         ) {
           return null;
         }
@@ -228,8 +368,11 @@ function createS3Backend(ctx) {
       const prefix = chatFolderPrefix();
       const contents = await listObjectsV2(client, bucket, prefix);
       return contents
-        .map((c) => c.Key)
-        .filter((k) => k && /^\.chat-with-myself\/\d{4}-\d{2}-\d{2}\.md$/.test(k))
+        .map((c: { Key?: string }) => c.Key)
+        .filter(
+          (k: string | undefined): k is string =>
+            Boolean(k && /^\.chat-with-myself\/\d{4}-\d{2}-\d{2}\.md$/.test(k)),
+        )
         .map((k) => k.slice(prefix.length, -3))
         .sort()
         .reverse();
@@ -239,15 +382,18 @@ function createS3Backend(ctx) {
       const p = String(prefix || '');
       const contents = await listObjectsV2(client, bucket, p);
       return contents
-        .map((c) => c.Key)
-        .filter((k) => typeof k === 'string' && k.startsWith(p) && !k.endsWith('/'))
+        .map((c: { Key?: string }) => c.Key)
+        .filter(
+          (k: string | undefined): k is string =>
+            typeof k === 'string' && k.startsWith(p) && !k.endsWith('/'),
+        )
         .sort()
         .reverse();
     },
   };
 }
 
-function createWebdavBackend(ctx) {
+function createWebdavBackend(ctx: ChatStorageCtx): ChatBackend {
   const config = ctx.webdavConfig;
   if (!config?.endpoint) {
     throw new Error('WebDAV configuration is required');
@@ -267,7 +413,7 @@ function createWebdavBackend(ctx) {
       if (!meta) return null;
       return {
         etag: normalizeEtag(meta.etag),
-        mtime: meta.mtime,
+        mtime: meta.mtime ?? null,
       };
     },
 
@@ -276,16 +422,16 @@ function createWebdavBackend(ctx) {
       try {
         const result = await webdavPut(config, key, content, {
           contentType,
-          ifMatch: etag || undefined,
-          ifNoneMatch: etag ? undefined : '*',
+          ...(etag ? { ifMatch: etag } : { ifNoneMatch: '*' }),
         });
         return { etag: normalizeEtag(result?.etag) };
       } catch (e) {
-        if (e instanceof WebdavPreconditionFailedError || e?.status === 412) {
-          throw new ChatPreconditionFailedError(e.message);
+        const err = asAwsError(e);
+        if (e instanceof WebdavPreconditionFailedError || err.status === 412) {
+          throw new ChatPreconditionFailedError(err.message || 'Precondition Failed');
         }
         // Some servers reject If-None-Match on create
-        if (!etag && (e?.status === 400 || e?.status === 501)) {
+        if (!etag && (err.status === 400 || err.status === 501)) {
           const result = await webdavPut(config, key, content, { contentType });
           return { etag: normalizeEtag(result?.etag) };
         }
@@ -317,12 +463,15 @@ function createWebdavBackend(ctx) {
     async listDayKeys() {
       const children = await webdavPropfind(config, CHAT_FOLDER);
       return children
-        .filter((c) => !c.isCollection)
-        .map((c) => {
+        .filter((c: { isCollection?: boolean }) => !c.isCollection)
+        .map((c: { key: string }) => {
           const name = c.key.includes('/') ? c.key.split('/').pop() : c.key;
           return name;
         })
-        .filter((name) => name && /^\d{4}-\d{2}-\d{2}\.md$/.test(name))
+        .filter(
+          (name: string | undefined): name is string =>
+            Boolean(name && /^\d{4}-\d{2}-\d{2}\.md$/.test(name)),
+        )
         .map((name) => name.slice(0, -3))
         .sort()
         .reverse();
@@ -334,9 +483,9 @@ function createWebdavBackend(ctx) {
       try {
         const children = await webdavPropfind(config, p);
         return children
-          .filter((c) => !c.isCollection)
-          .map((c) => c.key)
-          .filter((k) => typeof k === 'string' && k.startsWith(`${p}/`))
+          .filter((c: { isCollection?: boolean }) => !c.isCollection)
+          .map((c: { key: string }) => c.key)
+          .filter((k: string) => typeof k === 'string' && k.startsWith(`${p}/`))
           .sort()
           .reverse();
       } catch {
@@ -346,7 +495,7 @@ function createWebdavBackend(ctx) {
   };
 }
 
-function createLocalBackend(ctx) {
+function createLocalBackend(ctx: ChatStorageCtx): ChatBackend {
   if (!ctx.localRootHandle) {
     throw new Error('Local folder not open');
   }
@@ -403,7 +552,14 @@ function createLocalBackend(ctx) {
       const handle = await getLocalFileHandleForPath(root, key, { create: true });
       const writable = await handle.createWritable();
       try {
-        await writable.write(body);
+        if (body instanceof Blob) {
+          await writable.write(body);
+        } else {
+          const bytes = body instanceof Uint8Array ? body : new Uint8Array(body);
+          const copy = new Uint8Array(bytes.byteLength);
+          copy.set(bytes);
+          await writable.write(copy);
+        }
       } finally {
         await writable.close();
       }
@@ -436,8 +592,13 @@ function createLocalBackend(ctx) {
         const dir = await getLocalDirectoryHandleForPath(root, CHAT_FOLDER, {
           create: false,
         });
-        const days = [];
-        for await (const [name, handle] of dir.entries()) {
+        const days: string[] = [];
+        const entries = (
+          dir as FileSystemDirectoryHandle & {
+            entries: () => AsyncIterableIterator<[string, FileSystemHandle]>;
+          }
+        ).entries();
+        for await (const [name, handle] of entries) {
           if (handle.kind === 'file' && /^\d{4}-\d{2}-\d{2}\.md$/.test(name)) {
             days.push(name.slice(0, -3));
           }
@@ -455,8 +616,13 @@ function createLocalBackend(ctx) {
         const dir = await getLocalDirectoryHandleForPath(root, p, {
           create: false,
         });
-        const keys = [];
-        for await (const [name, handle] of dir.entries()) {
+        const keys: string[] = [];
+        const entries = (
+          dir as FileSystemDirectoryHandle & {
+            entries: () => AsyncIterableIterator<[string, FileSystemHandle]>;
+          }
+        ).entries();
+        for await (const [name, handle] of entries) {
           if (handle.kind === 'file') {
             keys.push(`${p}/${name}`);
           }

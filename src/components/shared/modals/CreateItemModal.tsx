@@ -272,7 +272,13 @@ export function CreateItemModal({
   const title = isFolder ? '새 폴더' : '새 파일';
   const Icon = isFolder ? IconFolderPlus : IconFilePlus;
   const rootLabel =
-    storageType === 'local' ? '로컬: ' : storageType === 'webdav' ? 'WebDAV: ' : 'S3: ';
+    storageType === 'local'
+      ? '로컬: '
+      : storageType === 'webdav'
+        ? 'WebDAV: '
+        : storageType === 'idb'
+          ? 'IDB: '
+          : 'S3: ';
   const selectedFormat =
     CREATE_FILE_FORMATS.find((f) => f.id === fileFormatId) ||
     defaultCreateFileFormat();
