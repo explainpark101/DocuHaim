@@ -47,6 +47,14 @@ import {
   loadHaimTocLayout,
   type HaimTocLayout,
 } from '@/utils/haimTocLayoutSettings';
+import { parseDocumentSettingsMeta } from '@/utils/documentSettingsMeta';
+import {
+  HAIM_TYPOGRAPHY_CHANGED_EVENT,
+  loadHaimTypographyGlobal,
+  resolveHaimTypographyRules,
+  type HaimTypographyOverrides,
+  type HaimTypographyRules,
+} from '@/utils/haimTypographySettings';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import { registerEditorActions } from '@/utils/advancedSearch/editorActions';
 import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
@@ -160,6 +168,9 @@ export default function HaimEditor({
   const noteCoverFoldDocKey = getNoteCoverFoldKeyFromFile(currentFile);
   const [tocOpen, setTocOpen] = useState(false);
   const [tocLayout, setTocLayout] = useState<HaimTocLayout>(() => loadHaimTocLayout());
+  const [globalTypography, setGlobalTypography] = useState<HaimTypographyRules>(() =>
+    loadHaimTypographyGlobal(),
+  );
   const [cmRevision, setCmRevision] = useState(0);
   const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
   const [headingRemapSelection, setHeadingRemapSelection] = useState('');
@@ -224,13 +235,37 @@ export default function HaimEditor({
     return () => window.removeEventListener(HAIM_TOC_LAYOUT_CHANGED_EVENT, onEvt);
   }, []);
 
+  useEffect(() => {
+    const onEvt = () => setGlobalTypography(loadHaimTypographyGlobal());
+    window.addEventListener(HAIM_TYPOGRAPHY_CHANGED_EVENT, onEvt);
+    return () => window.removeEventListener(HAIM_TYPOGRAPHY_CHANGED_EVENT, onEvt);
+  }, []);
+
+  const docTypographyKey = useMemo(() => {
+    const { meta } = parseDocumentSettingsMeta(value || '');
+    return JSON.stringify(meta?.haimTypography ?? null);
+  }, [value]);
+
+  const resolvedTypography = useMemo(() => {
+    let overrides: HaimTypographyOverrides | null = null;
+    try {
+      overrides = JSON.parse(docTypographyKey) as HaimTypographyOverrides | null;
+    } catch {
+      overrides = null;
+    }
+    return resolveHaimTypographyRules(globalTypography, overrides);
+  }, [globalTypography, docTypographyKey]);
+
   const extensions = useMemo(
     () =>
       createHaimExtensions({
         placeholder: previewOnly ? '' : '내용을 입력하세요…',
         profile: 'note',
         getMetaPrefix: () => metaPrefixRef.current,
+        typographyRules: resolvedTypography,
       }),
+    // Typography updates apply via setHaimTypographyRules (no editor remount).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- previewOnly only
     [previewOnly],
   );
 
@@ -265,6 +300,11 @@ export default function HaimEditor({
     },
     [extensions],
   );
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.commands.setHaimTypographyRules(resolvedTypography);
+  }, [editor, resolvedTypography]);
 
   useEffect(() => {
     if (!editor) return;

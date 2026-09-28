@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type HTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { motion as Motion } from 'motion/react';
 import { useResizablePanelHeight } from '@/hooks/useResizablePanelHeight';
 
@@ -10,40 +17,65 @@ const MIN_FIT_H = 160;
 
 const HEIGHT_TRANSITION = {
   duration: 0.32,
-  ease: [0.22, 1, 0.36, 1],
+  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
 };
 
 /** Prefer the chat column height; fall back to visual viewport. */
-export function chatComposerAreaMaxHeight() {
+export function chatComposerAreaMaxHeight(): number {
   if (typeof window === 'undefined') return 640;
   const column = document.querySelector('[data-chat-rails-root]');
-  const columnH = column?.clientHeight || 0;
+  const columnH =
+    column instanceof HTMLElement ? column.clientHeight : 0;
   const vvH = window.visualViewport?.height ?? window.innerHeight;
   const base = columnH > MIN_H ? columnH : vvH;
   return Math.max(MIN_H, Math.floor(base * 0.7));
 }
 
+export type ChatComposerDockProps = {
+  children?: ReactNode;
+  className?: string;
+  /**
+   * When true (reply / edit), grow the dock so preview chrome and editor
+   * content stay visible — restores pre-fit height when leaving unless the
+   * user resized during the session.
+   */
+  autoFit?: boolean;
+  /** Remeasure when this changes (e.g. edit/reply target id). */
+  fitKey?: string;
+  /**
+   * Height of the reply/edit preview block (incl. margins). Dock grows by at
+   * least this much over the pre-fit height so the input area does not shrink.
+   */
+  fitPreviewHeight?: number;
+  /**
+   * Full natural content height (composer + card chrome). Used as a second
+   * floor so edit pretext height can expand the dock further.
+   */
+  fitContentHeight?: number | null;
+};
+
 /**
  * Resizable bottom composer dock. Height is always the persisted max;
  * children fill the dock with no outer overflow scroll.
  *
- * When `autoFit` is true (e.g. message edit), the dock grows if content would
- * overflow the current height (so the send/input row stays visible), up to 70%
- * of the message column. Manual resize via the handle always wins and updates
- * the persisted height. Leaving autoFit restores the pre-edit dock height when
- * the user did not resize during the session.
+ * When `autoFit` is true (reply / message edit), the dock grows by the preview
+ * height and, when provided, up to `fitContentHeight` (pretext-sized editor),
+ * capped at 70% of the message column. Manual resize via the handle always
+ * wins. Leaving autoFit restores the pre-fit dock height when the user did
+ * not resize during the session.
  */
 export default function ChatComposerDock({
   children,
   className = '',
   autoFit = false,
-  /** Remeasure when this changes (e.g. editTarget.id). */
   fitKey = '',
-}) {
+  fitPreviewHeight = 0,
+  fitContentHeight = null,
+}: ChatComposerDockProps) {
   const [maxHeight, setMaxHeight] = useState(chatComposerAreaMaxHeight);
-  const heightBeforeFitRef = useRef(/** @type {number | null} */ (null));
-  const contentRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const [fitHeight, setFitHeight] = useState(/** @type {number | null} */ (null));
+  const heightBeforeFitRef = useRef<number | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [fitHeight, setFitHeight] = useState<number | null>(null);
   /** Once the user drags the handle during autoFit, stop overriding with measures. */
   const userResizedDuringFitRef = useRef(false);
 
@@ -67,7 +99,7 @@ export default function ChatComposerDock({
     edge: 'bottom',
   });
 
-  // Snapshot before first autoFit measure; restore when leaving edit
+  // Snapshot before first autoFit measure; restore when leaving reply/edit
   // (unless the user resized — then keep the new height).
   useLayoutEffect(() => {
     if (autoFit) {
@@ -99,21 +131,32 @@ export default function ChatComposerDock({
     setFitHeight(height);
   }, [autoFit, isResizing, height]);
 
-  // Grow-only fit: expand when edit content needs more room than the current dock.
-  // Do not keep a tall pre-edit floor (that left empty space under a short editor).
-  // Skip while the user is manually resizing or has already resized this session.
+  // Grow-only fit: preview bump over pre-fit height, plus optional pretext content floor.
   useLayoutEffect(() => {
     if (!autoFit) return undefined;
     if (userResizedDuringFitRef.current) return undefined;
-    const el = contentRef.current;
-    if (!el) return undefined;
 
     const measure = () => {
       if (userResizedDuringFitRef.current) return;
-      const natural = Math.ceil(
-        Math.max(el.scrollHeight, el.getBoundingClientRect().height),
+      const base = heightBeforeFitRef.current ?? height;
+      const previewBump = Math.max(0, Math.ceil(fitPreviewHeight || 0));
+      const withPreview = base + previewBump;
+      const contentFloor =
+        typeof fitContentHeight === 'number' && fitContentHeight > 0
+          ? Math.ceil(fitContentHeight)
+          : 0;
+      const observed = contentRef.current
+        ? Math.ceil(
+            Math.max(
+              contentRef.current.scrollHeight,
+              contentRef.current.getBoundingClientRect().height,
+            ),
+          )
+        : 0;
+      const next = Math.min(
+        maxHeight,
+        Math.max(MIN_FIT_H, withPreview, contentFloor, observed),
       );
-      const next = Math.min(maxHeight, Math.max(MIN_FIT_H, natural));
       setFitHeight((prev) => (prev === next ? prev : next));
     };
 
@@ -129,15 +172,23 @@ export default function ChatComposerDock({
         window.clearTimeout(t2);
       };
     }
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
+    const el = contentRef.current;
+    const ro = el ? new ResizeObserver(measure) : null;
+    if (el && ro) ro.observe(el);
     return () => {
-      ro.disconnect();
+      ro?.disconnect();
       window.cancelAnimationFrame(raf1);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [autoFit, maxHeight, fitKey]);
+  }, [
+    autoFit,
+    maxHeight,
+    fitKey,
+    fitPreviewHeight,
+    fitContentHeight,
+    height,
+  ]);
 
   // Keep persisted height in sync when autoFit settles (so handle aria + next open match).
   useLayoutEffect(() => {
@@ -158,7 +209,7 @@ export default function ChatComposerDock({
       style={{ maxHeight }}
     >
       <div
-        {...handleProps}
+        {...(handleProps as HTMLAttributes<HTMLDivElement>)}
         aria-label="채팅 입력창 높이 조절"
         title="채팅 입력창 높이 조절"
         className={[

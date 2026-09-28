@@ -102,7 +102,7 @@ export default function ChatComposerLegacyMdEditor({
         preview={false}
         toolbars={showToolbar ? [...CHAT_COMPOSER_TOOLBARS] : []}
         footers={[]}
-        placeholder="메시지 입력…"
+        placeholder="채팅을 입력해주세요"
         style={{ height: '100%' }}
         {...(onUploadImg ? { onUploadImg } : {})}
       />

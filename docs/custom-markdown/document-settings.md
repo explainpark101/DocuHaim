@@ -24,14 +24,18 @@ Per-document settings for the editor, preview, and PDF export. This is a hidden 
     "bold": "Noto Sans KR",
     "code": "JetBrains Mono"
   },
-  "webfontCss": "@import url('https://fonts.googleapis.com/css2?family=...');"
+  "webfontCss": "@import url('https://fonts.googleapis.com/css2?family=...');",
+  "haimTypography": {
+    "emDash": false,
+    "doubleQuotes": true
+  }
 }
 -->
 ```
 
 ## Spec (interop)
 
-Implementation: `src/utils/documentSettingsMeta.ts`, `src/components/DocumentSettingsModal.jsx`, `src/components/MarkdownEditor.jsx`, `src/pages/ExportPDFPage.jsx`, `src/utils/footnoteMarkdownIt.ts`.
+Implementation: `src/utils/documentSettingsMeta.ts`, `src/utils/haimTypographySettings.ts`, `src/components/DocumentSettingsModal.tsx`, `src/components/haimEditor/extensions/HaimTypography.ts`.
 
 ### 1. Grammar
 
@@ -42,6 +46,13 @@ JSON := object with keys:
   sourceList: { show: boolean, title: string }
   fonts: { body: string, heading: string, bold: string, code: string }
   webfontCss: string
+  haimTypography?: partial map of Haim Typography rule id → boolean
+    (known ids: emDash, ellipsis, doubleQuotes, singleQuotes, leftArrow,
+     rightArrow, copyright, trademark, servicemark, registeredTrademark,
+     oneHalf, oneQuarter, threeQuarters, plusMinus, notEqual, multiplication,
+     laquo, raquo, superscriptTwo, superscriptThree)
+  Missing `haimTypography` keys inherit the app global preference
+  (Settings → Haim Typography). Omitted object = all inherit.
 ```
 
 The parser accepts the comment only when it appears in the leading metadata region:
@@ -73,6 +84,8 @@ Failure behavior:
 - `sourceList.title`: trimmed string; empty string falls back to `Sources`.
 - `fonts.*`: each field is a free-form CSS `font-family` string. No extra validation is applied beyond string type.
 - `webfontCss`: raw CSS text. Stored as-is and injected into preview / PDF as a `<style>` block.
+- `haimTypography`: optional partial object. Only known rule ids with boolean values are kept.
+  Empty / invalid object is dropped (inherit all). Unknown keys ignored.
 
 ### 4. Canonical output
 
@@ -92,6 +105,8 @@ The JSON payload is escaped for HTML comments by replacing `--` with `\u002d\u00
 - `sourceList.title` changes the visible heading for the bottom list.
 - `fonts` drives the document body, headings, bold text, and code fonts in preview and PDF.
 - `webfontCss` is document-local and applies only to the current document.
+- `haimTypography` overrides global Haim WYSIWYG input-rule toggles for this file only.
+  Converted characters are written into the saved markdown body (not display-only).
 
 ### 6. Non-goals
 
@@ -104,9 +119,11 @@ The JSON payload is escaped for HTML comments by replacing `--` with `\u002d\u00
 | Role | Path |
 |------|------|
 | Meta parse / serialize | `src/utils/documentSettingsMeta.ts` |
-| Editor modal | `src/components/DocumentSettingsModal.jsx` |
-| File menu entry | `src/components/EditorPane.jsx` |
-| Preview font application | `src/components/MarkdownEditor.jsx`, `src/styles/md-editor-rt/footnotes.css` |
-| PDF font application | `src/pages/ExportPDFPage.jsx` |
+| Global typography prefs | `src/utils/haimTypographySettings.ts`, Settings → Haim Typography |
+| Live TipTap rules | `src/components/haimEditor/extensions/HaimTypography.ts` |
+| Editor modal | `src/components/DocumentSettingsModal.tsx` |
+| File menu entry | `src/components/shell/EditorPane.jsx` |
+| Preview font application | `src/components/editor/MarkdownEditor.jsx`, `src/styles/md-editor-rt/footnotes.css` |
+| PDF font application | `src/pages/exportPdf/ExportPDFPage.tsx` |
 | Sources list title / visibility | `src/utils/footnoteMarkdownIt.ts` |
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Select } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import Button from '@/components/Button';
 import FontFamilyInput from '@/components/FontFamilyInput';
@@ -10,6 +11,14 @@ import {
 } from '@/utils/documentSettingsMeta';
 import { buildFontFamilyOptions } from '@/utils/fontOptions';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
+import {
+  HAIM_TYPOGRAPHY_RULE_DEFS,
+  loadHaimTypographyGlobal,
+  normalizeHaimTypographyOverrides,
+  type HaimTypographyOverrides,
+  type HaimTypographyRuleId,
+} from '@/utils/haimTypographySettings';
+import { Check, ChevronDown } from 'lucide-react';
 
 export type DocumentSettingsModalProps = {
   isOpen: boolean;
@@ -25,8 +34,39 @@ const FONT_FIELDS = [
   ['code', '코드', '예: JetBrains Mono, monospace'],
 ] as const;
 
+type TypographyMode = 'inherit' | 'on' | 'off';
+
+function modeFromOverride(
+  overrides: HaimTypographyOverrides | undefined,
+  id: HaimTypographyRuleId,
+): TypographyMode {
+  if (!overrides || !(id in overrides)) return 'inherit';
+  return overrides[id] ? 'on' : 'off';
+}
+
+function setOverrideMode(
+  overrides: HaimTypographyOverrides | undefined,
+  id: HaimTypographyRuleId,
+  mode: TypographyMode,
+): HaimTypographyOverrides | undefined {
+  const next: HaimTypographyOverrides = { ...(overrides ?? {}) };
+  if (mode === 'inherit') {
+    delete next[id];
+  } else {
+    next[id] = mode === 'on';
+  }
+  return normalizeHaimTypographyOverrides(next);
+}
+
+const selectTriggerClass =
+  'inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-1 rounded-md border border-gray-300 bg-white px-2 text-xs text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-bg dark:text-odp-fg';
+const selectContentClass =
+  'z-100010 max-h-60 min-w-(--radix-select-trigger-width) overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
+const selectItemClass =
+  'relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-7 pr-3 text-xs text-gray-800 outline-none data-highlighted:bg-gray-100 dark:text-odp-fg dark:data-highlighted:bg-odp-focusBg';
+
 /**
- * Per-document footnote / font settings. Uses max-w (not bare w-[min]) so
+ * Per-document footnote / font / Haim typography settings. Uses max-w (not bare w-[min]) so
  * Modal's w-full does not expand to the viewport and kill corner-resize room.
  */
 export default function DocumentSettingsModal({
@@ -39,9 +79,15 @@ export default function DocumentSettingsModal({
     () => settings ?? DEFAULT_DOCUMENT_SETTINGS_META,
   );
   const [fontOptionsTick, setFontOptionsTick] = useState(0);
+  const [globalTypography, setGlobalTypography] = useState(() =>
+    loadHaimTypographyGlobal(),
+  );
 
   useEffect(() => {
-    if (isOpen) setLocal(settings ?? DEFAULT_DOCUMENT_SETTINGS_META);
+    if (isOpen) {
+      setLocal(settings ?? DEFAULT_DOCUMENT_SETTINGS_META);
+      setGlobalTypography(loadHaimTypographyGlobal());
+    }
   }, [isOpen, settings]);
 
   useEffect(() => {
@@ -78,8 +124,27 @@ export default function DocumentSettingsModal({
     }));
   };
 
+  const handleResetTypography = () => {
+    setLocal((prev) => {
+      const next = { ...prev };
+      delete next.haimTypography;
+      return next;
+    });
+  };
+
+  const handleTypographyMode = (id: HaimTypographyRuleId, mode: TypographyMode) => {
+    setLocal((prev) => {
+      const haimTypography = setOverrideMode(prev.haimTypography, id, mode);
+      const next: DocumentSettingsMeta = { ...prev };
+      if (haimTypography) next.haimTypography = haimTypography;
+      else delete next.haimTypography;
+      return next;
+    });
+  };
+
   const handleApply = () => {
-    onApply?.({
+    const haimTypography = normalizeHaimTypographyOverrides(local.haimTypography);
+    const next: DocumentSettingsMeta = {
       ...local,
       v: 1,
       sourceList: {
@@ -88,7 +153,10 @@ export default function DocumentSettingsModal({
       },
       fonts: { ...DEFAULT_DOCUMENT_SETTINGS_META.fonts, ...local.fonts },
       webfontCss: local.webfontCss ?? '',
-    });
+    };
+    if (haimTypography) next.haimTypography = haimTypography;
+    else delete next.haimTypography;
+    onApply?.(next);
   };
 
   return (
@@ -177,6 +245,97 @@ export default function DocumentSettingsModal({
             spellCheck={false}
           />
         </label>
+
+        <section className="grid gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
+                Haim Typography 입력 편의
+              </h3>
+              <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                이 문서만 전역 설정을 덮어씁니다. 「전역 따름」은 설정의 값을
+                사용합니다.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="tertiary"
+              size="sm"
+              onClick={handleResetTypography}
+            >
+              <IconRefresh size={14} />
+              전부 전역 따름
+            </Button>
+          </div>
+          <ul className="divide-y divide-gray-200 rounded-md border border-gray-200 dark:divide-odp-borderStrong dark:border-odp-borderStrong">
+            {HAIM_TYPOGRAPHY_RULE_DEFS.map((def) => {
+              const mode = modeFromOverride(local.haimTypography, def.id);
+              const globalOn = globalTypography[def.id];
+              return (
+                <li
+                  key={def.id}
+                  className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                      {def.label}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[11px] text-gray-500 dark:text-odp-muted">
+                      {def.hint}
+                      <span className="ml-1 text-gray-400 dark:text-odp-muted">
+                        (전역: {globalOn ? '켜짐' : '꺼짐'})
+                      </span>
+                    </p>
+                  </div>
+                  <Select.Root
+                    value={mode}
+                    onValueChange={(v) =>
+                      handleTypographyMode(def.id, v as TypographyMode)
+                    }
+                  >
+                    <Select.Trigger
+                      className={selectTriggerClass}
+                      aria-label={`${def.label} 문서 설정`}
+                    >
+                      <Select.Value />
+                      <Select.Icon>
+                        <ChevronDown size={14} />
+                      </Select.Icon>
+                    </Select.Trigger>
+                    <Select.Portal>
+                      <Select.Content
+                        className={selectContentClass}
+                        position="popper"
+                        sideOffset={4}
+                      >
+                        <Select.Viewport className="p-1">
+                          {(
+                            [
+                              ['inherit', '전역 따름'],
+                              ['on', '켜기'],
+                              ['off', '끄기'],
+                            ] as const
+                          ).map(([value, label]) => (
+                            <Select.Item
+                              key={value}
+                              value={value}
+                              className={selectItemClass}
+                            >
+                              <Select.ItemIndicator className="absolute left-1.5 inline-flex items-center">
+                                <Check size={12} aria-hidden />
+                              </Select.ItemIndicator>
+                              <Select.ItemText>{label}</Select.ItemText>
+                            </Select.Item>
+                          ))}
+                        </Select.Viewport>
+                      </Select.Content>
+                    </Select.Portal>
+                  </Select.Root>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="secondary" size="md" onClick={onClose}>
