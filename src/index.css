@@ -89,6 +89,15 @@
     cursor: pointer;
   }
 
+  /* Native clear (X) on search fields — not a <button>, so needs its own rule. */
+  input[type='search']::-webkit-search-cancel-button {
+    cursor: pointer;
+  }
+
+  input[type='search']::-ms-clear {
+    cursor: pointer;
+  }
+
   h1,
   h2,
   h3,
