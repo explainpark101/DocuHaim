@@ -1,6 +1,12 @@
 /* Haim Editor (TipTap) surface styles — keep separate from md-editor-rt. */
 @import './preview-tokens.css';
 
+/* Slash command floating menu (mounted on document.body via Suggestion). */
+.haim-slash-menu-root {
+  z-index: 100010;
+  max-width: min(92vw, 300px);
+}
+
 .haim-editor {
   --haim-pgbr-color: #94a3b8;
 }
@@ -605,20 +611,139 @@ html[data-haim-prose-width-clamp='1']
   padding-bottom: 50dvh;
 }
 
-/* Task list */
-.haim-editor-prose ul[data-type='taskList'] {
+/* Task list — accent-color integrated checkbox (native input) */
+.haim-editor,
+.haim-editor-prose,
+.md-editor-preview {
+  color-scheme: light dark;
+}
+
+.haim-editor-prose ul[data-type='taskList'],
+.haim-editor-prose .contains-task-list,
+.md-editor-preview .contains-task-list,
+.export-pdf-paged-source .contains-task-list,
+.pagedjs_page_content .contains-task-list {
   list-style: none;
   padding-left: 0.25em;
+  accent-color: var(--color-blue-600, #2563eb);
 }
 
-.haim-editor-prose ul[data-type='taskList'] li {
+/* Status checkboxes use a distinct accent so they are visually separate from GFM checks. */
+.haim-editor-prose .task-list-item-checkbox--status,
+.md-editor-preview .task-list-item-checkbox--status,
+.export-pdf-paged-source .task-list-item-checkbox--status,
+.pagedjs_page_content .task-list-item-checkbox--status,
+.haim-editor-prose li[data-kind='status'] > label > input[type='checkbox'],
+.md-editor-preview li[data-kind='status'] .task-list-item-checkbox {
+  accent-color: var(--color-amber-600, #d97706);
+}
+
+.haim-editor--dark .haim-editor-prose ul[data-type='taskList'],
+.haim-editor--dark .haim-editor-prose .contains-task-list,
+:is(.dark) .haim-editor-prose ul[data-type='taskList'],
+:is(.dark) .md-editor-preview .contains-task-list,
+.haim-editor--dark .md-editor-preview .contains-task-list {
+  accent-color: var(--color-odp-accentBlue, #60a5fa);
+}
+
+.haim-editor--dark .haim-editor-prose .task-list-item-checkbox--status,
+:is(.dark) .md-editor-preview .task-list-item-checkbox--status,
+.haim-editor--dark .md-editor-preview .task-list-item-checkbox--status,
+.haim-editor--dark .haim-editor-prose li[data-kind='status'] > label > input[type='checkbox'],
+:is(.dark) .md-editor-preview li[data-kind='status'] .task-list-item-checkbox {
+  accent-color: var(--color-amber-400, #fbbf24);
+}
+
+.haim-editor-prose ul[data-type='taskList'] li,
+.haim-editor-prose li.task-list-item,
+.md-editor-preview li.task-list-item {
   display: flex;
-  align-items: flex-start;
-  gap: 0.4em;
+  align-items: center;
+  gap: 0.45em;
 }
 
-.haim-editor-prose ul[data-type='taskList'] li > label {
-  margin-top: 0.2em;
+.haim-editor-prose ul[data-type='taskList'] li > label,
+.haim-editor-prose li.task-list-item > label,
+.md-editor-preview li.task-list-item > label {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25em;
+  min-height: 1.25em;
+  cursor: pointer;
+}
+
+.haim-editor-prose ul[data-type='taskList'] li > label > input[type='checkbox'],
+.haim-editor-prose .task-list-item-checkbox,
+.md-editor-preview .task-list-item-checkbox,
+.export-pdf-paged-source .task-list-item-checkbox,
+.pagedjs_page_content .task-list-item-checkbox {
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: inherit;
+}
+
+.haim-editor-prose ul[data-type='taskList'] li[data-status='done'] > div,
+.haim-editor-prose li.task-list-item[data-status='done'],
+.md-editor-preview li.task-list-item[data-status='done'] {
+  color: color-mix(in srgb, currentColor 62%, transparent);
+}
+
+@supports not (accent-color: #2563eb) {
+  .haim-editor-prose .task-list-item-checkbox,
+  .md-editor-preview .task-list-item-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1.5px solid color-mix(in srgb, currentColor 45%, transparent);
+    border-radius: 0.2em;
+    background: transparent;
+    position: relative;
+  }
+
+  .haim-editor-prose .task-list-item-checkbox:checked,
+  .md-editor-preview .task-list-item-checkbox:checked,
+  .haim-editor-prose .task-list-item-checkbox[data-status='done'],
+  .md-editor-preview .task-list-item-checkbox[data-status='done'] {
+    background: var(--color-blue-600, #2563eb);
+    border-color: var(--color-blue-600, #2563eb);
+  }
+
+  .haim-editor-prose .task-list-item-checkbox:checked::after,
+  .md-editor-preview .task-list-item-checkbox:checked::after,
+  .haim-editor-prose .task-list-item-checkbox[data-status='done']::after,
+  .md-editor-preview .task-list-item-checkbox[data-status='done']::after {
+    content: '';
+    position: absolute;
+    left: 0.28em;
+    top: 0.05em;
+    width: 0.28em;
+    height: 0.55em;
+    border: solid #fff;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+  }
+
+  .haim-editor-prose .task-list-item-checkbox[data-status='doing'],
+  .md-editor-preview .task-list-item-checkbox[data-status='doing'] {
+    background: color-mix(in srgb, var(--color-blue-600, #2563eb) 18%, transparent);
+    border-color: var(--color-blue-600, #2563eb);
+  }
+
+  .haim-editor-prose .task-list-item-checkbox[data-status='doing']::after,
+  .md-editor-preview .task-list-item-checkbox[data-status='doing']::after {
+    content: '';
+    position: absolute;
+    left: 0.2em;
+    right: 0.2em;
+    top: 50%;
+    height: 1.5px;
+    background: var(--color-blue-600, #2563eb);
+    transform: translateY(-50%);
+  }
 }
 
 /* Overlay TOC — glass background (md-editor-rt catalog-fixed parity) */

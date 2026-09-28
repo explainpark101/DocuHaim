@@ -28,14 +28,15 @@ Per-document settings for the editor, preview, and PDF export. This is a hidden 
   "haimTypography": {
     "emDash": false,
     "doubleQuotes": true
-  }
+  },
+  "taskCheckbox": "check"
 }
 -->
 ```
 
 ## Spec (interop)
 
-Implementation: `src/utils/documentSettingsMeta.ts`, `src/utils/haimTypographySettings.ts`, `src/components/DocumentSettingsModal.tsx`, `src/components/haimEditor/extensions/HaimTypography.ts`.
+Implementation: `src/utils/documentSettingsMeta.ts`, `src/utils/haimTypographySettings.ts`, `src/components/DocumentSettingsModal.tsx`, `src/components/haimEditor/extensions/HaimTypography.ts`, `src/components/haimEditor/extensions/HaimTaskItem.ts`.
 
 ### 1. Grammar
 
@@ -53,6 +54,8 @@ JSON := object with keys:
      laquo, raquo, superscriptTwo, superscriptThree)
   Missing `haimTypography` keys inherit the app global preference
   (Settings → Haim Typography). Omitted object = all inherit.
+  taskCheckbox?: "check" | "status"
+    Default / unknown → "check" (binary GFM). "status" → 3-state cycle.
 ```
 
 The parser accepts the comment only when it appears in the leading metadata region:
@@ -86,6 +89,7 @@ Failure behavior:
 - `webfontCss`: raw CSS text. Stored as-is and injected into preview / PDF as a `<style>` block.
 - `haimTypography`: optional partial object. Only known rule ids with boolean values are kept.
   Empty / invalid object is dropped (inherit all). Unknown keys ignored.
+- `taskCheckbox`: `"check"` | `"status"`. Any other value → `"check"`.
 
 ### 4. Canonical output
 
@@ -107,6 +111,8 @@ The JSON payload is escaped for HTML comments by replacing `--` with `\u002d\u00
 - `webfontCss` is document-local and applies only to the current document.
 - `haimTypography` overrides global Haim WYSIWYG input-rule toggles for this file only.
   Converted characters are written into the saved markdown body (not display-only).
+- `taskCheckbox` selects document-wide checkbox click / Ctrl-Tab behavior
+  (`check` = binary, `status` = todo → doing → done). See [task-list.md](./task-list.md).
 
 ### 6. Non-goals
 

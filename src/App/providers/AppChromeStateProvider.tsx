@@ -65,6 +65,15 @@ export type ChromeOwnedApi = {
   setQuizSourceDropHost: (v: HTMLElement | null) => void;
   handleDropToQuizSource: (items: any) => void;
   handleRegisterQuizSourceDrop: (handler: any) => void;
+  kanbanCardDropActive: boolean;
+  setKanbanCardDropActive: (v: boolean) => void;
+  kanbanCardDropHost: HTMLElement | null;
+  setKanbanCardDropHost: (v: HTMLElement | null) => void;
+  handleDropToKanbanCards: (
+    items: any,
+    point?: { clientX: number; clientY: number },
+  ) => void;
+  handleRegisterKanbanCardDrop: (handler: any) => void;
   shareGroupSend: any;
   setShareGroupSend: (v: any) => void;
   authWanted: boolean;
@@ -133,6 +142,9 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
   const [quizSourceDropActive, setQuizSourceDropActive] = useState(false);
   const [quizSourceDropHost, setQuizSourceDropHost] = useState<HTMLElement | null>(null);
   const quizSourceDropHandlerRef = useRef<any>(null);
+  const [kanbanCardDropActive, setKanbanCardDropActive] = useState(false);
+  const [kanbanCardDropHost, setKanbanCardDropHost] = useState<HTMLElement | null>(null);
+  const kanbanCardDropHandlerRef = useRef<any>(null);
   const [shareGroupSend, setShareGroupSend] = useState<any>(null);
   const [authWanted, setAuthWanted] = useState(false);
 
@@ -184,6 +196,18 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
       typeof handler === 'function' ? handler : null;
   }, []);
 
+  const handleDropToKanbanCards = useCallback(
+    (items: any, point?: { clientX: number; clientY: number }) => {
+      kanbanCardDropHandlerRef.current?.(items, point);
+    },
+    [],
+  );
+
+  const handleRegisterKanbanCardDrop = useCallback((handler: any) => {
+    kanbanCardDropHandlerRef.current =
+      typeof handler === 'function' ? handler : null;
+  }, []);
+
   const value = useMemo(
     () => ({
       operationStatus,
@@ -222,6 +246,12 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
       setQuizSourceDropHost,
       handleDropToQuizSource,
       handleRegisterQuizSourceDrop,
+      kanbanCardDropActive,
+      setKanbanCardDropActive,
+      kanbanCardDropHost,
+      setKanbanCardDropHost,
+      handleDropToKanbanCards,
+      handleRegisterKanbanCardDrop,
       shareGroupSend,
       setShareGroupSend,
       authWanted,
@@ -250,6 +280,10 @@ export function AppChromeStateProvider({ children }: { children: ReactNode }) {
       quizSourceDropHost,
       handleDropToQuizSource,
       handleRegisterQuizSourceDrop,
+      kanbanCardDropActive,
+      kanbanCardDropHost,
+      handleDropToKanbanCards,
+      handleRegisterKanbanCardDrop,
       shareGroupSend,
       authWanted,
       isChatRoute,

@@ -17,12 +17,19 @@ export type EditorActionId =
   | 'editor-codeRow'
   | 'editor-code'
   | 'editor-link'
+  | 'editor-docuhaim-link'
   | 'editor-table'
   | 'editor-table-edit'
   | 'editor-h1'
   | 'editor-h2'
   | 'editor-h3'
   | 'editor-h4'
+  | 'editor-h5'
+  | 'editor-h6'
+  | 'editor-h7'
+  | 'editor-h8'
+  | 'editor-h9'
+  | 'editor-h10'
   | 'editor-sub'
   | 'editor-sup'
   | 'editor-revoke'
@@ -37,7 +44,11 @@ export type EditorActionId =
   | 'editor-create-qrcode'
   | 'editor-create-whiteboard'
   | 'editor-convert-all-images-to-wiki'
-  | 'editor-catalog';
+  | 'editor-catalog'
+  | 'editor-find-replace'
+  | 'editor-invisible-chars'
+  | 'editor-mermaid'
+  | 'editor-katex';
 
 export type EditorActionHandler = (payload?: unknown) => void | Promise<void>;
 
@@ -215,9 +226,22 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
   {
     id: 'editor-link',
     title: '링크',
-    description: '마크다운 링크 삽입',
-    keywords: ['link', '링크', 'url'],
+    description: 'URL 하이퍼링크 삽입 (모달)',
+    keywords: ['link', '링크', 'url', '하이퍼링크'],
     directive: 'link',
+  },
+  {
+    id: 'editor-docuhaim-link',
+    title: '노트 링크',
+    description: 'vault 노트에 대한 docuhaim:// 하이퍼링크 삽입',
+    keywords: [
+      'docuhaim',
+      '노트 링크',
+      'note link',
+      'vault link',
+      '파일 링크',
+      'haim note',
+    ],
   },
   {
     id: 'editor-table',
@@ -267,6 +291,42 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     description: 'H4 제목',
     keywords: ['h4', '제목4', 'heading 4'],
     directive: 'h4',
+  },
+  {
+    id: 'editor-h5',
+    title: '제목 5',
+    description: 'H5 제목',
+    keywords: ['h5', '제목5', 'heading 5'],
+  },
+  {
+    id: 'editor-h6',
+    title: '제목 6',
+    description: 'H6 제목',
+    keywords: ['h6', '제목6', 'heading 6'],
+  },
+  {
+    id: 'editor-h7',
+    title: '제목 7',
+    description: 'H7 제목 (deep heading)',
+    keywords: ['h7', '제목7', 'heading 7'],
+  },
+  {
+    id: 'editor-h8',
+    title: '제목 8',
+    description: 'H8 제목 (deep heading)',
+    keywords: ['h8', '제목8', 'heading 8'],
+  },
+  {
+    id: 'editor-h9',
+    title: '제목 9',
+    description: 'H9 제목 (deep heading)',
+    keywords: ['h9', '제목9', 'heading 9'],
+  },
+  {
+    id: 'editor-h10',
+    title: '제목 10',
+    description: 'H10 제목 (deep heading)',
+    keywords: ['h10', '제목10', 'heading 10'],
   },
   {
     id: 'editor-sub',
@@ -321,20 +381,37 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
   {
     id: 'editor-checklist-progress',
     title: '체크리스트 진행률',
-    description: '체크리스트 진행률 도구 열기',
+    description: '체크리스트 진행률 사이드바 열기',
     keywords: ['checklist', 'progress', '진행률', '체크리스트'],
   },
   {
     id: 'editor-image-upload',
     title: '이미지 업로드',
     description: '이미지를 선택해 노트에 업로드',
-    keywords: ['image', 'upload', '이미지', '업로드', '사진'],
+    keywords: [
+      'image',
+      'upload',
+      '이미지',
+      '업로드',
+      '사진',
+      'picture',
+      'pic',
+    ],
   },
   {
     id: 'editor-image-clip',
     title: '이미지 잘라서 업로드',
     description: 'Cropper.js / react-easy-crop으로 자른 뒤 업로드',
-    keywords: ['image', 'crop', 'clip', '자르기', '크롭', 'cropper'],
+    keywords: [
+      'image',
+      'crop',
+      'clip',
+      '자르기',
+      '크롭',
+      'cropper',
+      'picture',
+      'pic',
+    ],
   },
   {
     id: 'editor-create-qrcode',
@@ -350,6 +427,7 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
       'barcode',
       'svg',
       'wiki image',
+      'picture',
     ],
   },
   {
@@ -366,6 +444,7 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
       '그리기',
       'ink',
       'wiki image',
+      'picture',
     ],
   },
   {
@@ -382,6 +461,8 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
       '변환',
       '위키',
       'wiki image',
+      'picture',
+      'pic',
     ],
   },
   {
@@ -389,5 +470,29 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     title: '목차보기',
     description: '에디터 제목 목차 패널 보이기/숨기기',
     keywords: ['toc', 'catalog', '목차', '목차보기', 'outline', 'heading'],
+  },
+  {
+    id: 'editor-find-replace',
+    title: '찾기/바꾸기',
+    description: '에디터 찾기·바꾸기 바 열기',
+    keywords: ['find', 'replace', 'search', '찾기', '바꾸기', '검색'],
+  },
+  {
+    id: 'editor-invisible-chars',
+    title: '비가시 문자',
+    description: '공백·개행 등 비가시 문자 표시 전환',
+    keywords: ['invisible', 'whitespace', '비가시', '공백', 'pilcrow'],
+  },
+  {
+    id: 'editor-mermaid',
+    title: 'Mermaid 삽입',
+    description: 'Mermaid 다이어그램 코드 블록 삽입',
+    keywords: ['mermaid', 'diagram', '다이어그램', 'flowchart'],
+  },
+  {
+    id: 'editor-katex',
+    title: '수식 삽입',
+    description: 'KaTeX / LaTeX 수식 블록 삽입',
+    keywords: ['math', 'katex', 'latex', '수식', '공식'],
   },
 ] as const;

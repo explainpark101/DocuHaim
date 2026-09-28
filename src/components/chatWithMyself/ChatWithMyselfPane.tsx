@@ -28,11 +28,14 @@ import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerS
 import ChatDatePanelRaw from '@/components/chatWithMyself/ChatDatePanel';
 import ChatFileDropOverlay from '@/components/chatWithMyself/ChatFileDropOverlay';
 import ChatGroupPanelRaw from '@/components/chatWithMyself/ChatGroupPanel';
-import ChatMessageListRaw from '@/components/chatWithMyself/ChatMessageList';
+import ChatMessageList from '@/components/chatWithMyself/ChatMessageList';
 import ChatMobileDrawer from '@/components/chatWithMyself/ChatMobileDrawer';
 import ChatSearchPanelRaw from '@/components/chatWithMyself/ChatSearchPanel';
 import ChatPinnedPanelRaw from '@/components/chatWithMyself/ChatPinnedPanel';
 import ChatShareGroupSendModal from '@/components/chatWithMyself/ChatShareGroupSendModal';
+import ChatBulkGroupChangeModal from '@/components/chatWithMyself/ChatBulkGroupChangeModal';
+import ChatMessageSelectionBar from '@/components/chatWithMyself/ChatMessageSelectionBar';
+import ChatReactionPicker from '@/components/chatWithMyself/ChatReactionPicker';
 import ChatAddToNoteModal from '@/components/chatWithMyself/ChatAddToNoteModal';
 import ChatEditHistoryModal from '@/components/chatWithMyself/ChatEditHistoryModal';
 import ChatRailShellRaw from '@/components/chatWithMyself/ChatRailShell';
@@ -42,6 +45,14 @@ import { ChatUiPrefsProvider } from '@/components/chatWithMyself/ChatUiPrefsCont
 import type { ShareComposeClaimPayload } from '@/components/chatWithMyself/ShareTargetGate';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import PromptModal from '@/components/modals/PromptModal';
+import { copyText } from '@/utils/copyText';
+import {
+  rangeSelectIds,
+  shouldBulkPin,
+  sortMessagesByAtAsc,
+  toggleSelectedId,
+} from '@/utils/chatWithMyself/messageSelection';
+import type { ChatReaction } from '@/utils/chatWithMyself/reactions';
 import { useChatActivityStatus } from '@/components/chatWithMyself/useChatActivityStatus';
 import {
   useChatRemoteSync,
@@ -52,7 +63,6 @@ import type { ChatStorageCtx } from '@/utils/chatWithMyself/backends';
 /** Untyped JSX child panels — cast until those modules are migrated. */
 const ChatDatePanel = ChatDatePanelRaw as any;
 const ChatGroupPanel = ChatGroupPanelRaw as any;
-const ChatMessageList = ChatMessageListRaw as any;
 const ChatSearchPanel = ChatSearchPanelRaw as any;
 const ChatPinnedPanel = ChatPinnedPanelRaw as any;
 const ChatRailShell = ChatRailShellRaw as any;
@@ -122,6 +132,7 @@ import {
   normalizeStoragePath,
   isChatMessageEncrypted,
   ENCRYPTED_MESSAGE_LABEL,
+  formatChatMessagePlainText,
   encryptChatMessageBody,
   decryptChatMessageBody,
   parseEncryptedChatPayload,
@@ -591,6 +602,14 @@ export default function ChatWithMyselfPane({
   const [addToNoteMessage, setAddToNoteMessage] = useState<any>(null);
   const [historyMessage, setHistoryMessage] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [bulkDeleteTargets, setBulkDeleteTargets] = useState<any[] | null>(
+    null,
+  );
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectionAnchorIdRef = useRef<string | null>(null);
+  const [bulkGroupModalOpen, setBulkGroupModalOpen] = useState(false);
+  const [bulkReactionPickerOpen, setBulkReactionPickerOpen] = useState(false);
   const [deletingCount, setDeletingCount] = useState(0);
   /** @type {[Record<string, string>, Function]} session-only decrypted plaintext by message id */
   const [decryptedById, setDecryptedById] = useState<Record<string, string>>({});
@@ -1861,6 +1880,191 @@ export default function ChatWithMyselfPane({
     void performDeleteMessage(target);
   }, [deleteTarget, performDeleteMessage]);
 
+  const clearMessageSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    selectionAnchorIdRef.current = null;
+    setBulkGroupModalOpen(false);
+    setBulkReactionPickerOpen(false);
+    setBulkDeleteTargets(null);
+  }, []);
+
+  const handleEnterSelection = useCallback((message: any) => {
+    if (!message?.id) return;
+    setSelectionMode(true);
+    setSelectedIds(new Set([message.id]));
+    selectionAnchorIdRef.current = message.id;
+  }, []);
+
+  const handleToggleSelect = useCallback(
+    (
+      message: any,
+      options: {
+        shiftKey?: boolean;
+        metaKey?: boolean;
+        ctrlKey?: boolean;
+        fromCheckbox?: boolean;
+      } = {},
+    ) => {
+      if (!message?.id) return;
+      const id = String(message.id);
+      const orderedIds = visibleMessages
+        .map((m: any) => m?.id)
+        .filter(Boolean) as string[];
+
+      setSelectionMode(true);
+      setSelectedIds((prev) => {
+        if (options.shiftKey && selectionAnchorIdRef.current) {
+          return rangeSelectIds(
+            orderedIds,
+            prev,
+            selectionAnchorIdRef.current,
+            id,
+          );
+        }
+        if (options.metaKey || options.ctrlKey || options.fromCheckbox) {
+          const next = toggleSelectedId(prev, id);
+          selectionAnchorIdRef.current = id;
+          return next;
+        }
+        // Plain click in selection mode: toggle
+        const next = toggleSelectedId(prev, id);
+        selectionAnchorIdRef.current = id;
+        return next;
+      });
+    },
+    [visibleMessages],
+  );
+
+  useEffect(() => {
+    if (!selectionMode) return;
+    if (selectedIds.size === 0) {
+      clearMessageSelection();
+      return;
+    }
+    // Drop ids that left the loaded window / were deleted.
+    setSelectedIds((prev) => {
+      const alive = new Set(
+        visibleMessages.map((m: any) => m?.id).filter(Boolean) as string[],
+      );
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (alive.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [selectionMode, selectedIds, clearMessageSelection, visibleMessages]);
+
+  useEffect(() => {
+    if (!selectionMode) return undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        clearMessageSelection();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectionMode, clearMessageSelection]);
+
+  const selectedMessages = useMemo(() => {
+    if (selectedIds.size === 0) return [];
+    return visibleMessages.filter((m: any) => selectedIds.has(m.id));
+  }, [visibleMessages, selectedIds]);
+
+  const selectionAllPinned = useMemo(
+    () =>
+      selectedMessages.length > 0 &&
+      !shouldBulkPin(selectedMessages),
+    [selectedMessages],
+  );
+
+  const handleBulkCopy = useCallback(() => {
+    const msgs = sortMessagesByAtAsc(
+      selectedMessages.map((m: any) => {
+        const unlocked =
+          decryptedById[m.id] != null
+            ? { ...m, body: decryptedById[m.id], encrypted: false }
+            : m;
+        return unlocked;
+      }),
+    );
+    const text = msgs.map((m) => formatChatMessagePlainText(m)).join('\n\n');
+    void copyText(text || '');
+  }, [selectedMessages, decryptedById]);
+
+  const handleBulkDeleteRequest = useCallback(() => {
+    const msgs = selectedMessages.filter(
+      (m: any) => m?.id && m.pendingSync !== 'delete',
+    );
+    if (msgs.length === 0) return;
+    setBulkDeleteTargets(msgs);
+  }, [selectedMessages]);
+
+  const confirmBulkDelete = useCallback(async () => {
+    const targets = bulkDeleteTargets || [];
+    setBulkDeleteTargets(null);
+    clearMessageSelection();
+    for (const message of targets) {
+      await performDeleteMessage(message);
+    }
+  }, [bulkDeleteTargets, clearMessageSelection, performDeleteMessage]);
+
+  const handleBulkChangeGroup = useCallback(
+    async (groupId: string) => {
+      if (!storageReady) return;
+      const msgs = selectedMessages.filter((m: any) => m?.id);
+      const group = groupId || SELF_GROUP;
+      setError('');
+      for (const message of msgs) {
+        if (isChatMessageEncrypted(message) && decryptedById[message.id] == null) {
+          continue;
+        }
+        const dateStr =
+          message.dateStr ||
+          localDateString(new Date(message.at), detectTimeZone());
+        const body =
+          decryptedById[message.id] != null
+            ? decryptedById[message.id]
+            : message.body;
+        const markdown =
+          message.markdown === true ||
+          message.markdown === '1' ||
+          message.markdown === 'true';
+        try {
+          const updated = await updateChatMessage(ctx, dateStr, message.id, {
+            body,
+            group,
+            markdown,
+            encrypted: false,
+          });
+          if (!updated) continue;
+          const patch = { ...updated, dateStr, pendingSync: undefined };
+          setMessages((prev: any) =>
+            prev.map((m: any) =>
+              m.id === message.id ? { ...m, ...patch } : m,
+            ),
+          );
+          noteLocalDayWrite(dateStr);
+          postChatSyncEvent('day', { dateStr });
+        } catch (e: any) {
+          setError(e?.message || '그룹 변경 실패');
+        }
+      }
+      clearMessageSelection();
+    },
+    [
+      storageReady,
+      selectedMessages,
+      decryptedById,
+      ctx,
+      noteLocalDayWrite,
+      clearMessageSelection,
+    ],
+  );
+
   const ensureMessageLoaded = useCallback(
     async (messageId: any) => {
       const existing = messagesRef.current.find((m: any) => m.id === messageId);
@@ -2292,6 +2496,28 @@ export default function ChatWithMyselfPane({
       }
     },
     [storageReady, ctx, noteLocalDayWrite, applyMessageLists],
+  );
+
+  const handleBulkTogglePin = useCallback(async () => {
+    const msgs = selectedMessages.filter((m: any) => m?.id);
+    if (msgs.length === 0) return;
+    const pin = shouldBulkPin(msgs);
+    for (const message of msgs) {
+      const currentlyPinned = Boolean(message.pinnedAt);
+      if (pin === currentlyPinned) continue;
+      await handleTogglePin(message);
+    }
+  }, [selectedMessages, handleTogglePin]);
+
+  const handleBulkReaction = useCallback(
+    async (reaction: ChatReaction) => {
+      const msgs = selectedMessages.filter((m: any) => m?.id);
+      setBulkReactionPickerOpen(false);
+      for (const message of msgs) {
+        await handleToggleReaction(message, reaction);
+      }
+    },
+    [selectedMessages, handleToggleReaction],
   );
 
   const runPinnedScan = useCallback(async () => {
@@ -2853,12 +3079,28 @@ export default function ChatWithMyselfPane({
               groupLabelByKey={groupLabelByKey}
               enableMessageLayoutAnim={!perfReduceLayoutAnim}
               enableBubblePressFx={!perfReduceBubblePressFx}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
+              onEnterSelection={handleEnterSelection}
+              onToggleSelect={handleToggleSelect}
               emptyHint={
                 viewGroupFilter
                   ? `「${resolveGroupLabel(groups, viewGroupFilter)}」 그룹 메시지가 없습니다`
                   : undefined
               }
             />
+            {selectionMode && selectedIds.size > 0 ? (
+              <ChatMessageSelectionBar
+                count={selectedIds.size}
+                allPinned={selectionAllPinned}
+                onClose={clearMessageSelection}
+                onReaction={() => setBulkReactionPickerOpen(true)}
+                onChangeGroup={() => setBulkGroupModalOpen(true)}
+                onCopy={handleBulkCopy}
+                onTogglePin={() => void handleBulkTogglePin()}
+                onDelete={handleBulkDeleteRequest}
+              />
+            ) : null}
             <ChatComposerDock
               autoFit={Boolean(editTarget || replyTo)}
               fitKey={`${editTarget?.id || ''}:${replyTo?.id || ''}`}
@@ -3195,6 +3437,46 @@ export default function ChatWithMyselfPane({
         }}
         onCancel={() => {
           setDeleteTarget(null);
+        }}
+      />
+      <ConfirmModal
+        isOpen={Boolean(bulkDeleteTargets?.length)}
+        title="메시지 삭제"
+        message={
+          bulkDeleteTargets?.length
+            ? `선택한 ${bulkDeleteTargets.length}개 메시지를 삭제할까요?`
+            : ''
+        }
+        variant="danger"
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        onConfirm={() => {
+          void confirmBulkDelete();
+        }}
+        onCancel={() => {
+          setBulkDeleteTargets(null);
+        }}
+      />
+      <ChatBulkGroupChangeModal
+        isOpen={bulkGroupModalOpen}
+        count={selectedIds.size}
+        groups={groups}
+        onAddGroup={handleAddGroup}
+        onConfirm={handleBulkChangeGroup}
+        onClose={() => setBulkGroupModalOpen(false)}
+        getPresignedUrl={
+          getPresignedUrlForPath
+            ? async (path: string) => (await getPresignedUrlForPath(path)) ?? null
+            : undefined
+        }
+      />
+      <ChatReactionPicker
+        open={bulkReactionPickerOpen}
+        onOpenChange={setBulkReactionPickerOpen}
+        mode="dialog"
+        title="선택한 메시지에 반응 추가"
+        onSelect={(reaction) => {
+          void handleBulkReaction(reaction);
         }}
       />
       <PromptModal

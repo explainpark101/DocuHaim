@@ -1,10 +1,12 @@
 import Link from '@tiptap/extension-link';
-import { getAttributes } from '@tiptap/core';
+import { getAttributes, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
 import type { MarkType } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { loadHaimLinkOpenOnClick } from '@/utils/haimLinkOpenSettings';
+import { isDocuhaimHref, parseDocuhaimHref } from '@/utils/docuhaimLink';
+import { openHaimViewPath } from '@/utils/haimOpenViewPath';
 
 /** Applied to the ProseMirror root while Ctrl/Cmd is held (CSS cursor:pointer on links). */
 export const HAIM_MOD_HELD_CLASS = 'haim-mod-held';
@@ -26,6 +28,14 @@ function resolveAnchor(
   if (!link) return null;
   if (!editor.view.dom.contains(link)) return null;
   return link;
+}
+
+/** Prefer TipTap mark attrs — DOM `link.href` may rewrite custom schemes. */
+function resolveHref(view: EditorView, type: MarkType, link: HTMLAnchorElement): string {
+  const attrs = getAttributes(view.state, type.name) as { href?: string };
+  const fromAttrs = String(attrs.href || '').trim();
+  if (fromAttrs) return fromAttrs;
+  return String(link.getAttribute('href') || link.href || '').trim();
 }
 
 /** Same browsing-context behavior as clicking `<a target="_blank" rel="noopener noreferrer">`. */
@@ -96,20 +106,31 @@ function tryOpenLinkFromEvent(
   event: MouseEvent,
 ): boolean {
   if (event.button !== 0) return false;
-  if (!view.editable) return false;
 
   const link = resolveAnchor(editor, event);
   if (!link) return false;
 
+  const href = resolveHref(view, type, link);
+  if (!href) return false;
+
+  const docuhaimPath = parseDocuhaimHref(href);
   const openOnClick = loadHaimLinkOpenOnClick();
   const mod = event.metaKey || event.ctrlKey;
 
+  if (docuhaimPath) {
+    // Preview / read-only: always open in-app (avoid target=_blank on custom scheme).
+    // Editable: same as other links (plain click when setting on, else Mod+click).
+    if (view.editable && !mod && !openOnClick) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    openHaimViewPath(docuhaimPath);
+    return true;
+  }
+
+  if (!view.editable) return false;
+
   // Mod+click always opens; plain click only when the setting allows.
   if (!mod && !openOnClick) return false;
-
-  const attrs = getAttributes(view.state, type.name);
-  const href = (link.href || attrs.href || '').trim();
-  if (!href) return false;
 
   event.preventDefault();
   openHrefLikeAnchor(href, link);
@@ -134,9 +155,20 @@ function haimLinkClickPlugin(editor: Editor, type: MarkType): Plugin {
 }
 
 /**
- * TipTap Link with settings-aware open (click vs Ctrl/Cmd+click).
+ * TipTap Link with settings-aware open (click vs Ctrl/Cmd+click) and docuhaim://.
  */
 export const HaimLink = Link.extend({
+  renderHTML({ HTMLAttributes }) {
+    const href = String(HTMLAttributes.href || '');
+    const docuhaim = isDocuhaimHref(href);
+    return [
+      'a',
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+        class: docuhaim ? 'haim-docuhaim-link' : null,
+      }),
+      0,
+    ];
+  },
   addProseMirrorPlugins() {
     const parent = this.parent?.() ?? [];
     return [
@@ -148,6 +180,7 @@ export const HaimLink = Link.extend({
 }).configure({
   openOnClick: false,
   autolink: true,
+  protocols: ['docuhaim'],
   HTMLAttributes: {
     rel: 'noopener noreferrer',
     target: '_blank',

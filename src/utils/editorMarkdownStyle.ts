@@ -4,10 +4,20 @@
 
 import { EditorSelection, type ChangeSpec, type SelectionRange, type Text } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import {
+  advanceTaskCheckboxStatus,
+  parseTaskCheckboxMarker,
+  serializeTaskCheckboxMarkerForKind,
+  type TaskCheckboxKind,
+} from '@/utils/taskCheckboxStatus';
+import {
+  DEFAULT_DOCUMENT_TASK_CHECKBOX,
+  resolveDocumentTaskCheckbox,
+} from '@/utils/documentSettingsMeta';
 
 const UNORDERED_LIST_LINE_RE = /^(\s*)([-+*])(\s+)(.*)$/;
 const ORDERED_LIST_LINE_RE = /^(\s*)(\d+)([.)])(\s+)(.*)$/;
-const TASK_CHECKBOX_LINE_RE = /^(\s*(?:[-+*]|\d+[.)])\s+)\[([ xX])\](.*)$/;
+const TASK_CHECKBOX_LINE_RE = /^(\s*(?:[-+*]|\d+[.)])\s+)\[([ xX~])\](.*)$/;
 const QUOTE_LINE_RE = /^(\s*)>\s?(.*)$/;
 const HEADING_LINE_RE = /^(#{1,10})\s+(.*)$/;
 
@@ -255,22 +265,46 @@ function toggleListLineMarker(text: string): string | null {
   return null;
 }
 
-function toggleTaskCheckboxMarker(text: string): string | null {
+function toggleTaskCheckboxMarker(
+  text: string,
+  preferredKind: TaskCheckboxKind,
+): string | null {
   const match = text.match(TASK_CHECKBOX_LINE_RE);
   if (!match) return null;
   const prefix = match[1] ?? '';
-  const checked = match[2] ?? ' ';
+  const marker = match[2] ?? ' ';
   const rest = match[3] ?? '';
-  const nextChecked = checked === ' ' ? 'x' : ' ';
-  return `${prefix}[${nextChecked}]${rest}`;
+  const status = parseTaskCheckboxMarker(marker);
+  const next = serializeTaskCheckboxMarkerForKind(
+    advanceTaskCheckboxStatus(status, preferredKind),
+    preferredKind,
+  );
+  return `${prefix}[${next}]${rest}`;
 }
 
 export function toggleListTypeBetweenUlAndOl(view: EditorView): boolean {
   return dispatchLineTextChanges(view, toggleListLineMarker);
 }
 
-export function toggleTaskCheckboxBetweenChecked(view: EditorView): boolean {
-  return dispatchLineTextChanges(view, toggleTaskCheckboxMarker);
+export function toggleTaskCheckboxBetweenChecked(
+  view: EditorView,
+  preferredKind?: TaskCheckboxKind,
+): boolean {
+  const kind =
+    preferredKind ??
+    resolveDocumentTaskCheckbox(view.state.doc.toString()) ??
+    DEFAULT_DOCUMENT_TASK_CHECKBOX;
+  return dispatchLineTextChanges(view, (text) =>
+    toggleTaskCheckboxMarker(text, kind),
+  );
+}
+
+/** CodeMirror keymap helper: resolve kind lazily (document settings may change). */
+export function makeToggleTaskCheckboxHandler(
+  getPreferredKind: () => TaskCheckboxKind,
+): (view: EditorView) => boolean {
+  return (view) =>
+    toggleTaskCheckboxBetweenChecked(view, getPreferredKind());
 }
 
 export function toggleUnorderedListForSelection(view: EditorView): boolean {
@@ -280,7 +314,7 @@ export function toggleUnorderedListForSelection(view: EditorView): boolean {
       const indent = unordered[1] ?? '';
       const body = unordered[4] ?? '';
       if (TASK_CHECKBOX_LINE_RE.test(text)) {
-        return `${indent}- ${body.replace(/^\[[ xX]\]\s?/, '')}`;
+        return `${indent}- ${body.replace(/^\[[ xX~]\]\s?/, '')}`;
       }
       return `${indent}${body}`;
     }

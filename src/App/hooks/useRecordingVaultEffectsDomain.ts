@@ -13,6 +13,10 @@ import {
   getRecordingKeysFromTree,
 } from '@/utils/s3Tree';
 import { listObjectsV2, getObjectBody } from '@/utils/s3Client';
+import {
+  prepareViewerText,
+  viewerUsesPrettyJson,
+} from '@/utils/vaultFileViewers';
 import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
 import { decodeSyncData } from '@/utils/syncProto';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV, STORAGE_MODE_IDB } from '@/utils/storageSettings';
@@ -168,13 +172,9 @@ export function useRecordingVaultEffectsDomain() {
           const text = new TextDecoder('utf-8').decode(body);
           setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
           setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? text : prevContent));
-        } else if (cur.viewer === 'json' || ext === 'json') {
+        } else if (viewerUsesPrettyJson(cur.viewer) || ext === 'json') {
           const raw = new TextDecoder('utf-8').decode(body);
-          let display = raw;
-          try {
-            const parsed = JSON.parse(raw);
-            display = JSON.stringify(parsed, null, 2);
-          } catch { /* keep raw */ }
+          const display = prepareViewerText(raw, cur.viewer || 'json');
           setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: display, lastModified: newLastMod } : prev));
           setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? display : prevContent));
         } else if (cur.viewer === 'html' || cur.viewer === 'svg' || ext === 'html' || ext === 'htm' || ext === 'svg') {
@@ -234,11 +234,8 @@ export function useRecordingVaultEffectsDomain() {
         if (cur.viewer === 'markdown' || ext === 'md' || ext === 'markdown' || ext === '') {
           setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: text, lastModified: newLastMod } : prev));
           setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? text : prevContent));
-        } else if (cur.viewer === 'json' || ext === 'json') {
-          let display = text;
-          try {
-            display = JSON.stringify(JSON.parse(text), null, 2);
-          } catch { /* keep raw */ }
+        } else if (viewerUsesPrettyJson(cur.viewer) || ext === 'json') {
+          const display = prepareViewerText(text, cur.viewer || 'json');
           setCurrentFile((prev: any) => (prev?.id === cur.id ? { ...prev, content: display, lastModified: newLastMod } : prev));
           setEditorContent((prevContent: any) => (currentFileRef.current?.id === cur.id ? display : prevContent));
         } else if (cur.viewer === 'html' || cur.viewer === 'svg' || ext === 'html' || ext === 'htm' || ext === 'svg') {

@@ -11,6 +11,7 @@ import { planFrontmatterMarkdownItPlugin } from '@/utils/planFrontmatter/markdow
 import { footnoteMarkdownItPlugin } from '@/utils/footnoteMarkdownIt';
 import { betterMdMarkdownItPlugin } from '@/utils/betterMd/markdownItPlugin';
 import { mermaidFenceMarkdownItPlugin } from '@/utils/mermaidFenceMarkdownIt';
+import { markdownItTaskListPlugin } from '@/utils/markdownItTaskListPlugin';
 
 type MarkdownItPlugin = (md: MarkdownItInstance, options?: Record<string, unknown>) => void;
 
@@ -78,8 +79,16 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
   ],
   details: ['class', 'open', 'data-haim-mermaid-embed'],
   summary: ['class'],
-  ul: ['class'],
-  li: ['class', 'id', 'data-status', 'data-md-footnote-id', 'data-md-footnote-label'],
+  ul: ['class', 'data-type'],
+  li: [
+    'class',
+    'id',
+    'data-status',
+    'data-checked',
+    'data-type',
+    'data-md-footnote-id',
+    'data-md-footnote-label',
+  ],
   h6: ['id', 'class', 'data-heading-level'],
   a: [
     'href',
@@ -233,7 +242,7 @@ export const APP_MARKDOWN_IT_XSS_EXTENDED_WHITELIST = {
     'data-md-height',
     'data-storage-image',
   ],
-  input: ['type', 'checked', 'disabled', 'class', 'id'],
+  input: ['type', 'checked', 'disabled', 'class', 'id', 'data-status', 'aria-checked'],
   label: ['class', 'for'],
 };
 
@@ -257,6 +266,11 @@ const APP_MARKDOWN_IT_PLUGIN_DEFS: AppMarkdownItPluginEntry[] = [
   { type: 'plan_frontmatter', plugin: planFrontmatterMarkdownItPlugin as unknown as MarkdownItPlugin, options: {} },
   // When noMermaid, md-editor-rt omits its mermaid fence — keep placeholders for lazy render.
   { type: 'mermaid', plugin: mermaidFenceMarkdownItPlugin as unknown as MarkdownItPlugin, options: {} },
+  {
+    type: 'task_list',
+    plugin: markdownItTaskListPlugin as unknown as MarkdownItPlugin,
+    options: { enabled: false, label: false },
+  },
 ];
 
 export type ApplyAppMarkdownItConfigOptions = {

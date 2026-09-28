@@ -32,7 +32,6 @@ import { deleteRecordingById, deleteRecordingFragments } from '@/utils/recording
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { createWebdavBackend, createLocalBackend } from '@/utils/storage';
-import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { usePwaNewFileShortcut } from '@/hooks/usePwaNewFileShortcut';
 import { useNewTempFileShortcut } from '@/hooks/useNewTempFileShortcut';
 import {
@@ -51,8 +50,8 @@ export function useTempChatRecordingDomain() {
   const { showAlert } = useAlertModal();
   const { isUnlocked, s3Creds } = useAuth();
   const { canScanStorageUsage, getS3Client, loadS3Files, localRootHandle, localTree, refreshLocalTree, refreshWebdavTree, s3Tree, upsertSessionWorkspace, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
-  const { applySessionFileToEditorRef, currentFile, currentFileRef, editedFileName, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, revokeSessionObjectUrlsRef, selectFileRef, sessionVaultBindingsRef, sessionWorkspacesRef } = useFileSessionOwned();
-  const { saveCurrentMarkdownBeforeSwitch, selectFileRaw } = useFileSession();
+  const { applySessionFileToEditorRef, currentFile, currentFileRef, editedFileName, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, revokeSessionObjectUrlsRef, sessionVaultBindingsRef, sessionWorkspacesRef } = useFileSessionOwned();
+  const { saveCurrentMarkdownBeforeSwitch, selectFileRaw, openAdvancedSearchFile } = useFileSession();
   const { confirmAndCancelEditorImageUploadRef, setSelectedIds } = useTreeOpsOwned();
   const { lastSelectedIdRef, requestNewFile, toSelectKey } = useTreeOps();
   const { isRecording, setRecordingPipelineStatus, startRecording, stopRecording } = useRecordingOwned();
@@ -207,38 +206,15 @@ export function useTempChatRecordingDomain() {
   const handleOpenNoteFromChat = useCallback(
     async (notePath: any) => {
       if (!notePath) return;
-      const path = String(notePath);
-      const type =
-        storageMode === STORAGE_MODE_LOCAL
-          ? 'local'
-          : storageMode === STORAGE_MODE_WEBDAV
-            ? 'webdav'
-            : 's3';
-      const tree =
-        type === 's3' ? s3Tree : type === 'webdav' ? webdavTree : localTree;
-      let node = findNodeByPath(tree, path) || findFileNodeByPath(tree, path);
-      if ((!node || (node as any).type !== 'file') && type === 'local') {
-        node = await resolveLocalFileNode(localRootHandle, path);
-      }
-      if (!node || (node as any).type !== 'file') {
-        showAlert({
-          title: '노트 열기',
-          message: '해당 노트가 삭제되어 열 수 없습니다',
-          detail: path,
-        });
-        return;
-      }
-      await selectFileRef.current?.(type, node);
+      const path = String(notePath).trim().replace(/^\/+/, '');
+      if (!path) return;
+      // Same open path as Advanced Search / docuhaim:// clicks: all storage modes,
+      // parent expand, and /view navigate when the tree node is not loaded yet.
+      // (Previously only local/webdav/s3 were checked and IDB / lazy folders
+      // falsely showed “deleted”.)
+      await openAdvancedSearchFile(path);
     },
-    [
-      storageMode,
-      s3Tree,
-      webdavTree,
-      localTree,
-      localRootHandle,
-      selectFileRef,
-      showAlert,
-    ],
+    [openAdvancedSearchFile],
   );
 
   const handleOpenStorageUsageFile = useCallback(

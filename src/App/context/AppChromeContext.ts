@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 
-/** Chrome-only shell bag (&lt;30 keys). Prefer domain hooks for vault/file/tree/tabs. */
+/** Chrome-only shell bag (keep lean; see chromeKeys.test.ts soft ceiling). */
 export type AppChromeValue = {
   sidebarOpen: boolean;
   setSidebarOpen: (v: boolean | ((p: boolean) => boolean)) => void;
@@ -21,6 +21,9 @@ export type AppChromeValue = {
   quizSourceDropActive: boolean;
   quizSourceDropHost: HTMLElement | null;
   handleDropToQuizSource: (...args: any[]) => any;
+  kanbanCardDropActive: boolean;
+  kanbanCardDropHost: HTMLElement | null;
+  handleDropToKanbanCards: (...args: any[]) => any;
   fileTabContextMenuRef: { current: any };
   expandPathsRef: { current: any };
   showHiddenFolders: boolean;

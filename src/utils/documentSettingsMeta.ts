@@ -3,6 +3,7 @@ import {
   normalizeHaimTypographyOverrides,
   type HaimTypographyOverrides,
 } from '@/utils/haimTypographySettings';
+import type { TaskCheckboxKind } from '@/utils/taskCheckboxStatus';
 
 export type DocumentFontSettings = {
   body: string;
@@ -24,9 +25,17 @@ export type DocumentSettingsMeta = {
    * Missing keys inherit the global preference.
    */
   haimTypography?: HaimTypographyOverrides | undefined;
+  /**
+   * Task checkbox behavior for this document.
+   * - `check` — binary GFM (`[ ]` ↔ `[x]`)
+   * - `status` — 3-state (`[ ]` → `[~]` → `[x]`)
+   */
+  taskCheckbox?: TaskCheckboxKind | undefined;
 };
 
 export const DEFAULT_SOURCE_LIST_TITLE = 'Sources';
+
+export const DEFAULT_DOCUMENT_TASK_CHECKBOX: TaskCheckboxKind = 'check';
 
 export const DEFAULT_DOCUMENT_SETTINGS_META: DocumentSettingsMeta = {
   v: 1,
@@ -41,6 +50,7 @@ export const DEFAULT_DOCUMENT_SETTINGS_META: DocumentSettingsMeta = {
     code: DEFAULT_PRINT_FONTS.code,
   },
   webfontCss: '',
+  taskCheckbox: DEFAULT_DOCUMENT_TASK_CHECKBOX,
 };
 
 const DOCUMENT_SETTINGS_COMMENT_RE = /<!--\s*document-settings\s*([\s\S]*?)-->/i;
@@ -61,6 +71,12 @@ function normalizeFonts(value: unknown): DocumentFontSettings {
     bold: typeof obj.bold === 'string' ? obj.bold : DEFAULT_PRINT_FONTS.bold,
     code: typeof obj.code === 'string' ? obj.code : DEFAULT_PRINT_FONTS.code,
   };
+}
+
+export function normalizeDocumentTaskCheckbox(
+  value: unknown,
+): TaskCheckboxKind {
+  return value === 'status' ? 'status' : 'check';
 }
 
 function normalizeMeta(parsed: unknown): DocumentSettingsMeta {
@@ -84,6 +100,7 @@ function normalizeMeta(parsed: unknown): DocumentSettingsMeta {
     },
     fonts: normalizeFonts(obj.fonts),
     webfontCss: typeof obj.webfontCss === 'string' ? obj.webfontCss : '',
+    taskCheckbox: normalizeDocumentTaskCheckbox(obj.taskCheckbox),
   };
   if (haimTypography) meta.haimTypography = haimTypography;
   return meta;
@@ -140,6 +157,14 @@ function isLeadingMetaRegion(before: string): boolean {
   return rest === '';
 }
 
+/** Resolve task-checkbox mode from markdown (default: check). */
+export function resolveDocumentTaskCheckbox(
+  markdown: string | null | undefined,
+): TaskCheckboxKind {
+  const { meta } = parseDocumentSettingsMeta(String(markdown ?? ''));
+  return normalizeDocumentTaskCheckbox(meta?.taskCheckbox);
+}
+
 export function serializeDocumentSettingsComment(meta: DocumentSettingsMeta): string {
   const normalized = normalizeMeta(meta);
   const payload: Record<string, unknown> = {
@@ -147,6 +172,7 @@ export function serializeDocumentSettingsComment(meta: DocumentSettingsMeta): st
     sourceList: normalized.sourceList,
     fonts: normalized.fonts,
     webfontCss: normalized.webfontCss,
+    taskCheckbox: normalized.taskCheckbox ?? DEFAULT_DOCUMENT_TASK_CHECKBOX,
   };
   if (normalized.haimTypography) {
     payload.haimTypography = normalized.haimTypography;

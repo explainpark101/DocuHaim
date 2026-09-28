@@ -130,6 +130,10 @@ import {
   saveHaimLinkOpenOnClick,
 } from '@/utils/haimLinkOpenSettings';
 import {
+  loadHaimDocuhaimLinkIconEnabled,
+  saveHaimDocuhaimLinkIconEnabled,
+} from '@/utils/haimDocuhaimLinkIconSettings';
+import {
   loadHaimProseLineNumbersEnabled,
   loadHaimCodeLineNumbersEnabled,
   loadHaimRawLineNumbersEnabled,
@@ -186,6 +190,7 @@ export type SettingsToggleId =
   | 'settings-haim-focus-outline'
   | 'settings-haim-prose-width-clamp'
   | 'settings-haim-link-open-on-click'
+  | 'settings-haim-docuhaim-link-icon'
   | 'settings-haim-prose-line-numbers'
   | 'settings-haim-code-line-numbers'
   | 'settings-haim-raw-line-numbers'
@@ -346,6 +351,26 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimLinkOpenOnClick,
     save: saveHaimLinkOpenOnClick,
+  },
+  {
+    id: 'settings-haim-docuhaim-link-icon',
+    enableTitle: '노트 링크 아이콘 켜기',
+    disableTitle: '노트 링크 아이콘 끄기',
+    description:
+      'docuhaim:// 노트 링크 앞에 노트 아이콘을 표시합니다 (기본 켜짐)',
+    keywords: [
+      'haim',
+      'docuhaim',
+      '노트 링크',
+      'note link',
+      '아이콘',
+      'icon',
+      '링크',
+      'link',
+      'wysiwyg',
+    ],
+    load: loadHaimDocuhaimLinkIconEnabled,
+    save: saveHaimDocuhaimLinkIconEnabled,
   },
   {
     id: 'settings-haim-prose-line-numbers',

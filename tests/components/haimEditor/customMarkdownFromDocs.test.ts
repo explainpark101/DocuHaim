@@ -50,6 +50,9 @@ const COVERED_FEATURE_DOCS = [
   'preview-hard-break.md',
   'mermaid-fence-size.md',
   'mermaid-size.md',
+  'docuhaim-link.md',
+  'kanban-json.md',
+  'task-list.md',
 ] as const;
 
 /** protect → restore on body only (no leading-meta split). */
@@ -588,6 +591,59 @@ describe('Haim Editor custom markdown (docs/custom-markdown)', () => {
       const protectedMd = protectCustomMarkdown(src);
       expect(protectedMd).toContain('```mermaid');
       expect(protectedMd).not.toContain('data-kind="mermaid"');
+    });
+  });
+
+  describe('docuhaim-link.md', () => {
+    it('leaves docuhaim:// markdown links intact through protect/restore', () => {
+      const src = [
+        '[회의록](docuhaim://notes/meeting.md)',
+        '[표지](docuhaim://folder/file%20name.md)',
+        '',
+      ].join('\n');
+      const restored = protectRestore(src);
+      expectContainsAll(restored, [
+        '[회의록](docuhaim://notes/meeting.md)',
+        '[표지](docuhaim://folder/file%20name.md)',
+      ]);
+    });
+  });
+
+  describe('kanban-json.md', () => {
+    it('is a file-format concern; board JSON body is left as text', () => {
+      const wire = [
+        '{',
+        '  "version": 2,',
+        '  "settings": { "swimlanesEnabled": false },',
+        '  "lanes": [{ "id": "lane_default", "title": "Default" }],',
+        '  "columns": [],',
+        '  "cards": {}',
+        '}',
+        '',
+      ].join('\n');
+      const restored = protectRestore(wire);
+      expect(restored).toContain('"version": 2');
+      expect(restored).toContain('lane_default');
+    });
+  });
+
+  describe('task-list.md', () => {
+    it('preserves check and status task markers through protect/restore', () => {
+      const src = [
+        '- [ ] 일반 할 일',
+        '- [x] 일반 완료',
+        '- [~] 상태 할 일',
+        '* [X] 완료 대문자',
+        '',
+      ].join('\n');
+      const restored = protectRestore(src);
+      expectContainsAll(restored, [
+        '[ ] 일반 할 일',
+        '[x] 일반 완료',
+        '[~] 상태 할 일',
+      ]);
+      // Uppercase X may normalize to lowercase on restore; either is acceptable.
+      expect(restored).toMatch(/\[[xX]\] 완료 대문자/);
     });
   });
 

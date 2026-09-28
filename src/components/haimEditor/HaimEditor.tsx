@@ -12,6 +12,7 @@ import { invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import HaimToolbar from '@/components/haimEditor/HaimToolbar';
 import HaimSourcePane from '@/components/haimEditor/HaimSourcePane';
 import HaimTocPanel from '@/components/haimEditor/HaimTocPanel';
+import ChecklistProgressSidebar from '@/components/ChecklistProgressSidebar';
 import HaimLinkHoverHint from '@/components/haimEditor/HaimLinkHoverHint';
 import { getHaimSelectedPlainText } from '@/components/haimEditor/getHaimSelectedPlainText';
 import {
@@ -29,6 +30,16 @@ import {
   registerHaimAnnotateUpload,
   normalizeUploadResult,
 } from '@/utils/haimImageAnnotateUpload';
+import { registerHaimOpenViewPath } from '@/utils/haimOpenViewPath';
+import DocuhaimNoteLinkModal from '@/components/haimEditor/DocuhaimNoteLinkModal';
+import HaimUrlLinkModal from '@/components/haimEditor/HaimUrlLinkModal';
+import {
+  escapeMarkdownLinkLabel,
+  resolveHaimInsertRange,
+  type HaimInsertPlacement,
+  type HaimInsertRange,
+} from '@/utils/haimEditorInsertRange';
+import { buildDocuhaimHref } from '@/utils/docuhaimLink';
 import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
   HAIM_VIEW_MODE_DOUBLE,
@@ -47,7 +58,10 @@ import {
   loadHaimTocLayout,
   type HaimTocLayout,
 } from '@/utils/haimTocLayoutSettings';
-import { parseDocumentSettingsMeta } from '@/utils/documentSettingsMeta';
+import {
+  parseDocumentSettingsMeta,
+  resolveDocumentTaskCheckbox,
+} from '@/utils/documentSettingsMeta';
 import {
   HAIM_TYPOGRAPHY_CHANGED_EVENT,
   loadHaimTypographyGlobal,
@@ -57,6 +71,7 @@ import {
 } from '@/utils/haimTypographySettings';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import { registerEditorActions } from '@/utils/advancedSearch/editorActions';
+import type { HaimSlashAppActions } from '@/components/haimEditor/slashCommands/haimSlashCommandItems';
 import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useNavigate } from 'react-router';
@@ -146,6 +161,7 @@ export default function HaimEditor({
   isSurfaceLive = true,
   onRequestConvertAllImagesToWiki,
   onRegisterConvertAllImagesToWiki,
+  onOpenViewPath,
 }: NoteEditorProps) {
   const metaPrefixRef = useRef('');
   const cmViewRef = useRef<CmEditorView | null>(null);
@@ -167,6 +183,7 @@ export default function HaimEditor({
   const [foldBase64Images] = useBase64ImageFold();
   const noteCoverFoldDocKey = getNoteCoverFoldKeyFromFile(currentFile);
   const [tocOpen, setTocOpen] = useState(false);
+  const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
   const [tocLayout, setTocLayout] = useState<HaimTocLayout>(() => loadHaimTocLayout());
   const [globalTypography, setGlobalTypography] = useState<HaimTypographyRules>(() =>
     loadHaimTypographyGlobal(),
@@ -176,6 +193,13 @@ export default function HaimEditor({
   const [headingRemapSelection, setHeadingRemapSelection] = useState('');
   const headingRemapRangeRef = useRef<{ from: number; to: number } | null>(null);
   const [imageLinkOpen, setImageLinkOpen] = useState(false);
+  const [urlLinkOpen, setUrlLinkOpen] = useState(false);
+  const [urlLinkInitialText, setUrlLinkInitialText] = useState('');
+  const [urlLinkInitialUrl, setUrlLinkInitialUrl] = useState('');
+  const [docuhaimLinkOpen, setDocuhaimLinkOpen] = useState(false);
+  const [docuhaimLinkInitialText, setDocuhaimLinkInitialText] = useState('');
+  const lastFocusedRangeRef = useRef<HaimInsertRange | null>(null);
+  const everFocusedRef = useRef(false);
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
   const [qrCodeInitialText, setQrCodeInitialText] = useState('');
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
@@ -186,7 +210,6 @@ export default function HaimEditor({
   const [clipCropFile, setClipCropFile] = useState<File | null>(null);
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [invisibleCharsVisible, setInvisibleCharsVisible] = useState(false);
-  const [checklistHint, setChecklistHint] = useState<string | null>(null);
   const [coverExportConfirmOpen, setCoverExportConfirmOpen] = useState(false);
   const [localImageUploading, setLocalImageUploading] = useState(false);
   const imageUploadingRef = useRef(false);
@@ -305,6 +328,16 @@ export default function HaimEditor({
     if (!editor) return;
     editor.commands.setHaimTypographyRules(resolvedTypography);
   }, [editor, resolvedTypography]);
+
+  const docTaskCheckbox = useMemo(
+    () => resolveDocumentTaskCheckbox(value || ''),
+    [value],
+  );
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.commands.setHaimTaskCheckboxPreferredKind(docTaskCheckbox);
+  }, [editor, docTaskCheckbox]);
 
   useEffect(() => {
     if (!editor) return;
@@ -914,6 +947,174 @@ export default function HaimEditor({
     return () => registerHaimAnnotateUpload(null);
   }, [onUploadImage, previewOnly]);
 
+  // Bridge for docuhaim:// / HaimLink in-app note open.
+  useEffect(() => {
+    if (typeof onOpenViewPath !== 'function') {
+      registerHaimOpenViewPath(null);
+      return () => registerHaimOpenViewPath(null);
+    }
+    registerHaimOpenViewPath((path) => {
+      onOpenViewPath(path);
+    });
+    return () => registerHaimOpenViewPath(null);
+  }, [onOpenViewPath]);
+
+  // Remember last TipTap caret/selection while the editor is focused.
+  useEffect(() => {
+    if (!editor || previewOnly) return undefined;
+    const remember = () => {
+      everFocusedRef.current = true;
+      const { from, to } = editor.state.selection;
+      lastFocusedRangeRef.current = { from, to };
+    };
+    const onFocus = () => {
+      remember();
+    };
+    const onSelectionUpdate = () => {
+      if (!editor.isFocused) return;
+      remember();
+    };
+    editor.on('focus', onFocus);
+    editor.on('selectionUpdate', onSelectionUpdate);
+    return () => {
+      editor.off('focus', onFocus);
+      editor.off('selectionUpdate', onSelectionUpdate);
+    };
+  }, [editor, previewOnly]);
+
+  useEffect(() => {
+    everFocusedRef.current = false;
+    lastFocusedRangeRef.current = null;
+  }, [currentFile?.id]);
+
+  const openUrlLinkModal = useCallback(() => {
+    if (!editor || previewOnly) return;
+    if (editor.isFocused) {
+      everFocusedRef.current = true;
+      const { from, to } = editor.state.selection;
+      lastFocusedRangeRef.current = { from, to };
+    }
+    const selected =
+      getHaimSelectedPlainText(editor, cmViewRef.current, {
+        sourceVisible: true,
+      }) || '';
+    const href = String(editor.getAttributes('link').href || '').trim();
+    setUrlLinkInitialText(selected);
+    setUrlLinkInitialUrl(href);
+    setUrlLinkOpen(true);
+  }, [editor, previewOnly]);
+
+  const openDocuhaimNoteLinkModal = useCallback(() => {
+    if (!editor || previewOnly) return;
+    if (editor.isFocused) {
+      everFocusedRef.current = true;
+      const { from, to } = editor.state.selection;
+      lastFocusedRangeRef.current = { from, to };
+    }
+    setDocuhaimLinkInitialText(
+      getHaimSelectedPlainText(editor, cmViewRef.current, {
+        sourceVisible: true,
+      }) || '',
+    );
+    setDocuhaimLinkOpen(true);
+  }, [editor, previewOnly]);
+
+  const insertUrlLink = useCallback(
+    ({
+      url,
+      text,
+      placement,
+      unset,
+    }: {
+      url: string;
+      text: string;
+      placement: HaimInsertPlacement;
+      unset?: boolean | undefined;
+    }) => {
+      if (!editor) return;
+      const range = resolveHaimInsertRange(editor, {
+        forceAppendAtEnd: placement === 'end',
+        lastFocusedRange: lastFocusedRangeRef.current,
+        everFocused: everFocusedRef.current,
+      });
+      if (unset) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(range)
+          .extendMarkRange('link')
+          .unsetLink()
+          .run();
+        return;
+      }
+      const selected = range.from === range.to
+        ? ''
+        : editor.state.doc.textBetween(range.from, range.to, ' ').trim();
+      if (selected && !text.trim()) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(range)
+          .extendMarkRange('link')
+          .setLink({ href: url })
+          .run();
+        return;
+      }
+      const label = (text.trim() || selected || url).trim() || url;
+      const md = `[${escapeMarkdownLinkLabel(label)}](${url})`;
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(range, md, {
+          contentType: 'markdown',
+        } as never)
+        .run();
+    },
+    [editor],
+  );
+
+  const insertDocuhaimNoteLink = useCallback(
+    ({
+      path,
+      text,
+      placement,
+    }: {
+      path: string;
+      text: string;
+      placement: HaimInsertPlacement;
+    }) => {
+      if (!editor) return;
+      const href = buildDocuhaimHref(path);
+      const range = resolveHaimInsertRange(editor, {
+        forceAppendAtEnd: placement === 'end',
+        lastFocusedRange: lastFocusedRangeRef.current,
+        everFocused: everFocusedRef.current,
+      });
+      const selected = range.from === range.to
+        ? ''
+        : editor.state.doc.textBetween(range.from, range.to, ' ').trim();
+      if (selected && !text.trim()) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(range)
+          .extendMarkRange('link')
+          .setLink({ href })
+          .run();
+        return;
+      }
+      const label = (text || path.split('/').pop() || path).trim() || path;
+      const md = `[${escapeMarkdownLinkLabel(label)}](${href})`;
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(range, md, {
+          contentType: 'markdown',
+        } as never)
+        .run();
+    },
+    [editor],
+  );
   const toggleInvisibleChars = useCallback(() => {
     if (!editor) return;
     const cmds = editor.commands as typeof editor.commands & {
@@ -988,9 +1189,10 @@ export default function HaimEditor({
       'editor-code': () =>
         run(() => editor.chain().focus().toggleCodeBlock().run()),
       'editor-link': () => {
-        const url = window.prompt('URL', 'https://');
-        if (!url) return;
-        run(() => editor.chain().focus().setLink({ href: url }).run());
+        openUrlLinkModal();
+      },
+      'editor-docuhaim-link': () => {
+        openDocuhaimNoteLinkModal();
       },
       'editor-table': () =>
         run(() =>
@@ -1022,21 +1224,52 @@ export default function HaimEditor({
         run(() => editor.chain().focus().toggleHeading({ level: 3 }).run()),
       'editor-h4': () =>
         run(() => editor.chain().focus().toggleHeading({ level: 4 }).run()),
+      'editor-h5': () =>
+        run(() => editor.chain().focus().toggleHeading({ level: 5 }).run()),
+      'editor-h6': () =>
+        run(() => editor.chain().focus().toggleHeading({ level: 6 }).run()),
+      'editor-h7': () =>
+        run(() => editor.chain().focus().toggleDeepHeading({ level: 7 }).run()),
+      'editor-h8': () =>
+        run(() => editor.chain().focus().toggleDeepHeading({ level: 8 }).run()),
+      'editor-h9': () =>
+        run(() => editor.chain().focus().toggleDeepHeading({ level: 9 }).run()),
+      'editor-h10': () =>
+        run(() => editor.chain().focus().toggleDeepHeading({ level: 10 }).run()),
       'editor-catalog': () => setTocOpen((v) => !v),
+      'editor-find-replace': () => setFindReplaceOpen((v) => !v),
+      'editor-invisible-chars': () => toggleInvisibleChars(),
+      'editor-mermaid': () => {
+        editor
+          .chain()
+          .focus()
+          .insertContent('```mermaid\ngraph TD\n  A-->B\n```\n', {
+            contentType: 'markdown',
+          } as never)
+          .run();
+      },
+      'editor-katex': () => {
+        const cmds = editor.commands as typeof editor.commands & {
+          insertBlockMath?: (opts: { latex: string }) => boolean;
+        };
+        if (typeof cmds.insertBlockMath === 'function') {
+          cmds.insertBlockMath({ latex: 'E=mc^2' });
+          return;
+        }
+        editor
+          .chain()
+          .focus()
+          .insertContent(
+            '<div data-type="block-math" data-latex="E=mc^2"></div>',
+          )
+          .run();
+      },
       'editor-llm-assist': () => {
         llmAssist?.toggleAssist?.();
       },
       'editor-heading-remap': () => openHeadingRemap(),
       'editor-checklist-progress': () => {
-        const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-        const tasks = (md.match(/^\s*[-*]\s+\[[ xX]\]/gm) || []).length;
-        const done = (md.match(/^\s*[-*]\s+\[[xX]\]/gm) || []).length;
-        setChecklistHint(
-          tasks
-            ? `체크리스트 ${done}/${tasks} 완료`
-            : '문서에 체크리스트 항목이 없습니다',
-        );
-        window.setTimeout(() => setChecklistHint(null), 3200);
+        setChecklistProgressOpen(true);
       },
       'editor-image-upload': () => {
         // Advanced Search: open file picker via hidden input is awkward; prompt path
@@ -1084,6 +1317,105 @@ export default function HaimEditor({
     onUploadImage,
     showImageUploadOverlay,
     insertPageBreak,
+    openUrlLinkModal,
+    openDocuhaimNoteLinkModal,
+    toggleInvisibleChars,
+  ]);
+
+  useEffect(() => {
+    if (!editor || previewOnly) return undefined;
+    const storage = editor.storage.haimSlashCommands;
+    if (!storage) return undefined;
+
+    storage.getAppActions = (): HaimSlashAppActions => ({
+      onUrlLink: openUrlLinkModal,
+      onDocuhaimNoteLink: openDocuhaimNoteLinkModal,
+      onInsertPageBreak: insertPageBreak,
+      onInsertMermaid: () => {
+        editor
+          .chain()
+          .focus()
+          .insertContent('```mermaid\ngraph TD\n  A-->B\n```\n', {
+            contentType: 'markdown',
+          } as never)
+          .run();
+      },
+      onInsertKatex: () => {
+        const cmds = editor.commands as typeof editor.commands & {
+          insertBlockMath?: (opts: { latex: string }) => boolean;
+        };
+        if (typeof cmds.insertBlockMath === 'function') {
+          cmds.insertBlockMath({ latex: 'E=mc^2' });
+          return;
+        }
+        editor
+          .chain()
+          .focus()
+          .insertContent(
+            '<div data-type="block-math" data-latex="E=mc^2"></div>',
+          )
+          .run();
+      },
+      onImageLink: () => setImageLinkOpen(true),
+      onImageUpload: () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = true;
+        input.onchange = () => {
+          void handleUploadFiles(Array.from(input.files || []));
+        };
+        input.click();
+      },
+      onImageClip: () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = () => {
+          const file = input.files?.[0];
+          if (file) setClipCropFile(file);
+        };
+        input.click();
+      },
+      onCreateWhiteboard: () => {
+        if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
+        setWhiteboardOpen(true);
+      },
+      onCreateQrCode: openQrCodeCreate,
+      onHeadingRemap: openHeadingRemap,
+      onChecklistProgress: () => {
+        setChecklistProgressOpen(true);
+      },
+      onLlmAssist: () => {
+        llmAssist?.toggleAssist?.();
+      },
+      onExportPdf: () => {
+        flush();
+        navigateToExportPdf();
+      },
+      onFindReplaceToggle: () => setFindReplaceOpen((v) => !v),
+      onInvisibleCharsToggle: toggleInvisibleChars,
+      onTocToggle: () => setTocOpen((v) => !v),
+    });
+
+    return () => {
+      storage.getAppActions = () => null;
+    };
+  }, [
+    editor,
+    previewOnly,
+    openUrlLinkModal,
+    openDocuhaimNoteLinkModal,
+    insertPageBreak,
+    handleUploadFiles,
+    onUploadImage,
+    showImageUploadOverlay,
+    openQrCodeCreate,
+    openHeadingRemap,
+    llmAssist,
+    flush,
+    navigateToExportPdf,
+    toggleInvisibleChars,
   ]);
 
   useEffect(() => {
@@ -1182,17 +1514,11 @@ export default function HaimEditor({
             llmAssistActive: Boolean(llmAssist?.open),
             onHeadingRemap: openHeadingRemap,
             onChecklistProgress: () => {
-              const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-              const tasks = (md.match(/^\s*[-*]\s+\[[ xX]\]/gm) || []).length;
-              const done = (md.match(/^\s*[-*]\s+\[[xX]\]/gm) || []).length;
-              setChecklistHint(
-                tasks
-                  ? `체크리스트 ${done}/${tasks} 완료`
-                  : '문서에 체크리스트 항목이 없습니다',
-              );
-              window.setTimeout(() => setChecklistHint(null), 3200);
+              setChecklistProgressOpen(true);
             },
             onImageLink: () => setImageLinkOpen(true),
+            onUrlLink: openUrlLinkModal,
+            onDocuhaimNoteLink: openDocuhaimNoteLinkModal,
             onImageUpload: (files) => {
               void handleUploadFiles(files);
             },
@@ -1239,11 +1565,6 @@ export default function HaimEditor({
               onClose={() => setFindReplaceOpen(false)}
             />
           </Suspense>
-        ) : null}
-        {checklistHint ? (
-          <div className="shrink-0 border-b border-slate-200 bg-indigo-50 px-3 py-1 text-xs text-indigo-900 dark:border-odp-borderStrong dark:bg-indigo-950/40 dark:text-indigo-100">
-            {checklistHint}
-          </div>
         ) : null}
         <div className="relative flex min-h-0 flex-1">
           {showImageUploadOverlay ? (
@@ -1294,6 +1615,11 @@ export default function HaimEditor({
                   onViewReady={() => setCmRevision((n) => n + 1)}
                   noteCoverFoldDocKey={noteCoverFoldDocKey}
                   foldBase64Images={foldBase64Images}
+                  getTaskCheckboxKind={() =>
+                    resolveDocumentTaskCheckbox(
+                      metaPrefixRef.current || value || '',
+                    )
+                  }
                   {...(onUploadImage && !previewOnly
                     ? {
                         onPasteImages: (files: File[]) => {
@@ -1354,6 +1680,14 @@ export default function HaimEditor({
             cmViewRef={cmViewRef}
             layout={tocLayout}
           />
+          <ChecklistProgressSidebar
+            open={checklistProgressOpen}
+            onOpenChange={setChecklistProgressOpen}
+            markdown={vaultMarkdown}
+            onMarkdownChange={(next) => {
+              setEditorMarkdown(editor, next, metaPrefixRef, { emitUpdate: true });
+            }}
+          />
         </div>
       </div>
 
@@ -1381,6 +1715,19 @@ export default function HaimEditor({
             } as never)
             .run();
         }}
+      />
+      <HaimUrlLinkModal
+        isOpen={urlLinkOpen}
+        onClose={() => setUrlLinkOpen(false)}
+        initialText={urlLinkInitialText}
+        initialUrl={urlLinkInitialUrl}
+        onConfirm={insertUrlLink}
+      />
+      <DocuhaimNoteLinkModal
+        isOpen={docuhaimLinkOpen}
+        onClose={() => setDocuhaimLinkOpen(false)}
+        initialText={docuhaimLinkInitialText}
+        onConfirm={insertDocuhaimNoteLink}
       />
       <QrCodeCreateModal
         isOpen={qrCodeOpen}

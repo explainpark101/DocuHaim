@@ -6,6 +6,8 @@ import { HaimLink } from '@/components/haimEditor/extensions/HaimLink';
 import { HaimMarkdown } from '@/components/haimEditor/extensions/HaimMarkdown';
 import { TableKit } from '@tiptap/extension-table';
 import { ListKit } from '@tiptap/extension-list';
+import { HaimTaskItem } from '@/components/haimEditor/extensions/HaimTaskItem';
+import { HaimTaskList } from '@/components/haimEditor/extensions/HaimTaskList';
 import { TextStyleKit } from '@tiptap/extension-text-style';
 import {
   CharacterCount,
@@ -33,7 +35,7 @@ import {
   TableOfContents,
   getHierarchicalIndexes,
 } from '@tiptap/extension-table-of-contents';
-import { NodeRange } from '@tiptap/extension-node-range';
+import { HaimNodeRange } from '@/components/haimEditor/extensions/HaimNodeRange';
 import { PageBreak } from '@/components/haimEditor/extensions/PageBreak';
 import { WikiImage } from '@/components/haimEditor/extensions/WikiImage';
 import { WikiFigure } from '@/components/haimEditor/extensions/WikiFigure';
@@ -41,6 +43,8 @@ import { Figcaption } from '@/components/haimEditor/extensions/Figcaption';
 import { NoteCover } from '@/components/haimEditor/extensions/NoteCover';
 import { RawMarkdownBlock } from '@/components/haimEditor/extensions/RawMarkdownBlock';
 import { DeepHeading } from '@/components/haimEditor/extensions/DeepHeading';
+import { HaimSlashCommands } from '@/components/haimEditor/slashCommands/HaimSlashCommands';
+import { HaimShiftArrowSelect } from '@/components/haimEditor/extensions/HaimShiftArrowSelect';
 import { MathBlock } from '@/components/haimEditor/extensions/MathBlock';
 import {
   HaimBlockMath,
@@ -124,8 +128,11 @@ export function createHaimExtensions(
       allowBase64: true,
     }),
     ListKit.configure({
-      taskItem: { nested: true },
+      taskItem: false,
+      taskList: false,
     }),
+    HaimTaskItem.configure({ nested: true }),
+    HaimTaskList,
     TableKit.configure({
       table: { resizable: isNote },
     }),
@@ -159,6 +166,8 @@ export function createHaimExtensions(
     RawMarkdownBlock,
     DeepHeading,
     MathBlock,
+    HaimShiftArrowSelect,
+    ...(isNote ? [HaimSlashCommands] : []),
   ];
 
   if (!isNote) {
@@ -191,6 +200,6 @@ export function createHaimExtensions(
     TableOfContents.configure({
       getIndex: getHierarchicalIndexes,
     }),
-    NodeRange,
+    HaimNodeRange,
   ];
 }

@@ -23,7 +23,7 @@ import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
 import { Tooltip } from 'radix-ui';
-import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, Loader2, PenLine, Settings, Shuffle, Sparkles, X } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, Loader2, PenLine, Search, Settings, Shuffle, Sparkles, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -58,6 +58,7 @@ import {
   emptyHomeMenuContainerVariants,
 } from '@/components/emptyHomeMotion';
 import { isQuizMdPath } from '@/utils/quiz/quizPath';
+import { isEditableViewerId } from '@/utils/vaultFileViewers';
 import {
   isQuizAppPathname,
   quizPathnameForStoragePath,
@@ -78,6 +79,7 @@ const NoteEditorSurface = lazy(
 const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
 const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
 const QuizPane = lazy(() => import('@/components/quiz/QuizPane'));
+const KanbanPane = lazy(() => import('@/components/kanban/KanbanPane'));
 
 function EditorPaneSuspenseFallback({ message = '에디터 로딩 중…' }) {
   return (
@@ -179,6 +181,7 @@ export default function EditorPane({
   const [documentSettingsOpen, setDocumentSettingsOpen] = useState(false);
   const [quizToolbarNode, setQuizToolbarNode] = useState(null);
   const [quizFileManagement, setQuizFileManagement] = useState(null);
+  const [kanbanFileManagement, setKanbanFileManagement] = useState(null);
   const [quizModeSwitching, setQuizModeSwitching] = useState(false);
   const [quizModeSwitchTarget, setQuizModeSwitchTarget] = useState(null);
   const quizSwitchNavigatedRef = useRef(false);
@@ -317,6 +320,12 @@ export default function EditorPane({
     });
     return () => window.cancelAnimationFrame(frameId);
   }, [isSaving, location.pathname, quizModeSwitchTarget, quizModeSwitching]);
+
+  useEffect(() => {
+    if ((currentFile?.viewer || 'markdown') !== 'kanban') {
+      setKanbanFileManagement(null);
+    }
+  }, [currentFile?.viewer, currentFile?.id]);
 
   useEffect(() => {
     if (!quizMode) {
@@ -751,8 +760,7 @@ export default function EditorPane({
   const isSessionMarkdown =
     currentFile.type === 'session' &&
     (viewer === 'markdown' || /\.(md|markdown)$/i.test(currentFile.name || currentFile.id || ''));
-  const isEditableViewer =
-    viewer === 'markdown' || viewer === 'json' || viewer === 'raw' || viewer === 'html' || viewer === 'svg';
+  const isEditableViewer = isEditableViewerId(viewer);
   const hasUnsavedChanges = isEditableViewer && currentFile.content !== editorContent;
   const showConvertAllImagesToWiki =
     viewer === 'markdown' &&
@@ -995,6 +1003,19 @@ export default function EditorPane({
                     선택지 순서 변경
                   </button>
                 ) : null}
+                {viewer === 'kanban' && kanbanFileManagement?.openSearch ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-odp-fgStrong dark:hover:bg-odp-bgSoft"
+                    onClick={() => {
+                      kanbanFileManagement.openSearch();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <Search size={14} />
+                    카드 검색
+                  </button>
+                ) : null}
                 {currentFile.type !== 'session' ? (
                 <button
                   type="button"
@@ -1072,7 +1093,14 @@ export default function EditorPane({
                   type="button"
                   className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
                   onClick={() => {
-                    setDocumentSettingsOpen(true);
+                    if (
+                      viewer === 'kanban' &&
+                      kanbanFileManagement?.openDocumentSettings
+                    ) {
+                      kanbanFileManagement.openDocumentSettings();
+                    } else {
+                      setDocumentSettingsOpen(true);
+                    }
                     setFileManagementOpen(false);
                   }}
                 >
@@ -1341,6 +1369,20 @@ export default function EditorPane({
               className="w-full h-full border-0 bg-white dark:bg-black"
             />
           </div>
+        ) : viewer === 'kanban' ? (
+          <Suspense fallback={<EditorPaneSuspenseFallback message="칸반 보드 로딩 중…" />}>
+            <KanbanPane
+              content={editorContent}
+              onChange={onChangeEditor}
+              onSave={onSave}
+              currentFile={currentFile}
+              theme={theme}
+              isActiveFile={isActiveFile}
+              isSurfaceLive={isSurfaceLive}
+              registerFileManagement={setKanbanFileManagement}
+              onResolveWikiImageUrl={onResolveWikiImageUrl}
+            />
+          </Suspense>
         ) : viewer === 'json' ? (
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
             <Suspense fallback={<EditorPaneSuspenseFallback />}>
@@ -1453,7 +1495,7 @@ export default function EditorPane({
         )}
       </div>
       <DocumentSettingsModal
-        isOpen={documentSettingsOpen}
+        isOpen={documentSettingsOpen && viewer !== 'kanban'}
         onClose={() => setDocumentSettingsOpen(false)}
         settings={documentSettings}
         onApply={handleApplyDocumentSettings}

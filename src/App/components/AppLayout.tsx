@@ -123,6 +123,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     quizSourceDropActive,
     quizSourceDropHost,
     handleDropToQuizSource,
+    kanbanCardDropActive,
+    kanbanCardDropHost,
+    handleDropToKanbanCards,
     fileTabContextMenuRef,
     expandPathsRef,
     showHiddenFolders,
@@ -689,6 +692,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               quizSourceDropActive={quizSourceDropActive}
               quizSourceDropHost={quizSourceDropHost}
               onDropToQuizSource={handleDropToQuizSource}
+              kanbanCardDropActive={kanbanCardDropActive}
+              kanbanCardDropHost={kanbanCardDropHost}
+              onDropToKanbanCards={handleDropToKanbanCards}
               onDropToWorkspacePane={
                 workspaceTabsEnabled && !isMobile ? handleDropToWorkspacePane : undefined
               }

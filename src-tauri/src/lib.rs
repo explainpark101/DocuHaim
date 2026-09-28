@@ -1,4 +1,5 @@
 mod as_index;
+#[cfg(desktop)]
 mod desktop_menu;
 mod stronghold_kdf;
 mod system_fonts;
@@ -285,31 +286,64 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_biometric::init());
     }
 
+    // Native File/Window menu APIs are desktop-only (`tauri::menu` is #[cfg(desktop)]).
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .manage(pending)
+            .manage(as_index::AsIndexState::new())
+            .invoke_handler(tauri::generate_handler![
+                take_pending_open_paths,
+                read_open_uri,
+                gemini_api_fetch,
+                exit_app,
+                system_fonts::list_system_font_families,
+                desktop_menu::sync_desktop_menu_ui,
+                as_index::commands::as_index_open,
+                as_index::commands::as_index_open_from_file,
+                as_index::commands::as_index_open_from_directory,
+                as_index::commands::as_index_materialize_snapshot_to_directory,
+                as_index::commands::as_index_migrate_gzip_to_directory,
+                as_index::commands::as_index_unpack_snapshot_files,
+                as_index::commands::as_index_close,
+                as_index::commands::as_index_upsert_batch,
+                as_index::commands::as_index_remove,
+                as_index::commands::as_index_commit,
+                as_index::commands::as_index_export_snapshot,
+                as_index::commands::as_index_search,
+                as_index::commands::as_index_cancel,
+            ])
+            .on_menu_event(desktop_menu::on_desktop_menu_event);
+    }
+
+    #[cfg(mobile)]
+    {
+        builder = builder
+            .manage(pending)
+            .manage(as_index::AsIndexState::new())
+            .invoke_handler(tauri::generate_handler![
+                take_pending_open_paths,
+                read_open_uri,
+                gemini_api_fetch,
+                exit_app,
+                system_fonts::list_system_font_families,
+                as_index::commands::as_index_open,
+                as_index::commands::as_index_open_from_file,
+                as_index::commands::as_index_open_from_directory,
+                as_index::commands::as_index_materialize_snapshot_to_directory,
+                as_index::commands::as_index_migrate_gzip_to_directory,
+                as_index::commands::as_index_unpack_snapshot_files,
+                as_index::commands::as_index_close,
+                as_index::commands::as_index_upsert_batch,
+                as_index::commands::as_index_remove,
+                as_index::commands::as_index_commit,
+                as_index::commands::as_index_export_snapshot,
+                as_index::commands::as_index_search,
+                as_index::commands::as_index_cancel,
+            ]);
+    }
+
     builder
-        .manage(pending)
-        .manage(as_index::AsIndexState::new())
-        .invoke_handler(tauri::generate_handler![
-            take_pending_open_paths,
-            read_open_uri,
-            gemini_api_fetch,
-            exit_app,
-            system_fonts::list_system_font_families,
-            desktop_menu::sync_desktop_menu_ui,
-            as_index::commands::as_index_open,
-            as_index::commands::as_index_open_from_file,
-            as_index::commands::as_index_open_from_directory,
-            as_index::commands::as_index_materialize_snapshot_to_directory,
-            as_index::commands::as_index_migrate_gzip_to_directory,
-            as_index::commands::as_index_unpack_snapshot_files,
-            as_index::commands::as_index_close,
-            as_index::commands::as_index_upsert_batch,
-            as_index::commands::as_index_remove,
-            as_index::commands::as_index_commit,
-            as_index::commands::as_index_export_snapshot,
-            as_index::commands::as_index_search,
-            as_index::commands::as_index_cancel,
-        ])
-        .on_menu_event(desktop_menu::on_desktop_menu_event)
         .setup(|app| {
             // Windows: remove OS titlebar; custom controls live in the webview.
             // macOS keeps decorations so Overlay traffic lights remain available.
@@ -318,7 +352,7 @@ pub fn run() {
                 let _ = window.set_decorations(false);
             }
 
-            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            #[cfg(desktop)]
             {
                 if let Err(err) = desktop_menu::install_desktop_menu(app) {
                     eprintln!("desktop menu install failed: {err}");

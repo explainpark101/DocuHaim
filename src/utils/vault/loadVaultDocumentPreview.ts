@@ -1,6 +1,10 @@
 import { isEncMdPath, tryUnlockEncMdContent } from '@/utils/encMd';
 import { toDisplayableImageObjectUrl } from '@/utils/heicConvert';
 import { VIEWER_IMAGE_EXTENSIONS } from '@/utils/imageExtensions';
+import {
+  prepareViewerText,
+  resolveTextOpenViewer,
+} from '@/utils/vaultFileViewers';
 import { vaultPathBasename } from '@/utils/vault/vaultPathBasename';
 import type { VaultStorageType } from '@/utils/vault/resolveVaultFileNode';
 
@@ -139,16 +143,27 @@ export async function loadVaultDocumentPreview({
 
   if (!backend.readText) return null;
 
+  const specialOpen = resolveTextOpenViewer(path, name);
+  if (specialOpen) {
+    const { text, contentLength, lastModified } = await backend.readText(path);
+    const display = prepareViewerText(text, specialOpen.viewer);
+    return {
+      currentFile: {
+        type: storageType,
+        id: path,
+        name,
+        viewer: specialOpen.viewer,
+        content: display,
+        ...(contentLength != null ? { size: contentLength } : {}),
+        ...(lastModified != null ? { lastModified } : {}),
+      },
+      content: display,
+    };
+  }
+
   if (ext === 'json') {
     const { text, contentLength, lastModified } = await backend.readText(path);
-    let display = text;
-    if (text.length <= 100_000) {
-      try {
-        display = JSON.stringify(JSON.parse(text), null, 2);
-      } catch {
-        display = text;
-      }
-    }
+    const display = prepareViewerText(text, 'json');
     return {
       currentFile: {
         type: storageType,
