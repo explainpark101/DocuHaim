@@ -6,7 +6,7 @@ import {
   type HTMLAttributes,
   type ReactNode,
 } from 'react';
-import { motion as Motion } from 'motion/react';
+import { motion as Motion, useReducedMotion } from 'motion/react';
 import { useResizablePanelHeight } from '@/hooks/useResizablePanelHeight';
 import {
   CHAT_COMPOSER_DOCK_MIN_FIT_H,
@@ -14,6 +14,10 @@ import {
   resolveChatComposerDockFitHeight,
   resolveChatComposerDockTargetHeight,
 } from '@/components/chatWithMyself/chatComposerDockHeight';
+import {
+  CHAT_COMPOSER_HEIGHT_INSTANT,
+  CHAT_COMPOSER_HEIGHT_SPRING,
+} from '@/components/chatWithMyself/chatComposerMotion';
 
 export {
   COMPOSER_TOOLBAR_CHROME_H,
@@ -25,13 +29,6 @@ const STORAGE_KEY = 's3haim_chat_composer_dock_height';
 const DEFAULT_H = 280;
 const MIN_H = CHAT_COMPOSER_DOCK_MIN_H;
 const MIN_FIT_H = CHAT_COMPOSER_DOCK_MIN_FIT_H;
-
-const HEIGHT_TRANSITION = {
-  type: 'spring' as const,
-  /** Snappy grow/shrink — most of the motion finishes within this window. */
-  visualDuration: 0.14,
-  bounce: 0,
-};
 
 /** Prefer the chat column height; fall back to visual viewport. */
 export function chatComposerAreaMaxHeight(): number {
@@ -88,7 +85,7 @@ export type ChatComposerDockProps = {
  * When `autoFit` is true (reply / message edit), the dock tracks natural
  * content height (`fitContentHeight`) so shorter pretext or hiding helper
  * text can shrink it, capped at 70% of the message column. Height changes
- * animate with a short Motion spring. Manual resize via the handle always
+ * animate with a shared Motion spring. Manual resize via the handle always
  * wins. Leaving autoFit restores the pre-fit dock height when the user did
  * not resize during the session.
  */
@@ -102,6 +99,7 @@ export default function ChatComposerDock({
   toolbarChromeHeight = 0,
   helperChromeHeight = 0,
 }: ChatComposerDockProps) {
+  const reduceMotion = useReducedMotion();
   const [maxHeight, setMaxHeight] = useState(chatComposerAreaMaxHeight);
   const heightBeforeFitRef = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -239,12 +237,17 @@ export default function ChatComposerDock({
     helperChromeHeight: helperBump,
   });
 
+  const heightTransition =
+    isResizing || reduceMotion
+      ? CHAT_COMPOSER_HEIGHT_INSTANT
+      : CHAT_COMPOSER_HEIGHT_SPRING;
+
   return (
     <Motion.div
       className={`relative w-full shrink-0 overflow-hidden border-t-2 border-gray-300 bg-slate-100 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)] ${className}`}
       initial={false}
       animate={{ height: targetHeight }}
-      transition={isResizing ? { duration: 0 } : HEIGHT_TRANSITION}
+      transition={heightTransition}
       style={{ maxHeight }}
     >
       <div

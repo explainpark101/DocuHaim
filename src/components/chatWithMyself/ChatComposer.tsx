@@ -15,6 +15,7 @@ import type {
   ChatAttachmentMarkdownItem,
 } from '@/utils/chatWithMyself/attachments';
 import { Check, Paperclip, Pencil, Send, X, FileText, Folder } from 'lucide-react';
+import { motion as Motion, useReducedMotion } from 'motion/react';
 import { Tooltip } from 'radix-ui';
 import { Compartment, StateEffect } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
@@ -25,6 +26,10 @@ import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 import { chatComposerAreaMaxHeight } from '@/components/chatWithMyself/ChatComposerDock';
+import {
+  CHAT_COMPOSER_HEIGHT_INSTANT,
+  CHAT_COMPOSER_HEIGHT_SPRING,
+} from '@/components/chatWithMyself/chatComposerMotion';
 import { measureComposerFitHeights } from '@/components/chatWithMyself/composerFitMeasure';
 import PromptModal from '@/components/modals/PromptModal';
 import {
@@ -63,11 +68,6 @@ const ChatComposerMdEditor = lazy(
 
 const COMPOSER_MIN_H = 40;
 const COMPOSER_MAX_H = 200;
-
-/** CSS height transition — avoids nested Motion height fighting the dock autoFit. */
-const EDITOR_HEIGHT_CSS_TRANSITION =
-  'height 0.28s cubic-bezier(0.22, 1, 0.36, 1)';
-
 export type ChatComposerGroup = {
   id: string;
   name: string;
@@ -485,6 +485,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   const [draftReady, setDraftReady] = useState(false);
   const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
   const [encryptPromptOpen, setEncryptPromptOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
   const openChatImageRaw: unknown = useChatImageLightbox();
   const openChatImage: ChatImageLightboxOpener | null =
     typeof openChatImageRaw === 'function'
@@ -846,13 +847,13 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   }, [draftReady, editTarget, selectedGroup, replyTo, draftScope]);
 
   const syncEditorHeight = useCallback(() => {
-    // fillParent compose fills the dock; fillParent+edit uses pretext fit effect.
-    if (fillParent) return;
+  // fillParent compose fills the dock; fillParent+edit uses fit measure effect.
+  if (fillParent) return;
     const next = measureComposerHeight(wrapRef.current, contentMaxH);
     setEditorHeight((prev) => (prev === next ? prev : next));
   }, [contentMaxH, fillParent]);
 
-  // fillParent + reply/edit: report preview bump + (edit) pretext content height to the dock.
+  // fillParent + reply/edit: report preview bump + (edit) content height to the dock.
   useLayoutEffect(() => {
     if (!fillParent || (!editTarget && !replyTo)) {
       return undefined;
@@ -1493,6 +1494,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   );
 
   const sizeEditorToContent = Boolean(editTarget) || !fillParent;
+  const editorHeightTransition =
+    reduceMotion ? CHAT_COMPOSER_HEIGHT_INSTANT : CHAT_COMPOSER_HEIGHT_SPRING;
 
   return (
     <div
@@ -1852,7 +1855,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                 <Paperclip size={18} />
               </button>
             ) : null}
-            <div
+            <Motion.div
               ref={wrapRef}
               className={`chat-composer-editor min-w-0 flex-1 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft ${
                 !useLightweightEditor && showLineNumbers
@@ -1863,19 +1866,14 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   ? 'chat-composer-editor--no-toolbar'
                   : ''
               } ${fillParent && !editTarget ? 'h-full min-h-0' : 'shrink-0'}`}
-              style={
-                sizeEditorToContent
-                  ? {
-                      height: editorHeight,
-                      minHeight: COMPOSER_MIN_H,
-                      // Instant while editing so the dock can grow with content;
-                      // animate only for normal compose auto-grow.
-                      transition: editTarget
-                        ? undefined
-                        : EDITOR_HEIGHT_CSS_TRANSITION,
-                    }
-                  : undefined
-              }
+              initial={false}
+              {...(sizeEditorToContent
+                ? {
+                    animate: { height: editorHeight },
+                    style: { minHeight: COMPOSER_MIN_H },
+                  }
+                : {})}
+              transition={editorHeightTransition}
             >
               {useLightweightEditor ? (
                 <ChatComposerPlainTextarea
@@ -1908,7 +1906,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   />
                 </Suspense>
               )}
-            </div>
+            </Motion.div>
             <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
               <Tooltip.Root>
                 <Tooltip.Trigger asChild>

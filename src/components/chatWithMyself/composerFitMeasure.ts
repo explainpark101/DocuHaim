@@ -1,7 +1,8 @@
 /**
  * Measure chat composer heights for dock autoFit (reply / edit).
- * Editor body height uses canvas pretext wrap so multi-line edit drafts
- * expand the dock instead of collapsing to ~1 visible line.
+ * Editor body height prefers live DOM (scrollHeight / ProseMirror children)
+ * so TipTap/CM wrapping matches what the user sees. Canvas pretext is only
+ * a fallback before the surface mounts.
  */
 
 import {
@@ -16,11 +17,21 @@ export type ComposerFitMeasure = {
   editorHeight: number;
   /**
    * Natural composer height: non-editor chrome (preview, attachments, group
-   * row, helper) + pretext editor height. Independent of the current dock
-   * height so fillParent collapse cannot under-report.
+   * row, helper) + editor height. Independent of the current dock height so
+   * fillParent collapse cannot under-report.
    */
   contentHeight: number;
 };
+
+/** Note-editor scroll-center uses ~50vh padding — never treat that as fit chrome. */
+const MAX_SANE_EDITOR_PAD_Y = 64;
+const FALLBACK_EDITOR_PAD_Y = 8;
+
+/**
+ * Extra bottom room for single-line edit fit only (multi-line already feels fine).
+ * Keeps the caret / last glyphs from sitting flush against the border.
+ */
+export const COMPOSER_SINGLE_LINE_BOTTOM_PAD_PX = 6;
 
 function blockHeightWithMargin(el: Element | null): number {
   if (!(el instanceof HTMLElement)) return 0;
@@ -57,6 +68,36 @@ export function paddingBoxFromComputedStyle(cs: CSSStyleDeclaration): {
 }
 
 /**
+ * Clamp note-editor scroll-center padding (50vh) so it cannot inflate
+ * composer autoFit height.
+ */
+export function saneComposerPaddingY(paddingY: number): number {
+  if (!Number.isFinite(paddingY) || paddingY < 0) return 0;
+  if (paddingY > MAX_SANE_EDITOR_PAD_Y) {
+    return FALLBACK_EDITOR_PAD_Y * 2;
+  }
+  return paddingY;
+}
+
+/**
+ * Resolve used line-height in px. `normal` / invalid → ~1.2× font-size
+ * (not 1.45 — that over-sized edit fit and left empty space under text).
+ */
+export function resolveComposerLineHeightPx(cs: CSSStyleDeclaration): number {
+  const fontSize = parseFloat(cs.fontSize) || 14;
+  const raw = cs.lineHeight;
+  if (raw && raw !== 'normal') {
+    const parsed = parseFloat(raw);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      // Computed style is usually px; unitless multipliers are rare here.
+      if (raw.endsWith('px') || parsed > fontSize * 0.5) return parsed;
+      return parsed * fontSize;
+    }
+  }
+  return fontSize * 1.2;
+}
+
+/**
  * Padding lives on `.cm-scroller` for CodeMirror (`.cm-content` is pad 0).
  * Textarea / ProseMirror keep padding on the probe itself.
  */
@@ -85,9 +126,111 @@ function measureComposerToolbarHeight(editorWrap: HTMLElement): number {
     : 0;
 }
 
+function clampEditorHeight(
+  height: number,
+  minHeight: number,
+  maxHeight: number,
+): number {
+  let next = Math.ceil(height);
+  if (minHeight > 0) next = Math.max(minHeight, next);
+  if (maxHeight > 0) next = Math.min(maxHeight, next);
+  return next;
+}
+
+/** True when there is at most one hard line (trailing newlines ignored). */
+export function isComposerSingleHardLineText(text: string): boolean {
+  const t = String(text ?? '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n+$/g, '');
+  return !t.includes('\n');
+}
+
 /**
- * Pretext-based height for the composer editor body (plain text value).
- * Includes the editor's top/bottom padding box (scroller for CodeMirror).
+ * Bottom pad for single-line drafts only. Soft-wrapped tall single hard lines
+ * (already ~2+ rows) skip the boost so multi-line feel stays unchanged.
+ */
+export function composerSingleLineBottomPad(
+  text: string,
+  measuredHeight: number,
+  lineHeightPx: number,
+): number {
+  if (!isComposerSingleHardLineText(text)) return 0;
+  const lh = Math.max(1, lineHeightPx);
+  // measuredHeight includes padding; one row + pad stays under ~2*lh + pad.
+  if (measuredHeight > lh * 2 + 16) return 0;
+  return COMPOSER_SINGLE_LINE_BOTTOM_PAD_PX;
+}
+
+function lineHeightPxFromEditorWrap(editorWrap: HTMLElement): number {
+  const probe = resolveProbeElement(editorWrap);
+  return resolveComposerLineHeightPx(window.getComputedStyle(probe));
+}
+
+/**
+ * Live textarea height (height:auto → scrollHeight). Matches rendered glyphs.
+ */
+function measureTextareaContentHeight(textarea: HTMLTextAreaElement): number {
+  const prevHeight = textarea.style.height;
+  const prevMin = textarea.style.minHeight;
+  textarea.style.height = 'auto';
+  textarea.style.minHeight = '0';
+  const contentH = Math.ceil(textarea.scrollHeight);
+  textarea.style.height = prevHeight;
+  textarea.style.minHeight = prevMin;
+  return contentH;
+}
+
+/**
+ * ProseMirror / TipTap: distance from content top to last block bottom +
+ * sane padding. Avoids scroll-center padding-bottom and flex-fill empty gap.
+ */
+function measureProseMirrorContentHeight(pm: HTMLElement): number {
+  const cs = window.getComputedStyle(pm);
+  const padTop = parseFloat(cs.paddingTop) || 0;
+  const rawPadBottom = parseFloat(cs.paddingBottom) || 0;
+  const padBottom =
+    rawPadBottom > MAX_SANE_EDITOR_PAD_Y
+      ? FALLBACK_EDITOR_PAD_Y
+      : rawPadBottom;
+
+  const kids = pm.children;
+  if (kids.length === 0) {
+    const lh = resolveComposerLineHeightPx(cs);
+    return Math.ceil(padTop + padBottom + lh);
+  }
+
+  const first = kids[0];
+  const last = kids[kids.length - 1];
+  if (!(first instanceof HTMLElement) || !(last instanceof HTMLElement)) {
+    return Math.ceil(pm.scrollHeight - rawPadBottom + padBottom);
+  }
+  const top = first.getBoundingClientRect().top;
+  const bottom = last.getBoundingClientRect().bottom;
+  return Math.ceil(Math.max(0, bottom - top) + padTop + padBottom);
+}
+
+/**
+ * CodeMirror content height + scroller padding (sanitized).
+ */
+function measureCodeMirrorContentHeight(
+  editorWrap: HTMLElement,
+  content: HTMLElement,
+): number {
+  const scroller = editorWrap.querySelector('.cm-scroller');
+  let padY = 0;
+  if (scroller instanceof HTMLElement) {
+    const cs = window.getComputedStyle(scroller);
+    padY = saneComposerPaddingY(
+      (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0),
+    );
+  }
+  return Math.ceil(content.scrollHeight + padY);
+}
+
+/**
+ * Prefer live DOM height; fall back to canvas pretext when unmounted.
+ * Includes editor top/bottom padding (and toolbar when present).
+ * Single-line drafts get a small bottom pad; multi-line is unchanged.
  */
 export function measureComposerEditorPretextHeight(
   editorWrap: HTMLElement | null,
@@ -101,15 +244,45 @@ export function measureComposerEditorPretextHeight(
   },
 ): number {
   if (!editorWrap) return minHeight;
+
+  const toolbarH = measureComposerToolbarHeight(editorWrap);
+  const lineHeightPx = lineHeightPxFromEditorWrap(editorWrap);
+
+  const finish = (bodyHeight: number) =>
+    clampEditorHeight(
+      bodyHeight +
+        toolbarH +
+        composerSingleLineBottomPad(text, bodyHeight, lineHeightPx),
+      minHeight,
+      maxHeight,
+    );
+
+  const textarea = editorWrap.querySelector(
+    'textarea[data-chat-composer-textarea]',
+  );
+  if (textarea instanceof HTMLTextAreaElement) {
+    // Only trust scrollHeight when the node is laid out (width > 0).
+    if (textarea.clientWidth > 0) {
+      return finish(measureTextareaContentHeight(textarea));
+    }
+  }
+
+  const pm = editorWrap.querySelector('.ProseMirror');
+  if (pm instanceof HTMLElement && pm.clientWidth > 0) {
+    return finish(measureProseMirrorContentHeight(pm));
+  }
+
+  const cm = editorWrap.querySelector('.cm-content');
+  if (cm instanceof HTMLElement && cm.clientWidth > 0) {
+    return finish(measureCodeMirrorContentHeight(editorWrap, cm));
+  }
+
+  // Fallback: canvas pretext (surface not ready / zero width).
   const probe = resolveProbeElement(editorWrap);
   const paddingBox = resolveComposerPaddingBox(editorWrap, probe);
   const padCs = window.getComputedStyle(paddingBox);
-  const { paddingY, paddingX } = paddingBoxFromComputedStyle(padCs);
-  const probeCs = window.getComputedStyle(probe);
-  const lineHeightPx =
-    parseFloat(probeCs.lineHeight) ||
-    (parseFloat(probeCs.fontSize) || 14) * 1.45;
-  // Prefer padding-box width when the probe collapsed under fillParent.
+  const { paddingY: rawPadY, paddingX } = paddingBoxFromComputedStyle(padCs);
+  const paddingY = saneComposerPaddingY(rawPadY);
   const boxWidth =
     paddingBox.clientWidth > 0
       ? paddingBox.clientWidth
@@ -117,20 +290,32 @@ export function measureComposerEditorPretextHeight(
         ? probe.clientWidth
         : editorWrap.clientWidth;
   const contentWidth = Math.max(0, boxWidth - paddingX);
-  const font = fontShorthandFromElement(probe);
+  // Avoid width=1 character-break blow-ups before layout.
+  if (contentWidth < 8) {
+    return finish(minHeight);
+  }
   const textHeight = measurePretextBlockHeight(text, {
-    font,
-    contentWidth: Math.max(1, contentWidth),
+    font: fontShorthandFromElement(probe),
+    contentWidth,
     lineHeightPx,
     paddingY,
     minHeight: 0,
     maxHeight,
   });
-  const toolbarH = measureComposerToolbarHeight(editorWrap);
-  let height = textHeight + toolbarH;
-  if (minHeight > 0) height = Math.max(minHeight, height);
-  if (maxHeight > 0) height = Math.min(maxHeight, height);
-  return Math.ceil(height);
+  return finish(textHeight);
+}
+
+/**
+ * Vertical chrome above the editor row (attach / group strip + gaps).
+ * Prefer top-delta over summing siblings: toolbar grid places attach + group
+ * on one row, so per-child height sums would double-count and leave empty
+ * space below helper text while editing (no flex-1 absorb).
+ */
+export function chromeHeightAboveEditorRow(
+  controlsTop: number,
+  editorRowTop: number,
+): number {
+  return Math.max(0, Math.ceil(editorRowTop - controlsTop));
 }
 
 /**
@@ -145,21 +330,20 @@ function measureControlsChrome(
   if (!editorWrap || !controls.contains(editorWrap)) {
     return blockHeightWithMargin(controls);
   }
-  const cs = window.getComputedStyle(controls);
-  const gap = parseFloat(cs.rowGap || cs.gap) || 0;
-  let chrome = 0;
-  let trackCount = 0;
+  let editorRow: HTMLElement | null = null;
   for (const kid of Array.from(controls.children) as HTMLElement[]) {
-    if (kid.contains(editorWrap) || kid === editorWrap) {
-      // Editor row: side buttons share the row — counted via editorHeight.
-      continue;
+    if (kid === editorWrap || kid.contains(editorWrap)) {
+      editorRow = kid;
+      break;
     }
-    chrome += blockHeightWithMargin(kid);
-    trackCount += 1;
   }
-  // Gaps between chrome tracks and before the editor row.
-  const gaps = trackCount > 0 ? trackCount * gap : 0;
-  return Math.ceil(chrome + gaps);
+  if (!editorRow) {
+    return blockHeightWithMargin(controls);
+  }
+  return chromeHeightAboveEditorRow(
+    controls.getBoundingClientRect().top,
+    editorRow.getBoundingClientRect().top,
+  );
 }
 
 /**
@@ -201,7 +385,7 @@ export function measureComposerFitHeights(
   ) as HTMLElement | null;
   const controlsChrome = measureControlsChrome(controls, editorWrap);
 
-  // Edit: pretext-sized body (incl. padding + toolbar). Reply: min editor +
+  // Edit: DOM/pretext-sized body (incl. padding + toolbar). Reply: min editor +
   // toolbar only — live fillParent height tracks the dock and would force
   // grow-only.
   const toolbarH = editorWrap ? measureComposerToolbarHeight(editorWrap) : 0;

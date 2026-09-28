@@ -363,7 +363,7 @@ export default function ChatComposerHaimEditor({
           </div>
         </Tooltip.Provider>
       ) : null}
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <EditorContent editor={editor} className="h-full" />
       </div>
     </div>
