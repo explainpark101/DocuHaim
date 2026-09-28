@@ -29,7 +29,7 @@ describe('vaultFileViewers registry', () => {
 
   it('provides create seed / viewer / content-type', () => {
     const kanbanSeed = seedContentForVaultPath('x.kanban.json');
-    expect(kanbanSeed).toContain('"version": 1');
+    expect(kanbanSeed).toContain('"version": 2');
     expect(viewerForCreatePath('x.kanban.json')).toBe('kanban');
     expect(contentTypeForCreatePath('x.kanban.json')).toBe('application/json');
 
