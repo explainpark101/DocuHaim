@@ -25,10 +25,13 @@ export const CODE_BLOCK_BACKTICK_LANGUAGES = new Set([
 
 const CLOSE_CHARS = new Set(Object.values(CODE_BLOCK_BRACKET_PAIRS));
 
-type KeyLike = Pick<
-  KeyboardEvent,
-  'key' | 'code' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'isComposing' | 'defaultPrevented'
->;
+type KeyLike = Pick<KeyboardEvent, 'key' | 'code'> &
+  Partial<
+    Pick<
+      KeyboardEvent,
+      'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey' | 'isComposing' | 'defaultPrevented'
+    >
+  >;
 
 const pluginKey = new PluginKey('haimCodeBlockBracketPairs');
 

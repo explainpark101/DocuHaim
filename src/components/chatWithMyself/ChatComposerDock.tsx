@@ -11,7 +11,6 @@ import { useResizablePanelHeight } from '@/hooks/useResizablePanelHeight';
 import {
   CHAT_COMPOSER_DOCK_MIN_FIT_H,
   CHAT_COMPOSER_DOCK_MIN_H,
-  COMPOSER_TOOLBAR_CHROME_H,
   resolveChatComposerDockFitHeight,
   resolveChatComposerDockTargetHeight,
 } from '@/components/chatWithMyself/chatComposerDockHeight';
