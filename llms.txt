@@ -8,12 +8,14 @@ https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-file/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-folder/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-note/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/chat-saved-note/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/docuhaim-link/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/document-settings/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/enc-md/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/footnotes/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/haim-table/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/heading-levels/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/kanban-json/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/markdown-image-attrs/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/mermaid-fence-size/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/mermaid-size/
@@ -24,6 +26,7 @@ https://explainpark101.github.io/DocuHaim/docs/custom-markdown/preview-hard-brea
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/print-chrome/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/quiz-md/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/remote-image/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/task-list/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/wiki-image/
 https://explainpark101.github.io/DocuHaim/docs/desktop/android-sideload/
 https://explainpark101.github.io/DocuHaim/docs/desktop/code-signing/
