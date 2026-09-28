@@ -16,7 +16,6 @@ import {
 } from '@tiptap/extensions';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
-import Typography from '@tiptap/extension-typography';
 import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import Youtube from '@tiptap/extension-youtube';
@@ -50,7 +49,10 @@ import {
 import { HaimCodeBlock } from '@/components/haimEditor/extensions/HaimCodeBlock';
 import { HaimParagraph } from '@/components/haimEditor/extensions/HaimParagraph';
 import { HaimSourceLine } from '@/components/haimEditor/extensions/HaimSourceLine';
+import { HaimTypography } from '@/components/haimEditor/extensions/HaimTypography';
 import type { Extensions } from '@tiptap/core';
+import type { HaimTypographyRules } from '@/utils/haimTypographySettings';
+import { HAIM_TYPOGRAPHY_DEFAULTS } from '@/utils/haimTypographySettings';
 
 export type HaimExtensionProfile = 'note' | 'composer';
 
@@ -60,6 +62,8 @@ export type CreateHaimExtensionsOptions = {
   profile?: HaimExtensionProfile;
   /** Leading vault meta prefix for [data-line] vault line offsets. */
   getMetaPrefix?: () => string;
+  /** Typography input-rule enables (live-updatable via setHaimTypographyRules). */
+  typographyRules?: HaimTypographyRules;
 };
 
 /**
@@ -74,6 +78,7 @@ export function createHaimExtensions(
   const profile = options?.profile ?? 'note';
   const isNote = profile === 'note';
   const getMetaPrefix = options?.getMetaPrefix ?? (() => '');
+  const typographyRules = options?.typographyRules ?? HAIM_TYPOGRAPHY_DEFAULTS;
 
   const starterKit = isNote
     ? StarterKit.configure({
@@ -132,8 +137,13 @@ export function createHaimExtensions(
     ...(isNote ? [HaimCodeBlock] : []),
     Subscript,
     Superscript,
-    Typography,
-    Placeholder.configure({ placeholder }),
+    HaimTypography.configure({ initialRules: typographyRules }),
+    Placeholder.configure({
+      placeholder,
+      // Chat composer: show like a textarea (even when unfocused).
+      // Note editor: keep TipTap default (current empty node only).
+      ...(isNote ? {} : { showOnlyCurrent: false }),
+    }),
     CharacterCount,
     Focus.configure({ className: 'haim-node-focused' }),
     Selection,

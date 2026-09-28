@@ -199,9 +199,12 @@ button {
   overflow: hidden !important;
 }
 .chat-composer-editor .chat-composer-haim .tiptap,
-.chat-composer-editor .chat-composer-haim .ProseMirror {
+.chat-composer-editor .chat-composer-haim .ProseMirror,
+.chat-composer-editor .haim-editor-content .tiptap,
+.chat-composer-editor .haim-editor .tiptap {
+  /* Kill note WYSIWYG scroll-center (50vh) — it inflated edit autoFit height. */
   padding-bottom: 0.5rem !important;
-  min-height: 4rem !important;
+  min-height: 0 !important;
 }
 .chat-composer-editor .md-editor-toolbar-wrapper,
 .chat-composer-editor .md-editor-toolbar {

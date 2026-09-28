@@ -2,14 +2,14 @@
  * In-flight tree move/copy busy markers for Sidebar TreeNode UI.
  */
 
-export type TreeTransferAction = 'move' | 'copy';
+export type TreeTransferAction = 'move' | 'copy' | 'rename';
 
 export type TreeTransferBusyEntry = {
   storageType: string;
   /** Source path (file or folder; folders usually end with `/`). */
   path: string;
   nodeType: 'file' | 'folder';
-  /** Destination parent folder path (`''` = root). */
+  /** Destination parent folder path (`''` = root). Unused for rename. */
   destFolderPath: string;
   action: TreeTransferAction;
 };
@@ -34,6 +34,7 @@ export function formatTransferDestLabel(
 
 export function transferBusyTooltipText(entry: TreeTransferBusyEntry | null | undefined): string {
   if (!entry) return '';
+  if (entry.action === 'rename') return '이름 변경 중';
   const verb = entry.action === 'copy' ? '복제 중' : '이동 중';
   const dest = formatTransferDestLabel(entry.destFolderPath, entry.storageType);
   return `${verb} → ${dest}`;

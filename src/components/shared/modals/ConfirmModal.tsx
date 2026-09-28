@@ -84,6 +84,23 @@ export function ConfirmModal({
   });
 
   useEffect(() => {
+    if (!isOpen) return undefined;
+    // Pull focus into the dialog so Enter is not ignored while a leftover
+    // input (e.g. tree rename field) outside the modal still has focus.
+    const frame = window.requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && !panel.contains(active)) {
+        active.blur();
+      }
+      if (active instanceof Node && panel.contains(active)) return;
+      panel.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isOpen, panelRef]);
+
+  useEffect(() => {
     if (!isOpen) {
       resetBox();
       return undefined;
@@ -115,7 +132,8 @@ export function ConfirmModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby={title ? 'confirm-modal-title' : undefined}
-            className={`relative z-10 flex w-full max-w-md max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl dark:bg-odp-surface dark:text-odp-fgStrong ${
+            tabIndex={-1}
+            className={`relative z-10 flex w-full max-w-md max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white text-gray-800 shadow-2xl outline-none dark:bg-odp-surface dark:text-odp-fgStrong ${
               positioned ? 'max-w-none!' : ''
             }`}
             style={positionedStyle as MotionStyle}

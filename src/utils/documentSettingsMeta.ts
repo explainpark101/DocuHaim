@@ -1,4 +1,8 @@
 import { DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
+import {
+  normalizeHaimTypographyOverrides,
+  type HaimTypographyOverrides,
+} from '@/utils/haimTypographySettings';
 
 export type DocumentFontSettings = {
   body: string;
@@ -15,6 +19,11 @@ export type DocumentSettingsMeta = {
   };
   fonts: DocumentFontSettings;
   webfontCss: string;
+  /**
+   * Optional Haim Typography overrides for this document only.
+   * Missing keys inherit the global preference.
+   */
+  haimTypography?: HaimTypographyOverrides | undefined;
 };
 
 export const DEFAULT_SOURCE_LIST_TITLE = 'Sources';
@@ -65,7 +74,9 @@ function normalizeMeta(parsed: unknown): DocumentSettingsMeta {
       ? sourceList.title.trim()
       : DEFAULT_SOURCE_LIST_TITLE;
 
-  return {
+  const haimTypography = normalizeHaimTypographyOverrides(obj.haimTypography);
+
+  const meta: DocumentSettingsMeta = {
     v: 1,
     sourceList: {
       show: sourceList.show === false ? false : true,
@@ -74,6 +85,8 @@ function normalizeMeta(parsed: unknown): DocumentSettingsMeta {
     fonts: normalizeFonts(obj.fonts),
     webfontCss: typeof obj.webfontCss === 'string' ? obj.webfontCss : '',
   };
+  if (haimTypography) meta.haimTypography = haimTypography;
+  return meta;
 }
 
 export type ParseDocumentSettingsMetaResult = {
@@ -129,7 +142,16 @@ function isLeadingMetaRegion(before: string): boolean {
 
 export function serializeDocumentSettingsComment(meta: DocumentSettingsMeta): string {
   const normalized = normalizeMeta(meta);
-  const json = JSON.stringify(normalized);
+  const payload: Record<string, unknown> = {
+    v: normalized.v,
+    sourceList: normalized.sourceList,
+    fonts: normalized.fonts,
+    webfontCss: normalized.webfontCss,
+  };
+  if (normalized.haimTypography) {
+    payload.haimTypography = normalized.haimTypography;
+  }
+  const json = JSON.stringify(payload);
   return `<!-- document-settings\n${escapeJsonForComment(json)}\n-->`;
 }
 

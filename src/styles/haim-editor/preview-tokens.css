@@ -252,13 +252,51 @@ html[data-haim-prose-line-numbers='1']
   font-size: 11px;
 }
 
-.haim-editor .haim-code-block__lang {
+.haim-editor .haim-code-block__lang,
+.haim-editor .haim-code-block__lang-trigger {
   font-family: D2Coding, ui-monospace, monospace;
   text-transform: lowercase;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.haim-editor .haim-code-block__lang-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: min(100%, 12rem);
+  padding: 0.15rem 0.35rem 0.15rem 0.2rem;
+  margin: -0.15rem 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  line-height: 1.2;
+  outline: none;
+}
+
+.haim-editor .haim-code-block__lang-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.haim-editor .haim-code-block__lang-trigger:hover,
+.haim-editor .haim-code-block__lang-trigger[data-state='open'] {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.haim-editor .haim-code-block__lang-trigger:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, #61afef 55%, transparent);
+}
+
+.haim-editor .haim-code-block__lang-chevron {
+  flex-shrink: 0;
+  opacity: 0.65;
 }
 
 .haim-editor .haim-code-block__actions {

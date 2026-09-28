@@ -21,7 +21,8 @@
   border-bottom-color: var(--haim-code-border);
 }
 
-.haim-editor .haim-code-block__lang {
+.haim-editor .haim-code-block__lang,
+.haim-editor .haim-code-block__lang-trigger {
   color: var(--haim-code-muted);
 }
 

@@ -1400,9 +1400,58 @@ export default function Sidebar({
       if (isTypingElement(e.target)) return;
 
       if (e.key === 'F2') {
-        if (!lastActivatedNode) return;
-
-        const { storageType, node } = lastActivatedNode;
+        // Prefer last activated if in selection; else first selected; else activated;
+        // else focused folder (folder click expands without selecting).
+        let storageType: string | null = null;
+        let node: SidebarTreeNode | null = null;
+        if (lastActivatedNode) {
+          const key = toTreeSelectKey(lastActivatedNode.storageType, lastActivatedNode.node.path);
+          if (!selectedIds?.size || selectedIds.has(key)) {
+            storageType = lastActivatedNode.storageType;
+            node = lastActivatedNode.node;
+          }
+        }
+        if (!node && selectedIds?.size) {
+          const firstKey = selectedIds.values().next().value;
+          if (firstKey) {
+            const colonIdx = String(firstKey).indexOf(':');
+            storageType = colonIdx >= 0 ? firstKey.slice(0, colonIdx) : 's3';
+            const path = colonIdx >= 0 ? firstKey.slice(colonIdx + 1) : firstKey;
+            node = findTreeNode(storageType, path);
+          }
+        }
+        if (!node && lastActivatedNode) {
+          storageType = lastActivatedNode.storageType;
+          node = lastActivatedNode.node;
+        }
+        if (!node || !storageType) {
+          if (isS3Mode && lastFocusedS3FolderPath != null && lastFocusedS3FolderPath !== '') {
+            storageType = 's3';
+            node = findTreeNode('s3', lastFocusedS3FolderPath);
+          } else if (
+            isLocalMode &&
+            lastFocusedLocalFolder?.path != null &&
+            lastFocusedLocalFolder.path !== ''
+          ) {
+            storageType = 'local';
+            node = findTreeNode('local', lastFocusedLocalFolder.path);
+          } else if (
+            isWebdavMode &&
+            lastFocusedWebdavFolderPath != null &&
+            lastFocusedWebdavFolderPath !== ''
+          ) {
+            storageType = 'webdav';
+            node = findTreeNode('webdav', lastFocusedWebdavFolderPath);
+          } else if (
+            isIdbMode &&
+            lastFocusedIdbFolderPath != null &&
+            lastFocusedIdbFolderPath !== ''
+          ) {
+            storageType = 'idb';
+            node = findTreeNode('idb', lastFocusedIdbFolderPath);
+          }
+        }
+        if (!node || !storageType) return;
         if (
           (isS3Mode && storageType !== 's3') ||
           (isLocalMode && storageType !== 'local') ||
@@ -1415,6 +1464,7 @@ export default function Sidebar({
         if (findApplicableTransferBusy(transferBusyItems, storageType, node.path)) return;
 
         e.preventDefault();
+        e.stopPropagation();
         setRenameTarget({ storageType, node });
         return;
       }
@@ -1512,10 +1562,12 @@ export default function Sidebar({
     isWebdavMode,
     isS3Mode,
     isLocalMode,
+    isIdbMode,
     lastActivatedNode,
     lastFocusedLocalFolder,
     lastFocusedS3FolderPath,
     lastFocusedWebdavFolderPath,
+    lastFocusedIdbFolderPath,
     requestDeleteNode,
     selectedIds,
     transferBusyItems,
@@ -2008,9 +2060,10 @@ export default function Sidebar({
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedS3}
                     onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
-                      setLastFocusedS3FolderPath(node ? node.path || '' : null)
-                    }
+                    onFolderFocus={(node) => {
+                      setLastFocusedS3FolderPath(node ? node.path || '' : null);
+                      if (node) activateTreeNode('s3', node);
+                    }}
                     focusedFolderPath={
                       chatWithMyselfActive
                         ? undefined
@@ -2194,11 +2247,12 @@ export default function Sidebar({
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedLocal}
                     onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
+                    onFolderFocus={(node) => {
                       setLastFocusedLocalFolder(
                         node ? { path: node.path || '', handle: node.handle } : null,
-                      )
-                    }
+                      );
+                      if (node) activateTreeNode('local', node);
+                    }}
                     focusedFolderPath={
                       chatWithMyselfActive
                         ? undefined
@@ -2350,9 +2404,10 @@ export default function Sidebar({
                   isSearching={!!searchTerm}
                   expandedPaths={effectiveExpandedIdb}
                   onExpandedChange={handleExpandedChange}
-                  onFolderFocus={(node) =>
-                    setLastFocusedIdbFolderPath(node ? node.path || '' : null)
-                  }
+                  onFolderFocus={(node) => {
+                    setLastFocusedIdbFolderPath(node ? node.path || '' : null);
+                    if (node) activateTreeNode('idb', node);
+                  }}
                   focusedFolderPath={
                     chatWithMyselfActive ? undefined : (lastFocusedIdbFolderPath ?? undefined)
                   }
@@ -2501,9 +2556,10 @@ export default function Sidebar({
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedWebdav}
                     onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
-                      setLastFocusedWebdavFolderPath(node ? node.path || '' : null)
-                    }
+                    onFolderFocus={(node) => {
+                      setLastFocusedWebdavFolderPath(node ? node.path || '' : null);
+                      if (node) activateTreeNode('webdav', node);
+                    }}
                     focusedFolderPath={
                       chatWithMyselfActive
                         ? undefined

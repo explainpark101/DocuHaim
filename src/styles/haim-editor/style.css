@@ -150,6 +150,24 @@ html[data-haim-prose-width-clamp='1']
   margin: 0.4em 0;
 }
 
+/*
+ * TipTap Placeholder sets `is-empty` on every empty textblock and
+ * `is-editor-empty` only when the whole doc is empty. Show the hint
+ * only for the latter (not on each new blank paragraph).
+ */
+.tiptap.haim-editor-prose .is-editor-empty::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap.haim-editor-prose.haim-editor--dark .is-editor-empty::before,
+.haim-editor--dark .tiptap.haim-editor-prose .is-editor-empty::before {
+  color: #6b7280;
+}
+
 .haim-editor-prose ul,
 .haim-editor-prose ol {
   padding-left: 1.5em;

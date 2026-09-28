@@ -9,6 +9,8 @@ import StatusBarClockSettings from '@/components/settings/StatusBarClockSettings
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import HaimProseWidthSettings from '@/components/settings/HaimProseWidthSettings';
+import HaimTypographySettings from '@/components/settings/HaimTypographySettings';
+import HaimCodeTabSettings from '@/components/settings/HaimCodeTabSettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
 import QuizSettingsSection from '@/components/settings/QuizSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
@@ -124,6 +126,7 @@ import {
   convertTreeHoverExpandValue,
   treeHoverExpandSettingsToMs,
 } from '@/utils/treeHoverExpandSettings';
+import { loadTreeRevealOnOpenEnabled } from '@/utils/treeRevealOnOpenSettings';
 import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfilesSettings';
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import InvertedIndexCoverage from '@/components/settings/InvertedIndexCoverage';
@@ -290,6 +293,9 @@ export default function SettingsPage({
   const [base64ImageFold, setBase64ImageFoldState] = useState(() =>
     loadBase64ImageFoldEnabled(),
   );
+  const [treeRevealOnOpenEnabled, setTreeRevealOnOpenEnabled] = useState(() =>
+    loadTreeRevealOnOpenEnabled(),
+  );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState(
@@ -343,6 +349,8 @@ export default function SettingsPage({
         setHaimCodeWrapState(enabled);
       } else if (id === 'settings-base64-image-fold') {
         setBase64ImageFoldState(enabled);
+      } else if (id === 'settings-tree-reveal-on-open') {
+        setTreeRevealOnOpenEnabled(enabled);
       }
     });
   }, []);
@@ -1429,6 +1437,8 @@ export default function SettingsPage({
                 </Switch.Root>
               </div>
               <HaimProseWidthSettings />
+              <HaimTypographySettings />
+              <HaimCodeTabSettings />
               <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
@@ -2276,6 +2286,32 @@ export default function SettingsPage({
               </span>
             </label>
           )}
+          <label
+            className="flex items-center gap-3 text-xs text-gray-700 dark:text-odp-fg cursor-pointer group mt-4"
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setSettingsToggle('settings-tree-reveal-on-open', !treeRevealOnOpenEnabled)
+              }
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-all duration-200 ${
+                treeRevealOnOpenEnabled
+                  ? 'bg-blue-500 border-blue-500 shadow-sm'
+                  : 'bg-gray-300 border-gray-300 dark:bg-odp-bgSoft dark:border-odp-borderSoft'
+              } group-hover:brightness-105 group-hover:border-blue-400`}
+              aria-pressed={treeRevealOnOpenEnabled}
+              aria-label="검색으로 연 파일 트리 스크롤"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  treeRevealOnOpenEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="select-none group-hover:text-gray-900 dark:group-hover:text-odp-fgStrong">
+              고급 검색에서 파일을 열면 사이드바 트리를 해당 위치로 스크롤
+            </span>
+          </label>
           <StatusBarClockSettings />
           {typeof onTreeHoverExpandSettingsChange === 'function' && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">
