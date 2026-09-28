@@ -17,7 +17,43 @@ function isInCodeBlock(state: EditorState): boolean {
   return state.selection.$from.parent.type.name === 'codeBlock';
 }
 
-/** Indent every line in [from, to) text; empty selection inserts spaces at cursor. */
+/**
+ * Absolute start positions of code-block lines that intersect [from, to).
+ * Partial mid-line selections still include the whole line.
+ */
+export function collectIntersectingCodeBlockLineStarts(
+  state: EditorState,
+  from: number,
+  to: number,
+): number[] {
+  const $from = state.doc.resolve(from);
+  if ($from.parent.type.name !== 'codeBlock') return [];
+  const codeStart = $from.start();
+  const codeEnd = $from.end();
+  const text = state.doc.textBetween(codeStart, codeEnd, '\n', '\n');
+  const lines = text.split('\n');
+  const starts: number[] = [];
+
+  let lineStart = codeStart;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? '';
+    const nextStart =
+      i < lines.length - 1 ? lineStart + line.length + 1 : codeEnd;
+    // Intersect [from, to) with [lineStart, nextStart)
+    if (from < nextStart && to > lineStart) {
+      starts.push(lineStart);
+    }
+    lineStart = nextStart;
+  }
+  return starts;
+}
+
+function leadingSpacesToRemove(line: string, tabWidth: number): number {
+  const leading = line.match(/^ */)?.[0] ?? '';
+  return Math.min(leading.length, tabWidth);
+}
+
+/** Indent every line intersecting the selection; empty selection inserts spaces at cursor. */
 export function buildCodeBlockIndentTransaction(
   state: EditorState,
   tabWidth: number,
@@ -34,13 +70,17 @@ export function buildCodeBlockIndentTransaction(
     return tr;
   }
 
-  const text = state.doc.textBetween(from, to, '\n', '\n');
-  const indented = text
-    .split('\n')
-    .map((line) => indent + line)
-    .join('\n');
-  const tr = state.tr.insertText(indented, from, to);
-  tr.setSelection(TextSelection.create(tr.doc, from, from + indented.length));
+  const lineStarts = collectIntersectingCodeBlockLineStarts(state, from, to);
+  if (lineStarts.length === 0) return null;
+
+  const tr = state.tr;
+  for (let i = lineStarts.length - 1; i >= 0; i -= 1) {
+    tr.insertText(indent, lineStarts[i]!);
+  }
+
+  const newFrom = lineStarts[0]!;
+  const newTo = tr.mapping.map(to);
+  tr.setSelection(TextSelection.create(tr.doc, newFrom, newTo));
   return tr;
 }
 
@@ -74,8 +114,7 @@ export function buildCodeBlockOutdentTransaction(
     }
 
     const currentLine = lines[currentLineIndex] ?? '';
-    const leading = currentLine.match(/^ */)?.[0] ?? '';
-    const remove = Math.min(leading.length, width);
+    const remove = leadingSpacesToRemove(currentLine, width);
     if (remove === 0) return state.tr; // handled (no-op) so Tab focus doesn't move
 
     let lineStart = codeStart;
@@ -88,25 +127,48 @@ export function buildCodeBlockOutdentTransaction(
     if (cursorInLine <= remove) {
       tr.setSelection(TextSelection.create(tr.doc, lineStart));
     } else {
-      tr.setSelection(
-        TextSelection.create(tr.doc, $from.pos - remove),
-      );
+      tr.setSelection(TextSelection.create(tr.doc, $from.pos - remove));
     }
     return tr;
   }
 
   const { from, to } = selection;
-  const text = doc.textBetween(from, to, '\n', '\n');
-  const outdented = text
-    .split('\n')
-    .map((line) => {
-      const leading = line.match(/^ */)?.[0] ?? '';
-      const remove = Math.min(leading.length, width);
-      return line.slice(remove);
-    })
-    .join('\n');
-  const tr = state.tr.insertText(outdented, from, to);
-  tr.setSelection(TextSelection.create(tr.doc, from, from + outdented.length));
+  const lineStarts = collectIntersectingCodeBlockLineStarts(state, from, to);
+  if (lineStarts.length === 0) return null;
+
+  const codeStart = $from.start();
+  const codeEnd = $from.end();
+  const allText = doc.textBetween(codeStart, codeEnd, '\n', '\n');
+  const allLines = allText.split('\n');
+  const lineStartToText = new Map<number, string>();
+  {
+    let pos = codeStart;
+    for (let i = 0; i < allLines.length; i += 1) {
+      const line = allLines[i] ?? '';
+      lineStartToText.set(pos, line);
+      pos += line.length + (i < allLines.length - 1 ? 1 : 0);
+    }
+  }
+
+  const tr = state.tr;
+  let removedBeforeFrom = 0;
+  let removedTotal = 0;
+
+  for (let i = lineStarts.length - 1; i >= 0; i -= 1) {
+    const lineStart = lineStarts[i]!;
+    const line = lineStartToText.get(lineStart) ?? '';
+    const remove = leadingSpacesToRemove(line, width);
+    if (remove === 0) continue;
+    tr.delete(lineStart, lineStart + remove);
+    removedTotal += remove;
+    if (lineStart < from) removedBeforeFrom += remove;
+  }
+
+  if (removedTotal === 0) return tr; // no-op but still handled
+
+  const newFrom = Math.max(lineStarts[0]!, from - removedBeforeFrom);
+  const newTo = tr.mapping.map(to);
+  tr.setSelection(TextSelection.create(tr.doc, newFrom, Math.max(newFrom, newTo)));
   return tr;
 }
 

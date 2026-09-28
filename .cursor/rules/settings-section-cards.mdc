@@ -1,0 +1,49 @@
+---
+description: Settings / floating panels group related controls in tinted section cards with distinct colors per container.
+alwaysApply: true
+---
+
+# Settings section cards (tinted containers)
+
+When a settings modal, floating panel, or multi-group form shows **several independent concerns**, wrap each concern in its own **tinted section card**. Adjacent cards must use **different tones** so groups are easy to scan (보기 설정 / 문서 설정 pattern).
+
+## Shared helper
+
+Use `settingsSectionCardClass` from `src/utils/settingsSectionCard.ts` — do not invent one-off border/bg strings.
+
+```tsx
+import { settingsSectionCardClass } from '@/utils/settingsSectionCard';
+
+<div className="flex flex-col gap-2.5 p-3"> {/* or space-y-3 in a modal body */}
+  <section className={settingsSectionCardClass('sky')} aria-label="…">
+    {/* one concern */}
+  </section>
+  <section className={settingsSectionCardClass('violet')} aria-label="…">
+    {/* another concern */}
+  </section>
+  <section className={settingsSectionCardClass('emerald')} aria-label="…">
+    …
+  </section>
+</div>
+```
+
+Compact floating panels: `settingsSectionCardClass('sky', { compact: true })`.
+
+Tone rotation when stacking many sections: `SETTINGS_SECTION_TONE_SEQUENCE` (`sky` → `violet` → `amber` → `emerald` → `blue` → `slate`).
+
+## Checklist
+
+1. One card = one concern (do not dump the whole form into a single tint).
+2. Neighboring cards use **different** tones — never identical tint back-to-back.
+3. Prefer the helper over raw Tailwind color stacks.
+4. Keep modal sticky header/footer outside the scroll body; cards live **inside** the scrolling body only.
+5. Nested lists/inputs inside a card may use a slightly stronger surface (`bg-white/80`) for contrast.
+6. Prefer **English** in new code comments if Korean Unicode might corrupt.
+
+```text
+❌ BAD — flat sections with only headings, no card chrome
+❌ BAD — every section the same slate/gray card (no hue separation)
+❌ BAD — hand-rolled border-sky-… strings when the helper exists
+✅ GOOD — settingsSectionCardClass + distinct tones per section
+✅ GOOD — DocumentSettingsModal / HaimProseWidthFloatingPanel (보기 설정)
+```

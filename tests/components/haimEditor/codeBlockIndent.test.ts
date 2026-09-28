@@ -55,6 +55,34 @@ describe('codeBlockIndent', () => {
     }
   });
 
+  it('indents whole lines for a partial mid-line selection', async () => {
+    const { editor, selectInCode, buildCodeBlockIndentTransaction } = await setup(
+      'hello\nworld\nxyz',
+    );
+    try {
+      // Select "llo\nwor" (not full lines)
+      selectInCode(2, 9);
+      editor.view.dispatch(buildCodeBlockIndentTransaction(editor.state, 2)!);
+      expect(editor.state.doc.textContent).toBe('  hello\n  world\nxyz');
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it('outdents whole lines for a partial mid-line selection', async () => {
+    const { editor, selectInCode, buildCodeBlockOutdentTransaction } = await setup(
+      '  hello\n  world\nxyz',
+    );
+    try {
+      // Select "llo\n  wor" inside the indented lines
+      selectInCode(4, 13);
+      editor.view.dispatch(buildCodeBlockOutdentTransaction(editor.state, 2)!);
+      expect(editor.state.doc.textContent).toBe('hello\nworld\nxyz');
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it('outdents leading spaces with Shift-Tab width', async () => {
     const { editor, selectInCode, buildCodeBlockOutdentTransaction } = await setup(
       '    x',
