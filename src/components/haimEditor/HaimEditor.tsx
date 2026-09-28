@@ -32,6 +32,14 @@ import {
 import { registerHaimOpenViewPath } from '@/utils/haimOpenViewPath';
 import { countTaskCheckboxLines } from '@/utils/taskCheckboxStatus';
 import DocuhaimNoteLinkModal from '@/components/haimEditor/DocuhaimNoteLinkModal';
+import HaimUrlLinkModal from '@/components/haimEditor/HaimUrlLinkModal';
+import {
+  escapeMarkdownLinkLabel,
+  resolveHaimInsertRange,
+  type HaimInsertPlacement,
+  type HaimInsertRange,
+} from '@/utils/haimEditorInsertRange';
+import { buildDocuhaimHref } from '@/utils/docuhaimLink';
 import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
   HAIM_VIEW_MODE_DOUBLE,
@@ -180,8 +188,13 @@ export default function HaimEditor({
   const [headingRemapSelection, setHeadingRemapSelection] = useState('');
   const headingRemapRangeRef = useRef<{ from: number; to: number } | null>(null);
   const [imageLinkOpen, setImageLinkOpen] = useState(false);
+  const [urlLinkOpen, setUrlLinkOpen] = useState(false);
+  const [urlLinkInitialText, setUrlLinkInitialText] = useState('');
+  const [urlLinkInitialUrl, setUrlLinkInitialUrl] = useState('');
   const [docuhaimLinkOpen, setDocuhaimLinkOpen] = useState(false);
   const [docuhaimLinkInitialText, setDocuhaimLinkInitialText] = useState('');
+  const lastFocusedRangeRef = useRef<HaimInsertRange | null>(null);
+  const everFocusedRef = useRef(false);
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
   const [qrCodeInitialText, setQrCodeInitialText] = useState('');
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
@@ -932,8 +945,58 @@ export default function HaimEditor({
     return () => registerHaimOpenViewPath(null);
   }, [onOpenViewPath]);
 
+  // Remember last TipTap caret/selection while the editor is focused.
+  useEffect(() => {
+    if (!editor || previewOnly) return undefined;
+    const remember = () => {
+      everFocusedRef.current = true;
+      const { from, to } = editor.state.selection;
+      lastFocusedRangeRef.current = { from, to };
+    };
+    const onFocus = () => {
+      remember();
+    };
+    const onSelectionUpdate = () => {
+      if (!editor.isFocused) return;
+      remember();
+    };
+    editor.on('focus', onFocus);
+    editor.on('selectionUpdate', onSelectionUpdate);
+    return () => {
+      editor.off('focus', onFocus);
+      editor.off('selectionUpdate', onSelectionUpdate);
+    };
+  }, [editor, previewOnly]);
+
+  useEffect(() => {
+    everFocusedRef.current = false;
+    lastFocusedRangeRef.current = null;
+  }, [currentFile?.id]);
+
+  const openUrlLinkModal = useCallback(() => {
+    if (!editor || previewOnly) return;
+    if (editor.isFocused) {
+      everFocusedRef.current = true;
+      const { from, to } = editor.state.selection;
+      lastFocusedRangeRef.current = { from, to };
+    }
+    const selected =
+      getHaimSelectedPlainText(editor, cmViewRef.current, {
+        sourceVisible: true,
+      }) || '';
+    const href = String(editor.getAttributes('link').href || '').trim();
+    setUrlLinkInitialText(selected);
+    setUrlLinkInitialUrl(href);
+    setUrlLinkOpen(true);
+  }, [editor, previewOnly]);
+
   const openDocuhaimNoteLinkModal = useCallback(() => {
     if (!editor || previewOnly) return;
+    if (editor.isFocused) {
+      everFocusedRef.current = true;
+      const { from, to } = editor.state.selection;
+      lastFocusedRangeRef.current = { from, to };
+    }
     setDocuhaimLinkInitialText(
       getHaimSelectedPlainText(editor, cmViewRef.current, {
         sourceVisible: true,
@@ -942,27 +1005,96 @@ export default function HaimEditor({
     setDocuhaimLinkOpen(true);
   }, [editor, previewOnly]);
 
-  const insertDocuhaimNoteLink = useCallback(
-    ({ path, text }: { path: string; text: string }) => {
+  const insertUrlLink = useCallback(
+    ({
+      url,
+      text,
+      placement,
+      unset,
+    }: {
+      url: string;
+      text: string;
+      placement: HaimInsertPlacement;
+      unset?: boolean | undefined;
+    }) => {
       if (!editor) return;
-      const href = buildDocuhaimHref(path);
-      const { empty, from, to } = editor.state.selection;
-      const selected = empty
-        ? ''
-        : editor.state.doc.textBetween(from, to, ' ').trim();
-      if (selected) {
-        editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+      const range = resolveHaimInsertRange(editor, {
+        forceAppendAtEnd: placement === 'end',
+        lastFocusedRange: lastFocusedRangeRef.current,
+        everFocused: everFocusedRef.current,
+      });
+      if (unset) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(range)
+          .extendMarkRange('link')
+          .unsetLink()
+          .run();
         return;
       }
-      const label = (text || path.split('/').pop() || path).trim() || path;
-      const escaped = label
-        .replace(/\\/g, '\\\\')
-        .replace(/\[/g, '\\[')
-        .replace(/\]/g, '\\]');
+      const selected = range.from === range.to
+        ? ''
+        : editor.state.doc.textBetween(range.from, range.to, ' ').trim();
+      if (selected && !text.trim()) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(range)
+          .extendMarkRange('link')
+          .setLink({ href: url })
+          .run();
+        return;
+      }
+      const label = (text.trim() || selected || url).trim() || url;
+      const md = `[${escapeMarkdownLinkLabel(label)}](${url})`;
       editor
         .chain()
         .focus()
-        .insertContent(`[${escaped}](${href})`, {
+        .insertContentAt(range, md, {
+          contentType: 'markdown',
+        } as never)
+        .run();
+    },
+    [editor],
+  );
+
+  const insertDocuhaimNoteLink = useCallback(
+    ({
+      path,
+      text,
+      placement,
+    }: {
+      path: string;
+      text: string;
+      placement: HaimInsertPlacement;
+    }) => {
+      if (!editor) return;
+      const href = buildDocuhaimHref(path);
+      const range = resolveHaimInsertRange(editor, {
+        forceAppendAtEnd: placement === 'end',
+        lastFocusedRange: lastFocusedRangeRef.current,
+        everFocused: everFocusedRef.current,
+      });
+      const selected = range.from === range.to
+        ? ''
+        : editor.state.doc.textBetween(range.from, range.to, ' ').trim();
+      if (selected && !text.trim()) {
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(range)
+          .extendMarkRange('link')
+          .setLink({ href })
+          .run();
+        return;
+      }
+      const label = (text || path.split('/').pop() || path).trim() || path;
+      const md = `[${escapeMarkdownLinkLabel(label)}](${href})`;
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(range, md, {
           contentType: 'markdown',
         } as never)
         .run();
@@ -1043,9 +1175,7 @@ export default function HaimEditor({
       'editor-code': () =>
         run(() => editor.chain().focus().toggleCodeBlock().run()),
       'editor-link': () => {
-        const url = window.prompt('URL', 'https://');
-        if (!url) return;
-        run(() => editor.chain().focus().setLink({ href: url }).run());
+        openUrlLinkModal();
       },
       'editor-docuhaim-link': () => {
         openDocuhaimNoteLinkModal();
@@ -1141,6 +1271,7 @@ export default function HaimEditor({
     onUploadImage,
     showImageUploadOverlay,
     insertPageBreak,
+    openUrlLinkModal,
     openDocuhaimNoteLinkModal,
   ]);
 
@@ -1250,6 +1381,7 @@ export default function HaimEditor({
               window.setTimeout(() => setChecklistHint(null), 3200);
             },
             onImageLink: () => setImageLinkOpen(true),
+            onUrlLink: openUrlLinkModal,
             onDocuhaimNoteLink: openDocuhaimNoteLinkModal,
             onImageUpload: (files) => {
               void handleUploadFiles(files);
@@ -1439,6 +1571,13 @@ export default function HaimEditor({
             } as never)
             .run();
         }}
+      />
+      <HaimUrlLinkModal
+        isOpen={urlLinkOpen}
+        onClose={() => setUrlLinkOpen(false)}
+        initialText={urlLinkInitialText}
+        initialUrl={urlLinkInitialUrl}
+        onConfirm={insertUrlLink}
       />
       <DocuhaimNoteLinkModal
         isOpen={docuhaimLinkOpen}

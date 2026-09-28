@@ -40,6 +40,7 @@ import {
   Copy,
   Undo2,
   ClipboardList,
+  Kanban,
 } from 'lucide-react';
 
 export const IconFolder = ({ size = 16, ...props }) => <Folder size={size} {...props} />;
@@ -70,6 +71,8 @@ export const IconVideo = ({ size = 14, ...props }) => <VideoIcon size={size} {..
 export const IconFileCode = ({ size = 14, ...props }) => <FileCode size={size} {...props} />;
 /** Quiz note (`.quiz.md`) — sidebar tree and tabs. */
 export const IconQuiz = ({ size = 14, ...props }) => <ClipboardList size={size} {...props} />;
+/** Kanban board (`.kanban.json`) — sidebar tree and tabs. */
+export const IconKanban = ({ size = 14, ...props }) => <Kanban size={size} {...props} />;
 export const IconFileJson = ({ size = 14, ...props }) => <FileJson size={size} {...props} />;
 export const IconRefresh = ({ size = 14, ...props }) => <RotateCw size={size} {...props} />;
 export const IconMusic = ({ size = 14, ...props }) => <Music2 size={size} {...props} />;

@@ -68,6 +68,10 @@ Given vault storage path `P`:
 - Relative `.md` links without the `docuhaim://` scheme (those use existing relative `/view` resolution)
 - Opening in an external OS handler for the custom scheme
 
+### 7. Presentation — note icon (optional)
+
+When Settings 「노트 링크 아이콘」 is on (default), preview/WYSIWYG may show a leading note icon via CSS (`::before`). This is presentation-only and must **not** appear in stored Markdown.
+
 ## Implementation
 
 | Role | Path |
@@ -76,4 +80,6 @@ Given vault storage path `P`:
 | Preview / classic MD click | `src/utils/appHref.ts` (`resolvePreviewHref`) |
 | TipTap link + click | `src/components/haimEditor/extensions/HaimLink.ts` |
 | Open bridge | `src/utils/haimOpenViewPath.ts` (registered from `HaimEditor`) |
-| Insert UI | `src/components/haimEditor/DocuhaimNoteLinkModal.tsx` + toolbar 「노트 링크」 |
+| Insert UI | `HaimUrlLinkModal` / `DocuhaimNoteLinkModal` + toolbar 「링크」 submenu (URL 링크 / 노트 링크) |
+| Insert range | `src/utils/haimEditorInsertRange.ts` — last focused caret, else document end; modal 「최하단에 추가」 |
+| Note icon | `src/styles/docuhaim-link-icon.css` + `haimDocuhaimLinkIconSettings` (Settings / AS, default on; presentation only) |

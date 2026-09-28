@@ -1,11 +1,11 @@
 import Link from '@tiptap/extension-link';
-import { getAttributes } from '@tiptap/core';
+import { getAttributes, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
 import type { MarkType } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { loadHaimLinkOpenOnClick } from '@/utils/haimLinkOpenSettings';
-import { parseDocuhaimHref } from '@/utils/docuhaimLink';
+import { isDocuhaimHref, parseDocuhaimHref } from '@/utils/docuhaimLink';
 import { openHaimViewPath } from '@/utils/haimOpenViewPath';
 
 /** Applied to the ProseMirror root while Ctrl/Cmd is held (CSS cursor:pointer on links). */
@@ -158,6 +158,17 @@ function haimLinkClickPlugin(editor: Editor, type: MarkType): Plugin {
  * TipTap Link with settings-aware open (click vs Ctrl/Cmd+click) and docuhaim://.
  */
 export const HaimLink = Link.extend({
+  renderHTML({ HTMLAttributes }) {
+    const href = String(HTMLAttributes.href || '');
+    const docuhaim = isDocuhaimHref(href);
+    return [
+      'a',
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
+        class: docuhaim ? 'haim-docuhaim-link' : null,
+      }),
+      0,
+    ];
+  },
   addProseMirrorPlugins() {
     const parent = this.parent?.() ?? [];
     return [

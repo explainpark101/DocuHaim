@@ -1,5 +1,9 @@
 import type { PaneNode, PersistedPaneNode } from '@/utils/workspaceTabs/paneLayout';
 import { createSingleLeafLayout } from '@/utils/workspaceTabs/paneLayout';
+import {
+  isEditableViewerId,
+  listEditableViewers,
+} from '@/utils/vaultFileViewers';
 
 /** Fixed id for the singleton 「나와의 채팅」 tab. */
 export const CHAT_TAB_ID = 'chat' as const;
@@ -108,10 +112,14 @@ export type PersistedWorkspaceTabs = {
 /** @deprecated Use PersistedWorkspaceTabs (v2). Kept for callers that only need tabs/activeId. */
 export type PersistedWorkspaceTabsCompat = PersistedWorkspaceTabsV1 | PersistedWorkspaceTabs;
 
-export const EDITABLE_VIEWERS = ['markdown', 'json', 'raw', 'html', 'svg'] as const;
+/**
+ * Editable text viewers (base + SPECIAL_VAULT_FORMATS).
+ * Add new JSON/MD composite panes in `src/utils/vaultFileViewers/specialFormats.ts`.
+ */
+export const EDITABLE_VIEWERS = listEditableViewers();
 
 export function isEditableViewer(viewer: string | undefined): boolean {
-  return EDITABLE_VIEWERS.includes((viewer || 'markdown') as (typeof EDITABLE_VIEWERS)[number]);
+  return isEditableViewerId(viewer);
 }
 
 export function defaultWorkspaceLayout(

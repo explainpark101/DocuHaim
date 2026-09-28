@@ -216,8 +216,8 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
   {
     id: 'editor-link',
     title: '링크',
-    description: '마크다운 링크 삽입',
-    keywords: ['link', '링크', 'url'],
+    description: 'URL 하이퍼링크 삽입 (모달)',
+    keywords: ['link', '링크', 'url', '하이퍼링크'],
     directive: 'link',
   },
   {

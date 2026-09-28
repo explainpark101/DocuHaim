@@ -1,0 +1,26 @@
+/*
+ * Docuhaim note links — optional leading note icon (settings toggle).
+ * Controlled by html[data-haim-docuhaim-link-icon]; default applied at boot.
+ */
+
+html[data-haim-docuhaim-link-icon='1'] .haim-editor .tiptap a.haim-docuhaim-link::before,
+html[data-haim-docuhaim-link-icon='1'] .haim-editor-prose a.haim-docuhaim-link::before,
+html[data-haim-docuhaim-link-icon='1'] .haim-editor .tiptap a[href^='docuhaim://' i]::before,
+html[data-haim-docuhaim-link-icon='1'] .haim-editor-prose a[href^='docuhaim://' i]::before,
+html[data-haim-docuhaim-link-icon='1'] .md-editor-preview a[href^='docuhaim://' i]::before {
+  content: '';
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.28em;
+  vertical-align: -0.12em;
+  background-color: currentColor;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 16H6V4h7v5h5z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm4 16H6V4h7v5h5z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}

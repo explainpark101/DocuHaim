@@ -27,7 +27,8 @@ import {
   IconSettings,
   IconVideo,
 } from '@/components/icons';
-import { MessageSquare, Search, X, Loader2, ClipboardList, Columns2, Sparkles } from 'lucide-react';
+import { MessageSquare, Search, X, Loader2, ClipboardList, Kanban, Columns2, Sparkles } from 'lucide-react';
+import { treeIconForVaultPath } from '@/utils/vaultFileViewers';
 import { Tooltip } from 'radix-ui';
 import { useHorizontalOverflowScroll } from '@/hooks/useHorizontalOverflowScroll';
 import {
@@ -146,7 +147,8 @@ function fileTabIcon(tab: FileWorkspaceTab): IconComp {
   const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
   const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
 
-  if (lower.endsWith('.quiz.md')) return ClipboardList as IconComp;
+  if (treeIconForVaultPath(name) === 'quiz') return ClipboardList as IconComp;
+  if (treeIconForVaultPath(name) === 'kanban') return Kanban as IconComp;
   if (imageExts.includes(ext)) return IconImage;
   if (videoExts.includes(ext)) return IconVideo;
   if (audioExts.includes(ext)) return IconMusic;

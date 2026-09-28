@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { ArrowDownToLine, Check, X } from 'lucide-react';
+import Button from '@/components/Button';
 import Modal from '@/components/modals/Modal';
 import TreeNode from '@/components/TreeNode';
 import type { SidebarTreeNode } from '@/components/shell/TreeNode';
 import { useVault } from '@/App/hooks/useVault';
 import { findNodeByPath } from '@/utils/s3Tree';
+import type { HaimInsertPlacement } from '@/utils/haimEditorInsertRange';
 import { toTreeSelectKey } from '@/utils/vault/treeMove';
 
 export type DocuhaimNoteLinkConfirm = {
   path: string;
   text: string;
+  placement: HaimInsertPlacement;
 };
 
 export type DocuhaimNoteLinkModalProps = {
@@ -126,14 +129,14 @@ export default function DocuhaimNoteLinkModal({
     [],
   );
 
-  const handleConfirm = () => {
+  const submit = (placement: HaimInsertPlacement) => {
     const path = String(selectedPath || '').trim();
     if (!path) {
       setError('노트 파일을 선택하세요.');
       return;
     }
     const text = label.trim() || fileBaseName(path);
-    onConfirm({ path, text });
+    onConfirm({ path, text, placement });
     onClose();
   };
 
@@ -141,7 +144,7 @@ export default function DocuhaimNoteLinkModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      onConfirm={handleConfirm}
+      onConfirm={() => submit('cursor')}
       ignoreEnterInFields
       contentClassName="flex max-h-[90vh] max-w-lg flex-col overflow-hidden"
     >
@@ -206,23 +209,23 @@ export default function DocuhaimNoteLinkModal({
           ) : null}
         </div>
 
-        <footer className="flex shrink-0 justify-end gap-2 border-t border-gray-200 px-6 py-4 dark:border-odp-borderStrong">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg dark:hover:bg-odp-bgSoft"
-          >
+        <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-6 py-4 dark:border-odp-borderStrong">
+          <Button type="button" variant="secondary" onClick={onClose}>
             <X size={14} />
             취소
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            onClick={handleConfirm}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400"
+            variant="secondary"
+            onClick={() => submit('end')}
           >
+            <ArrowDownToLine size={14} />
+            최하단에 추가
+          </Button>
+          <Button type="button" variant="primary" onClick={() => submit('cursor')}>
             <Check size={14} />
             삽입
-          </button>
+          </Button>
         </footer>
       </div>
     </Modal>

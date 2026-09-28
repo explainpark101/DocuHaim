@@ -13,6 +13,8 @@ import { ensureLatestAppBuild } from '@/utils/pwaUpdate'
 import { initEditorAutocompleteDomFlag } from '@/utils/editorAutocompleteSettings'
 import { initEditorImageAlignDom } from '@/utils/editorImageAlignSettings'
 import { initHaimFocusOutlineDom } from '@/utils/haimFocusOutlineSettings'
+import { initHaimDocuhaimLinkIconDom } from '@/utils/haimDocuhaimLinkIconSettings'
+import '@/styles/docuhaim-link-icon.css'
 import { initHaimProseWidthDom } from '@/utils/haimProseWidthSettings'
 import { initHaimWysiwygLineNumbersDom } from '@/utils/haimWysiwygLineNumberSettings'
 import { initHaimCodeWrapDom } from '@/utils/haimCodeWrapSettings'
@@ -31,6 +33,7 @@ import { getBootSplash, initBootSplash } from '@/boot/bootSplash'
 initEditorAutocompleteDomFlag()
 initEditorImageAlignDom()
 initHaimFocusOutlineDom()
+initHaimDocuhaimLinkIconDom()
 initHaimProseWidthDom()
 initHaimWysiwygLineNumbersDom()
 initHaimCodeWrapDom()

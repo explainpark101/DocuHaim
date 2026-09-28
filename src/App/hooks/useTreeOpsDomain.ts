@@ -65,9 +65,11 @@ import {
   retargetFileTabsByPathPrefix,
 } from '@/utils/workspaceTabs/appBridge';
 import { resolveCreateItemPath } from '@/utils/createItemPath';
-import { isQuizMdPath } from '@/utils/quiz/quizPath';
-import { serializeQuizDocument } from '@/utils/quiz/serializeQuizDocument';
-import { QUIZ_CONFIG_DEFAULT } from '@/utils/quiz/quizFileConfig';
+import {
+  contentTypeForCreatePath,
+  seedContentForVaultPath,
+  viewerForCreatePath,
+} from '@/utils/vaultFileViewers';
 import { openNotePathnameForStoragePath } from '@/utils/appHref';
 import {
   encryptEncMdContent,
@@ -1254,12 +1256,16 @@ export function useTreeOpsDomain() {
     const { path: newPath, parentDirPath, baseName: finalName } = resolved;
     const expandParent = parentDirPath || parentPath || '';
 
+    const seeded = type !== 'folder' ? seedContentForVaultPath(newPath) : null;
     const seedContent =
       typeof options.initialContent === 'string'
         ? options.initialContent
-        : type !== 'folder' && isQuizMdPath(newPath)
-          ? serializeQuizDocument(QUIZ_CONFIG_DEFAULT, [])
+        : seeded != null
+          ? seeded
           : '';
+
+    const createdViewer = viewerForCreatePath(newPath);
+    const createContentType = contentTypeForCreatePath(newPath);
 
     let initialBody = seedContent;
     let openContent = seedContent;
@@ -1283,7 +1289,11 @@ export function useTreeOpsDomain() {
     const openCreatedFile = (file) => {
       const content =
         typeof file.content === 'string' ? file.content : openContent;
-      if (commitOpenFile({ ...file, ...(isEncMdPath(newPath) ? { encMd: true } : {}) }, content)) {
+      if (commitOpenFile({
+        ...file,
+        viewer: file.viewer || createdViewer,
+        ...(isEncMdPath(newPath) ? { encMd: true } : {}),
+      }, content)) {
         navigate(openNotePathnameForStoragePath(file.id));
       }
     };
@@ -1312,11 +1322,22 @@ export function useTreeOpsDomain() {
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPaths(storageType, parentPaths);
         } else {
-          await putObject(client, { Bucket: s3Creds.bucket, Key: newPath, Body: initialBody });
+          await putObject(client, {
+            Bucket: s3Creds.bucket,
+            Key: newPath,
+            Body: initialBody,
+            ContentType: createContentType,
+          });
           loadS3Files();
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPaths(storageType, parentPaths);
-          openCreatedFile({ type: 's3', id: newPath, name: finalName, content: openContent });
+          openCreatedFile({
+            type: 's3',
+            id: newPath,
+            name: finalName,
+            content: openContent,
+            viewer: createdViewer,
+          });
         }
       } else if (storageType === 'local') {
         if (!isLocalVaultReady(localRootHandle, localVaultFsPath) && !parentDirHandle) {
@@ -1333,7 +1354,7 @@ export function useTreeOpsDomain() {
             const parentPaths = getParentPathsToExpand(expandParent);
             expandPaths(storageType, parentPaths);
           } else {
-            await backend.writeText(newPath, initialBody, 'text/markdown');
+            await backend.writeText(newPath, initialBody, createContentType);
             const parentPaths = getParentPathsToExpand(expandParent);
             expandPaths(storageType, parentPaths);
             openCreatedFile({
@@ -1341,7 +1362,7 @@ export function useTreeOpsDomain() {
               id: newPath,
               name: finalName,
               content: openContent,
-              viewer: 'markdown',
+              viewer: createdViewer,
             });
           }
           await refreshLocalTree();
@@ -1371,6 +1392,7 @@ export function useTreeOpsDomain() {
               name: finalName,
               content: openContent,
               handle: newFileHandle,
+              viewer: createdViewer,
             });
           }
           refreshLocalTree();
@@ -1383,7 +1405,7 @@ export function useTreeOpsDomain() {
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPaths(storageType, parentPaths);
         } else {
-          await backend.writeText(newPath, initialBody, 'text/markdown');
+          await backend.writeText(newPath, initialBody, createContentType);
           await refreshWebdavTree();
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPaths(storageType, parentPaths);
@@ -1392,7 +1414,7 @@ export function useTreeOpsDomain() {
             id: newPath,
             name: finalName,
             content: openContent,
-            viewer: 'markdown',
+            viewer: createdViewer,
           });
         }
       } else if (storageType === 'idb') {
@@ -1403,7 +1425,7 @@ export function useTreeOpsDomain() {
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPaths(storageType, parentPaths);
         } else {
-          await backend.writeText(newPath, initialBody, 'text/markdown');
+          await backend.writeText(newPath, initialBody, createContentType);
           await refreshIdbTree();
           const parentPaths = getParentPathsToExpand(expandParent);
           expandPaths(storageType, parentPaths);
@@ -1412,7 +1434,7 @@ export function useTreeOpsDomain() {
             id: newPath,
             name: finalName,
             content: openContent,
-            viewer: 'markdown',
+            viewer: createdViewer,
           });
         }
       }

@@ -3,6 +3,7 @@ import { getLocalFileHandleForPath } from '@/utils/localEditorImage';
 import { getPrintSettingsStoreSnapshot } from '@/utils/printSettingsStore';
 import { putObject } from '@/utils/s3Client';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { contentTypeForViewer } from '@/utils/vaultFileViewers';
 
 export type PrintSaveFile = {
   type?: string | null;
@@ -27,14 +28,6 @@ type PrintSettingsSnapshot = {
     username?: string | null;
   } | null;
 };
-
-function contentTypeForViewer(viewer: string | null | undefined): string {
-  if (viewer === 'json') return 'application/json';
-  if (viewer === 'raw') return 'text/plain';
-  if (viewer === 'html') return 'text/html';
-  if (viewer === 'svg') return 'image/svg+xml';
-  return 'text/markdown';
-}
 
 export async function savePrintMarkdownToStorage(
   file: PrintSaveFile | null | undefined,

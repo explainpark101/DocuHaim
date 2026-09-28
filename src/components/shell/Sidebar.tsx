@@ -34,8 +34,10 @@ import {
 import TreeDndLayoutSync from '@/components/shell/TreeDndLayoutSync';
 import ChatTreeAttachDroppable from '@/components/chatWithMyself/ChatTreeAttachDroppable';
 import QuizTreeSourceDroppable from '@/components/quiz/QuizTreeSourceDroppable';
+import KanbanTreeCardDroppable from '@/components/kanban/KanbanTreeCardDroppable';
 import { isChatTreeAttachDroppableId } from '@/utils/chatWithMyself';
 import { isQuizTreeSourceDroppableId } from '@/utils/quiz/quizTreeSourceDrop';
+import { isKanbanTreeCardDroppableId } from '@/utils/kanban/kanbanTreeCardDrop';
 import {
   findNodeByPath,
   isRecordingCompanionFileKey,
@@ -274,6 +276,12 @@ export type SidebarProps = {
   quizSourceDropActive?: boolean;
   quizSourceDropHost?: HTMLElement | null;
   onDropToQuizSource?: (items: TreeMoveItem[]) => void;
+  kanbanCardDropActive?: boolean;
+  kanbanCardDropHost?: HTMLElement | null;
+  onDropToKanbanCards?: (
+    items: TreeMoveItem[],
+    point?: { clientX: number; clientY: number },
+  ) => void;
   /** Drop tree file / chat row onto a workspace pane (split / join). */
   onDropToWorkspacePane?: SidebarPaneDropHandler;
   onBrandClick?: () => void;
@@ -530,6 +538,9 @@ export default function Sidebar({
   quizSourceDropActive = false,
   quizSourceDropHost = null,
   onDropToQuizSource,
+  kanbanCardDropActive = false,
+  kanbanCardDropHost = null,
+  onDropToKanbanCards,
   onDropToWorkspacePane,
   onBrandClick,
   onStorageModeChange,
@@ -814,6 +825,11 @@ export default function Sidebar({
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
       }
+      if (isKanbanTreeCardDroppableId(over.id)) {
+        clearHoverExpandTimer();
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
       const parsed = parseDroppableId(String(over.id));
       if (!parsed) {
         clearHoverExpandTimer();
@@ -883,6 +899,15 @@ export default function Sidebar({
         return;
       }
 
+      // Ctrl/Cmd/Alt copy-drag onto kanban → add linked cards (do not move / open).
+      if (over && isKanbanTreeCardDroppableId(over.id)) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        if (copy) {
+          onDropToKanbanCards?.(items, { clientX: cx, clientY: cy });
+        }
+        return;
+      }
+
       // Drop onto a workspace pane → open as split/join tab (never move files).
       const paneHit = hitTestPaneDropAt(cx, cy);
       if (paneHit && onDropToWorkspacePane) {
@@ -944,6 +969,7 @@ export default function Sidebar({
       onDropOnFolder,
       onDropToChatAttach,
       onDropToQuizSource,
+      onDropToKanbanCards,
       onDropToWorkspacePane,
       resolveDropTargetNode,
     ],
@@ -2611,6 +2637,12 @@ export default function Sidebar({
         <QuizTreeSourceDroppable
           host={quizSourceDropHost}
           enabled={Boolean(quizSourceDropHost)}
+        />
+      ) : null}
+      {kanbanCardDropActive && isCopyDrag && activeDragItems?.length ? (
+        <KanbanTreeCardDroppable
+          host={kanbanCardDropHost}
+          enabled={Boolean(kanbanCardDropHost)}
         />
       ) : null}
       </DndContext>

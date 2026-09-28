@@ -4,22 +4,22 @@ overview: .kanban.json 보드 파일을 추가하고, 하이브리드 카드(본
 todos:
   - id: schema-utils
     content: kanbanPath + kanbanDocument (parse/serialize/seed) + unit tests
-    status: pending
+    status: completed
   - id: create-format
     content: CREATE_FILE_FORMATS .kanban.json + intermediate .kanban + createItem seed
-    status: pending
+    status: completed
   - id: viewer-open-save
     content: openPath/useFileSession viewer kanban + EDITABLE_VIEWERS + content-type
-    status: pending
+    status: completed
   - id: kanban-pane
     content: "lazy KanbanPane: columns/cards DnD, color, undo, TreeNode linkPath"
-    status: pending
+    status: completed
   - id: chrome-docs
     content: TreeNode icon + docs/custom-markdown/kanban-json.md + VitePress
-    status: pending
+    status: completed
   - id: phase2-plan
     content: MVP 완료 후 swimlane·커버 차기 계획 문서 작성
-    status: pending
+    status: completed
 isProject: false
 ---
 

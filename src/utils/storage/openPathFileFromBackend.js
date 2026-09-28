@@ -2,6 +2,10 @@ import { getDraftKey, getMemoDraft, deleteMemoDraft } from '@/utils/memoDraftsDb
 import { isEncMdPath, tryUnlockEncMdContent } from '@/utils/encMd';
 import { toDisplayableImageObjectUrl } from '@/utils/heicConvert';
 import { VIEWER_IMAGE_EXTENSIONS } from '@/utils/imageExtensions';
+import {
+  prepareViewerText,
+  resolveTextOpenViewer,
+} from '@/utils/vaultFileViewers';
 
 /**
  * Open a path-based file (S3/WebDAV) via StorageBackend into editor state payloads.
@@ -111,17 +115,28 @@ export async function openPathFileFromBackend({ backend, type, node }) {
     };
   }
 
+  const specialOpen = resolveTextOpenViewer(node.path, node.name);
+  if (specialOpen) {
+    const { text, contentLength, lastModified } = await backend.readText(node.path);
+    const display = prepareViewerText(text, specialOpen.viewer);
+    return {
+      currentFile: {
+        type,
+        id: node.path,
+        name: node.name,
+        content: display,
+        viewer: specialOpen.viewer,
+        size: contentLength,
+        lastModified: lastModified ?? node.lastModified,
+      },
+      editorContent: display,
+      revokePrev,
+    };
+  }
+
   if (ext === 'json') {
     const { text, contentLength, lastModified } = await backend.readText(node.path);
-    const maxFormatLen = 100000;
-    let display = text;
-    if (text.length <= maxFormatLen) {
-      try {
-        display = JSON.stringify(JSON.parse(text), null, 2);
-      } catch {
-        display = text;
-      }
-    }
+    const display = prepareViewerText(text, 'json');
     return {
       currentFile: {
         type,

@@ -16,6 +16,7 @@ import { findFileTab, patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { getCachedTableStyleTemplate } from '@/utils/tableStyleSettingsStore';
 import { createWebdavBackend } from '@/utils/storage';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch';
+import { contentTypeForViewer } from '@/utils/vaultFileViewers';
 import { ensureDirectoryReadWritePermission } from '@/utils/localFolderStore';
 import { resolveStorageImagePath } from '@/utils/storageImagePath';
 import { buildZipBlob } from '@/utils/zipBuilder';
@@ -439,17 +440,7 @@ export function useDownloadSessionDomain() {
       }
       if (prepared.missing.length) alert(formatMissingExportImagesMessage(prepared.missing));
     } else {
-      const contentTypeForViewer =
-        viewerForVault === 'json'
-          ? 'application/json'
-          : viewerForVault === 'raw'
-            ? 'text/plain'
-            : viewerForVault === 'html'
-              ? 'text/html'
-              : viewerForVault === 'svg'
-                ? 'image/svg+xml'
-                : 'text/plain';
-      await backend.writeText(destPath, textToSave, contentTypeForViewer);
+      await backend.writeText(destPath, textToSave, contentTypeForViewer(viewerForVault));
     }
 
     if (storageType === 's3') loadS3Files();

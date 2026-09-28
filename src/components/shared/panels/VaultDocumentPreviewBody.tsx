@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import QuizMdPreview from '@/components/quiz/QuizMdPreview';
 import type { VaultDocumentPreviewPayload } from '@/utils/vault/loadVaultDocumentPreview';
-
-const EDITABLE_VIEWERS = new Set(['markdown', 'json', 'html', 'svg', 'raw']);
+import { isEditableViewerId } from '@/utils/vaultFileViewers';
 
 const EDIT_TEXTAREA_CLASS =
   'h-full min-h-[240px] w-full resize-none border-0 bg-transparent p-3 font-mono text-xs text-slate-800 outline-none dark:text-odp-fgStrong';
@@ -15,7 +14,7 @@ type VaultDocumentPreviewBodyProps = {
 };
 
 export function isVaultDocumentPreviewEditable(viewer: string | undefined): boolean {
-  return EDITABLE_VIEWERS.has(String(viewer || ''));
+  return isEditableViewerId(viewer);
 }
 
 export default function VaultDocumentPreviewBody({

@@ -35,7 +35,6 @@ import {
   Search,
   Pilcrow,
   QrCode,
-  FileText,
 } from 'lucide-react';
 import { DropdownMenu, Switch, Tooltip } from 'radix-ui';
 import {
@@ -62,6 +61,8 @@ export type HaimToolbarAppActions = {
   onCreateQrCode?: (() => void) | undefined;
   onInsertMermaid?: (() => void) | undefined;
   onInsertKatex?: (() => void) | undefined;
+  /** Open URL hyperlink modal. */
+  onUrlLink?: (() => void) | undefined;
   /** Insert vault note hyperlink (`docuhaim://`). */
   onDocuhaimNoteLink?: (() => void) | undefined;
   findReplaceOpen?: boolean | undefined;
@@ -353,27 +354,39 @@ export default function HaimToolbar({
         >
           <Quote size={14} />
         </ToolBtn>
-        <ToolBtn
-          label="링크"
-          active={Boolean(s?.link)}
-          onClick={() => {
-            const prev = editor.getAttributes('link').href as string | undefined;
-            const url = window.prompt('URL', prev || 'https://');
-            if (url === null) return;
-            if (url === '') {
-              editor.chain().focus().extendMarkRange('link').unsetLink().run();
-              return;
+        {a?.onUrlLink || a?.onDocuhaimNoteLink ? (
+          <HaimLinkMenu
+            active={Boolean(s?.link)}
+            onRequestUrlLink={a?.onUrlLink ? () => a.onUrlLink?.() : undefined}
+            onRequestDocuhaimNoteLink={
+              a?.onDocuhaimNoteLink
+                ? () => a.onDocuhaimNoteLink?.()
+                : undefined
             }
-            editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-          }}
-        >
-          <Link2 size={14} />
-        </ToolBtn>
-        {a?.onDocuhaimNoteLink ? (
-          <ToolBtn label="노트 링크" onClick={() => a.onDocuhaimNoteLink?.()}>
-            <FileText size={14} />
+          />
+        ) : (
+          <ToolBtn
+            label="링크"
+            active={Boolean(s?.link)}
+            onClick={() => {
+              const prev = editor.getAttributes('link').href as string | undefined;
+              const url = window.prompt('URL', prev || 'https://');
+              if (url === null) return;
+              if (url === '') {
+                editor.chain().focus().extendMarkRange('link').unsetLink().run();
+                return;
+              }
+              editor
+                .chain()
+                .focus()
+                .extendMarkRange('link')
+                .setLink({ href: url })
+                .run();
+            }}
+          >
+            <Link2 size={14} />
           </ToolBtn>
-        ) : null}
+        )}
         <ToolBtn
           label="표"
           onClick={() => {
@@ -484,6 +497,74 @@ export default function HaimToolbar({
   );
 }
 
+function HaimLinkMenu({
+  active,
+  onRequestUrlLink,
+  onRequestDocuhaimNoteLink,
+}: {
+  active: boolean;
+  onRequestUrlLink?: (() => void) | undefined;
+  onRequestDocuhaimNoteLink?: (() => void) | undefined;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <DropdownMenu.Root open={open} onOpenChange={setOpen}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              aria-label="링크"
+              aria-pressed={active}
+              className={`inline-flex h-7 w-7 items-center justify-center rounded border text-gray-700 dark:text-odp-fg ${
+                active
+                  ? 'border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/40'
+                  : 'border-transparent hover:bg-gray-100 dark:hover:bg-odp-bgSoft'
+              }`}
+            >
+              <Link2 size={14} />
+            </button>
+          </DropdownMenu.Trigger>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            side="bottom"
+            sideOffset={6}
+            className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg"
+          >
+            링크
+            <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          sideOffset={6}
+          className="z-100010 min-w-40 rounded-md border border-gray-200 bg-white p-1 text-sm shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg"
+        >
+          {onRequestUrlLink ? (
+            <DropdownMenu.Item
+              className="cursor-pointer rounded px-2 py-1.5 outline-none hover:bg-gray-100 dark:hover:bg-odp-bgSoft"
+              onSelect={() => onRequestUrlLink()}
+            >
+              URL 링크
+            </DropdownMenu.Item>
+          ) : null}
+          {onRequestDocuhaimNoteLink ? (
+            <DropdownMenu.Item
+              className="cursor-pointer rounded px-2 py-1.5 outline-none hover:bg-gray-100 dark:hover:bg-odp-bgSoft"
+              onSelect={() => onRequestDocuhaimNoteLink()}
+            >
+              노트 링크
+            </DropdownMenu.Item>
+          ) : null}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
 function HaimImageMenu({
   disabled,
   onRequestLink,
@@ -531,7 +612,7 @@ function HaimImageMenu({
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             sideOffset={6}
-            className="z-100010 min-w-[10rem] rounded-md border border-gray-200 bg-white p-1 text-sm shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg"
+            className="z-100010 min-w-40 rounded-md border border-gray-200 bg-white p-1 text-sm shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg"
           >
             <DropdownMenu.Item
               className="cursor-pointer rounded px-2 py-1.5 outline-none hover:bg-gray-100 dark:hover:bg-odp-bgSoft"

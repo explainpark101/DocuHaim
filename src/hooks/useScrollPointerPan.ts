@@ -12,11 +12,25 @@ export type ScrollPointerPanOptions = {
   spaceDrag?: boolean;
   /** Middle-mouse-button drag pan. Default true. */
   middleClick?: boolean;
+  /**
+   * Left-button drag pan without Space (Embla-like grab scroll).
+   * Default false. Skips touch pointers so nested vertical scroll still works.
+   */
+  primaryDrag?: boolean;
+  /**
+   * When primaryDrag starts on this target, skip pan (e.g. DnD grips, buttons).
+   * Space / middle-click still use the editable-target guard only.
+   */
+  shouldIgnorePrimaryTarget?: (target: EventTarget | null) => boolean;
+  /** Scroll axis. Default `both`. */
+  axis?: 'x' | 'y' | 'both';
 };
 
 /**
- * Space+drag or middle-mouse-drag pans a scrollable container (Figma-style).
- * Uses capture-phase pointerdown so child editors (e.g. cover move) do not steal the gesture.
+ * Space+drag, middle-mouse-drag, and optional primary-button drag pan a
+ * scrollable container (Figma / Embla-like).
+ * Uses capture-phase pointerdown so child editors do not steal the gesture
+ * when we own it.
  */
 export function useScrollPointerPan(
   root: HTMLElement | null,
@@ -25,10 +39,13 @@ export function useScrollPointerPan(
 ): void {
   const spaceDrag = options.spaceDrag !== false;
   const middleClick = options.middleClick !== false;
+  const primaryDrag = options.primaryDrag === true;
+  const axis = options.axis ?? 'both';
+  const shouldIgnorePrimaryTarget = options.shouldIgnorePrimaryTarget;
 
   useEffect(() => {
     if (!enabled || !root) return undefined;
-    if (!spaceDrag && !middleClick) return undefined;
+    if (!spaceDrag && !middleClick && !primaryDrag) return undefined;
 
     let spaceHeld = false;
     let pan: { pointerId: number; lastX: number; lastY: number } | null = null;
@@ -39,7 +56,7 @@ export function useScrollPointerPan(
         root.style.userSelect = 'none';
         return;
       }
-      if (spaceDrag && spaceHeld) {
+      if ((spaceDrag && spaceHeld) || primaryDrag) {
         root.style.cursor = 'grab';
         root.style.userSelect = '';
         return;
@@ -85,21 +102,35 @@ export function useScrollPointerPan(
       syncCursor();
     };
 
+    const canScrollAxis = () => {
+      const canScrollX = root.scrollWidth > root.clientWidth + 1;
+      const canScrollY = root.scrollHeight > root.clientHeight + 1;
+      if (axis === 'x') return canScrollX;
+      if (axis === 'y') return canScrollY;
+      return canScrollX || canScrollY;
+    };
+
     const onPointerDown = (event: PointerEvent) => {
+      // Touch: keep native overflow scrolling (nested column y-scroll).
       if (event.pointerType === 'touch') return;
+
       const middle = middleClick && event.button === 1;
       const spaceLeft = spaceDrag && event.button === 0 && spaceHeld;
-      if (!middle && !spaceLeft) return;
+      const primaryLeft =
+        primaryDrag &&
+        event.button === 0 &&
+        !spaceHeld &&
+        !shouldIgnorePrimaryTarget?.(event.target);
+
+      if (!middle && !spaceLeft && !primaryLeft) return;
       if (isEditableTarget(event.target)) return;
+      if (!canScrollAxis()) return;
 
       // Kill browser middle-click autoscroll only when we own the gesture.
       if (middle) event.preventDefault();
+      // Primary / space pan: prevent text selection + competing gestures.
+      if (spaceLeft || primaryLeft) event.preventDefault();
 
-      const canScrollX = root.scrollWidth > root.clientWidth + 1;
-      const canScrollY = root.scrollHeight > root.clientHeight + 1;
-      if (!canScrollX && !canScrollY) return;
-
-      event.preventDefault();
       event.stopPropagation();
       pan = {
         pointerId: event.pointerId,
@@ -120,8 +151,8 @@ export function useScrollPointerPan(
       const dy = event.clientY - pan.lastY;
       pan.lastX = event.clientX;
       pan.lastY = event.clientY;
-      root.scrollLeft -= dx;
-      root.scrollTop -= dy;
+      if (axis === 'x' || axis === 'both') root.scrollLeft -= dx;
+      if (axis === 'y' || axis === 'both') root.scrollTop -= dy;
     };
 
     const onPointerUp = (event: PointerEvent) => {
@@ -152,6 +183,7 @@ export function useScrollPointerPan(
     if (middleClick) {
       root.addEventListener('auxclick', onAuxClick);
     }
+    syncCursor();
 
     return () => {
       if (spaceDrag) {
@@ -170,5 +202,13 @@ export function useScrollPointerPan(
       root.style.cursor = '';
       root.style.userSelect = '';
     };
-  }, [root, enabled, spaceDrag, middleClick]);
+  }, [
+    root,
+    enabled,
+    spaceDrag,
+    middleClick,
+    primaryDrag,
+    axis,
+    shouldIgnorePrimaryTarget,
+  ]);
 }

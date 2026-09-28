@@ -36,6 +36,12 @@ export const CREATE_FILE_FORMATS: CreateFileFormat[] = [
     label: '.enc.md',
     description: '비밀번호로 암호화된 마크다운',
   },
+  {
+    id: 'kanban.json',
+    extension: '.kanban.json',
+    label: '.kanban.json',
+    description: '칸반 보드',
+  },
 ];
 
 /** Formats sorted by extension length descending (`.enc.md` before `.md`). */
@@ -46,7 +52,8 @@ export function createFileFormatsLongestFirst(): CreateFileFormat[] {
 }
 
 /**
- * Intermediate suffixes of composite `*.md` formats (e.g. `.enc` from `.enc.md`).
+ * Intermediate suffixes of composite formats
+ * (e.g. `.enc` from `.enc.md`, `.kanban` from `.kanban.json`).
  * Longest first — typing `note.enc` should complete to `.enc.md`, not `.enc.enc.md`.
  */
 export function createFileIntermediateSuffixes(): Array<{
@@ -56,9 +63,13 @@ export function createFileIntermediateSuffixes(): Array<{
   const out: Array<{ mid: string; format: CreateFileFormat }> = [];
   for (const fmt of CREATE_FILE_FORMATS) {
     const ext = fmt.extension.toLowerCase();
-    if (ext === '.md' || !ext.endsWith('.md')) continue;
-    const mid = ext.slice(0, -'.md'.length);
-    if (mid.startsWith('.') && mid.length > 1) {
+    let mid: string | null = null;
+    if (ext !== '.md' && ext.endsWith('.md')) {
+      mid = ext.slice(0, -'.md'.length);
+    } else if (ext !== '.json' && ext.endsWith('.json')) {
+      mid = ext.slice(0, -'.json'.length);
+    }
+    if (mid && mid.startsWith('.') && mid.length > 1) {
       out.push({ mid, format: fmt });
     }
   }
@@ -89,7 +100,7 @@ export function getCreateFileFormatById(
 
 /**
  * Detect format from a file base name (longest extension match).
- * Also recognizes partial composite suffixes (`.enc`, `.quiz`).
+ * Also recognizes partial composite suffixes (`.enc`, `.quiz`, `.kanban`).
  * Falls back to default when no registry extension matches.
  */
 export function detectCreateFileFormat(
@@ -107,7 +118,7 @@ export function detectCreateFileFormat(
 
 /**
  * Strip any registered create-file extension (or composite intermediate like
- * `.enc` / `.quiz`) from the end of a base name.
+ * `.enc` / `.quiz` / `.kanban`) from the end of a base name.
  */
 export function stripCreateFileExtension(baseName: string): string {
   const raw = String(baseName || '');
@@ -161,7 +172,7 @@ export function ensureCreateFileExtension(
   for (const fmt of createFileFormatsLongestFirst()) {
     if (lower.endsWith(fmt.extension.toLowerCase())) return raw;
   }
-  // User typed `.enc` / `.quiz` — complete to the matching composite format.
+  // User typed `.enc` / `.quiz` / `.kanban` — complete to the matching composite.
   for (const { mid, format } of createFileIntermediateSuffixes()) {
     if (lower.endsWith(mid)) {
       return `${raw.slice(0, raw.length - mid.length)}${format.extension}`;

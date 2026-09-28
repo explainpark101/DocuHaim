@@ -51,6 +51,13 @@ import {
 import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
 import { toDisplayableImageObjectUrl } from '@/utils/heicConvert';
 import { VIEWER_IMAGE_EXTENSIONS } from '@/utils/imageExtensions';
+import {
+  contentTypeForViewer,
+  isEditableViewerId,
+  prepareViewerText,
+  resolveTextOpenViewer,
+  viewerUsesPrettyJson,
+} from '@/utils/vaultFileViewers';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
@@ -614,20 +621,32 @@ export function useFileSessionDomain() {
         return;
       }
 
+      const specialOpen = resolveTextOpenViewer(node.path, node.name);
+      if (specialOpen) {
+        try {
+          const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
+          const raw = new TextDecoder('utf-8').decode(body);
+          const display = prepareViewerText(raw, specialOpen.viewer);
+          commit({
+            type: 's3',
+            id: node.path,
+            name: node.name,
+            content: display,
+            viewer: specialOpen.viewer,
+            size: typeof ContentLength === 'number' ? ContentLength : null,
+            lastModified: node.lastModified,
+          }, display);
+        } catch (err) {
+          console.error('S3 Read Error:', err);
+        }
+        return;
+      }
+
       if (ext === 'json') {
         try {
           const { body, ContentLength } = await getObjectBody(client, s3Creds.bucket, node.path);
           const raw = new TextDecoder('utf-8').decode(body);
-          const maxFormatLen = 100000;
-          let display = raw;
-          if (raw.length <= maxFormatLen) {
-            try {
-              const parsed = JSON.parse(raw);
-              display = JSON.stringify(parsed, null, 2);
-            } catch {
-              display = raw;
-            }
-          }
+          const display = prepareViewerText(raw, 'json');
           commit({
             type: 's3',
             id: node.path,
@@ -801,17 +820,27 @@ export function useFileSessionDomain() {
         return;
       }
 
+      const specialOpen = resolveTextOpenViewer(node.path, node.name);
+      if (specialOpen) {
+        const raw = await file.text();
+        const display = prepareViewerText(raw, specialOpen.viewer);
+        commit({
+          type: 'local',
+          id: node.path,
+          name: node.name,
+          content: display,
+          handle: node.handle,
+          parentHandle: node.parentHandle,
+          viewer: specialOpen.viewer,
+          size: typeof file.size === 'number' ? file.size : null,
+          lastModified: file.lastModified,
+        }, display);
+        return;
+      }
+
       if (ext === 'json') {
         const raw = await file.text();
-        const maxFormatLen = 100000;
-        let display = raw;
-        if (raw.length <= maxFormatLen) {
-          try {
-            display = JSON.stringify(JSON.parse(raw), null, 2);
-          } catch {
-            display = raw;
-          }
-        }
+        const display = prepareViewerText(raw, 'json');
         commit({
           type: 'local',
           id: node.path,
@@ -971,7 +1000,7 @@ export function useFileSessionDomain() {
       if (cur.type === storageType && cur.id === node.path) return;
 
       const viewer = cur.viewer || 'markdown';
-      if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
+      if (!isEditableViewerId(viewer)) return;
 
       quizFlushBeforeSaveRef.current?.();
 
@@ -1074,8 +1103,7 @@ export function useFileSessionDomain() {
       return;
     }
     const viewer = fileToSave.viewer || 'markdown';
-    const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
-    if (!editableViewers.includes(viewer)) return;
+    if (!isEditableViewerId(viewer)) return;
 
     quizFlushBeforeSaveRef.current?.();
 
@@ -1136,16 +1164,7 @@ export function useFileSessionDomain() {
       label: '필기 저장 중',
       detail: fileToSave.name,
     });
-    const contentTypeForViewer =
-      viewer === 'json'
-        ? 'application/json'
-        : viewer === 'raw'
-          ? 'text/plain'
-          : viewer === 'html'
-            ? 'text/html'
-            : viewer === 'svg'
-              ? 'image/svg+xml'
-              : 'text/markdown';
+    const saveContentType = contentTypeForViewer(viewer);
 
     let vaultBody = textToSave;
     if (
@@ -1207,7 +1226,7 @@ export function useFileSessionDomain() {
           Bucket: s3Creds.bucket,
           Key: fileToSave.id,
           Body: vaultBody,
-          ContentType: contentTypeForViewer,
+          ContentType: saveContentType,
         });
         await deleteMemoDraft(getDraftKey('s3', fileToSave.id));
         loadS3Files();
@@ -1230,7 +1249,7 @@ export function useFileSessionDomain() {
           if (!backend?.isReady?.()) {
             throw new Error('로컬 폴더를 먼저 열어주세요.');
           }
-          await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
+          await backend.writeText(fileToSave.id, vaultBody, saveContentType);
           await deleteMemoDraft(getDraftKey('local', fileToSave.id));
           await refreshLocalTree();
           const savedByteLength = new TextEncoder().encode(vaultBody).length;
@@ -1286,7 +1305,7 @@ export function useFileSessionDomain() {
         });
       } else if (fileToSave.type === 'idb') {
         const backend = getBackendForType('idb');
-        await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
+        await backend.writeText(fileToSave.id, vaultBody, saveContentType);
         await deleteMemoDraft(getDraftKey('idb', fileToSave.id));
         await refreshIdbTree();
         const savedByteLength = new TextEncoder().encode(vaultBody).length;
@@ -1304,7 +1323,7 @@ export function useFileSessionDomain() {
         });
       } else if (fileToSave.type === 'webdav') {
         const backend = createWebdavBackend(webdavConfig);
-        await backend.writeText(fileToSave.id, vaultBody, contentTypeForViewer);
+        await backend.writeText(fileToSave.id, vaultBody, saveContentType);
         await deleteMemoDraft(getDraftKey('webdav', fileToSave.id));
         await refreshWebdavTree();
         const savedByteLength = new TextEncoder().encode(vaultBody).length;
@@ -1333,7 +1352,7 @@ export function useFileSessionDomain() {
             key: fileToSave.id,
             content: textToSave,
             modifiedAt: inputModifiedAt ?? Date.now(),
-            contentType: contentTypeForViewer,
+            contentType: saveContentType,
           });
           alert('업로드가 중단되었습니다. 연결이 복구되면 다시 로그인하면 자동으로 동기화됩니다.');
         } catch (dbErr) {
@@ -1401,8 +1420,7 @@ export function useFileSessionDomain() {
     const fileToRefresh = currentFileRef.current;
     if (!fileToRefresh || fileToRefresh.type !== 'local' || !fileToRefresh.handle) return;
     const viewer = fileToRefresh.viewer || 'markdown';
-    const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
-    if (!editableViewers.includes(viewer)) return;
+    if (!isEditableViewerId(viewer)) return;
 
     setIsRefreshingFromDisk(true);
     const indicatorId = addIndicator({
@@ -1414,12 +1432,8 @@ export function useFileSessionDomain() {
     try {
       const diskFile = await fileToRefresh.handle.getFile();
       let diskText = await diskFile.text();
-      if (viewer === 'json' && diskText.length <= 100000) {
-        try {
-          diskText = JSON.stringify(JSON.parse(diskText), null, 2);
-        } catch {
-          // keep raw json text
-        }
+      if (viewerUsesPrettyJson(viewer)) {
+        diskText = prepareViewerText(diskText, viewer);
       }
 
       const base = typeof fileToRefresh.content === 'string' ? fileToRefresh.content : '';
@@ -1512,8 +1526,7 @@ export function useFileSessionDomain() {
       return;
     if (isEncMdPath(fileToRefresh.id) || isEncMdPath(fileToRefresh.name)) return;
     const viewer = fileToRefresh.viewer || 'markdown';
-    const editableViewers = ['markdown', 'json', 'raw', 'html', 'svg'];
-    if (!editableViewers.includes(viewer)) return;
+    if (!isEditableViewerId(viewer)) return;
 
     const backend = getBackendForType(fileToRefresh.type);
     if (!backend) return;
@@ -1528,12 +1541,8 @@ export function useFileSessionDomain() {
     try {
       const { text: rawRemoteText } = await backend.readText(fileToRefresh.id);
       let remoteText = rawRemoteText;
-      if (viewer === 'json' && remoteText.length <= 100000) {
-        try {
-          remoteText = JSON.stringify(JSON.parse(remoteText), null, 2);
-        } catch {
-          // keep raw json text
-        }
+      if (viewerUsesPrettyJson(viewer)) {
+        remoteText = prepareViewerText(remoteText, viewer);
       }
 
       const base = typeof fileToRefresh.content === 'string' ? fileToRefresh.content : '';
@@ -1730,16 +1739,7 @@ export function useFileSessionDomain() {
 
     if (contentOverride != null && typeof contentOverride === 'string') {
       const viewer = file.viewer || 'markdown';
-      const contentType =
-        viewer === 'json'
-          ? 'application/json'
-          : viewer === 'raw'
-            ? 'text/plain'
-            : viewer === 'html'
-              ? 'text/html'
-              : viewer === 'svg'
-                ? 'image/svg+xml'
-                : 'text/markdown';
+      const contentType = contentTypeForViewer(viewer);
       await putObject(client, {
         Bucket: s3Creds.bucket,
         Key: newKey,
