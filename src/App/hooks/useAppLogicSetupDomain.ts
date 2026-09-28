@@ -3,7 +3,7 @@
  * settings-toggle sync. Context-owned (no bag / glueRef).
  */
 import { useCallback, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useLocation } from 'react-router';
 import { useAuth, type AuthS3Creds } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
@@ -166,7 +166,6 @@ export function useAppLogicSetupDomain() {
     collapseToLegacyWorkspace,
     cycleWorkspaceTab,
   } = workspaceTabsApi;
-  const navigate = useNavigate();
   const location = useLocation();
 
   const workspaceTabsAutoSaveModeRef = useRef(loadWorkspaceTabsAutoSaveMode());
@@ -518,7 +517,6 @@ export function useAppLogicSetupDomain() {
         if (!cancelled && hasDesktopStoredCredsMarker()) {
           proceedWithoutStoredCreds();
           void loadPlainWebdavIfAllowed();
-          navigate('/settings');
           return;
         }
       }
@@ -530,9 +528,9 @@ export function useAppLogicSetupDomain() {
         if (stored || hasEncryptedWebdavConfig()) {
           setAuthWanted(true);
         } else {
+          // First launch / no stored creds: stay on the default route (do not force /settings).
           proceedWithoutStoredCreds();
           void loadPlainWebdavIfAllowed();
-          navigate('/settings');
         }
       }
     })();
@@ -540,7 +538,7 @@ export function useAppLogicSetupDomain() {
     return () => {
       cancelled = true;
     };
-  }, [isUnlocked, unlock, proceedWithoutStoredCreds, navigate, loadPlainWebdavIfAllowed]);
+  }, [isUnlocked, unlock, proceedWithoutStoredCreds, loadPlainWebdavIfAllowed]);
 
   useEffect(() => {
     if (isUnlocked || !authWanted) return;
