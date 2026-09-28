@@ -1,7 +1,7 @@
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { BarChart3, X } from 'lucide-react';
 import type { ComponentType } from 'react';
-import ChecklistProgressView from '@/components/ChecklistProgressView';
+import ChecklistProgressView from '@/components/ChecklistProgressView.tsx';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 

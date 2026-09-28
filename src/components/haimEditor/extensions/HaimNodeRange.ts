@@ -1,5 +1,7 @@
 import { NodeRange } from '@tiptap/extension-node-range';
 
+type ShortcutMap = Record<string, (props: { editor: unknown }) => boolean>;
+
 /**
  * TipTap stock NodeRange binds Shift-ArrowUp/Down to NodeRangeSelection
  * (block select), which breaks normal text selection across paragraphs.
@@ -10,12 +12,9 @@ export const HaimNodeRange = NodeRange.extend({
   name: 'nodeRange',
 
   addKeyboardShortcuts() {
-    const parent = this.parent?.() ?? {};
-    const rest = { ...parent } as Record<
-      string,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (props: any) => boolean
-    >;
+    const self = this as unknown as { parent?: () => ShortcutMap };
+    const parentFns = self.parent?.() ?? {};
+    const rest = { ...parentFns };
     delete rest['Shift-ArrowUp'];
     delete rest['Shift-ArrowDown'];
     return rest;

@@ -13,7 +13,6 @@ import { canJoin, findWrapping } from '@tiptap/pm/transform';
 import {
   advanceTaskCheckboxStatus,
   parseTaskCheckboxKind,
-  parseTaskCheckboxMarker,
   serializeTaskCheckboxMarkerForKind,
   taskCheckboxKindFromAttrs,
   taskCheckboxStatusFromAttrs,
@@ -191,6 +190,10 @@ declare module '@tiptap/core' {
     taskItem: {
       setHaimTaskCheckboxPreferredKind: (kind: TaskCheckboxKind) => ReturnType;
     };
+  }
+
+  interface Storage {
+    taskItem: HaimTaskItemStorage;
   }
 }
 

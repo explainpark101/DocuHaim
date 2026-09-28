@@ -33,7 +33,7 @@ function createTaskItemToken(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   lexer: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  nestedTokens?: any[],
+  nestedTokens: any[] = [],
 ) {
   return {
     type: 'taskItem',
@@ -69,7 +69,7 @@ export const HaimTaskList = TaskList.extend({
             itemPattern: TASK_ITEM_PATTERN,
             extractItemData: extractFromMatch,
             createToken: (data: TaskItemExtract, nestedTokens?: any[]) =>
-              createTaskItemToken(data, lexer, nestedTokens),
+              createTaskItemToken(data, lexer, nestedTokens ?? []),
             customNestedParser: parseTaskListContent,
           },
           lexer,
@@ -95,7 +95,7 @@ export const HaimTaskList = TaskList.extend({
           itemPattern: TASK_ITEM_PATTERN,
           extractItemData: extractFromMatch,
           createToken: (data: TaskItemExtract, nestedTokens?: any[]) =>
-            createTaskItemToken(data, lexer, nestedTokens),
+            createTaskItemToken(data, lexer, nestedTokens ?? []),
           customNestedParser: parseTaskListContent,
         },
         lexer,
