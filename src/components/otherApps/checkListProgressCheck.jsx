@@ -46,11 +46,13 @@ export default function App() {
         return;
       }
 
-      // Checklist item detection `- [ ]`, `- [x]`, `* [ ]`, `1. [ ]`
-      const taskMatch = line.match(/^(\s*)([-*]|\d+\.)\s+\[([ xX])\]\s+(.*)/);
+      // Checklist: `- [ ]` / `[~]` / `[x]`
+      const taskMatch = line.match(/^(\s*)([-*]|\d+\.)\s+\[([ xX~])\]\s+(.*)/);
       if (taskMatch) {
         const indentLevel = Math.floor(taskMatch[1].length / 2);
-        const isCompleted = taskMatch[3].toLowerCase() === 'x';
+        const marker = taskMatch[3];
+        const isCompleted = marker.toLowerCase() === 'x';
+        const isDoing = marker === '~';
         const taskText = taskMatch[4].trim();
 
         totalTasksCount++;
@@ -61,6 +63,7 @@ export default function App() {
           lineIndex,
           indent: indentLevel,
           completed: isCompleted,
+          doing: isDoing,
           text: taskText,
           rawLine: line
         });
@@ -97,14 +100,18 @@ export default function App() {
     const lines = markdown.split('\n');
     if (lineIndex >= 0 && lineIndex < lines.length) {
       const line = lines[lineIndex];
-      if (line.includes('[ ]')) {
-        lines[lineIndex] = line.replace('[ ]', '[x]');
-      } else if (line.includes('[x]')) {
-        lines[lineIndex] = line.replace('[x]', '[ ]');
-      } else if (line.includes('[X]')) {
-        lines[lineIndex] = line.replace('[X]', '[ ]');
+      const match = line.match(/^(\s*(?:[-*]|\d+\.)\s+)\[([ xX~])\](.*)$/);
+      if (match) {
+        const marker = match[2];
+        const next =
+          marker === ' '
+            ? '~'
+            : marker === '~'
+              ? 'x'
+              : ' ';
+        lines[lineIndex] = `${match[1]}[${next}]${match[3]}`;
+        setMarkdown(lines.join('\n'));
       }
-      setMarkdown(lines.join('\n'));
     }
   };
 

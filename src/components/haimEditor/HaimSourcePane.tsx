@@ -23,6 +23,7 @@ import {
   createNoteCoverFoldExtension,
   setNoteCoverFoldDocKey,
 } from '@/utils/noteCover/noteCoverFoldExtension';
+import { toggleTaskCheckboxBetweenChecked } from '@/utils/editorMarkdownStyle';
 
 type Props = {
   initialValue: string;
@@ -83,7 +84,14 @@ export default function HaimSourcePane({
       highlightActiveLine(),
       drawSelection(),
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      keymap.of([
+        ...defaultKeymap,
+        ...historyKeymap,
+        {
+          key: 'Ctrl-Tab',
+          run: toggleTaskCheckboxBetweenChecked,
+        },
+      ]),
       markdown(),
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {

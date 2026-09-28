@@ -4,22 +4,22 @@ overview: Haim Editor에 3-state task checkbox(`[ ]`/`[~]`/`[x]`)를 추가하�
 todos:
   - id: shared-status-helper
     content: Add taskCheckboxStatus helper (parse/serialize/cycle)
-    status: pending
+    status: completed
   - id: tiptap-haim-task
     content: HaimTaskItem + HaimTaskList + markdown-prefix input rules
-    status: pending
+    status: completed
   - id: checkbox-ui
     content: accent-color integrated task checkbox CSS (editor + preview)
-    status: pending
+    status: completed
   - id: markdown-it-preview
     content: Extend markdownItTaskListPlugin, register + XSS
-    status: pending
+    status: completed
   - id: source-and-consumers
     content: Ctrl-Tab 3-way + ChecklistProgress / mirror / Haim counts
-    status: pending
+    status: completed
   - id: docs-and-tests
     content: custom-markdown task-list.md + index/sidebar + round-trip tests
-    status: pending
+    status: completed
 isProject: false
 ---
 

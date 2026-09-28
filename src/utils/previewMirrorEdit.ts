@@ -55,7 +55,7 @@ function normalizeEditableSource(sourceSlice: string): {
 function splitSourceStructure(body: string): { prefix: string; content: string } {
   const patterns = [
     /^(#{1,6}[ \t]+)/,
-    /^([ \t]*[-*+][ \t]+\[[ xX]\][ \t]+)/,
+    /^([ \t]*[-*+][ \t]+\[[ xX~]\][ \t]+)/,
     /^([ \t]*[-*+][ \t]+)/,
     /^([ \t]*\d+\.[ \t]+)/,
     /^(>[ \t]?)/,
@@ -121,8 +121,8 @@ function stripDuplicateBlockMarkers(md: string, prefix: string): string {
 
   if (/^#{1,6}[ \t]+/.test(prefix)) {
     next = next.replace(/^#{1,6}[ \t]+/, '');
-  } else if (/\[[ xX]\]/.test(prefix)) {
-    next = next.replace(/^([-*+]|\d+\.)[ \t]+\[[ xX]\][ \t]+/, '');
+  } else if (/\[[ xX~]\]/.test(prefix)) {
+    next = next.replace(/^([-*+]|\d+\.)[ \t]+\[[ xX~]\][ \t]+/, '');
   } else if (/^([ \t]*[-*+][ \t]+)/.test(prefix) || /^([ \t]*\d+\.[ \t]+)/.test(prefix)) {
     next = next.replace(/^([-*+]|\d+\.)[ \t]+/, '');
   } else if (/^>[ \t]?/.test(prefix)) {
@@ -135,11 +135,16 @@ function syncTaskPrefix(
   prefix: string,
   clone: HTMLElement,
 ): string {
-  if (!/\[[ xX]\]/.test(prefix)) return prefix;
+  if (!/\[[ xX~]\]/.test(prefix)) return prefix;
   const checkbox = clone.querySelector('input[type="checkbox"]');
   if (!(checkbox instanceof HTMLInputElement)) return prefix;
-  const checked = checkbox.checked;
-  return prefix.replace(/\[[ xX]\]/, checked ? '[x]' : '[ ]');
+  const statusAttr = checkbox.getAttribute('data-status');
+  let marker = ' ';
+  if (statusAttr === 'doing' || checkbox.indeterminate) marker = '~';
+  else if (statusAttr === 'done' || checkbox.checked) marker = 'x';
+  else if (statusAttr === 'todo') marker = ' ';
+  else marker = checkbox.checked ? 'x' : ' ';
+  return prefix.replace(/\[[ xX~]\]/, `[${marker}]`);
 }
 
 /**

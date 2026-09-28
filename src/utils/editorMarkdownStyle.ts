@@ -4,10 +4,15 @@
 
 import { EditorSelection, type ChangeSpec, type SelectionRange, type Text } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import {
+  cycleTaskCheckboxStatus,
+  parseTaskCheckboxMarker,
+  serializeTaskCheckboxMarker,
+} from '@/utils/taskCheckboxStatus';
 
 const UNORDERED_LIST_LINE_RE = /^(\s*)([-+*])(\s+)(.*)$/;
 const ORDERED_LIST_LINE_RE = /^(\s*)(\d+)([.)])(\s+)(.*)$/;
-const TASK_CHECKBOX_LINE_RE = /^(\s*(?:[-+*]|\d+[.)])\s+)\[([ xX])\](.*)$/;
+const TASK_CHECKBOX_LINE_RE = /^(\s*(?:[-+*]|\d+[.)])\s+)\[([ xX~])\](.*)$/;
 const QUOTE_LINE_RE = /^(\s*)>\s?(.*)$/;
 const HEADING_LINE_RE = /^(#{1,10})\s+(.*)$/;
 
@@ -259,10 +264,12 @@ function toggleTaskCheckboxMarker(text: string): string | null {
   const match = text.match(TASK_CHECKBOX_LINE_RE);
   if (!match) return null;
   const prefix = match[1] ?? '';
-  const checked = match[2] ?? ' ';
+  const marker = match[2] ?? ' ';
   const rest = match[3] ?? '';
-  const nextChecked = checked === ' ' ? 'x' : ' ';
-  return `${prefix}[${nextChecked}]${rest}`;
+  const next = serializeTaskCheckboxMarker(
+    cycleTaskCheckboxStatus(parseTaskCheckboxMarker(marker)),
+  );
+  return `${prefix}[${next}]${rest}`;
 }
 
 export function toggleListTypeBetweenUlAndOl(view: EditorView): boolean {
@@ -280,7 +287,7 @@ export function toggleUnorderedListForSelection(view: EditorView): boolean {
       const indent = unordered[1] ?? '';
       const body = unordered[4] ?? '';
       if (TASK_CHECKBOX_LINE_RE.test(text)) {
-        return `${indent}- ${body.replace(/^\[[ xX]\]\s?/, '')}`;
+        return `${indent}- ${body.replace(/^\[[ xX~]\]\s?/, '')}`;
       }
       return `${indent}${body}`;
     }

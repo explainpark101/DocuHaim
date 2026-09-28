@@ -6,6 +6,8 @@ import { HaimLink } from '@/components/haimEditor/extensions/HaimLink';
 import { HaimMarkdown } from '@/components/haimEditor/extensions/HaimMarkdown';
 import { TableKit } from '@tiptap/extension-table';
 import { ListKit } from '@tiptap/extension-list';
+import { HaimTaskItem } from '@/components/haimEditor/extensions/HaimTaskItem';
+import { HaimTaskList } from '@/components/haimEditor/extensions/HaimTaskList';
 import { TextStyleKit } from '@tiptap/extension-text-style';
 import {
   CharacterCount,
@@ -124,8 +126,11 @@ export function createHaimExtensions(
       allowBase64: true,
     }),
     ListKit.configure({
-      taskItem: { nested: true },
+      taskItem: false,
+      taskList: false,
     }),
+    HaimTaskItem.configure({ nested: true }),
+    HaimTaskList,
     TableKit.configure({
       table: { resizable: isNote },
     }),

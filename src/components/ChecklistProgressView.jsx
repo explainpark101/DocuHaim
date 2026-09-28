@@ -5,11 +5,17 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
+  CircleDot,
   LayoutDashboard,
   ListTodo,
   PieChart,
   Search,
 } from 'lucide-react';
+import {
+  cycleTaskCheckboxStatus,
+  parseTaskCheckboxMarker,
+  serializeTaskCheckboxMarker,
+} from '@/utils/taskCheckboxStatus';
 
 function parseChecklistMarkdown(markdown) {
   const lines = String(markdown ?? '').split('\n');
@@ -28,10 +34,11 @@ function parseChecklistMarkdown(markdown) {
       return;
     }
 
-    const taskMatch = line.match(/^(\s*)([-*]|\d+\.)\s+\[([ xX])\]\s+(.*)/);
+    const taskMatch = line.match(/^(\s*)([-*]|\d+\.)\s+\[([ xX~])\]\s+(.*)/);
     if (taskMatch) {
       const indentLevel = Math.floor(taskMatch[1].length / 2);
-      const isCompleted = taskMatch[3].toLowerCase() === 'x';
+      const status = parseTaskCheckboxMarker(taskMatch[3]);
+      const isCompleted = status === 'done';
       const taskText = taskMatch[4].trim();
 
       totalTasksCount += 1;
@@ -42,6 +49,7 @@ function parseChecklistMarkdown(markdown) {
         lineIndex,
         indent: indentLevel,
         completed: isCompleted,
+        status,
         text: taskText,
         rawLine: line,
       });
@@ -68,15 +76,12 @@ function toggleTaskLine(markdown, lineIndex) {
   const lines = String(markdown ?? '').split('\n');
   if (lineIndex < 0 || lineIndex >= lines.length) return markdown;
   const line = lines[lineIndex];
-  if (line.includes('[ ]')) {
-    lines[lineIndex] = line.replace('[ ]', '[x]');
-  } else if (line.includes('[x]')) {
-    lines[lineIndex] = line.replace('[x]', '[ ]');
-  } else if (line.includes('[X]')) {
-    lines[lineIndex] = line.replace('[X]', '[ ]');
-  } else {
-    return markdown;
-  }
+  const match = line.match(/^(\s*(?:[-*]|\d+\.)\s+)\[([ xX~])\](.*)$/);
+  if (!match) return markdown;
+  const next = serializeTaskCheckboxMarker(
+    cycleTaskCheckboxStatus(parseTaskCheckboxMarker(match[2])),
+  );
+  lines[lineIndex] = `${match[1]}[${next}]${match[3]}`;
   return lines.join('\n');
 }
 
@@ -305,6 +310,8 @@ export default function ChecklistProgressView({ markdown = '', onMarkdownChange 
                               <span className="mt-0.5 shrink-0 text-slate-400">
                                 {task.completed ? (
                                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                ) : task.status === 'doing' ? (
+                                  <CircleDot className="h-3.5 w-3.5 text-amber-400" />
                                 ) : (
                                   <Circle className="h-3.5 w-3.5 text-slate-600" />
                                 )}
@@ -313,7 +320,9 @@ export default function ChecklistProgressView({ markdown = '', onMarkdownChange 
                                 className={`leading-relaxed ${
                                   task.completed
                                     ? 'text-slate-500 line-through'
-                                    : 'text-slate-300'
+                                    : task.status === 'doing'
+                                      ? 'text-amber-200/90'
+                                      : 'text-slate-300'
                                 }`}
                               >
                                 {task.text}
@@ -351,13 +360,19 @@ export default function ChecklistProgressView({ markdown = '', onMarkdownChange 
                       <span className="mt-0.5 shrink-0">
                         {task.completed ? (
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                        ) : task.status === 'doing' ? (
+                          <CircleDot className="h-3.5 w-3.5 text-amber-400" />
                         ) : (
                           <Circle className="h-3.5 w-3.5 text-slate-600" />
                         )}
                       </span>
                       <span
                         className={`leading-relaxed ${
-                          task.completed ? 'text-slate-500 line-through' : 'text-slate-200'
+                          task.completed
+                            ? 'text-slate-500 line-through'
+                            : task.status === 'doing'
+                              ? 'text-amber-200/90'
+                              : 'text-slate-200'
                         }`}
                       >
                         {task.text}

@@ -30,7 +30,7 @@ import {
   normalizeUploadResult,
 } from '@/utils/haimImageAnnotateUpload';
 import { registerHaimOpenViewPath } from '@/utils/haimOpenViewPath';
-import { buildDocuhaimHref } from '@/utils/docuhaimLink';
+import { countTaskCheckboxLines } from '@/utils/taskCheckboxStatus';
 import DocuhaimNoteLinkModal from '@/components/haimEditor/DocuhaimNoteLinkModal';
 import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
@@ -1087,8 +1087,7 @@ export default function HaimEditor({
       'editor-heading-remap': () => openHeadingRemap(),
       'editor-checklist-progress': () => {
         const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-        const tasks = (md.match(/^\s*[-*]\s+\[[ xX]\]/gm) || []).length;
-        const done = (md.match(/^\s*[-*]\s+\[[xX]\]/gm) || []).length;
+        const { total: tasks, completed: done } = countTaskCheckboxLines(md);
         setChecklistHint(
           tasks
             ? `체크리스트 ${done}/${tasks} 완료`
@@ -1242,8 +1241,7 @@ export default function HaimEditor({
             onHeadingRemap: openHeadingRemap,
             onChecklistProgress: () => {
               const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-              const tasks = (md.match(/^\s*[-*]\s+\[[ xX]\]/gm) || []).length;
-              const done = (md.match(/^\s*[-*]\s+\[[xX]\]/gm) || []).length;
+              const { total: tasks, completed: done } = countTaskCheckboxLines(md);
               setChecklistHint(
                 tasks
                   ? `체크리스트 ${done}/${tasks} 완료`

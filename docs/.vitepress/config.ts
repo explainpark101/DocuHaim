@@ -62,6 +62,7 @@ export default defineConfig({
             { text: '개요', link: '/custom-markdown/' },
             { text: 'Wiki image', link: '/custom-markdown/wiki-image' },
             { text: 'Docuhaim note link', link: '/custom-markdown/docuhaim-link' },
+            { text: 'Task list (3-state)', link: '/custom-markdown/task-list' },
             { text: 'Remote image', link: '/custom-markdown/remote-image' },
             { text: 'Image attrs', link: '/custom-markdown/markdown-image-attrs' },
             { text: 'Page break', link: '/custom-markdown/page-break' },
