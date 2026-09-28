@@ -41,6 +41,12 @@ describe('resolveBracketPairKey', () => {
         shiftKey: true,
       } as KeyStub),
     ).toBe('"');
+    expect(resolveBracketPairKey({ key: '`', code: 'Backquote' } as KeyStub)).toBe(
+      '`',
+    );
+    expect(
+      resolveBracketPairKey({ key: '₩', code: 'Backquote' } as KeyStub),
+    ).toBe('`');
   });
 
   it('ignores modifiers and composing', async () => {
@@ -71,7 +77,7 @@ describe('code block bracket pairs', () => {
     const { TextSelection } = await import('@tiptap/pm/state');
     const pairs = await import('@/components/haimEditor/codeBlockBracketPairs');
 
-    function createCodeBlockEditor(code: string) {
+    function createCodeBlockEditor(code: string, language = 'js') {
       return new Editor({
         extensions: [StarterKit],
         content: {
@@ -79,7 +85,7 @@ describe('code block bracket pairs', () => {
           content: [
             {
               type: 'codeBlock',
-              attrs: { language: 'js' },
+              attrs: { language },
               content: code ? [{ type: 'text', text: code }] : [],
             },
           ],
@@ -226,6 +232,27 @@ describe('code block bracket pairs', () => {
       expect(buildCodeBlockBracketTransaction(ed.state, '[')).toBeNull();
     } finally {
       ed.destroy();
+    }
+  });
+
+  it('wraps with backticks only in JS-family languages', async () => {
+    const { createCodeBlockEditor, selectInCode, buildCodeBlockBracketTransaction } =
+      await setup();
+    const js = createCodeBlockEditor('foo', 'tsx');
+    try {
+      selectInCode(js, 0, 3);
+      js.view.dispatch(buildCodeBlockBracketTransaction(js.state, '`')!);
+      expect(js.state.doc.textContent).toBe('`foo`');
+    } finally {
+      js.destroy();
+    }
+
+    const py = createCodeBlockEditor('foo', 'python');
+    try {
+      selectInCode(py, 0, 3);
+      expect(buildCodeBlockBracketTransaction(py.state, '`')).toBeNull();
+    } finally {
+      py.destroy();
     }
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Select } from 'radix-ui';
+import { RadioGroup } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import Button from '@/components/Button';
 import FontFamilyInput from '@/components/FontFamilyInput';
@@ -18,7 +18,10 @@ import {
   type HaimTypographyOverrides,
   type HaimTypographyRuleId,
 } from '@/utils/haimTypographySettings';
-import { Check, ChevronDown } from 'lucide-react';
+import {
+  HaimTypographyStatusDot,
+  haimTypographyStatusTone,
+} from '@/components/settings/HaimTypographyStatusDot';
 
 export type DocumentSettingsModalProps = {
   isOpen: boolean;
@@ -58,12 +61,14 @@ function setOverrideMode(
   return normalizeHaimTypographyOverrides(next);
 }
 
-const selectTriggerClass =
-  'inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-1 rounded-md border border-gray-300 bg-white px-2 text-xs text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-bg dark:text-odp-fg';
-const selectContentClass =
-  'z-100010 max-h-60 min-w-(--radix-select-trigger-width) overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
-const selectItemClass =
-  'relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-7 pr-3 text-xs text-gray-800 outline-none data-highlighted:bg-gray-100 dark:text-odp-fg dark:data-highlighted:bg-odp-focusBg';
+const TYPOGRAPHY_MODE_OPTIONS: ReadonlyArray<{
+  value: TypographyMode;
+  label: string;
+}> = [
+  { value: 'inherit', label: '전역' },
+  { value: 'on', label: '켜기' },
+  { value: 'off', label: '끄기' },
+];
 
 /**
  * Per-document footnote / font / Haim typography settings. Uses max-w (not bare w-[min]) so
@@ -271,66 +276,58 @@ export default function DocumentSettingsModal({
             {HAIM_TYPOGRAPHY_RULE_DEFS.map((def) => {
               const mode = modeFromOverride(local.haimTypography, def.id);
               const globalOn = globalTypography[def.id];
+              const globalTone = haimTypographyStatusTone(globalOn);
+              const effectiveTone =
+                mode === 'inherit'
+                  ? globalTone
+                  : haimTypographyStatusTone(mode === 'on');
               return (
                 <li
                   key={def.id}
                   className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2"
                 >
                   <div className="min-w-0">
-                    <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-odp-fg">
+                      <HaimTypographyStatusDot tone={effectiveTone} />
                       {def.label}
                     </p>
                     <p className="mt-0.5 font-mono text-[11px] text-gray-500 dark:text-odp-muted">
                       {def.hint}
-                      <span className="ml-1 text-gray-400 dark:text-odp-muted">
-                        (전역: {globalOn ? '켜짐' : '꺼짐'})
-                      </span>
                     </p>
                   </div>
-                  <Select.Root
+                  <RadioGroup.Root
+                    className="inline-flex shrink-0 overflow-hidden rounded-md border border-gray-300 dark:border-odp-borderStrong"
                     value={mode}
                     onValueChange={(v) =>
                       handleTypographyMode(def.id, v as TypographyMode)
                     }
+                    aria-label={`${def.label} 문서 Typography`}
                   >
-                    <Select.Trigger
-                      className={selectTriggerClass}
-                      aria-label={`${def.label} 문서 설정`}
-                    >
-                      <Select.Value />
-                      <Select.Icon>
-                        <ChevronDown size={14} />
-                      </Select.Icon>
-                    </Select.Trigger>
-                    <Select.Portal>
-                      <Select.Content
-                        className={selectContentClass}
-                        position="popper"
-                        sideOffset={4}
-                      >
-                        <Select.Viewport className="p-1">
-                          {(
-                            [
-                              ['inherit', '전역 따름'],
-                              ['on', '켜기'],
-                              ['off', '끄기'],
-                            ] as const
-                          ).map(([value, label]) => (
-                            <Select.Item
-                              key={value}
-                              value={value}
-                              className={selectItemClass}
-                            >
-                              <Select.ItemIndicator className="absolute left-1.5 inline-flex items-center">
-                                <Check size={12} aria-hidden />
-                              </Select.ItemIndicator>
-                              <Select.ItemText>{label}</Select.ItemText>
-                            </Select.Item>
-                          ))}
-                        </Select.Viewport>
-                      </Select.Content>
-                    </Select.Portal>
-                  </Select.Root>
+                    {TYPOGRAPHY_MODE_OPTIONS.map((opt) => {
+                      const selected = mode === opt.value;
+                      const optionTone =
+                        opt.value === 'inherit'
+                          ? globalTone
+                          : haimTypographyStatusTone(opt.value === 'on');
+                      return (
+                        <RadioGroup.Item
+                          key={opt.value}
+                          value={opt.value}
+                          className={[
+                            'inline-flex items-center gap-1 px-2 py-1.5 text-[11px] outline-none transition-colors',
+                            'focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-blue-400',
+                            'border-r border-gray-300 last:border-r-0 dark:border-odp-borderStrong',
+                            selected
+                              ? 'bg-blue-50 font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-200'
+                              : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-odp-bg dark:text-odp-fgMuted dark:hover:bg-odp-bgSoft',
+                          ].join(' ')}
+                        >
+                          <HaimTypographyStatusDot tone={optionTone} />
+                          {opt.label}
+                        </RadioGroup.Item>
+                      );
+                    })}
+                  </RadioGroup.Root>
                 </li>
               );
             })}
