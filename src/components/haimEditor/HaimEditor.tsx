@@ -29,6 +29,9 @@ import {
   registerHaimAnnotateUpload,
   normalizeUploadResult,
 } from '@/utils/haimImageAnnotateUpload';
+import { registerHaimOpenViewPath } from '@/utils/haimOpenViewPath';
+import { buildDocuhaimHref } from '@/utils/docuhaimLink';
+import DocuhaimNoteLinkModal from '@/components/haimEditor/DocuhaimNoteLinkModal';
 import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
   HAIM_VIEW_MODE_DOUBLE,
@@ -146,6 +149,7 @@ export default function HaimEditor({
   isSurfaceLive = true,
   onRequestConvertAllImagesToWiki,
   onRegisterConvertAllImagesToWiki,
+  onOpenViewPath,
 }: NoteEditorProps) {
   const metaPrefixRef = useRef('');
   const cmViewRef = useRef<CmEditorView | null>(null);
@@ -176,6 +180,8 @@ export default function HaimEditor({
   const [headingRemapSelection, setHeadingRemapSelection] = useState('');
   const headingRemapRangeRef = useRef<{ from: number; to: number } | null>(null);
   const [imageLinkOpen, setImageLinkOpen] = useState(false);
+  const [docuhaimLinkOpen, setDocuhaimLinkOpen] = useState(false);
+  const [docuhaimLinkInitialText, setDocuhaimLinkInitialText] = useState('');
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
   const [qrCodeInitialText, setQrCodeInitialText] = useState('');
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
@@ -914,6 +920,55 @@ export default function HaimEditor({
     return () => registerHaimAnnotateUpload(null);
   }, [onUploadImage, previewOnly]);
 
+  // Bridge for docuhaim:// / HaimLink in-app note open.
+  useEffect(() => {
+    if (typeof onOpenViewPath !== 'function') {
+      registerHaimOpenViewPath(null);
+      return () => registerHaimOpenViewPath(null);
+    }
+    registerHaimOpenViewPath((path) => {
+      onOpenViewPath(path);
+    });
+    return () => registerHaimOpenViewPath(null);
+  }, [onOpenViewPath]);
+
+  const openDocuhaimNoteLinkModal = useCallback(() => {
+    if (!editor || previewOnly) return;
+    setDocuhaimLinkInitialText(
+      getHaimSelectedPlainText(editor, cmViewRef.current, {
+        sourceVisible: true,
+      }) || '',
+    );
+    setDocuhaimLinkOpen(true);
+  }, [editor, previewOnly]);
+
+  const insertDocuhaimNoteLink = useCallback(
+    ({ path, text }: { path: string; text: string }) => {
+      if (!editor) return;
+      const href = buildDocuhaimHref(path);
+      const { empty, from, to } = editor.state.selection;
+      const selected = empty
+        ? ''
+        : editor.state.doc.textBetween(from, to, ' ').trim();
+      if (selected) {
+        editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+        return;
+      }
+      const label = (text || path.split('/').pop() || path).trim() || path;
+      const escaped = label
+        .replace(/\\/g, '\\\\')
+        .replace(/\[/g, '\\[')
+        .replace(/\]/g, '\\]');
+      editor
+        .chain()
+        .focus()
+        .insertContent(`[${escaped}](${href})`, {
+          contentType: 'markdown',
+        } as never)
+        .run();
+    },
+    [editor],
+  );
   const toggleInvisibleChars = useCallback(() => {
     if (!editor) return;
     const cmds = editor.commands as typeof editor.commands & {
@@ -991,6 +1046,9 @@ export default function HaimEditor({
         const url = window.prompt('URL', 'https://');
         if (!url) return;
         run(() => editor.chain().focus().setLink({ href: url }).run());
+      },
+      'editor-docuhaim-link': () => {
+        openDocuhaimNoteLinkModal();
       },
       'editor-table': () =>
         run(() =>
@@ -1084,6 +1142,7 @@ export default function HaimEditor({
     onUploadImage,
     showImageUploadOverlay,
     insertPageBreak,
+    openDocuhaimNoteLinkModal,
   ]);
 
   useEffect(() => {
@@ -1193,6 +1252,7 @@ export default function HaimEditor({
               window.setTimeout(() => setChecklistHint(null), 3200);
             },
             onImageLink: () => setImageLinkOpen(true),
+            onDocuhaimNoteLink: openDocuhaimNoteLinkModal,
             onImageUpload: (files) => {
               void handleUploadFiles(files);
             },
@@ -1381,6 +1441,12 @@ export default function HaimEditor({
             } as never)
             .run();
         }}
+      />
+      <DocuhaimNoteLinkModal
+        isOpen={docuhaimLinkOpen}
+        onClose={() => setDocuhaimLinkOpen(false)}
+        initialText={docuhaimLinkInitialText}
+        onConfirm={insertDocuhaimNoteLink}
       />
       <QrCodeCreateModal
         isOpen={qrCodeOpen}

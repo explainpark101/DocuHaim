@@ -1,3 +1,5 @@
+import { parseDocuhaimHref } from '@/utils/docuhaimLink';
+
 export type PreviewHrefKind = 'hash' | 'external' | 'app';
 
 export type PreviewHrefResolution = {
@@ -193,6 +195,16 @@ export function resolvePreviewHref(
   }
   if (/^(mailto:|tel:|javascript:)/i.test(raw)) {
     return { kind: 'external', href: raw };
+  }
+
+  const docuhaimPath = parseDocuhaimHref(raw);
+  if (docuhaimPath) {
+    return {
+      kind: 'app',
+      href: raw,
+      pathname: `/view/${docuhaimPath}`,
+      viewPath: docuhaimPath,
+    };
   }
 
   const origin =

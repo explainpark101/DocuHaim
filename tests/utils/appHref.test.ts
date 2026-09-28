@@ -10,25 +10,32 @@ import {
   parseQuizPathFromAppPathname,
   parseViewPathFromAppPathname,
   quizPathnameForStoragePath,
+  resolvePreviewHref,
 } from '@/utils/appHref';
 
 describe('appHref route parsers', () => {
   it('parses /view and /export-pdf note paths', () => {
     expect(parseViewPathFromAppPathname('/view/notes/a.md')).toBe('notes/a.md');
-    expect(parseExportPdfPathFromAppPathname('/export-pdf/notes/a.md')).toBe('notes/a.md');
+    expect(parseExportPdfPathFromAppPathname('/export-pdf/notes/a.md')).toBe(
+      'notes/a.md',
+    );
     expect(parseOpenNotePathFromAppPathname('/view/x.md')).toBe('x.md');
     expect(parseOpenNotePathFromAppPathname('/export-pdf/x.md')).toBe('x.md');
   });
 
   it('parses /quiz note paths', () => {
-    expect(parseQuizPathFromAppPathname('/quiz/notes/a.quiz.md')).toBe('notes/a.quiz.md');
+    expect(parseQuizPathFromAppPathname('/quiz/notes/a.quiz.md')).toBe(
+      'notes/a.quiz.md',
+    );
     expect(parseOpenNotePathFromAppPathname('/quiz/notes/a.quiz.md')).toBe(
       'notes/a.quiz.md',
     );
     expect(isQuizAppPathname('/quiz')).toBe(true);
     expect(isQuizAppPathname('/quiz/a.quiz.md')).toBe(true);
     expect(isQuizAppPathname('/view/a.quiz.md')).toBe(false);
-    expect(quizPathnameForStoragePath('notes/a.quiz.md')).toBe('/quiz/notes/a.quiz.md');
+    expect(quizPathnameForStoragePath('notes/a.quiz.md')).toBe(
+      '/quiz/notes/a.quiz.md',
+    );
   });
 
   it('detects export-pdf / chat / settings pathnames', () => {
@@ -40,7 +47,23 @@ describe('appHref route parsers', () => {
   });
 
   it('builds export-pdf pathnames for storage paths', () => {
-    expect(exportPdfPathnameForStoragePath('notes/a.md')).toBe('/export-pdf/notes/a.md');
+    expect(exportPdfPathnameForStoragePath('notes/a.md')).toBe(
+      '/export-pdf/notes/a.md',
+    );
     expect(exportPdfPathnameForStoragePath(null)).toBe('/export-pdf');
+  });
+});
+
+describe('resolvePreviewHref docuhaim', () => {
+  it('maps docuhaim:// to in-app viewPath', () => {
+    const resolved = resolvePreviewHref('docuhaim://notes/meeting.md');
+    expect(resolved.kind).toBe('app');
+    expect(resolved.viewPath).toBe('notes/meeting.md');
+    expect(resolved.pathname).toBe('/view/notes/meeting.md');
+  });
+
+  it('keeps first path segment (no hostname split)', () => {
+    const resolved = resolvePreviewHref('docuhaim://a/b.md');
+    expect(resolved.viewPath).toBe('a/b.md');
   });
 });

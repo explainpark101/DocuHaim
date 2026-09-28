@@ -4,16 +4,16 @@ overview: Haim Editor에 `docuhaim://` vault 노트 하이퍼링크를 추가합
 todos:
   - id: docuhaim-utils
     content: Add docuhaimLink helpers + resolvePreviewHref branch + tests
-    status: pending
+    status: completed
   - id: haim-link-open
     content: HaimLink protocols + click bridge; register onOpenViewPath in HaimEditor
-    status: pending
+    status: completed
   - id: modal-toolbar
     content: DocuhaimNoteLinkModal (TreeNode + label) + HaimToolbar/appActions insert
-    status: pending
+    status: completed
   - id: as-docs
     content: AS editor-docuhaim-link + custom-markdown docs/index/sidebar
-    status: pending
+    status: completed
 isProject: false
 ---
 

@@ -35,6 +35,7 @@ import {
   Search,
   Pilcrow,
   QrCode,
+  FileText,
 } from 'lucide-react';
 import { DropdownMenu, Switch, Tooltip } from 'radix-ui';
 import {
@@ -61,6 +62,8 @@ export type HaimToolbarAppActions = {
   onCreateQrCode?: (() => void) | undefined;
   onInsertMermaid?: (() => void) | undefined;
   onInsertKatex?: (() => void) | undefined;
+  /** Insert vault note hyperlink (`docuhaim://`). */
+  onDocuhaimNoteLink?: (() => void) | undefined;
   findReplaceOpen?: boolean | undefined;
   onFindReplaceOpenChange?: ((open: boolean) => void) | undefined;
   invisibleCharsVisible?: boolean | undefined;
@@ -366,6 +369,11 @@ export default function HaimToolbar({
         >
           <Link2 size={14} />
         </ToolBtn>
+        {a?.onDocuhaimNoteLink ? (
+          <ToolBtn label="노트 링크" onClick={() => a.onDocuhaimNoteLink?.()}>
+            <FileText size={14} />
+          </ToolBtn>
+        ) : null}
         <ToolBtn
           label="표"
           onClick={() => {

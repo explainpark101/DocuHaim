@@ -17,6 +17,7 @@ export type EditorActionId =
   | 'editor-codeRow'
   | 'editor-code'
   | 'editor-link'
+  | 'editor-docuhaim-link'
   | 'editor-table'
   | 'editor-table-edit'
   | 'editor-h1'
@@ -218,6 +219,19 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     description: '마크다운 링크 삽입',
     keywords: ['link', '링크', 'url'],
     directive: 'link',
+  },
+  {
+    id: 'editor-docuhaim-link',
+    title: '노트 링크',
+    description: 'vault 노트에 대한 docuhaim:// 하이퍼링크 삽입',
+    keywords: [
+      'docuhaim',
+      '노트 링크',
+      'note link',
+      'vault link',
+      '파일 링크',
+      'haim note',
+    ],
   },
   {
     id: 'editor-table',
