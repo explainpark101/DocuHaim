@@ -1648,6 +1648,14 @@ export function useTreeOpsDomain() {
   const renameTreeItem = async (storageType, node, newTitle) => {
     const trimmed = newTitle.trim();
     if (!trimmed) return;
+    const renameParentPath = getParentPath(node.path);
+    beginTreeTransferBusy({
+      storageType,
+      path: node.path,
+      nodeType: node.type === 'folder' ? 'folder' : 'file',
+      destFolderPath: renameParentPath || '',
+      action: 'rename',
+    });
     try {
       if (node.type === 'folder') {
         if (storageType === 's3') {
@@ -2053,6 +2061,8 @@ export function useTreeOpsDomain() {
     } catch (e) {
       if (e?.message === 'cancelled') return;
       alert("이름 변경 실패: " + e.message);
+    } finally {
+      endTreeTransferBusy(storageType, node.path);
     }
   };
 

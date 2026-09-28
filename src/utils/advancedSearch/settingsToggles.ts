@@ -47,6 +47,10 @@ import {
   saveTreeShowModifiedDateEnabled,
 } from '@/utils/treeModifiedDateSettings';
 import {
+  loadTreeRevealOnOpenEnabled,
+  saveTreeRevealOnOpenEnabled,
+} from '@/utils/treeRevealOnOpenSettings';
+import {
   loadCoverCenterSnapEnabled,
   loadCoverObjectSnapEnabled,
   loadCoverPlacePreviewEnabled,
@@ -160,6 +164,7 @@ export type SettingsToggleId =
   | 'settings-hide-recording'
   | 'settings-tree-sticky'
   | 'settings-tree-modified-date'
+  | 'settings-tree-reveal-on-open'
   | 'settings-status-bar-clock'
   | 'settings-status-bar-clock-date'
   | 'settings-composer-helper'
@@ -564,6 +569,28 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadTreeShowModifiedDateEnabled,
     save: saveTreeShowModifiedDateEnabled,
+  },
+  {
+    id: 'settings-tree-reveal-on-open',
+    enableTitle: '검색으로 연 파일 트리 스크롤 켜기',
+    disableTitle: '검색으로 연 파일 트리 스크롤 끄기',
+    description: '고급 검색에서 파일을 열면 사이드바 트리를 해당 위치로 스크롤',
+    keywords: [
+      'tree',
+      '트리',
+      'reveal',
+      'scroll',
+      '스크롤',
+      'advanced search',
+      '고급 검색',
+      '검색',
+      '사이드바',
+      'sidebar',
+      '열기',
+      'open',
+    ],
+    load: loadTreeRevealOnOpenEnabled,
+    save: saveTreeRevealOnOpenEnabled,
   },
   {
     id: 'settings-status-bar-clock',

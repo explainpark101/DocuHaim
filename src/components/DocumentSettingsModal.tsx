@@ -12,7 +12,7 @@ import {
 import { buildFontFamilyOptions } from '@/utils/fontOptions';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 import {
-  HAIM_TYPOGRAPHY_RULE_DEFS,
+  filterHaimTypographyRuleDefs,
   loadHaimTypographyGlobal,
   normalizeHaimTypographyOverrides,
   type HaimTypographyOverrides,
@@ -22,6 +22,7 @@ import {
   HaimTypographyStatusDot,
   haimTypographyStatusTone,
 } from '@/components/settings/HaimTypographyStatusDot';
+import HaimTypographySearchField from '@/components/settings/HaimTypographySearchField';
 
 export type DocumentSettingsModalProps = {
   isOpen: boolean;
@@ -87,11 +88,13 @@ export default function DocumentSettingsModal({
   const [globalTypography, setGlobalTypography] = useState(() =>
     loadHaimTypographyGlobal(),
   );
+  const [typographyQuery, setTypographyQuery] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setLocal(settings ?? DEFAULT_DOCUMENT_SETTINGS_META);
       setGlobalTypography(loadHaimTypographyGlobal());
+      setTypographyQuery('');
     }
   }, [isOpen, settings]);
 
@@ -105,6 +108,11 @@ export default function DocumentSettingsModal({
     () => buildFontFamilyOptions(),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick refreshes webfont families
     [fontOptionsTick],
+  );
+
+  const filteredTypographyDefs = useMemo(
+    () => filterHaimTypographyRuleDefs(typographyQuery),
+    [typographyQuery],
   );
 
   const updateSourceList = (patch: Partial<DocumentSettingsMeta['sourceList']>) => {
@@ -272,65 +280,76 @@ export default function DocumentSettingsModal({
               전부 전역 따름
             </Button>
           </div>
-          <ul className="divide-y divide-gray-200 rounded-md border border-gray-200 dark:divide-odp-borderStrong dark:border-odp-borderStrong">
-            {HAIM_TYPOGRAPHY_RULE_DEFS.map((def) => {
-              const mode = modeFromOverride(local.haimTypography, def.id);
-              const globalOn = globalTypography[def.id];
-              const globalTone = haimTypographyStatusTone(globalOn);
-              const effectiveTone =
-                mode === 'inherit'
-                  ? globalTone
-                  : haimTypographyStatusTone(mode === 'on');
-              return (
-                <li
-                  key={def.id}
-                  className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-odp-fg">
-                      <HaimTypographyStatusDot tone={effectiveTone} />
-                      {def.label}
-                    </p>
-                    <p className="mt-0.5 font-mono text-[11px] text-gray-500 dark:text-odp-muted">
-                      {def.hint}
-                    </p>
-                  </div>
-                  <RadioGroup.Root
-                    className="inline-flex shrink-0 overflow-hidden rounded-md border border-gray-300 dark:border-odp-borderStrong"
-                    value={mode}
-                    onValueChange={(v) =>
-                      handleTypographyMode(def.id, v as TypographyMode)
-                    }
-                    aria-label={`${def.label} 문서 Typography`}
+          <HaimTypographySearchField
+            id="haim-typography-document-search"
+            value={typographyQuery}
+            onChange={setTypographyQuery}
+          />
+          <ul className="max-h-72 divide-y divide-gray-200 overflow-y-auto rounded-md border border-gray-200 dark:divide-odp-borderStrong dark:border-odp-borderStrong">
+            {filteredTypographyDefs.length === 0 ? (
+              <li className="px-3 py-3 text-center text-[11px] text-gray-500 dark:text-odp-muted">
+                일치하는 규칙이 없습니다.
+              </li>
+            ) : (
+              filteredTypographyDefs.map((def) => {
+                const mode = modeFromOverride(local.haimTypography, def.id);
+                const globalOn = globalTypography[def.id];
+                const globalTone = haimTypographyStatusTone(globalOn);
+                const effectiveTone =
+                  mode === 'inherit'
+                    ? globalTone
+                    : haimTypographyStatusTone(mode === 'on');
+                return (
+                  <li
+                    key={def.id}
+                    className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2"
                   >
-                    {TYPOGRAPHY_MODE_OPTIONS.map((opt) => {
-                      const selected = mode === opt.value;
-                      const optionTone =
-                        opt.value === 'inherit'
-                          ? globalTone
-                          : haimTypographyStatusTone(opt.value === 'on');
-                      return (
-                        <RadioGroup.Item
-                          key={opt.value}
-                          value={opt.value}
-                          className={[
-                            'inline-flex items-center gap-1 px-2 py-1.5 text-[11px] outline-none transition-colors',
-                            'focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-blue-400',
-                            'border-r border-gray-300 last:border-r-0 dark:border-odp-borderStrong',
-                            selected
-                              ? 'bg-blue-50 font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-200'
-                              : 'bg-white text-gray-600 hover:bg-gray-50 dark:bg-odp-bg dark:text-odp-fgMuted dark:hover:bg-odp-bgSoft',
-                          ].join(' ')}
-                        >
-                          <HaimTypographyStatusDot tone={optionTone} />
-                          {opt.label}
-                        </RadioGroup.Item>
-                      );
-                    })}
-                  </RadioGroup.Root>
-                </li>
-              );
-            })}
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-odp-fg">
+                        <HaimTypographyStatusDot tone={effectiveTone} />
+                        {def.label}
+                      </p>
+                      <p className="mt-0.5 font-mono text-[11px] text-gray-500 dark:text-odp-muted">
+                        {def.hint}
+                      </p>
+                    </div>
+                    <RadioGroup.Root
+                      className="inline-flex shrink-0 overflow-hidden rounded-md border border-gray-300 dark:border-odp-borderStrong"
+                      value={mode}
+                      onValueChange={(v) =>
+                        handleTypographyMode(def.id, v as TypographyMode)
+                      }
+                      aria-label={`${def.label} 문서 Typography`}
+                    >
+                      {TYPOGRAPHY_MODE_OPTIONS.map((opt) => {
+                        const selected = mode === opt.value;
+                        const optionTone =
+                          opt.value === 'inherit'
+                            ? globalTone
+                            : haimTypographyStatusTone(opt.value === 'on');
+                        return (
+                          <RadioGroup.Item
+                            key={opt.value}
+                            value={opt.value}
+                            className={[
+                              'inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] outline-none transition-all',
+                              'focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-blue-400',
+                              'border-r border-gray-300 last:border-r-0 dark:border-odp-borderStrong',
+                              selected
+                                ? 'bg-blue-600 font-bold text-white shadow-sm dark:bg-blue-500 dark:text-white'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-odp-bgSoft dark:text-odp-fgMuted dark:hover:bg-odp-borderStrong dark:hover:text-odp-fg',
+                            ].join(' ')}
+                          >
+                            <HaimTypographyStatusDot tone={optionTone} />
+                            {opt.label}
+                          </RadioGroup.Item>
+                        );
+                      })}
+                    </RadioGroup.Root>
+                  </li>
+                );
+              })
+            )}
           </ul>
         </section>
 
