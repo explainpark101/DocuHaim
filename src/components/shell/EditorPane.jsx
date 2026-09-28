@@ -1093,7 +1093,14 @@ export default function EditorPane({
                   type="button"
                   className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
                   onClick={() => {
-                    setDocumentSettingsOpen(true);
+                    if (
+                      viewer === 'kanban' &&
+                      kanbanFileManagement?.openDocumentSettings
+                    ) {
+                      kanbanFileManagement.openDocumentSettings();
+                    } else {
+                      setDocumentSettingsOpen(true);
+                    }
                     setFileManagementOpen(false);
                   }}
                 >
@@ -1488,7 +1495,7 @@ export default function EditorPane({
         )}
       </div>
       <DocumentSettingsModal
-        isOpen={documentSettingsOpen}
+        isOpen={documentSettingsOpen && viewer !== 'kanban'}
         onClose={() => setDocumentSettingsOpen(false)}
         settings={documentSettings}
         onApply={handleApplyDocumentSettings}

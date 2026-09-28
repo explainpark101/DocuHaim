@@ -35,25 +35,54 @@ describe('kanbanDndCollision', () => {
     expect(shouldInsertAfterCard(null, 10)).toBe(false);
   });
 
-  it('prefers DOM resolveColumnAtPoint over rect fallback', () => {
-    const resolveColumnAtPoint = vi.fn(() => 'col-b');
-    const detect = createKanbanCollisionDetection({ resolveColumnAtPoint });
+  it('prefers DOM resolveCellAtPoint over rect fallback', () => {
+    const resolveCellAtPoint = vi.fn(() => ({
+      columnId: 'col-b',
+      laneId: 'lane_default',
+    }));
+    const detect = createKanbanCollisionDetection({ resolveCellAtPoint });
 
     const colADrop = {
-      id: `${KANBAN_COLUMN_DROP_PREFIX}col-a`,
-      data: { current: { type: 'column-drop', columnId: 'col-a' } },
+      id: `${KANBAN_COLUMN_DROP_PREFIX}col-a:lane_default`,
+      data: {
+        current: {
+          type: 'column-drop',
+          columnId: 'col-a',
+          laneId: 'lane_default',
+        },
+      },
     };
     const colBDrop = {
-      id: `${KANBAN_COLUMN_DROP_PREFIX}col-b`,
-      data: { current: { type: 'column-drop', columnId: 'col-b' } },
+      id: `${KANBAN_COLUMN_DROP_PREFIX}col-b:lane_default`,
+      data: {
+        current: {
+          type: 'column-drop',
+          columnId: 'col-b',
+          laneId: 'lane_default',
+        },
+      },
     };
     const cardA = {
       id: `${KANBAN_CARD_PREFIX}c1`,
-      data: { current: { type: 'card', cardId: 'c1', columnId: 'col-a' } },
+      data: {
+        current: {
+          type: 'card',
+          cardId: 'c1',
+          columnId: 'col-a',
+          laneId: 'lane_default',
+        },
+      },
     };
     const cardB = {
       id: `${KANBAN_CARD_PREFIX}c2`,
-      data: { current: { type: 'card', cardId: 'c2', columnId: 'col-b' } },
+      data: {
+        current: {
+          type: 'card',
+          cardId: 'c2',
+          columnId: 'col-b',
+          laneId: 'lane_default',
+        },
+      },
     };
 
     const droppableRects = new Map([
@@ -85,10 +114,10 @@ describe('kanbanDndCollision', () => {
       collisionRect: null,
       droppableContainers: [colADrop, colBDrop, cardA, cardB] as never[],
       droppableRects: droppableRects as never,
-      pointerCoordinates: { x: 10, y: 60 }, // over col-a by rect, but DOM says col-b
+      pointerCoordinates: { x: 10, y: 60 },
     } as never);
 
-    expect(resolveColumnAtPoint).toHaveBeenCalledWith(10, 60);
+    expect(resolveCellAtPoint).toHaveBeenCalledWith(10, 60);
     expect(result).toEqual([{ id: cardB.id }]);
   });
 });

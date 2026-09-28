@@ -30,7 +30,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [footnotes.md](./footnotes.md) | `[^1]` + `<!-- footnotes {json} -->` | 에디터 / 미리보기 / 인쇄 |
 | [document-settings.md](./document-settings.md) | `<!-- document-settings {json} -->` | 에디터 / 미리보기 / 인쇄 |
 | [quiz-md.md](./quiz-md.md) | `.quiz.md` + `<!-- quiz-config … -->` | 퀴즈 모드 / AI 출제·채점 |
-| [kanban-json.md](./kanban-json.md) | `.kanban.json` board JSON | 칸반 뷰어 / 컬럼·카드 DnD |
+| [kanban-json.md](./kanban-json.md) | `.kanban.json` board JSON (v2) | 칸반 뷰어 / 스윔레인·커버·열 폴더 / 컬럼·카드 DnD |
 | [preview-hard-break.md](./preview-hard-break.md) | `<br/>` (Mirror Edit Enter) | 에디터 / 미리보기 |
 | [mermaid-fence-size.md](./mermaid-fence-size.md) | ` ```mermaid width=… height=…` (legacy) | 에디터 / 미리보기 / 인쇄 |
 | [mermaid-size.md](./mermaid-size.md) | `<!-- mermaid-size … -->` + mermaid fence | 에디터 / 미리보기 / 인쇄 |

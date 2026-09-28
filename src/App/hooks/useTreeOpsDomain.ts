@@ -1644,6 +1644,7 @@ export function useTreeOpsDomain() {
       fromAddToNoteModal,
       fromSaveSessionModal,
       initialContent,
+      onCreatedPath,
     } = createModalContext;
     setIsCreateSubmitting(true);
     try {
@@ -1657,6 +1658,9 @@ export function useTreeOpsDomain() {
           if (fromAddToNoteModal) setAddToNoteSelectPath(resolved.path);
           if (fromSaveSessionModal) setSaveSessionToNoteSelectPath(resolved.path);
         }
+      } else if (typeof onCreatedPath === 'function') {
+        const resolved = resolveCreateItemPath(parentPath, nameInput, 'file');
+        if (resolved.ok) onCreatedPath(resolved.path);
       }
       setCreateModalOpen(false);
       setCreateModalContext(null);

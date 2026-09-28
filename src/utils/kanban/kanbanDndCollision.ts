@@ -1,9 +1,8 @@
 /**
  * Kanban board collision detection for @dnd-kit/core multi-container DnD.
  *
- * Prefer the **pointer** (not the dragged rect center). Column under the
- * cursor can be resolved via DOM hit-testing so horizontally scrolled /
- * transformed boards stay aligned with the mouse.
+ * Prefer the **pointer** (not the dragged rect center). Column×lane cells
+ * use droppable ids `kanban-coldrop:{columnId}:{laneId}`.
  */
 
 import {
@@ -18,6 +17,7 @@ import {
 export const KANBAN_COLUMN_PREFIX = 'kanban-col:';
 export const KANBAN_COLUMN_DROP_PREFIX = 'kanban-coldrop:';
 export const KANBAN_CARD_PREFIX = 'kanban-card:';
+export const KANBAN_LANE_PREFIX = 'kanban-lane:';
 
 function isColumnId(id: UniqueIdentifier): boolean {
   return String(id).startsWith(KANBAN_COLUMN_PREFIX);
@@ -31,15 +31,24 @@ function isCardId(id: UniqueIdentifier): boolean {
   return String(id).startsWith(KANBAN_CARD_PREFIX);
 }
 
-function columnIdFromDroppable(id: UniqueIdentifier): string | null {
+function isLaneId(id: UniqueIdentifier): boolean {
+  return String(id).startsWith(KANBAN_LANE_PREFIX);
+}
+
+/** Parse `kanban-coldrop:colId:laneId` (lane optional for legacy). */
+export function parseKanbanColumnDropId(
+  id: UniqueIdentifier,
+): { columnId: string; laneId: string | null } | null {
   const s = String(id);
-  if (s.startsWith(KANBAN_COLUMN_DROP_PREFIX)) {
-    return s.slice(KANBAN_COLUMN_DROP_PREFIX.length) || null;
-  }
-  if (s.startsWith(KANBAN_COLUMN_PREFIX)) {
-    return s.slice(KANBAN_COLUMN_PREFIX.length) || null;
-  }
-  return null;
+  if (!s.startsWith(KANBAN_COLUMN_DROP_PREFIX)) return null;
+  const rest = s.slice(KANBAN_COLUMN_DROP_PREFIX.length);
+  if (!rest) return null;
+  const idx = rest.indexOf(':');
+  if (idx < 0) return { columnId: rest, laneId: null };
+  return {
+    columnId: rest.slice(0, idx),
+    laneId: rest.slice(idx + 1) || null,
+  };
 }
 
 type RectLike = {
@@ -72,9 +81,19 @@ function hitXY(rect: RectLike, x: number, y: number): boolean {
 function findColumnDropContainer(
   containers: DroppableContainer[],
   columnId: string,
+  laneId?: string | null,
 ): DroppableContainer | null {
-  const dropId = `${KANBAN_COLUMN_DROP_PREFIX}${columnId}`;
-  return containers.find((c) => String(c.id) === dropId) ?? null;
+  if (laneId) {
+    const exact = `${KANBAN_COLUMN_DROP_PREFIX}${columnId}:${laneId}`;
+    const hit = containers.find((c) => String(c.id) === exact);
+    if (hit) return hit;
+  }
+  return (
+    containers.find((c) => {
+      const parsed = parseKanbanColumnDropId(c.id);
+      return parsed?.columnId === columnId;
+    }) ?? null
+  );
 }
 
 function pickColumnDropByPointer(
@@ -84,29 +103,28 @@ function pickColumnDropByPointer(
   pointerY: number,
   excludeId: UniqueIdentifier,
 ): DroppableContainer | null {
-  const columns = containers.filter(
+  const cells = containers.filter(
     (c) => c.id !== excludeId && isColumnDropId(c.id),
   );
 
-  // Prefer full 2D hit (column list area under the cursor).
-  for (const c of columns) {
+  for (const c of cells) {
     const rect = droppableRects.get(c.id);
     if (rect && hitXY(rect, pointerX, pointerY)) return c;
   }
 
-  // Then horizontal span only (pointer in column header / empty gutter Y).
-  for (const c of columns) {
+  for (const c of cells) {
     const rect = droppableRects.get(c.id);
     if (rect && hitX(rect, pointerX)) return c;
   }
 
-  // Fallback: nearest column center on X.
   let best: DroppableContainer | null = null;
   let bestDist = Infinity;
-  for (const c of columns) {
+  for (const c of cells) {
     const rect = droppableRects.get(c.id);
     if (!rect) continue;
-    const dist = Math.abs(rectCenterX(rect) - pointerX);
+    const cx = rectCenterX(rect);
+    const cy = rectCenterY(rect);
+    const dist = Math.hypot(cx - pointerX, cy - pointerY);
     if (dist < bestDist) {
       bestDist = dist;
       best = c;
@@ -115,17 +133,22 @@ function pickColumnDropByPointer(
   return best;
 }
 
-function pickCardInColumnByPointer(
+function pickCardInCellByPointer(
   containers: DroppableContainer[],
   droppableRects: Map<UniqueIdentifier, RectLike>,
   columnId: string,
+  laneId: string | null,
   pointerY: number,
   excludeId: UniqueIdentifier,
 ): UniqueIdentifier | null {
   const cards = containers.filter((c) => {
     if (c.id === excludeId || !isCardId(c.id)) return false;
-    const data = c.data.current as { columnId?: string } | undefined;
-    return data?.columnId === columnId;
+    const data = c.data.current as
+      | { columnId?: string; laneId?: string }
+      | undefined;
+    if (data?.columnId !== columnId) return false;
+    if (laneId && data?.laneId && data.laneId !== laneId) return false;
+    return true;
   });
 
   if (cards.length === 0) return null;
@@ -163,9 +186,6 @@ function pickCardInColumnByPointer(
   return bestId;
 }
 
-/**
- * Whether the pointer is in the lower half of the over-card — insert after.
- */
 export function shouldInsertAfterCard(
   overRect: RectLike | null | undefined,
   pointerY: number | null | undefined,
@@ -177,21 +197,23 @@ export function shouldInsertAfterCard(
 export type KanbanCollisionOptions = {
   lastOverIdRef?: { current: UniqueIdentifier | null };
   /**
-   * DOM hit-test for the column under the pointer (preferred over measured
-   * droppable rects when the board is scrolled or transformed).
+   * DOM hit-test returning column (+ optional lane) under the pointer.
    */
-  resolveColumnAtPoint?: (x: number, y: number) => string | null;
+  resolveCellAtPoint?: (
+    x: number,
+    y: number,
+  ) => { columnId: string; laneId?: string | null } | null;
 };
 
 /**
- * Card drags: pointer → column (DOM or rect) → card by Y in that column.
- * Column drags: closestCorners among columns only.
+ * Card drags: pointer → cell (DOM or rect) → card by Y in that cell.
+ * Column / lane shell drags: closestCorners among same type.
  */
 export function createKanbanCollisionDetection(
   options?: KanbanCollisionOptions,
 ): CollisionDetection {
   const lastOverIdRef = options?.lastOverIdRef;
-  const resolveColumnAtPoint = options?.resolveColumnAtPoint;
+  const resolveCellAtPoint = options?.resolveCellAtPoint;
 
   return (args) => {
     const {
@@ -211,6 +233,15 @@ export function createKanbanCollisionDetection(
       });
     }
 
+    if (isLaneId(activeId)) {
+      return closestCorners({
+        ...args,
+        droppableContainers: droppableContainers.filter((c) =>
+          isLaneId(c.id),
+        ),
+      });
+    }
+
     if (!isCardId(activeId)) {
       return closestCenter(args);
     }
@@ -220,13 +251,17 @@ export function createKanbanCollisionDetection(
     if (pointerCoordinates) {
       let colDrop: DroppableContainer | null = null;
 
-      if (resolveColumnAtPoint) {
-        const colId = resolveColumnAtPoint(
+      if (resolveCellAtPoint) {
+        const cell = resolveCellAtPoint(
           pointerCoordinates.x,
           pointerCoordinates.y,
         );
-        if (colId) {
-          colDrop = findColumnDropContainer(droppableContainers, colId);
+        if (cell?.columnId) {
+          colDrop = findColumnDropContainer(
+            droppableContainers,
+            cell.columnId,
+            cell.laneId,
+          );
         }
       }
 
@@ -241,12 +276,18 @@ export function createKanbanCollisionDetection(
       }
 
       if (colDrop) {
-        const colId = columnIdFromDroppable(colDrop.id);
+        const parsed = parseKanbanColumnDropId(colDrop.id);
+        const data = colDrop.data.current as
+          | { columnId?: string; laneId?: string }
+          | undefined;
+        const colId = parsed?.columnId || data?.columnId;
+        const laneId = parsed?.laneId || data?.laneId || null;
         if (colId) {
-          const cardId = pickCardInColumnByPointer(
+          const cardId = pickCardInCellByPointer(
             droppableContainers,
             rectMap,
             colId,
+            laneId,
             pointerCoordinates.y,
             activeId,
           );

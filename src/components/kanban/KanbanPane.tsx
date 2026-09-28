@@ -37,7 +37,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { Popover, Tooltip } from 'radix-ui';
 import { HexColorInput, HexColorPicker } from 'react-colorful';
 import {
+  Folder,
   GripVertical,
+  Image as ImageIcon,
   Link2,
   Loader2,
   Palette,
@@ -52,6 +54,8 @@ import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { IconPlus, IconSave, IconTrash, IconX } from '@/components/icons';
 import KanbanLinkPickerModal from '@/components/kanban/KanbanLinkPickerModal';
 import KanbanColumnIconPicker from '@/components/kanban/KanbanColumnIconPicker';
+import KanbanCoverImage from '@/components/kanban/KanbanCoverImage';
+import KanbanFolderPickerModal from '@/components/kanban/KanbanFolderPickerModal';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { useScrollPointerPan } from '@/hooks/useScrollPointerPan';
@@ -63,18 +67,25 @@ import { resolveVaultFileNode } from '@/utils/vault/resolveVaultFileNode';
 import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
 import type { TreeAttachSourceItem } from '@/utils/chatWithMyself/treeAttachDrop';
 import { resolveKanbanTreeDropCards } from '@/utils/kanban/kanbanTreeCardDrop';
-import { createKanbanCollisionDetection, shouldInsertAfterCard } from '@/utils/kanban/kanbanDndCollision';
 import {
   STORAGE_MODE_IDB,
   STORAGE_MODE_LOCAL,
   STORAGE_MODE_WEBDAV,
 } from '@/utils/storageSettings';
+import KanbanDocumentSettingsModal from '@/components/kanban/KanbanDocumentSettingsModal';
 import {
   addCard,
   addColumn,
+  addLane,
+  canAddKanbanCard,
+  canAddKanbanColumn,
+  canAddKanbanLane,
   cardDraftFromCard,
   collectKanbanLinkedPaths,
+  countColumnCards,
+  findCardPlacement,
   findColumnIdForCard,
+  getLaneCardIds,
   isKanbanCardDraftDirty,
   KANBAN_MAX_COLUMN_WIDTH,
   KANBAN_MIN_COLUMN_WIDTH,
@@ -83,17 +94,29 @@ import {
   parseKanbanDocument,
   removeCard,
   removeColumn,
+  removeLane,
   reorderColumns,
+  reorderLanes,
   resolveKanbanColumnWidth,
   searchKanbanCards,
   serializeKanbanDocument,
+  updateBoardSettings,
   updateCard,
   updateColumn,
+  updateLane,
+  type KanbanBoardSettings,
   type KanbanCard,
   type KanbanCardDraft,
   type KanbanColumn,
   type KanbanDocument,
+  type KanbanLane,
 } from '@/utils/kanban/kanbanDocument';
+import {
+  createKanbanCollisionDetection,
+  parseKanbanColumnDropId,
+  shouldInsertAfterCard,
+} from '@/utils/kanban/kanbanDndCollision';
+import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { normalizeCssHexColor } from '@/utils/cssColor';
 
 const NoteEditorSurface = lazy(
@@ -111,6 +134,7 @@ const TocResizeHandle = TocResizeHandleJs as unknown as ComponentType<{
 
 type KanbanFileManagementActions = {
   openSearch: () => void;
+  openDocumentSettings: () => void;
 };
 
 type KanbanPaneProps = {
@@ -130,6 +154,88 @@ type KanbanPaneProps = {
 const COLUMN_PREFIX = 'kanban-col:';
 const COLUMN_DROP_PREFIX = 'kanban-coldrop:';
 const CARD_PREFIX = 'kanban-card:';
+const LANE_PREFIX = 'kanban-lane:';
+
+function colDndId(id: string): string {
+  return `${COLUMN_PREFIX}${id}`;
+}
+
+function colDropDndId(columnId: string, laneId: string): string {
+  return `${COLUMN_DROP_PREFIX}${columnId}:${laneId}`;
+}
+
+function cardDndId(id: string): string {
+  return `${CARD_PREFIX}${id}`;
+}
+
+function laneDndId(id: string): string {
+  return `${LANE_PREFIX}${id}`;
+}
+
+type KanbanCellPoint = { columnId: string; laneId: string | null };
+
+/** Prefer column×lane cell under pointer. */
+function findKanbanCellAtPoint(
+  clientX: number,
+  clientY: number,
+  host: HTMLElement | null,
+): KanbanCellPoint | null {
+  if (typeof document === 'undefined') return null;
+
+  const stack =
+    typeof document.elementsFromPoint === 'function'
+      ? document.elementsFromPoint(clientX, clientY)
+      : [];
+  for (const el of stack) {
+    if (!(el instanceof Element)) continue;
+    const cell = el.closest('[data-kanban-cell]');
+    if (cell instanceof HTMLElement) {
+      const columnId = cell.getAttribute('data-kanban-column-id');
+      const laneId = cell.getAttribute('data-kanban-lane-id');
+      if (columnId) return { columnId, laneId };
+    }
+  }
+
+  if (host) {
+    const cells = host.querySelectorAll('[data-kanban-cell]');
+    for (const cell of cells) {
+      if (!(cell instanceof HTMLElement)) continue;
+      const r = cell.getBoundingClientRect();
+      if (
+        clientX >= r.left &&
+        clientX <= r.right &&
+        clientY >= r.top &&
+        clientY <= r.bottom
+      ) {
+        const columnId = cell.getAttribute('data-kanban-column-id');
+        const laneId = cell.getAttribute('data-kanban-lane-id');
+        if (columnId) return { columnId, laneId };
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseColDndId(id: string): string | null {
+  return id.startsWith(COLUMN_PREFIX) ? id.slice(COLUMN_PREFIX.length) : null;
+}
+
+function parseColDropDndId(id: string): string | null {
+  return parseKanbanColumnDropId(id)?.columnId ?? null;
+}
+
+function parseLaneFromDropDndId(id: string): string | null {
+  return parseKanbanColumnDropId(id)?.laneId ?? null;
+}
+
+function parseCardDndId(id: string): string | null {
+  return id.startsWith(CARD_PREFIX) ? id.slice(CARD_PREFIX.length) : null;
+}
+
+function parseLaneDndId(id: string): string | null {
+  return id.startsWith(LANE_PREFIX) ? id.slice(LANE_PREFIX.length) : null;
+}
 
 const KANBAN_DND_MEASURING = {
   droppable: {
@@ -205,73 +311,6 @@ const SIDE_PANEL_DEFAULT_WIDTH = 380;
 const SIDE_PANEL_MIN_WIDTH = 280;
 const SIDE_PANEL_MAX_WIDTH = 720;
 
-function colDndId(id: string): string {
-  return `${COLUMN_PREFIX}${id}`;
-}
-
-function colDropDndId(id: string): string {
-  return `${COLUMN_DROP_PREFIX}${id}`;
-}
-
-function cardDndId(id: string): string {
-  return `${CARD_PREFIX}${id}`;
-}
-
-/** Prefer column under pointer; overlay is pointer-events-none so hit-testing works. */
-function findKanbanColumnIdAtPoint(
-  clientX: number,
-  clientY: number,
-  host: HTMLElement | null,
-): string | null {
-  if (typeof document === 'undefined') return null;
-
-  const stack =
-    typeof document.elementsFromPoint === 'function'
-      ? document.elementsFromPoint(clientX, clientY)
-      : [];
-  for (const el of stack) {
-    if (!(el instanceof Element)) continue;
-    const col = el.closest('[data-kanban-column-id]');
-    if (col instanceof HTMLElement) {
-      const id = col.getAttribute('data-kanban-column-id');
-      if (id) return id;
-    }
-  }
-
-  if (host) {
-    const cols = host.querySelectorAll('[data-kanban-column-id]');
-    for (const col of cols) {
-      if (!(col instanceof HTMLElement)) continue;
-      const r = col.getBoundingClientRect();
-      if (
-        clientX >= r.left &&
-        clientX <= r.right &&
-        clientY >= r.top &&
-        clientY <= r.bottom
-      ) {
-        const id = col.getAttribute('data-kanban-column-id');
-        if (id) return id;
-      }
-    }
-  }
-
-  return null;
-}
-
-function parseColDndId(id: string): string | null {
-  return id.startsWith(COLUMN_PREFIX) ? id.slice(COLUMN_PREFIX.length) : null;
-}
-
-function parseColDropDndId(id: string): string | null {
-  return id.startsWith(COLUMN_DROP_PREFIX)
-    ? id.slice(COLUMN_DROP_PREFIX.length)
-    : null;
-}
-
-function parseCardDndId(id: string): string | null {
-  return id.startsWith(CARD_PREFIX) ? id.slice(CARD_PREFIX.length) : null;
-}
-
 function EditorFallback() {
   return (
     <div className="flex h-full min-h-0 flex-1 items-center justify-center gap-2 text-xs text-gray-500 dark:text-odp-muted">
@@ -292,7 +331,7 @@ function SortableColumnShell({
   column: KanbanColumn;
   widthPx: number;
   header: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   isWidthResizing?: boolean;
   /** Disable while a card is dragging so column shells do not steal collisions. */
   sortableDisabled?: boolean;
@@ -323,7 +362,7 @@ function SortableColumnShell({
       ref={setNodeRef}
       style={style}
       data-kanban-column-id={column.id}
-      className="relative flex h-full max-h-full shrink-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-slate-50/90 dark:border-odp-borderSoft dark:bg-odp-bgSoft/80"
+      className="relative flex max-h-full shrink-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-slate-50/90 dark:border-odp-borderSoft dark:bg-odp-bgSoft/80"
     >
       <div
         className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5 dark:border-odp-borderSoft"
@@ -480,18 +519,23 @@ function ColumnGapResizeHandle({
 
 function ColumnDroppable({
   columnId,
+  laneId,
   children,
 }: {
   columnId: string;
+  laneId: string;
   children: ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({
-    id: colDropDndId(columnId),
-    data: { type: 'column-drop', columnId },
+    id: colDropDndId(columnId, laneId),
+    data: { type: 'column-drop', columnId, laneId },
   });
   return (
     <div
       ref={setNodeRef}
+      data-kanban-cell=""
+      data-kanban-column-id={columnId}
+      data-kanban-lane-id={laneId}
       className={`flex min-h-24 flex-1 flex-col gap-2 overflow-y-auto p-2 ${
         isOver ? 'bg-blue-50/60 dark:bg-blue-950/20' : ''
       }`}
@@ -501,20 +545,75 @@ function ColumnDroppable({
   );
 }
 
+function SortableLaneShell({
+  lane,
+  disabled = false,
+  children,
+}: {
+  lane: KanbanLane;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: laneDndId(lane.id),
+    data: { type: 'lane', laneId: lane.id },
+    disabled,
+  });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="flex min-w-0 flex-col gap-1">
+      <div className="flex items-center gap-1 px-1">
+        <button
+          type="button"
+          className="inline-flex cursor-grab touch-none items-center justify-center rounded p-1 text-gray-400 hover:bg-gray-200/80 active:cursor-grabbing dark:hover:bg-odp-focusBg"
+          aria-label="레인 순서 변경"
+          data-kanban-no-pan=""
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical size={14} />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function SortableCard({
   card,
   columnId,
+  laneId,
   onSelect,
   isSelected,
   searchDimmed,
   searchHit,
+  resolveCoverUrl,
+  showCover = true,
+  showTags = true,
+  showLinks = true,
 }: {
   card: KanbanCard;
   columnId: string;
+  laneId: string;
   onSelect: () => void;
   isSelected: boolean;
   searchDimmed?: boolean;
   searchHit?: boolean;
+  resolveCoverUrl?: KanbanPaneProps['onResolveWikiImageUrl'];
+  showCover?: boolean;
+  showTags?: boolean;
+  showLinks?: boolean;
 }) {
   const {
     attributes,
@@ -525,10 +624,8 @@ function SortableCard({
     isDragging,
   } = useSortable({
     id: cardDndId(card.id),
-    data: { type: 'card', cardId: card.id, columnId },
+    data: { type: 'card', cardId: card.id, columnId, laneId },
   });
-  // While DragOverlay is active, keep a layout placeholder (no transform)
-  // so collision rects stay aligned with the pointer / columns.
   const style: CSSProperties = {
     transform: isDragging ? undefined : CSS.Transform.toString(transform),
     transition: isDragging ? undefined : transition,
@@ -540,7 +637,7 @@ function SortableCard({
       ref={setNodeRef}
       style={style}
       data-kanban-card-id={card.id}
-      className={`rounded-md border bg-white shadow-sm dark:bg-odp-surface ${
+      className={`overflow-hidden rounded-md border bg-white shadow-sm dark:bg-odp-surface ${
         searchHit
           ? 'border-amber-400 ring-1 ring-amber-300/70 dark:border-amber-500'
           : isSelected
@@ -548,6 +645,13 @@ function SortableCard({
             : 'border-gray-200 dark:border-odp-borderSoft'
       }`}
     >
+      {showCover && card.coverPath ? (
+        <KanbanCoverImage
+          path={card.coverPath}
+          variant="card"
+          {...(resolveCoverUrl ? { resolveUrl: resolveCoverUrl } : {})}
+        />
+      ) : null}
       <div className="flex items-start gap-1 p-2">
         <button
           type="button"
@@ -572,7 +676,7 @@ function SortableCard({
               {card.body}
             </div>
           ) : null}
-          {card.tags.length > 0 ? (
+          {showTags && card.tags.length > 0 ? (
             <div className="mt-1 flex flex-wrap gap-1">
               {card.tags.slice(0, 4).map((tag) => (
                 <span
@@ -589,7 +693,7 @@ function SortableCard({
               ) : null}
             </div>
           ) : null}
-          {card.linkPaths.length > 0 ? (
+          {showLinks && card.linkPaths.length > 0 ? (
             <div className="mt-1 truncate text-[11px] text-blue-600 dark:text-blue-400">
               {card.linkPaths.length === 1
                 ? card.linkPaths[0]
@@ -653,6 +757,15 @@ export default function KanbanPane({
   const [cardDraft, setCardDraft] = useState<KanbanCardDraft | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [linkPickerOpen, setLinkPickerOpen] = useState(false);
+  const [folderPickerColumnId, setFolderPickerColumnId] = useState<string | null>(
+    null,
+  );
+  const [coverPickerTarget, setCoverPickerTarget] = useState<{
+    kind: 'column' | 'card';
+    id: string;
+  } | null>(null);
+  const [deleteLaneId, setDeleteLaneId] = useState<string | null>(null);
+  const [documentSettingsOpen, setDocumentSettingsOpen] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [pendingCloseAfterDiscard, setPendingCloseAfterDiscard] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -696,6 +809,7 @@ export default function KanbanPane({
     loadIdbFolderChildren,
   } = useVault();
   const { selectFileRaw, openAdvancedSearchFile } = useFileSession();
+  const { setCreateModalContext, setCreateModalOpen } = useTreeOps();
 
   const vaultTree = useMemo(() => {
     if (storageMode === STORAGE_MODE_LOCAL) return localTree;
@@ -799,6 +913,7 @@ export default function KanbanPane({
       body: cardDraft.body,
       linkPaths: cardDraft.linkPaths,
       tags: cardDraft.tags,
+      coverPath: cardDraft.coverPath,
     });
     commitDoc(next);
     const saved = next.cards[selectedCardId];
@@ -820,6 +935,10 @@ export default function KanbanPane({
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
     });
+  }, []);
+
+  const openDocumentSettings = useCallback(() => {
+    setDocumentSettingsOpen(true);
   }, []);
 
   const closeSearch = useCallback(() => {
@@ -859,9 +978,15 @@ export default function KanbanPane({
 
   useEffect(() => {
     if (!isActiveFile || !isSurfaceLive || !registerFileManagement) return;
-    registerFileManagement({ openSearch });
+    registerFileManagement({ openSearch, openDocumentSettings });
     return () => registerFileManagement(null);
-  }, [isActiveFile, isSurfaceLive, openSearch, registerFileManagement]);
+  }, [
+    isActiveFile,
+    isSurfaceLive,
+    openDocumentSettings,
+    openSearch,
+    registerFileManagement,
+  ]);
 
   // Ctrl/Cmd+F opens board card search (skip when typing in nested editors).
   useEffect(() => {
@@ -966,18 +1091,18 @@ export default function KanbanPane({
   const lastKanbanOverIdRef = useRef<UniqueIdentifier | null>(null);
   const dragStartDocRef = useRef<string | null>(null);
   const pointerPosRef = useRef<{ x: number; y: number } | null>(null);
-  const resolveColumnAtPoint = useCallback(
+  const resolveCellAtPoint = useCallback(
     (x: number, y: number) =>
-      findKanbanColumnIdAtPoint(x, y, boardDropHostRef.current),
+      findKanbanCellAtPoint(x, y, boardDropHostRef.current),
     [],
   );
   const kanbanCollisionDetection = useMemo(
     () =>
       createKanbanCollisionDetection({
         lastOverIdRef: lastKanbanOverIdRef,
-        resolveColumnAtPoint,
+        resolveCellAtPoint,
       }),
-    [resolveColumnAtPoint],
+    [resolveCellAtPoint],
   );
   const isCardDragActive = Boolean(
     activeDragId && parseCardDndId(activeDragId),
@@ -1086,37 +1211,66 @@ export default function KanbanPane({
         return;
       }
 
-      const pointedCol =
+      const pointed =
         point != null
-          ? findKanbanColumnIdAtPoint(
+          ? findKanbanCellAtPoint(
               point.clientX,
               point.clientY,
               boardDropHostRef.current,
             )
           : null;
       const columnId =
-        (pointedCol &&
-          snapshot.columns.some((c) => c.id === pointedCol) &&
-          pointedCol) ||
+        (pointed?.columnId &&
+          snapshot.columns.some((c) => c.id === pointed.columnId) &&
+          pointed.columnId) ||
         snapshot.columns[0]!.id;
+      const laneId =
+        (pointed?.laneId &&
+          snapshot.lanes.some((l) => l.id === pointed.laneId) &&
+          pointed.laneId) ||
+        snapshot.lanes[0]?.id;
 
       let next = snapshot;
       let lastId: string | null = null;
+      let added = 0;
+      let skippedLimit = false;
+      const resolvedLane = laneId || next.lanes[0]!.id;
       for (const seed of fresh) {
-        next = addCard(next, columnId, {
-          title: seed.title,
-          linkPaths: [seed.linkPath],
-        });
-        lastId =
-          next.columns.find((c) => c.id === columnId)?.cardIds.slice(-1)[0] ||
-          lastId;
+        if (!canAddKanbanCard(next, columnId, resolvedLane)) {
+          skippedLimit = true;
+          break;
+        }
+        next = addCard(
+          next,
+          columnId,
+          {
+            title: seed.title,
+            linkPaths: [seed.linkPath],
+          },
+          resolvedLane,
+        );
+        const ids = getLaneCardIds(
+          next.columns.find((c) => c.id === columnId)!,
+          resolvedLane,
+        );
+        lastId = ids[ids.length - 1] || lastId;
+        added += 1;
       }
-      commitDoc(next);
-      if (lastId) openCardEditor(lastId);
-      showToast({
-        message: `카드 ${fresh.length}개 추가`,
-        durationMs: 2500,
-      });
+      if (added > 0) {
+        commitDoc(next);
+        if (lastId) openCardEditor(lastId);
+        showToast({
+          message: skippedLimit
+            ? `카드 ${added}개 추가 (셀 한도)`
+            : `카드 ${added}개 추가`,
+          durationMs: 2500,
+        });
+      } else if (skippedLimit) {
+        showToast({
+          message: '셀당 최대 카드 수에 도달했습니다',
+          durationMs: 2200,
+        });
+      }
     },
     [commitDoc, excludeKanbanPath, findVaultNode, openCardEditor, showToast],
   );
@@ -1145,23 +1299,49 @@ export default function KanbanPane({
     [],
   );
 
+  const findLaneForDndId = useCallback(
+    (dndId: string, snapshot: KanbanDocument): string | null => {
+      const fromDrop = parseLaneFromDropDndId(dndId);
+      if (fromDrop) return fromDrop;
+      const cardId = parseCardDndId(dndId);
+      if (cardId) {
+        return (
+          findCardPlacement(snapshot, cardId)?.laneId ||
+          snapshot.cards[cardId]?.laneId ||
+          null
+        );
+      }
+      return snapshot.lanes[0]?.id ?? null;
+    },
+    [],
+  );
+
   const resolveCardInsertIndex = useCallback(
     (
-      targetCol: { cardIds: string[] },
+      targetIds: string[],
       overCardId: string | null,
-      overRect: { top: number; height: number; left?: number; width?: number; bottom?: number; right?: number } | null,
+      overRect: {
+        top: number;
+        height: number;
+        left?: number;
+        width?: number;
+        bottom?: number;
+        right?: number;
+      } | null,
       activeCardId: string,
     ): number => {
-      if (!overCardId) return targetCol.cardIds.length;
-      const idx = targetCol.cardIds.indexOf(overCardId);
-      if (idx < 0) return targetCol.cardIds.length;
+      if (!overCardId) return targetIds.length;
+      const idx = targetIds.indexOf(overCardId);
+      if (idx < 0) return targetIds.length;
       if (overCardId === activeCardId) return idx;
       const pointerY = pointerPosRef.current?.y ?? null;
       const rect =
         overRect && typeof overRect.top === 'number'
           ? {
               left: overRect.left ?? 0,
-              right: overRect.right ?? (overRect.left ?? 0) + (overRect.width ?? 0),
+              right:
+                overRect.right ??
+                (overRect.left ?? 0) + (overRect.width ?? 0),
               top: overRect.top,
               bottom:
                 overRect.bottom ?? overRect.top + (overRect.height ?? 0),
@@ -1209,34 +1389,37 @@ export default function KanbanPane({
     const activeId = String(active.id);
     const overId = String(over.id);
     const activeCardId = parseCardDndId(activeId);
-    if (!activeCardId) return; // column drag handled on end
+    if (!activeCardId) return;
 
     const snapshot = docRef.current;
-    const fromCol = findColumnIdForCard(snapshot, activeCardId);
+    const fromPlacement = findCardPlacement(snapshot, activeCardId);
     const toCol = findContainerForDndId(overId, snapshot);
-    if (!fromCol || !toCol) return;
+    const toLane =
+      findLaneForDndId(overId, snapshot) || snapshot.lanes[0]?.id || null;
+    if (!fromPlacement || !toCol || !toLane) return;
 
     const overCardId = parseCardDndId(overId);
     const targetCol = snapshot.columns.find((c) => c.id === toCol);
     if (!targetCol) return;
+    const targetIds = getLaneCardIds(targetCol, toLane);
     let toIndex = resolveCardInsertIndex(
-      targetCol,
+      targetIds,
       overCardId,
       over.rect,
       activeCardId,
     );
 
-    if (fromCol === toCol) {
-      const oldIndex = targetCol.cardIds.indexOf(activeCardId);
+    const sameCell =
+      fromPlacement.columnId === toCol && fromPlacement.laneId === toLane;
+    if (sameCell) {
+      const oldIndex = targetIds.indexOf(activeCardId);
       if (oldIndex < 0) return;
-      // moveCard removes first; convert pre-removal insert index → post-removal.
       if (oldIndex < toIndex) toIndex -= 1;
-      toIndex = Math.max(0, Math.min(toIndex, targetCol.cardIds.length - 1));
+      toIndex = Math.max(0, Math.min(toIndex, targetIds.length - 1));
       if (oldIndex === toIndex) return;
     }
 
-    // Live layout only — one undo checkpoint is recorded on drag end.
-    commitDoc(moveCard(snapshot, activeCardId, toCol, toIndex), {
+    commitDoc(moveCard(snapshot, activeCardId, toCol, toIndex, toLane), {
       recordUndo: false,
     });
   };
@@ -1273,6 +1456,16 @@ export default function KanbanPane({
     const overId = String(over.id);
     const snapshot = docRef.current;
 
+    const activeLaneId = parseLaneDndId(activeId);
+    if (activeLaneId) {
+      dragStartDocRef.current = null;
+      const overLaneId = parseLaneDndId(overId);
+      if (overLaneId && activeLaneId !== overLaneId) {
+        commitDoc(reorderLanes(snapshot, activeLaneId, overLaneId));
+      }
+      return;
+    }
+
     const activeColId = parseColDndId(activeId);
     if (activeColId) {
       dragStartDocRef.current = null;
@@ -1289,9 +1482,11 @@ export default function KanbanPane({
       dragStartDocRef.current = null;
       return;
     }
-    const fromCol = findColumnIdForCard(snapshot, activeCardId);
+    const fromPlacement = findCardPlacement(snapshot, activeCardId);
     const toCol = findContainerForDndId(overId, snapshot);
-    if (!fromCol || !toCol) {
+    const toLane =
+      findLaneForDndId(overId, snapshot) || snapshot.lanes[0]?.id || null;
+    if (!fromPlacement || !toCol || !toLane) {
       finishCardDragUndo();
       return;
     }
@@ -1303,28 +1498,30 @@ export default function KanbanPane({
       return;
     }
 
+    const targetIds = getLaneCardIds(targetCol, toLane);
     let toIndex = resolveCardInsertIndex(
-      targetCol,
+      targetIds,
       overCardId,
       over.rect,
       activeCardId,
     );
-    if (fromCol === toCol) {
-      const oldIndex = targetCol.cardIds.indexOf(activeCardId);
+    const sameCell =
+      fromPlacement.columnId === toCol && fromPlacement.laneId === toLane;
+    if (sameCell) {
+      const oldIndex = targetIds.indexOf(activeCardId);
       if (oldIndex < 0) {
         finishCardDragUndo();
         return;
       }
-      // moveCard removes first; convert pre-removal insert index → post-removal.
       if (oldIndex < toIndex) toIndex -= 1;
-      toIndex = Math.max(0, Math.min(toIndex, targetCol.cardIds.length - 1));
+      toIndex = Math.max(0, Math.min(toIndex, targetIds.length - 1));
       if (oldIndex === toIndex) {
         finishCardDragUndo();
         return;
       }
     }
 
-    commitDoc(moveCard(snapshot, activeCardId, toCol, toIndex), {
+    commitDoc(moveCard(snapshot, activeCardId, toCol, toIndex, toLane), {
       recordUndo: false,
     });
     finishCardDragUndo();
@@ -1354,6 +1551,91 @@ export default function KanbanPane({
   })();
 
   const columnIds = doc.columns.map((c) => colDndId(c.id));
+  const boardSettings = doc.settings;
+  const visibleLanes = boardSettings.swimlanesEnabled
+    ? doc.lanes
+    : doc.lanes.slice(0, 1);
+  const laneIds = visibleLanes.map((l) => laneDndId(l.id));
+
+  const applyDocumentSettings = useCallback(
+    (next: KanbanBoardSettings) => {
+      commitDoc(updateBoardSettings(docRef.current, next));
+    },
+    [commitDoc],
+  );
+
+  const requestQuickAddNote = useCallback(
+    (column: KanbanColumn, laneId: string) => {
+      if (column.folderPath == null) {
+        showToast({
+          message: '먼저 열 폴더를 연결하세요',
+          durationMs: 2500,
+        });
+        return;
+      }
+      if (!canAddKanbanCard(docRef.current, column.id, laneId)) {
+        showToast({
+          message: '셀당 최대 카드 수에 도달했습니다',
+          durationMs: 2200,
+        });
+        return;
+      }
+      const parentPath = column.folderPath || '';
+      let parentDirHandle: FileSystemDirectoryHandle | null = null;
+      if (storageType === 'local') {
+        if (!parentPath) {
+          parentDirHandle = localRootHandle;
+        } else {
+          const node = (findNodeByPath(localTree, parentPath) ||
+            findNodeByPath(localTree, `${parentPath}/`)) as {
+            handle?: FileSystemDirectoryHandle;
+          } | null;
+          parentDirHandle = node?.handle || null;
+        }
+      }
+      setCreateModalContext({
+        storageType,
+        parentPath: parentPath ? (parentPath.endsWith('/') ? parentPath : `${parentPath}/`) : '',
+        parentDirHandle,
+        type: 'file',
+        onCreatedPath: (path: string) => {
+          if (!canAddKanbanCard(docRef.current, column.id, laneId)) {
+            showToast({
+              message: '셀당 최대 카드 수에 도달했습니다',
+              durationMs: 2200,
+            });
+            return;
+          }
+          const title =
+            String(path).split('/').filter(Boolean).pop() || '새 노트';
+          const next = addCard(
+            docRef.current,
+            column.id,
+            { title, linkPaths: [path] },
+            laneId,
+          );
+          commitDoc(next);
+          const ids = getLaneCardIds(
+            next.columns.find((c) => c.id === column.id)!,
+            laneId,
+          );
+          const added = ids[ids.length - 1];
+          if (added) openCardEditor(added);
+        },
+      });
+      setCreateModalOpen(true);
+    },
+    [
+      commitDoc,
+      localRootHandle,
+      localTree,
+      openCardEditor,
+      setCreateModalContext,
+      setCreateModalOpen,
+      showToast,
+      storageType,
+    ],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white dark:bg-odp-surface">
@@ -1443,7 +1725,7 @@ export default function KanbanPane({
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div
           ref={handleBoardDropHostChange}
-          className="relative min-h-0 min-w-0 flex-1 cursor-grab overflow-x-auto overflow-y-hidden p-3 active:cursor-grabbing"
+          className="relative min-h-0 min-w-0 flex-1 cursor-grab overflow-auto p-3 active:cursor-grabbing"
           data-kanban-tree-card-drop-host=""
           data-kanban-board-scroll=""
         >
@@ -1458,177 +1740,213 @@ export default function KanbanPane({
             onDragEnd={handleDragEnd}
             onDragCancel={handleDragCancel}
           >
-            <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-              <div className="flex h-full min-h-0 items-stretch">
-                {doc.columns.map((column, columnIndex) => {
-                  const resolvedWidth = resolveKanbanColumnWidth(column.width);
-                  const widthPx =
-                    columnLiveWidth?.id === column.id
-                      ? columnLiveWidth.width
-                      : resolvedWidth;
-                  const isLastColumn = columnIndex === doc.columns.length - 1;
-                  return (
-                  <Fragment key={column.id}>
-                  <SortableColumnShell
-                    column={column}
-                    widthPx={widthPx}
-                    isWidthResizing={columnLiveWidth?.id === column.id}
-                    sortableDisabled={isCardDragActive}
-                    header={
-                      <>
-                        <KanbanColumnIconPicker
-                          icon={column.icon}
-                          onChange={(icon) =>
-                            commitDoc(
-                              updateColumn(doc, column.id, { icon }),
-                            )
+            <div className="flex min-h-full min-w-max flex-col gap-3">
+              {/* Column headers */}
+              <SortableContext
+                items={columnIds}
+                strategy={horizontalListSortingStrategy}
+              >
+                <div className="flex items-stretch">
+                  {boardSettings.swimlanesEnabled ? (
+                    <div className="w-36 shrink-0 pr-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full"
+                        disabled={!canAddKanbanLane(doc)}
+                        onClick={() => {
+                          if (!canAddKanbanLane(doc)) {
+                            showToast({
+                              message: '최대 레인 수에 도달했습니다',
+                              durationMs: 2200,
+                            });
+                            return;
                           }
-                        />
-                        <input
-                          type="text"
-                          value={column.title}
-                          aria-label="열 이름"
-                          className="min-w-0 flex-1 truncate rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-gray-800 outline-none hover:border-gray-300 focus:border-blue-400 dark:text-odp-fgStrong dark:hover:border-odp-borderSoft"
-                          onChange={(e) =>
-                            commitDoc(
-                              updateColumn(doc, column.id, {
-                                title: e.target.value,
-                              }),
-                            )
-                          }
-                        />
-                        <span className="shrink-0 text-[11px] text-gray-400">
-                          {column.cardIds.length}
-                        </span>
-                        <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-                          <Popover.Root
-                            open={colorPopoverColId === column.id}
-                            onOpenChange={(open) =>
-                              setColorPopoverColId(open ? column.id : null)
-                            }
-                          >
-                            <Tooltip.Root>
-                              <Tooltip.Trigger asChild>
-                                <Popover.Trigger asChild>
-                                  <button
-                                    type="button"
-                                    aria-label="열 색상"
-                                    className="inline-flex items-center justify-center rounded p-1 text-gray-500 hover:bg-gray-200/80 dark:hover:bg-odp-focusBg"
-                                  >
-                                    <Palette
-                                      size={14}
-                                      style={
-                                        column.color
-                                          ? { color: column.color }
-                                          : undefined
-                                      }
-                                    />
-                                  </button>
-                                </Popover.Trigger>
-                              </Tooltip.Trigger>
-                              <Tooltip.Portal>
-                                <Tooltip.Content
-                                  side="top"
-                                  sideOffset={6}
-                                  className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong"
-                                >
-                                  열 색상
-                                  <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
-                                </Tooltip.Content>
-                              </Tooltip.Portal>
-                            </Tooltip.Root>
-                            <Popover.Portal>
-                              <Popover.Content
-                                side="bottom"
-                                sideOffset={6}
-                                className="z-100010 w-56 rounded-md border border-gray-200 bg-white p-3 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
-                              >
-                                <div className="[&_.react-colorful]:h-32 [&_.react-colorful]:w-full">
-                                  <HexColorPicker
-                                    color={column.color || '#64748b'}
-                                    onChange={(next) => {
-                                      const color = normalizeCssHexColor(
-                                        next.startsWith('#') ? next : `#${next}`,
-                                      );
-                                      commitDoc(
-                                        updateColumn(doc, column.id, {
-                                          color: color || null,
-                                        }),
-                                      );
-                                    }}
-                                  />
-                                </div>
-                                <HexColorInput
-                                  prefixed
-                                  color={column.color || '#64748b'}
-                                  onChange={(next) => {
-                                    const color = normalizeCssHexColor(
-                                      next.startsWith('#') ? next : `#${next}`,
-                                    );
+                          commitDoc(addLane(doc));
+                        }}
+                      >
+                        <IconPlus size={14} />
+                        레인 추가
+                      </Button>
+                    </div>
+                  ) : null}
+                  {doc.columns.map((column, columnIndex) => {
+                    const resolvedWidth = resolveKanbanColumnWidth(column.width);
+                    const widthPx =
+                      columnLiveWidth?.id === column.id
+                        ? columnLiveWidth.width
+                        : resolvedWidth;
+                    const isLastColumn =
+                      columnIndex === doc.columns.length - 1;
+                    return (
+                      <Fragment key={column.id}>
+                        <SortableColumnShell
+                          column={column}
+                          widthPx={widthPx}
+                          isWidthResizing={columnLiveWidth?.id === column.id}
+                          sortableDisabled={isCardDragActive}
+                          header={
+                            <>
+                              {boardSettings.columnIconsEnabled ? (
+                                <KanbanColumnIconPicker
+                                  icon={column.icon}
+                                  onChange={(icon) =>
                                     commitDoc(
-                                      updateColumn(doc, column.id, {
-                                        color: color || null,
-                                      }),
-                                    );
-                                  }}
-                                  className="mt-2 w-full rounded border border-gray-300 bg-white px-2 py-1 font-mono text-xs dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                                      updateColumn(doc, column.id, { icon }),
+                                    )
+                                  }
                                 />
-                                <Button
+                              ) : null}
+                              <input
+                                type="text"
+                                value={column.title}
+                                aria-label="열 이름"
+                                className="min-w-0 flex-1 truncate rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-gray-800 outline-none hover:border-gray-300 focus:border-blue-400 dark:text-odp-fgStrong dark:hover:border-odp-borderSoft"
+                                onChange={(e) =>
+                                  commitDoc(
+                                    updateColumn(doc, column.id, {
+                                      title: e.target.value,
+                                    }),
+                                  )
+                                }
+                              />
+                              <span className="shrink-0 text-[11px] text-gray-400">
+                                {countColumnCards(column)}
+                              </span>
+                              {boardSettings.coversEnabled ? (
+                                <button
                                   type="button"
-                                  variant="secondary"
-                                  className="mt-2 w-full"
+                                  aria-label="열 커버"
+                                  className="inline-flex items-center justify-center rounded p-1 text-gray-500 hover:bg-gray-200/80 dark:hover:bg-odp-focusBg"
                                   onClick={() =>
-                                    commitDoc(
-                                      updateColumn(doc, column.id, {
-                                        color: null,
-                                      }),
+                                    setCoverPickerTarget({
+                                      kind: 'column',
+                                      id: column.id,
+                                    })
+                                  }
+                                >
+                                  <ImageIcon size={14} />
+                                </button>
+                              ) : null}
+                              {boardSettings.columnFoldersEnabled ? (
+                                <button
+                                  type="button"
+                                  aria-label="열 폴더"
+                                  className={`inline-flex items-center justify-center rounded p-1 hover:bg-gray-200/80 dark:hover:bg-odp-focusBg ${
+                                    column.folderPath != null
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-gray-500'
+                                  }`}
+                                  onClick={() =>
+                                    setFolderPickerColumnId(column.id)
+                                  }
+                                >
+                                  <Folder size={14} />
+                                </button>
+                              ) : null}
+                              {boardSettings.columnColorsEnabled ? (
+                              <Tooltip.Provider
+                                delayDuration={250}
+                                skipDelayDuration={0}
+                              >
+                                <Popover.Root
+                                  open={colorPopoverColId === column.id}
+                                  onOpenChange={(open) =>
+                                    setColorPopoverColId(
+                                      open ? column.id : null,
                                     )
                                   }
                                 >
-                                  <IconX size={14} />
-                                  색상 지우기
-                                </Button>
-                              </Popover.Content>
-                            </Popover.Portal>
-                          </Popover.Root>
-                        </Tooltip.Provider>
-                        <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-                          <Tooltip.Root>
-                            <Tooltip.Trigger asChild>
-                              <button
-                                type="button"
-                                aria-label="카드 추가"
-                                className="inline-flex items-center justify-center rounded p-1 text-gray-500 hover:bg-gray-200/80 dark:hover:bg-odp-focusBg"
-                                onClick={() => {
-                                  const next = addCard(doc, column.id, {
-                                    title: '새 카드',
-                                  });
-                                  commitDoc(next);
-                                  const added =
-                                    next.columns
-                                      .find((c) => c.id === column.id)
-                                      ?.cardIds.slice(-1)[0] || null;
-                                  if (added) openCardEditor(added);
-                                }}
-                              >
-                                <Plus size={14} />
-                              </button>
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
-                                side="top"
-                                sideOffset={6}
-                                className="z-100001 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs shadow-md dark:border-odp-borderSoft dark:bg-odp-surface"
-                              >
-                                카드 추가
-                                <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
-                        <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-                          <Tooltip.Root>
-                            <Tooltip.Trigger asChild>
+                                  <Tooltip.Root>
+                                    <Tooltip.Trigger asChild>
+                                      <Popover.Trigger asChild>
+                                        <button
+                                          type="button"
+                                          aria-label="열 색상"
+                                          className="inline-flex items-center justify-center rounded p-1 text-gray-500 hover:bg-gray-200/80 dark:hover:bg-odp-focusBg"
+                                        >
+                                          <Palette
+                                            size={14}
+                                            style={
+                                              column.color
+                                                ? { color: column.color }
+                                                : undefined
+                                            }
+                                          />
+                                        </button>
+                                      </Popover.Trigger>
+                                    </Tooltip.Trigger>
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content
+                                        side="top"
+                                        sideOffset={6}
+                                        className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 shadow-md dark:border-odp-borderSoft dark:bg-odp-surface dark:text-odp-fgStrong"
+                                      >
+                                        열 색상
+                                        <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                  <Popover.Portal>
+                                    <Popover.Content
+                                      side="bottom"
+                                      sideOffset={6}
+                                      className="z-100010 w-56 rounded-md border border-gray-200 bg-white p-3 shadow-lg dark:border-odp-borderSoft dark:bg-odp-surface"
+                                    >
+                                      <div className="[&_.react-colorful]:h-32 [&_.react-colorful]:w-full">
+                                        <HexColorPicker
+                                          color={column.color || '#64748b'}
+                                          onChange={(next) => {
+                                            const color = normalizeCssHexColor(
+                                              next.startsWith('#')
+                                                ? next
+                                                : `#${next}`,
+                                            );
+                                            commitDoc(
+                                              updateColumn(doc, column.id, {
+                                                color: color || null,
+                                              }),
+                                            );
+                                          }}
+                                        />
+                                      </div>
+                                      <HexColorInput
+                                        prefixed
+                                        color={column.color || '#64748b'}
+                                        onChange={(next) => {
+                                          const color = normalizeCssHexColor(
+                                            next.startsWith('#')
+                                              ? next
+                                              : `#${next}`,
+                                          );
+                                          commitDoc(
+                                            updateColumn(doc, column.id, {
+                                              color: color || null,
+                                            }),
+                                          );
+                                        }}
+                                        className="mt-2 w-full rounded border border-gray-300 bg-white px-2 py-1 font-mono text-xs dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+                                      />
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="mt-2 w-full"
+                                        onClick={() =>
+                                          commitDoc(
+                                            updateColumn(doc, column.id, {
+                                              color: null,
+                                            }),
+                                          )
+                                        }
+                                      >
+                                        <IconX size={14} />
+                                        색상 지우기
+                                      </Button>
+                                    </Popover.Content>
+                                  </Popover.Portal>
+                                </Popover.Root>
+                              </Tooltip.Provider>
+                              ) : null}
                               <button
                                 type="button"
                                 aria-label="열 삭제"
@@ -1637,89 +1955,235 @@ export default function KanbanPane({
                               >
                                 <Trash2 size={14} />
                               </button>
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
-                                side="top"
-                                sideOffset={6}
-                                className="z-100001 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs shadow-md dark:border-odp-borderSoft dark:bg-odp-surface"
-                              >
-                                열 삭제
-                                <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
-                      </>
-                    }
-                  >
-                    <ColumnDroppable columnId={column.id}>
-                      <SortableContext
-                        items={column.cardIds.map(cardDndId)}
-                        strategy={kanbanCardSortingStrategy}
-                      >
-                        {column.cardIds.map((cid) => {
-                          const card = doc.cards[cid];
-                          if (!card) return null;
-                          return (
-                            <SortableCard
-                              key={cid}
-                              card={card}
-                              columnId={column.id}
-                              isSelected={selectedCardId === cid}
-                              searchDimmed={searchActive && !searchHitSet.has(cid)}
-                              searchHit={
-                                searchActive &&
-                                searchHits[searchHitIndex] === cid
-                              }
-                              onSelect={() => {
-                                if (draftDirty && selectedCardId && selectedCardId !== cid) {
-                                  setPendingCloseAfterDiscard(false);
-                                  setDiscardConfirmOpen(true);
-                                  // Keep pending target via selecting after discard — store next id
-                                  pendingSelectCardIdRef.current = cid;
+                            </>
+                          }
+                        >
+                          {boardSettings.coversEnabled && column.coverPath ? (
+                            <KanbanCoverImage
+                              path={column.coverPath}
+                              variant="column"
+                              {...(onResolveWikiImageUrl
+                                ? { resolveUrl: onResolveWikiImageUrl }
+                                : {})}
+                            />
+                          ) : null}
+                        </SortableColumnShell>
+                        <ColumnGapResizeHandle
+                          columnWidthPx={widthPx}
+                          onLiveWidth={(width) =>
+                            setColumnLiveWidth({ id: column.id, width })
+                          }
+                          onCommitWidth={(width) => {
+                            setColumnLiveWidth(null);
+                            commitDoc(
+                              updateColumn(docRef.current, column.id, {
+                                width,
+                              }),
+                            );
+                          }}
+                        />
+                        {isLastColumn ? (
+                          <div className="flex w-40 shrink-0 items-start pl-1 pt-1">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="w-full"
+                              disabled={!canAddKanbanColumn(doc)}
+                              onClick={() => {
+                                if (!canAddKanbanColumn(doc)) {
+                                  showToast({
+                                    message: '최대 열 수에 도달했습니다',
+                                    durationMs: 2200,
+                                  });
                                   return;
                                 }
-                                openCardEditor(cid);
+                                commitDoc(addColumn(doc));
                               }}
-                            />
-                          );
-                        })}
-                      </SortableContext>
-                    </ColumnDroppable>
-                  </SortableColumnShell>
-                  <ColumnGapResizeHandle
-                    columnWidthPx={widthPx}
-                    onLiveWidth={(width) =>
-                      setColumnLiveWidth({ id: column.id, width })
-                    }
-                    onCommitWidth={(width) => {
-                      setColumnLiveWidth(null);
-                      commitDoc(
-                        updateColumn(docRef.current, column.id, { width }),
+                            >
+                              <IconPlus size={14} />
+                              열 추가
+                            </Button>
+                          </div>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+
+              {/* Lane rows × column cells */}
+              <SortableContext
+                items={laneIds}
+                strategy={kanbanCardSortingStrategy}
+              >
+                {visibleLanes.map((lane) => (
+                  <div key={lane.id} className="flex items-stretch">
+                    {boardSettings.swimlanesEnabled ? (
+                      <div className="w-36 shrink-0">
+                        <SortableLaneShell
+                          lane={lane}
+                          disabled={isCardDragActive}
+                        >
+                          <input
+                            type="text"
+                            value={lane.title}
+                            aria-label="레인 이름"
+                            className="min-w-0 flex-1 truncate rounded border border-transparent bg-transparent px-1 py-0.5 text-xs font-semibold text-gray-700 outline-none hover:border-gray-300 focus:border-blue-400 dark:text-odp-fgStrong"
+                            onChange={(e) =>
+                              commitDoc(
+                                updateLane(doc, lane.id, {
+                                  title: e.target.value,
+                                }),
+                              )
+                            }
+                          />
+                          {doc.lanes.length > 1 ? (
+                            <button
+                              type="button"
+                              aria-label="레인 삭제"
+                              className="inline-flex rounded p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+                              onClick={() => setDeleteLaneId(lane.id)}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          ) : null}
+                        </SortableLaneShell>
+                      </div>
+                    ) : null}
+                    {doc.columns.map((column, columnIndex) => {
+                      const resolvedWidth = resolveKanbanColumnWidth(
+                        column.width,
                       );
-                    }}
-                  />
-                  {isLastColumn ? (
-                    <div className="flex w-48 shrink-0 items-start pl-1 pt-1">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="w-full"
-                        onClick={() => commitDoc(addColumn(doc))}
-                      >
-                        <IconPlus size={14} />
-                        열 추가
-                      </Button>
-                    </div>
-                  ) : null}
-                  </Fragment>
-                  );
-                })}
-              </div>
-            </SortableContext>
+                      const widthPx =
+                        columnLiveWidth?.id === column.id
+                          ? columnLiveWidth.width
+                          : resolvedWidth;
+                      const cellIds = getLaneCardIds(column, lane.id);
+                      return (
+                        <Fragment key={`${lane.id}:${column.id}`}>
+                          <div
+                            style={{ width: widthPx }}
+                            className="flex shrink-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-slate-50/60 dark:border-odp-borderSoft dark:bg-odp-bgSoft/50"
+                          >
+                            <div className="flex shrink-0 items-center justify-end gap-0.5 border-b border-gray-100 px-1 py-0.5 dark:border-odp-borderSoft">
+                              <button
+                                type="button"
+                                aria-label="카드 추가"
+                                className="inline-flex rounded p-1 text-gray-500 hover:bg-gray-200/80 dark:hover:bg-odp-focusBg disabled:opacity-40"
+                                disabled={
+                                  !canAddKanbanCard(doc, column.id, lane.id)
+                                }
+                                onClick={() => {
+                                  if (
+                                    !canAddKanbanCard(doc, column.id, lane.id)
+                                  ) {
+                                    showToast({
+                                      message: '셀당 최대 카드 수에 도달했습니다',
+                                      durationMs: 2200,
+                                    });
+                                    return;
+                                  }
+                                  const next = addCard(
+                                    doc,
+                                    column.id,
+                                    { title: '새 카드' },
+                                    lane.id,
+                                  );
+                                  commitDoc(next);
+                                  const ids = getLaneCardIds(
+                                    next.columns.find(
+                                      (c) => c.id === column.id,
+                                    )!,
+                                    lane.id,
+                                  );
+                                  const added = ids[ids.length - 1];
+                                  if (added) openCardEditor(added);
+                                }}
+                              >
+                                <Plus size={12} />
+                              </button>
+                              {boardSettings.columnFoldersEnabled &&
+                              column.folderPath != null ? (
+                                <button
+                                  type="button"
+                                  aria-label="노트 추가"
+                                  className="inline-flex rounded p-1 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                                  onClick={() =>
+                                    requestQuickAddNote(column, lane.id)
+                                  }
+                                >
+                                  <Folder size={12} />
+                                </button>
+                              ) : null}
+                            </div>
+                            <ColumnDroppable
+                              columnId={column.id}
+                              laneId={lane.id}
+                            >
+                              <SortableContext
+                                items={cellIds.map(cardDndId)}
+                                strategy={kanbanCardSortingStrategy}
+                              >
+                                {cellIds.map((cid) => {
+                                  const card = doc.cards[cid];
+                                  if (!card) return null;
+                                  return (
+                                    <SortableCard
+                                      key={cid}
+                                      card={card}
+                                      columnId={column.id}
+                                      laneId={lane.id}
+                                      isSelected={selectedCardId === cid}
+                                      searchDimmed={
+                                        searchActive && !searchHitSet.has(cid)
+                                      }
+                                      searchHit={
+                                        searchActive &&
+                                        searchHits[searchHitIndex] === cid
+                                      }
+                                      {...(onResolveWikiImageUrl
+                                        ? {
+                                            resolveCoverUrl:
+                                              onResolveWikiImageUrl,
+                                          }
+                                        : {})}
+                                      showCover={boardSettings.coversEnabled}
+                                      showTags={boardSettings.tagsEnabled}
+                                      showLinks={boardSettings.linksEnabled}
+                                      onSelect={() => {
+                                        if (
+                                          draftDirty &&
+                                          selectedCardId &&
+                                          selectedCardId !== cid
+                                        ) {
+                                          setPendingCloseAfterDiscard(false);
+                                          setDiscardConfirmOpen(true);
+                                          pendingSelectCardIdRef.current = cid;
+                                          return;
+                                        }
+                                        openCardEditor(cid);
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </SortableContext>
+                            </ColumnDroppable>
+                          </div>
+                          <div className="w-3 shrink-0" aria-hidden />
+                          {columnIndex === doc.columns.length - 1 ? (
+                            <div className="w-40 shrink-0" aria-hidden />
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
+                  </div>
+                ))}
+              </SortableContext>
+            </div>
             <DragOverlay dropAnimation={null}>
-              {activeDragCard ? <CardDragPreview card={activeDragCard} /> : null}
+              {activeDragCard ? (
+                <CardDragPreview card={activeDragCard} />
+              ) : null}
             </DragOverlay>
           </DndContext>
         </div>
@@ -1774,126 +2238,177 @@ export default function KanbanPane({
                 />
               </label>
 
-              <div className="space-y-1.5">
-                <span className="text-xs font-medium text-gray-600 dark:text-odp-muted">
-                  태그
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {cardDraft.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+              {boardSettings.coversEnabled ? (
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-gray-600 dark:text-odp-muted">
+                    커버
+                  </span>
+                  {cardDraft.coverPath ? (
+                    <KanbanCoverImage
+                      path={cardDraft.coverPath}
+                      variant="card"
+                      className="rounded-md"
+                      {...(onResolveWikiImageUrl
+                        ? { resolveUrl: onResolveWikiImageUrl }
+                        : {})}
+                    />
+                  ) : null}
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() =>
+                        setCoverPickerTarget({
+                          kind: 'card',
+                          id: selectedCardId || '',
+                        })
+                      }
                     >
-                      {tag}
-                      <button
+                      <ImageIcon size={14} />
+                      {cardDraft.coverPath ? '커버 변경' : '커버 추가'}
+                    </Button>
+                    {cardDraft.coverPath ? (
+                      <Button
                         type="button"
-                        aria-label={`${tag} 태그 제거`}
-                        className="rounded p-0.5 hover:bg-violet-100 dark:hover:bg-violet-900/50"
+                        variant="secondary"
                         onClick={() =>
                           setCardDraft((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  tags: prev.tags.filter((t) => t !== tag),
-                                }
-                              : prev,
+                            prev ? { ...prev, coverPath: null } : prev,
                           )
                         }
                       >
-                        <X size={10} />
-                      </button>
-                    </span>
-                  ))}
+                        <IconX size={14} />
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    value={tagInput}
-                    placeholder="태그 입력 후 Enter"
-                    className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-surface"
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return;
-                      e.preventDefault();
-                      const nextTags = normalizeTags([
-                        ...cardDraft.tags,
-                        tagInput,
-                      ]);
-                      setCardDraft((prev) =>
-                        prev ? { ...prev, tags: nextTags } : prev,
-                      );
-                      setTagInput('');
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    aria-label="태그 추가"
-                    onClick={() => {
-                      const nextTags = normalizeTags([
-                        ...cardDraft.tags,
-                        tagInput,
-                      ]);
-                      setCardDraft((prev) =>
-                        prev ? { ...prev, tags: nextTags } : prev,
-                      );
-                      setTagInput('');
-                    }}
-                  >
-                    <Tag size={14} />
-                  </Button>
-                </div>
-              </div>
+              ) : null}
 
-              <div className="space-y-1.5">
-                <span className="text-xs font-medium text-gray-600 dark:text-odp-muted">
-                  Vault 링크
-                </span>
-                {cardDraft.linkPaths.length > 0 ? (
-                  <ul className="space-y-1">
-                    {cardDraft.linkPaths.map((path) => (
-                      <li key={path} className="flex items-center gap-1">
+              {boardSettings.tagsEnabled ? (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-gray-600 dark:text-odp-muted">
+                    태그
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {cardDraft.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] text-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
+                      >
+                        {tag}
                         <button
                           type="button"
-                          className="min-w-0 flex-1 truncate rounded border border-blue-200 bg-blue-50 px-2 py-1.5 text-left text-xs text-blue-700 hover:underline dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
-                          onClick={() => void openLinkedPath(path)}
-                        >
-                          {path}
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`${path} 연결 해제`}
-                          className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-focusBg"
+                          aria-label={`${tag} 태그 제거`}
+                          className="rounded p-0.5 hover:bg-violet-100 dark:hover:bg-violet-900/50"
                           onClick={() =>
                             setCardDraft((prev) =>
                               prev
                                 ? {
                                     ...prev,
-                                    linkPaths: prev.linkPaths.filter(
-                                      (p) => p !== path,
-                                    ),
+                                    tags: prev.tags.filter((t) => t !== tag),
                                   }
                                 : prev,
                             )
                           }
                         >
-                          <X size={12} />
+                          <X size={10} />
                         </button>
-                      </li>
+                      </span>
                     ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-gray-400">연결된 파일 없음</p>
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setLinkPickerOpen(true)}
-                >
-                  <Link2 size={14} />
-                  파일 연결
-                </Button>
-              </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={tagInput}
+                      placeholder="태그 입력 후 Enter"
+                      className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-odp-borderStrong dark:bg-odp-surface"
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter') return;
+                        e.preventDefault();
+                        const nextTags = normalizeTags([
+                          ...cardDraft.tags,
+                          tagInput,
+                        ]);
+                        setCardDraft((prev) =>
+                          prev ? { ...prev, tags: nextTags } : prev,
+                        );
+                        setTagInput('');
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      aria-label="태그 추가"
+                      onClick={() => {
+                        const nextTags = normalizeTags([
+                          ...cardDraft.tags,
+                          tagInput,
+                        ]);
+                        setCardDraft((prev) =>
+                          prev ? { ...prev, tags: nextTags } : prev,
+                        );
+                        setTagInput('');
+                      }}
+                    >
+                      <Tag size={14} />
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {boardSettings.linksEnabled ? (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-gray-600 dark:text-odp-muted">
+                    Vault 링크
+                  </span>
+                  {cardDraft.linkPaths.length > 0 ? (
+                    <ul className="space-y-1">
+                      {cardDraft.linkPaths.map((path) => (
+                        <li key={path} className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 truncate rounded border border-blue-200 bg-blue-50 px-2 py-1.5 text-left text-xs text-blue-700 hover:underline dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
+                            onClick={() => void openLinkedPath(path)}
+                          >
+                            {path}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`${path} 연결 해제`}
+                            className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-focusBg"
+                            onClick={() =>
+                              setCardDraft((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      linkPaths: prev.linkPaths.filter(
+                                        (p) => p !== path,
+                                      ),
+                                    }
+                                  : prev,
+                              )
+                            }
+                          >
+                            <X size={12} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-gray-400">연결된 파일 없음</p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setLinkPickerOpen(true)}
+                  >
+                    <Link2 size={14} />
+                    파일 연결
+                  </Button>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -2029,6 +2544,84 @@ export default function KanbanPane({
           );
         }}
         onExpandFolder={onExpandFolder}
+      />
+
+      <KanbanLinkPickerModal
+        isOpen={Boolean(coverPickerTarget)}
+        onClose={() => setCoverPickerTarget(null)}
+        tree={vaultTree}
+        selected={
+          coverPickerTarget?.kind === 'column'
+            ? (() => {
+                const col = doc.columns.find(
+                  (c) => c.id === coverPickerTarget.id,
+                );
+                return col?.coverPath ? [col.coverPath] : [];
+              })()
+            : cardDraft?.coverPath
+              ? [cardDraft.coverPath]
+              : []
+        }
+        excludePath={currentFile?.id || null}
+        onConfirm={(paths) => {
+          const path = paths[0] || null;
+          if (!coverPickerTarget) return;
+          if (coverPickerTarget.kind === 'column') {
+            commitDoc(
+              updateColumn(docRef.current, coverPickerTarget.id, {
+                coverPath: path,
+              }),
+            );
+          } else {
+            setCardDraft((prev) =>
+              prev ? { ...prev, coverPath: path } : prev,
+            );
+          }
+          setCoverPickerTarget(null);
+        }}
+        onExpandFolder={onExpandFolder}
+      />
+
+      <KanbanFolderPickerModal
+        isOpen={Boolean(folderPickerColumnId)}
+        onClose={() => setFolderPickerColumnId(null)}
+        tree={vaultTree}
+        selected={
+          doc.columns.find((c) => c.id === folderPickerColumnId)?.folderPath ??
+          null
+        }
+        onConfirm={(folderPath) => {
+          if (!folderPickerColumnId) return;
+          commitDoc(
+            updateColumn(docRef.current, folderPickerColumnId, {
+              folderPath,
+            }),
+          );
+          setFolderPickerColumnId(null);
+        }}
+        onExpandFolder={onExpandFolder}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(deleteLaneId)}
+        title="레인 삭제"
+        message="이 레인의 카드는 첫 번째 레인으로 이동합니다. 삭제할까요?"
+        variant="danger"
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        onConfirm={() => {
+          if (!deleteLaneId) return;
+          commitDoc(removeLane(doc, deleteLaneId));
+          setDeleteLaneId(null);
+        }}
+        onCancel={() => setDeleteLaneId(null)}
+      />
+
+      <KanbanDocumentSettingsModal
+        isOpen={documentSettingsOpen}
+        onClose={() => setDocumentSettingsOpen(false)}
+        settings={boardSettings}
+        onApply={applyDocumentSettings}
       />
     </div>
   );

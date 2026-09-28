@@ -4,19 +4,19 @@ overview: After `.kanban.json` MVP (columns/cards DnD, hybrid linkPath), add swi
 todos:
   - id: schema-v2
     content: Extend kanbanDocument to version 2 (swimlanes, cover refs) with v1 migrate
-    status: pending
+    status: completed
   - id: swimlane-ui
     content: Horizontal swimlanes + card move across lane/column; DnD matrix
-    status: pending
+    status: completed
   - id: cover-images
     content: Column/card cover images via vault wiki-image / .images upload
-    status: pending
+    status: completed
   - id: column-folder-notes
     content: Optional column folderPath + quick-add creates note and card linkPath
-    status: pending
+    status: completed
   - id: docs-tests
     content: Update kanban-json.md Spec + unit tests for v2 migrate/mutations
-    status: pending
+    status: completed
 isProject: false
 ---
 
