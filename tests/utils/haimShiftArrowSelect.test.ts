@@ -36,20 +36,19 @@ describe('HaimShiftArrowSelect', () => {
         (e) => e.name === 'haimShiftArrowSelect',
       );
       expect(ext).toBeTruthy();
-      const shortcuts = ext?.config.addKeyboardShortcuts?.call({
+      const addShortcuts = ext?.config.addKeyboardShortcuts as
+        | ((this: unknown) => Record<string, unknown>)
+        | undefined;
+      const shortcuts = addShortcuts?.call({
         name: 'haimShiftArrowSelect',
-        options: ext.options,
-        storage: ext.storage,
+        options: ext!.options,
+        storage: ext!.storage,
         editor: ed,
         type: null,
         parent: undefined,
-      } as never);
-      expect(typeof (shortcuts as Record<string, unknown>)['Shift-ArrowDown']).toBe(
-        'function',
-      );
-      expect(typeof (shortcuts as Record<string, unknown>)['Shift-ArrowUp']).toBe(
-        'function',
-      );
+      });
+      expect(typeof shortcuts?.['Shift-ArrowDown']).toBe('function');
+      expect(typeof shortcuts?.['Shift-ArrowUp']).toBe('function');
     } finally {
       ed.destroy();
     }
@@ -103,28 +102,34 @@ describe('HaimShiftArrowSelect', () => {
 
 describe('HaimNodeRange', () => {
   it('drops Shift-ArrowUp / Shift-ArrowDown from stock NodeRange', () => {
-    const stock = NodeRange.config.addKeyboardShortcuts?.call({
+    const stockFns = NodeRange.config.addKeyboardShortcuts as
+      | ((this: unknown) => Record<string, unknown>)
+      | undefined;
+    const stock = stockFns?.call({
       name: 'nodeRange',
       options: { depth: undefined, key: 'Mod' },
       storage: {},
       editor: null,
       type: null,
       parent: undefined,
-    } as never) as Record<string, unknown>;
-    expect(stock['Shift-ArrowDown']).toBeTypeOf('function');
-    expect(stock['Shift-ArrowUp']).toBeTypeOf('function');
+    });
+    expect(stock?.['Shift-ArrowDown']).toBeTypeOf('function');
+    expect(stock?.['Shift-ArrowUp']).toBeTypeOf('function');
 
-    const bound = HaimNodeRange.config.addKeyboardShortcuts?.call({
+    const haimFns = HaimNodeRange.config.addKeyboardShortcuts as
+      | ((this: unknown) => Record<string, unknown>)
+      | undefined;
+    const bound = haimFns?.call({
       name: 'nodeRange',
       options: { depth: undefined, key: 'Mod' },
       storage: {},
       editor: null,
       type: null,
-      parent: () => stock,
-    } as never) as Record<string, unknown>;
+      parent: () => stock ?? {},
+    });
 
-    expect(bound['Shift-ArrowDown']).toBeUndefined();
-    expect(bound['Shift-ArrowUp']).toBeUndefined();
-    expect(bound['Mod-a']).toBeTypeOf('function');
+    expect(bound?.['Shift-ArrowDown']).toBeUndefined();
+    expect(bound?.['Shift-ArrowUp']).toBeUndefined();
+    expect(bound?.['Mod-a']).toBeTypeOf('function');
   });
 });

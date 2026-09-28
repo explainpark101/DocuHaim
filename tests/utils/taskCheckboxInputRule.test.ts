@@ -87,7 +87,11 @@ function runMatchedTaskRule(ed: Editor, matched: string): boolean {
   const result = applyHaimTaskCheckboxInputRule(
     chainState as unknown as typeof ed.state,
     { from, to },
-    { status, checked: status === 'done' },
+    {
+      status,
+      checked: status === 'done',
+      kind: status === 'doing' ? 'status' : 'check',
+    },
   );
   if (result === null || tr.steps.length === 0) return false;
   ed.view.dispatch(tr);
