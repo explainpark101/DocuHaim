@@ -4,22 +4,22 @@ overview: 나와의 채팅에 Telegram식 다중 선택을 추가한다. 롱프�
 todos:
   - id: selection-state
     content: Add messageSelection util + Pane selectionMode/selectedIds (enter/toggle/range/clear/Esc)
-    status: pending
+    status: completed
   - id: bubble-checkbox
     content: Fine-pointer left hover checkbox with large hit area; wire rowSelected to selectedIds
-    status: pending
+    status: completed
   - id: menu-select
     content: Add 「선택」 to MessageActionItems + ChatMessageContextMenu
-    status: pending
+    status: completed
   - id: selection-bar
     content: Create ChatMessageSelectionBar above composer dock
-    status: pending
+    status: completed
   - id: bulk-handlers
     content: Bulk reaction, group (updateChatMessage+history), copy, pin policy, delete confirm
-    status: pending
+    status: completed
   - id: smoke-check
     content: Desktop checkbox + mobile menu-select paths; clear after delete
-    status: pending
+    status: completed
 isProject: false
 ---
 

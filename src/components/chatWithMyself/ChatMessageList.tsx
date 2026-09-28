@@ -8,6 +8,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
+  type ReactElement,
 } from 'react';
 import {
   MoreHorizontal,
@@ -28,14 +30,19 @@ import {
   RefreshCw,
   TextSelect,
   Link2,
+  MousePointerClick,
 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
-import { VList } from 'virtua';
+import { VList, type VListHandle } from 'virtua';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
 import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
-import ChatMessageContextMenu from '@/components/chatWithMyself/ChatMessageContextMenu';
+import ChatMessageContextMenu, {
+  type ChatMessageContextMenuProps,
+} from '@/components/chatWithMyself/ChatMessageContextMenu';
+import ChatMessageSelectCheckbox from '@/components/chatWithMyself/ChatMessageSelectCheckbox';
 import { useMobileContextMenuMode } from '@/hooks/useMobileContextMenuMode';
+import { useIsCoarsePointer } from '@/hooks/useIsCoarsePointer';
 import ChatMessageSelectCopyModal from '@/components/chatWithMyself/ChatMessageSelectCopyModal';
 import ChatMessageReactions from '@/components/chatWithMyself/ChatMessageReactions';
 import ChatDateDivider from '@/components/chatWithMyself/ChatDateDivider';
@@ -67,10 +74,22 @@ import { IconLock } from '@/components/icons';
 import ChatJumpToBottomButton from '@/components/chatWithMyself/ChatJumpToBottomButton';
 import {
   CHAT_MESSAGE_SCROLL_MARGIN,
+  type ChatListScrollAlign,
 } from '@/utils/chatWithMyself/scrollToMessage';
 import { vibrateLongPressAction } from '@/utils/hapticFeedback';
 import { copyText, resolveAnchorHref } from '@/utils/copyText';
+import type {
+  ChatListMessage,
+  ChatMessageActionHandlers,
+  ChatMessageListHandle,
+  ChatMessageListProps,
+  ChatMessageMenuItemComponent,
+  ChatVirtualRow,
+} from '@/components/chatWithMyself/chatMessageListTypes';
 
+function eventTargetElement(target: EventTarget | null): Element | null {
+  return target instanceof Element ? target : null;
+}
 /** Near-bottom threshold for stick-to-bottom (px). */
 const STICK_BOTTOM_PX = 80;
 /** Near-edge threshold to trigger older/newer day load (px). */
@@ -87,7 +106,7 @@ const GROUP_CLUSTER_MS = 10 * 60 * 1000;
 
 /** Soft morph for long-press / selected bubble shape. */
 const BUBBLE_SHAPE_SPRING = {
-  type: 'spring',
+  type: 'spring' as const,
   stiffness: 420,
   damping: 28,
   mass: 0.85,
@@ -100,31 +119,13 @@ const BUBBLE_RADIUS_PRESSED = '1.125rem';
 const iconBtnClass =
   'inline-flex shrink-0 items-center justify-center rounded p-0.5 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 bg-transparent hover:bg-transparent focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400';
 
-function useIsCoarsePointer() {
-  const [coarse, setCoarse] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
-  });
-  useEffect(() => {
-    const mq = window.matchMedia('(pointer: coarse)');
-    const onChange = () => setCoarse(mq.matches || window.innerWidth < 768);
-    mq.addEventListener('change', onChange);
-    window.addEventListener('resize', onChange);
-    return () => {
-      mq.removeEventListener('change', onChange);
-      window.removeEventListener('resize', onChange);
-    };
-  }, []);
-  return coarse;
-}
-
-function useShiftHeldRef() {
+function useShiftHeldRef(): MutableRefObject<boolean> {
   const shiftRef = useRef(false);
   useEffect(() => {
-    const onDown = (e) => {
+    const onDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift') shiftRef.current = true;
     };
-    const onUp = (e) => {
+    const onUp = (e: KeyboardEvent) => {
       if (e.key === 'Shift') shiftRef.current = false;
     };
     const onBlur = () => {
@@ -142,9 +143,17 @@ function useShiftHeldRef() {
   return shiftRef;
 }
 
-function hasMessageEditHistory(msg) {
+function hasMessageEditHistory(msg: ChatListMessage | null | undefined): boolean {
   return Boolean(msg?.editedAt);
 }
+
+type MessageActionItemsProps = ChatMessageActionHandlers & {
+  msg: ChatListMessage;
+  shiftHeldRef?: MutableRefObject<boolean> | null | undefined;
+  linkHref?: string | null | undefined;
+  decryptedBody?: string | null | undefined;
+  _Item: ChatMessageMenuItemComponent;
+};
 
 function MessageActionItems({
   msg,
@@ -158,13 +167,13 @@ function MessageActionItems({
   onOpenReactionPicker,
   onReloadOg,
   onSelectCopy,
+  onEnterSelection,
   shiftHeldRef,
   getPresignedUrl,
   linkHref = null,
-  /** When set, encrypted message is unlocked in this session. */
   decryptedBody = null,
   _Item,
-}) {
+}: MessageActionItemsProps): ReactElement {
   const pinned = Boolean(msg?.pinnedAt);
   const collapsed = msg?.collapsed === '1' || msg?.collapsed === true;
   const encryptedLocked =
@@ -185,6 +194,13 @@ function MessageActionItems({
       >
         <Reply size={16} className="shrink-0 text-gray-500" />
         답장
+      </_Item>
+      <_Item
+        className={chatMenuItemClass}
+        onSelect={() => onEnterSelection?.(msg)}
+      >
+        <MousePointerClick size={16} className="shrink-0 text-gray-500" />
+        선택
       </_Item>
       <_Item
         className={chatMenuItemClass}
@@ -299,7 +315,10 @@ function MessageActionItems({
               decryptedBody != null
                 ? { ...msg, body: decryptedBody, encrypted: false }
                 : msg;
-            void shareChatMessage(shareMsg, { getPresignedUrl });
+            void shareChatMessage(
+              shareMsg,
+              getPresignedUrl != null ? { getPresignedUrl } : {},
+            );
           }}
         >
           <Share2 size={16} className="shrink-0 text-gray-500" />
@@ -337,7 +356,15 @@ function MessageActionItems({
   );
 }
 
-function ReplyPreview({ msg, onOpen, replyGroupLabel }) {
+function ReplyPreview({
+  msg,
+  onOpen,
+  replyGroupLabel,
+}: {
+  msg: ChatListMessage;
+  onOpen?: ((replyToId: string) => void) | undefined;
+  replyGroupLabel?: string | null;
+}): ReactElement | null {
   if (!msg?.replyTo) return null;
   const label = replyGroupLabel || msg.replyGroup || SELF_GROUP;
   const snippet = msg.replySnippet || '원본 메시지';
@@ -346,7 +373,7 @@ function ReplyPreview({ msg, onOpen, replyGroupLabel }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        onOpen?.(msg.replyTo);
+        if (msg.replyTo) onOpen?.(msg.replyTo);
       }}
       className="mb-1.5 flex w-full min-w-0 max-w-full items-stretch gap-1.5 overflow-hidden rounded-md border border-blue-200/80 border-l-4 border-l-blue-500 bg-blue-100 px-2 py-1 text-left shadow-sm dark:border-blue-800/60 dark:border-l-blue-400 dark:bg-blue-950 dark:shadow-none"
     >
@@ -362,7 +389,13 @@ function ReplyPreview({ msg, onOpen, replyGroupLabel }) {
   );
 }
 
-function MessageReplyButton({ msg, onReply }) {
+function MessageReplyButton({
+  msg,
+  onReply,
+}: {
+  msg: ChatListMessage;
+  onReply?: ((message: ChatListMessage) => void) | undefined;
+}): ReactElement {
   return (
     <button
       type="button"
@@ -380,6 +413,16 @@ function MessageReplyButton({ msg, onReply }) {
   );
 }
 
+type MessageMoreButtonProps = ChatMessageActionHandlers & {
+  msg: ChatListMessage;
+  onOpenMobileSheet?:
+    | ((message: ChatListMessage, linkHref?: string | null) => void)
+    | undefined;
+  shiftHeldRef?: MutableRefObject<boolean> | null | undefined;
+  coarse: boolean;
+  decryptedBody?: string | null | undefined;
+};
+
 function MessageMoreButton({
   msg,
   onReply,
@@ -392,12 +435,13 @@ function MessageMoreButton({
   onOpenReactionPicker,
   onReloadOg,
   onSelectCopy,
+  onEnterSelection,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
   getPresignedUrl,
   decryptedBody = null,
-}) {
+}: MessageMoreButtonProps): ReactElement {
   if (coarse) {
     return (
       <button
@@ -447,16 +491,28 @@ function MessageMoreButton({
             onOpenReactionPicker={onOpenReactionPicker}
             onReloadOg={onReloadOg}
             onSelectCopy={onSelectCopy}
+            onEnterSelection={onEnterSelection}
             shiftHeldRef={shiftHeldRef}
             getPresignedUrl={getPresignedUrl}
             decryptedBody={decryptedBody}
-            _Item={DropdownMenu.Item}
+            _Item={DropdownMenu.Item as ChatMessageMenuItemComponent}
           />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
   );
 }
+
+type MessageSideActionsProps = ChatMessageActionHandlers & {
+  msg: ChatListMessage;
+  onOpenMobileSheet?:
+    | ((message: ChatListMessage, linkHref?: string | null) => void)
+    | undefined;
+  shiftHeldRef?: MutableRefObject<boolean> | null | undefined;
+  coarse: boolean;
+  time: string;
+  decryptedBody?: string | null | undefined;
+};
 
 function MessageSideActions({
   msg,
@@ -470,13 +526,14 @@ function MessageSideActions({
   onOpenReactionPicker,
   onReloadOg,
   onSelectCopy,
+  onEnterSelection,
   onOpenMobileSheet,
   shiftHeldRef,
   coarse,
   time,
   getPresignedUrl,
   decryptedBody = null,
-}) {
+}: MessageSideActionsProps): ReactElement {
   const syncing =
     msg?.pendingSync === 'send' || msg?.pendingSync === 'edit';
   const timeNode = syncing ? (
@@ -504,6 +561,7 @@ function MessageSideActions({
         onOpenReactionPicker={onOpenReactionPicker}
         onReloadOg={onReloadOg}
         onSelectCopy={onSelectCopy}
+        onEnterSelection={onEnterSelection}
         onOpenMobileSheet={onOpenMobileSheet}
         shiftHeldRef={shiftHeldRef}
         coarse={coarse}
@@ -540,6 +598,40 @@ function MessageSideActions({
   );
 }
 
+type MessageBubbleProps = ChatMessageActionHandlers & {
+  msg: ChatListMessage;
+  showName: boolean;
+  clustered?: boolean | undefined;
+  highlight?: boolean | undefined;
+  ogStorage?: unknown;
+  timeZone?: string | null | undefined;
+  onOpenReply?: ((replyToId: string) => void) | undefined;
+  decryptedBody?: string | null | undefined;
+  peeked?: boolean | undefined;
+  ogReloadKey?: number | undefined;
+  shiftHeldRef?: MutableRefObject<boolean> | null | undefined;
+  coarse: boolean;
+  finePointer?: boolean | undefined;
+  mobileContextMenu?: boolean | undefined;
+  rowSelected?: boolean | undefined;
+  selectionMode?: boolean | undefined;
+  isEditing?: boolean | undefined;
+  groupIconPath?: string | null | undefined;
+  groupLabel?: string | null | undefined;
+  replyGroupLabel?: string | null | undefined;
+  externalReactionPickerOpen?: boolean | undefined;
+  onReactionPickerOpenChange?: ((open: boolean) => void) | undefined;
+  noteExists?: ((path: string) => boolean) | null | undefined;
+  folderExists?: ((path: string) => boolean) | null | undefined;
+  listFolderFiles?:
+    | ((folderPath: string) => Array<{ path: string; name: string }>)
+    | null
+    | undefined;
+  allowOgEmbed?: boolean | undefined;
+  enableBubblePressFx?: boolean | undefined;
+  reserveReactionSpace?: boolean | undefined;
+};
+
 const MessageBubble = memo(function MessageBubble({
   msg,
   showName,
@@ -559,18 +651,20 @@ const MessageBubble = memo(function MessageBubble({
   onOpenReply,
   onOpenMobileSheet,
   onSelectCopy,
+  onEnterSelection,
+  onToggleSelect,
   onReloadOg,
   onBubbleActivate,
   onRequestDecrypt,
-  /** Session plaintext when message is encrypted. */
   decryptedBody = null,
-  /** Session-only expand for a persisted-collapsed message (not saved). */
   peeked = false,
   ogReloadKey = 0,
   shiftHeldRef,
   coarse,
+  finePointer = false,
   mobileContextMenu = false,
   rowSelected = false,
+  selectionMode = false,
   isEditing = false,
   getPresignedUrl,
   groupIconPath = null,
@@ -582,11 +676,9 @@ const MessageBubble = memo(function MessageBubble({
   folderExists,
   listFolderFiles,
   allowOgEmbed = true,
-  /** will-change + brightness press filter (perf toggle). */
   enableBubblePressFx = true,
-  /** Reserve empty reaction-row height (typically the last list message). */
   reserveReactionSpace = false,
-}) {
+}: MessageBubbleProps): ReactElement {
   const self = isSelfGroup(msg.group);
   const displayName = groupLabel || msg.group || SELF_GROUP;
   const encrypted = isChatMessageEncrypted(msg);
@@ -602,27 +694,27 @@ const MessageBubble = memo(function MessageBubble({
   );
   const isMarkdown = !encryptedLocked && isChatMessageMarkdown(msg);
   const time = formatMessageTime(msg.at, timeZone || detectTimeZone());
-  const longPressThresholdTimer = useRef(null);
-  const longPressMenuTimer = useRef(null);
+  const longPressThresholdTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const longPressMenuTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [offsetX, setOffsetX] = useState(0);
   const offsetRef = useRef(0);
-  const pointerIdRef = useRef(null);
-  const swipeStartRef = useRef(null);
-  const axisRef = useRef(null);
-  const rowRef = useRef(null);
+  const pointerIdRef = useRef<number | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const axisRef = useRef<'h' | 'v' | null>(null);
+  const rowRef = useRef<HTMLDivElement | null>(null);
   const longPressOpenedRef = useRef(false);
   const swipedThisGestureRef = useRef(false);
-  const contextLinkHrefRef = useRef(/** @type {string|null} */ (null));
+  const contextLinkHrefRef = useRef<string | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
-  const [contextLinkHref, setContextLinkHref] = useState(
-    /** @type {string|null} */ (null),
-  );
+  const [contextLinkHref, setContextLinkHref] = useState<string | null>(null);
   const contextMenuClamp = useViewportClampNudge(contextMenuOpen);
   const [pressing, setPressing] = useState(false);
   const [localReactionPickerOpen, setLocalReactionPickerOpen] = useState(false);
   const forceReactionPickerOpen = Boolean(externalReactionPickerOpen);
   const reactionPickerOpen = forceReactionPickerOpen || localReactionPickerOpen;
-  const setReactionPickerOpen = (open) => {
+  const setReactionPickerOpen = (open: boolean) => {
     setLocalReactionPickerOpen(open);
     onReactionPickerOpenChange?.(open);
   };
@@ -659,7 +751,7 @@ const MessageBubble = memo(function MessageBubble({
   };
 
   const openMobileSheetFromLongPress = () => {
-    if (axisRef.current === 'h' || isDeleting) return;
+    if (axisRef.current === 'h' || isDeleting || selectionMode) return;
     longPressOpenedRef.current = true;
     longPressMenuTimer.current = null;
     vibrateLongPressAction();
@@ -667,14 +759,14 @@ const MessageBubble = memo(function MessageBubble({
     onOpenMobileSheet?.(msg, contextLinkHrefRef.current);
   };
 
-  const captureContextLink = (target) => {
+  const captureContextLink = (target: EventTarget | null): string | null => {
     const href = resolveAnchorHref(target);
     contextLinkHrefRef.current = href;
     setContextLinkHref(href);
     return href;
   };
 
-  const applyOffset = (x) => {
+  const applyOffset = (x: number) => {
     offsetRef.current = x;
     setOffsetX(x);
   };
@@ -689,7 +781,7 @@ const MessageBubble = memo(function MessageBubble({
     endPressVisual();
   }, [isDeleting]);
 
-  const endSwipe = (pointerId) => {
+  const endSwipe = (pointerId: number) => {
     if (pointerIdRef.current !== pointerId) return;
     const x = offsetRef.current;
     const wasHorizontal = axisRef.current === 'h';
@@ -754,11 +846,15 @@ const MessageBubble = memo(function MessageBubble({
       data-row-selected={!isDeleting && rowActive ? 'true' : undefined}
       onPointerDown={(e) => {
         if (isDeleting) return;
+        // Selection mode: no swipe / long-press menu — tap toggles selection.
+        if (selectionMode) return;
         // Mouse: no swipe-to-reply (text selection / click only)
         if (e.pointerType === 'mouse') return;
         if (e.button !== 0 && e.button !== -1) return;
-        if (e.target.closest('button, input, textarea')) return;
-        const onLink = Boolean(e.target.closest?.('a[href]'));
+        const target = eventTargetElement(e.target);
+        if (target?.closest('button, input, textarea')) return;
+        if (target?.closest('[data-chat-msg-select-hit]')) return;
+        const onLink = Boolean(target?.closest?.('a[href]'));
         captureContextLink(e.target);
         // Links: allow long-press menu (copy link) but not swipe-to-reply.
         if (onLink) {
@@ -834,7 +930,9 @@ const MessageBubble = memo(function MessageBubble({
       }}
       onClick={(e) => {
         if (isDeleting) return;
-        if (e.target.closest('button, a, input, textarea')) return;
+        const target = eventTargetElement(e.target);
+        if (target?.closest('button, a, input, textarea')) return;
+        if (target?.closest('[data-chat-msg-select-hit]')) return;
         if (longPressOpenedRef.current) {
           longPressOpenedRef.current = false;
           return;
@@ -853,6 +951,14 @@ const MessageBubble = memo(function MessageBubble({
         ) {
           return;
         }
+        if (selectionMode) {
+          onToggleSelect?.(msg, {
+            shiftKey: e.shiftKey,
+            metaKey: e.metaKey,
+            ctrlKey: e.ctrlKey,
+          });
+          return;
+        }
         onBubbleActivate?.(msg);
         if (encryptedLocked) {
           onRequestDecrypt?.(msg);
@@ -860,17 +966,26 @@ const MessageBubble = memo(function MessageBubble({
       }}
       onContextMenu={(e) => {
         captureContextLink(e.target);
-        if (isDeleting || coarse) {
+        if (isDeleting || coarse || selectionMode) {
           e.preventDefault();
           e.stopPropagation();
         }
       }}
     >
+      {finePointer && !isDeleting ? (
+        <ChatMessageSelectCheckbox
+          checked={rowSelected}
+          visible={selectionMode || rowSelected}
+          onToggle={() =>
+            onToggleSelect?.(msg, { fromCheckbox: true })
+          }
+        />
+      ) : null}
       <div
         className={`pointer-events-none absolute inset-y-0 flex items-center ${
           swipeIconSide === 'left' ? 'left-3' : 'right-3'
         }`}
-        style={{ opacity: swipeIconOpacity }}
+        style={{ opacity: selectionMode ? 0 : swipeIconOpacity }}
         aria-hidden
       >
         <span className="rounded-full bg-blue-500/90 p-1.5 text-white shadow">
@@ -887,12 +1002,17 @@ const MessageBubble = memo(function MessageBubble({
       >
         {!self && showName ? (
           <ChatGroupAvatar
-            name={displayName}
-            colorKey={msg.group}
+            name={String(displayName)}
+            colorKey={typeof msg.group === 'string' ? msg.group : null}
             size="lg"
             className="mt-1"
-            iconPath={groupIconPath}
-            getPresignedUrl={getPresignedUrl}
+            iconPath={groupIconPath ?? null}
+            getPresignedUrl={
+              getPresignedUrl
+                ? async (path: string) =>
+                    (await Promise.resolve(getPresignedUrl(path))) ?? null
+                : null
+            }
           />
         ) : (
           <div className="w-8 shrink-0" aria-hidden />
@@ -908,7 +1028,7 @@ const MessageBubble = memo(function MessageBubble({
             </div>
           ) : null}
           <div className="flex min-w-0 max-w-full items-end gap-1">
-            {self && !isDeleting ? (
+            {self && !isDeleting && !selectionMode ? (
               <MessageSideActions
                 msg={msg}
                 onReply={onReply}
@@ -921,6 +1041,7 @@ const MessageBubble = memo(function MessageBubble({
                 onOpenReactionPicker={openReactionPicker}
                 onReloadOg={onReloadOg}
                 onSelectCopy={onSelectCopy}
+                onEnterSelection={onEnterSelection}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -965,7 +1086,7 @@ const MessageBubble = memo(function MessageBubble({
                   : { filter: 'none' }),
               }}
               transition={BUBBLE_SHAPE_SPRING}
-              style={dimmed ? { opacity: 0.7 } : undefined}
+              {...(dimmed ? { style: { opacity: 0.7 } } : {})}
             >
               {!collapsed ? (
                 <ReplyPreview
@@ -1003,7 +1124,7 @@ const MessageBubble = memo(function MessageBubble({
               ) : (
                 <ChatMessageBody
                   message={msg}
-                  text={displayBody}
+                  text={displayBody ?? null}
                   collapsed={collapsed}
                   className={`min-w-0 max-w-full overflow-hidden ${
                     collapsed
@@ -1012,13 +1133,21 @@ const MessageBubble = memo(function MessageBubble({
                         ? 'wrap-anywhere'
                         : 'whitespace-pre-wrap wrap-anywhere'
                   } ${isDeleting ? 'select-none' : 'select-text'}`}
-                  getPresignedUrl={getPresignedUrl}
-                  noteExists={noteExists}
-                  folderExists={folderExists}
-                  listFolderFiles={listFolderFiles}
-                  onOpenViewPath={
-                    onOpenNote ? (path) => onOpenNote(path, msg) : undefined
-                  }
+                  {...(getPresignedUrl != null
+                    ? {
+                        getPresignedUrl: async (path: string) =>
+                          (await getPresignedUrl(path)) ?? null,
+                      }
+                    : {})}
+                  {...(noteExists != null ? { noteExists } : {})}
+                  {...(folderExists != null ? { folderExists } : {})}
+                  {...(listFolderFiles != null ? { listFolderFiles } : {})}
+                  {...(onOpenNote
+                    ? {
+                        onOpenViewPath: (path: string) =>
+                          onOpenNote(path, msg),
+                      }
+                    : {})}
                 />
               )}
               {!collapsed &&
@@ -1031,7 +1160,7 @@ const MessageBubble = memo(function MessageBubble({
                   className="mt-1 inline-flex items-center gap-1 text-[10px] text-blue-600 underline-offset-2 hover:underline dark:text-blue-300"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onOpenNote?.(msg.notePath, msg);
+                    if (msg.notePath) onOpenNote?.(msg.notePath, msg);
                   }}
                 >
                   <ExternalLink size={10} />
@@ -1051,18 +1180,27 @@ const MessageBubble = memo(function MessageBubble({
                 </button>
               ) : null}
               {!collapsed
-                ? urls.map((u) => (
-                    <ChatOgCard
-                      key={u}
-                      url={u}
-                      ogStorage={ogStorage}
-                      allowEmbed={allowOgEmbed}
-                      reloadKey={ogReloadKey}
-                    />
-                  ))
+                ? urls.map((u) =>
+                    ogStorage != null && typeof ogStorage === 'object' ? (
+                      <ChatOgCard
+                        key={u}
+                        url={u}
+                        ogStorage={ogStorage}
+                        allowEmbed={allowOgEmbed}
+                        reloadKey={ogReloadKey}
+                      />
+                    ) : (
+                      <ChatOgCard
+                        key={u}
+                        url={u}
+                        allowEmbed={allowOgEmbed}
+                        reloadKey={ogReloadKey}
+                      />
+                    ),
+                  )
                 : null}
             </Motion.div>
-            {!self && !isDeleting ? (
+            {!self && !isDeleting && !selectionMode ? (
               <MessageSideActions
                 msg={msg}
                 onReply={onReply}
@@ -1075,6 +1213,7 @@ const MessageBubble = memo(function MessageBubble({
                 onOpenReactionPicker={openReactionPicker}
                 onReloadOg={onReloadOg}
                 onSelectCopy={onSelectCopy}
+                onEnterSelection={onEnterSelection}
                 onOpenMobileSheet={onOpenMobileSheet}
                 shiftHeldRef={shiftHeldRef}
                 coarse={coarse}
@@ -1087,21 +1226,23 @@ const MessageBubble = memo(function MessageBubble({
             ) : null}
           </div>
           <ChatMessageReactions
-            reactions={msg.reactions}
+            reactions={msg.reactions ?? null}
             coarse={coarse}
-            disabled={isDeleting || syncing}
+            disabled={isDeleting || syncing || selectionMode}
             expanded={rowActive}
             reserveSpace={reserveReactionSpace}
             pickerOpen={reactionPickerOpen}
             onPickerOpenChange={setReactionPickerOpen}
-            onToggle={(reaction) => onToggleReaction?.(msg, reaction)}
+            onToggle={(reaction) => {
+              onToggleReaction?.(msg, reaction);
+            }}
           />
         </div>
       </div>
     </div>
   );
 
-  if (mobileContextMenu || isDeleting) {
+  if (mobileContextMenu || isDeleting || selectionMode) {
     return bubble;
   }
 
@@ -1145,18 +1286,21 @@ const MessageBubble = memo(function MessageBubble({
             onOpenReactionPicker={openReactionPicker}
             onReloadOg={onReloadOg}
             onSelectCopy={onSelectCopy}
+            onEnterSelection={onEnterSelection}
             shiftHeldRef={shiftHeldRef}
             getPresignedUrl={getPresignedUrl}
             linkHref={contextLinkHref}
             decryptedBody={decryptedBody}
-            _Item={ContextMenu.Item}
+            _Item={ContextMenu.Item as ChatMessageMenuItemComponent}
           />
         </ContextMenu.Content>
       </ContextMenu.Portal>
     </ContextMenu.Root>
   );
 });
-const ChatMessageList = forwardRef(function ChatMessageList(
+
+const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
+  function ChatMessageList(
   {
     messages,
     ogStorage,
@@ -1164,14 +1308,12 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     highlightId,
     editingMessageId = null,
     onReachTop,
-    /** Silent multi-day older load for viewport fill (no loadingOlder UI). */
     onFillOlder,
     onReachBottom,
     loadingOlder = false,
     loadingNewer = false,
     hasMore = false,
     hasMoreNewer = false,
-    /** Jump to absolute latest (may reload day window). Falls back to scrollToBottom. */
     onJumpToBottom = null,
     jumpToBottomBusy = false,
     onReply,
@@ -1185,30 +1327,26 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     onOpenNote,
     onOpenReplyTarget,
     onRequestDecrypt,
-    /** @type {Record<string, string>} */
     decryptedById = {},
     emptyHint,
     getPresignedUrl,
-    /** @type {Map<string, string>|Record<string, string>|null} */
     groupIconByName = null,
-    /** @type {Map<string, string>|Record<string, string>|null} */
     groupLabelByKey = null,
-    /** @type {((path: string) => boolean) | null | undefined} */
     noteExists,
-    /** @type {((path: string) => boolean) | null | undefined} */
     folderExists,
-    /** @type {((folderPath: string) => Array<{ path: string, name: string }>) | null | undefined} */
     listFolderFiles,
-    /** Kept for settings API; virtualized path never uses layout/popLayout. */
     enableMessageLayoutAnim: _enableMessageLayoutAnim = true,
-    /** Bubble will-change + brightness press filter. */
     enableBubblePressFx = true,
+    selectionMode = false,
+    selectedIds = null,
+    onEnterSelection,
+    onToggleSelect,
   },
   ref,
 ) {
-  const listRef = useRef(null);
+  const listRef = useRef<VListHandle | null>(null);
   const stickBottomRef = useRef(true);
-  const prevFirstIdRef = useRef(/** @type {string|null} */ (null));
+  const prevFirstIdRef = useRef<string | null>(null);
   const prevLenRef = useRef(0);
   const initialBottomPinRef = useRef(true);
   const loadingOlderLockRef = useRef(false);
@@ -1217,33 +1355,57 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   const fillingRef = useRef(false);
   const hasMoreRef = useRef(hasMore);
   hasMoreRef.current = hasMore;
-  const listHostRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const [sheetMessage, setSheetMessage] = useState(null);
-  const [sheetLinkHref, setSheetLinkHref] = useState(
-    /** @type {string|null} */ (null),
+  const listHostRef = useRef<HTMLDivElement | null>(null);
+  const [sheetMessage, setSheetMessage] = useState<ChatListMessage | null>(
+    null,
   );
-  const [selectCopyMessage, setSelectCopyMessage] = useState(null);
-  const [ogReloadById, setOgReloadById] = useState(
-    /** @type {Record<string, number>} */ ({}),
+  const [sheetLinkHref, setSheetLinkHref] = useState<string | null>(null);
+  const [selectCopyMessage, setSelectCopyMessage] =
+    useState<ChatListMessage | null>(null);
+  const [ogReloadById, setOgReloadById] = useState<Record<string, number>>({});
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(
+    null,
   );
-  const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null);
   /** Session-only: temporarily show a collapsed message without persisting. */
-  const [peekedCollapsedId, setPeekedCollapsedId] = useState(
-    /** @type {string|null} */ (null),
+  const [peekedCollapsedId, setPeekedCollapsedId] = useState<string | null>(
+    null,
   );
-  const [overlayDate, setOverlayDate] = useState(
-    /** @type {{ label: string, dateStr: string } | null} */ (null),
-  );
+  const [overlayDate, setOverlayDate] = useState<{
+    label: string;
+    dateStr: string;
+  } | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const coarse = useIsCoarsePointer();
   const mobileContextMenu = useMobileContextMenuMode();
+  const [finePointer, setFinePointer] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.matchMedia('(pointer: fine)').matches;
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia('(pointer: fine)');
+      const sync = () => setFinePointer(mq.matches);
+      sync();
+      mq.addEventListener('change', sync);
+      return () => mq.removeEventListener('change', sync);
+    } catch {
+      return undefined;
+    }
+  }, []);
   const shiftHeldRef = useShiftHeldRef();
 
-  const openMobileSheet = useCallback((msg, linkHref = null) => {
-    if (!msg) return;
-    setSheetLinkHref(linkHref || null);
-    setSheetMessage(msg);
-  }, []);
+  const openMobileSheet = useCallback(
+    (msg: ChatListMessage, linkHref: string | null = null) => {
+      if (!msg) return;
+      setSheetLinkHref(linkHref || null);
+      setSheetMessage(msg);
+    },
+    [],
+  );
 
   const closeMobileSheet = useCallback(() => {
     setSheetMessage(null);
@@ -1276,7 +1438,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     if (!stillCollapsed) setPeekedCollapsedId(null);
   }, [messages, peekedCollapsedId]);
 
-  const handleBubbleActivate = useCallback((msg) => {
+  const handleBubbleActivate = useCallback((msg: ChatListMessage) => {
     if (!msg?.id) return;
     const isCollapsed = msg.collapsed === '1' || msg.collapsed === true;
     setPeekedCollapsedId((prev) => {
@@ -1285,13 +1447,16 @@ const ChatMessageList = forwardRef(function ChatMessageList(
     });
   }, []);
 
-  const handleSelectCopy = useCallback((msg) => {
-    if (!msg) return;
-    closeMobileSheet();
-    setSelectCopyMessage(msg);
-  }, [closeMobileSheet]);
+  const handleSelectCopy = useCallback(
+    (msg: ChatListMessage) => {
+      if (!msg) return;
+      closeMobileSheet();
+      setSelectCopyMessage(msg);
+    },
+    [closeMobileSheet],
+  );
 
-  const handleReloadOg = useCallback((msg) => {
+  const handleReloadOg = useCallback((msg: ChatListMessage) => {
     const id = msg?.id;
     if (!id) return;
     setOgReloadById((prev) => ({
@@ -1302,20 +1467,22 @@ const ChatMessageList = forwardRef(function ChatMessageList(
 
   const items = useMemo(() => {
     const tz = timeZone || detectTimeZone();
-    const out = [];
+    const out: Array<
+      Extract<ChatVirtualRow, { type: 'date' | 'msg' }>
+    > = [];
     let lastDate = '';
-    let prevGroup = null;
+    let prevGroup: string | null = null;
     let prevAtMs = 0;
-    const labelOf = (key) => {
+    const labelOf = (key: string) => {
       if (groupLabelByKey instanceof Map) {
         return groupLabelByKey.get(key) || resolveGroupLabel(null, key);
       }
-      if (groupLabelByKey?.[key]) return groupLabelByKey[key];
+      if (groupLabelByKey && groupLabelByKey[key]) return groupLabelByKey[key];
       return resolveGroupLabel(null, key);
     };
     for (const msg of messages) {
       const dateStr =
-        msg.dateStr || localDateString(new Date(msg.at), tz);
+        msg.dateStr || localDateString(new Date(msg.at || Date.now()), tz);
       const dateLabel = formatMessageDateLabel(msg.at, tz);
       if (dateLabel !== lastDate) {
         out.push({
@@ -1328,7 +1495,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         prevGroup = null;
         prevAtMs = 0;
       }
-      const atMs = Date.parse(msg.at) || 0;
+      const atMs = Date.parse(msg.at || '') || 0;
       const sameGroup = prevGroup != null && msg.group === prevGroup;
       const withinWindow =
         prevAtMs > 0 &&
@@ -1344,14 +1511,14 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         clustered,
         groupLabel: labelOf(msg.group || SELF_GROUP),
       });
-      prevGroup = msg.group;
+      prevGroup = typeof msg.group === 'string' ? msg.group : null;
       prevAtMs = atMs;
     }
     return out;
   }, [messages, timeZone, groupLabelByKey]);
 
-  const rows = useMemo(() => {
-    const out = [];
+  const rows = useMemo((): ChatVirtualRow[] => {
+    const out: ChatVirtualRow[] = [];
     if (!hasMore && messages.length > 0) {
       out.push({ type: 'end-older', key: 'end-older' });
     }
@@ -1363,7 +1530,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   }, [items, hasMore, messages.length]);
 
   const messageIdToIndex = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, number>();
     rows.forEach((row, index) => {
       if (row.type === 'msg') map.set(row.msg.id, index);
     });
@@ -1378,7 +1545,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   }, [rows]);
 
   const dateStrToIndex = useMemo(() => {
-    const map = new Map();
+    const map = new Map<string, number>();
     rows.forEach((row, index) => {
       if (row.type === 'date' && row.dateStr) map.set(row.dateStr, index);
     });
@@ -1386,7 +1553,10 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   }, [rows]);
 
   const scrollToMessageId = useCallback(
-    (messageId, opts = {}) => {
+    (
+      messageId: string,
+      opts: { align?: ChatListScrollAlign } = {},
+    ): boolean => {
       if (!messageId || !listRef.current) return false;
       const index = messageIdToIndex.get(messageId);
       if (index == null) return false;
@@ -1400,7 +1570,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   );
 
   const scrollToDateStr = useCallback(
-    (dateStr) => {
+    (dateStr: string): boolean => {
       if (!dateStr || !listRef.current) return false;
       const index = dateStrToIndex.get(dateStr);
       if (index == null) return false;
@@ -1545,14 +1715,14 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   }, [hasMoreNewer, messages.length]);
 
   const updateOverlayFromOffset = useCallback(
-    (offset) => {
+    (offset: number) => {
       const list = listRef.current;
       if (!list || rows.length === 0) {
         setOverlayDate(null);
         return;
       }
       const index = list.findItemIndex(offset + 4);
-      let dateRow = null;
+      let dateRow: Extract<ChatVirtualRow, { type: 'date' }> | null = null;
       for (let i = Math.min(index, rows.length - 1); i >= 0; i -= 1) {
         const row = rows[i];
         if (row?.type === 'date') {
@@ -1576,7 +1746,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   );
 
   const handleScroll = useCallback(
-    (offset) => {
+    (offset: number) => {
       const list = listRef.current;
       if (!list) return;
 
@@ -1687,7 +1857,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
   }, [hasMore, loadingOlder, onFillOlder, onReachTop, messages.length, rows.length]);
 
   const renderRow = useCallback(
-    (row, index) => {
+    (row: ChatVirtualRow, index: number) => {
       if (row.type === 'end-older') {
         return (
           <div
@@ -1725,6 +1895,10 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         : prev?.type === 'msg'
           ? 'mt-3'
           : '';
+      const groupKey =
+        typeof row.msg.group === 'string' ? row.msg.group : SELF_GROUP;
+      const replyGroupKey =
+        typeof row.msg.replyGroup === 'string' ? row.msg.replyGroup : undefined;
 
       return (
         <div
@@ -1751,6 +1925,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             onOpenReply={onOpenReplyTarget}
             onOpenMobileSheet={openMobileSheet}
             onSelectCopy={handleSelectCopy}
+            onEnterSelection={onEnterSelection}
+            onToggleSelect={onToggleSelect}
             onReloadOg={handleReloadOg}
             onBubbleActivate={handleBubbleActivate}
             onRequestDecrypt={onRequestDecrypt}
@@ -1763,8 +1939,13 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             ogReloadKey={ogReloadById[row.msg.id] || 0}
             shiftHeldRef={shiftHeldRef}
             coarse={coarse}
+            finePointer={finePointer}
             mobileContextMenu={mobileContextMenu}
-            rowSelected={sheetMessage?.id === row.msg.id}
+            rowSelected={
+              Boolean(selectedIds?.has?.(row.msg.id)) ||
+              sheetMessage?.id === row.msg.id
+            }
+            selectionMode={selectionMode}
             isEditing={editingMessageId === row.msg.id}
             externalReactionPickerOpen={reactionPickerMsgId === row.msg.id}
             onReactionPickerOpenChange={(open) => {
@@ -1778,15 +1959,16 @@ const ChatMessageList = forwardRef(function ChatMessageList(
             reserveReactionSpace={index === lastMessageRowIndex}
             groupIconPath={
               groupIconByName instanceof Map
-                ? groupIconByName.get(row.msg.group) || null
-                : groupIconByName?.[row.msg.group] || null
+                ? groupIconByName.get(groupKey) || null
+                : groupIconByName?.[groupKey] || null
             }
             groupLabel={row.groupLabel}
             replyGroupLabel={
-              groupLabelByKey instanceof Map
-                ? groupLabelByKey.get(row.msg.replyGroup) ||
-                  row.msg.replyGroup
-                : groupLabelByKey?.[row.msg.replyGroup] || row.msg.replyGroup
+              replyGroupKey == null
+                ? null
+                : groupLabelByKey instanceof Map
+                  ? groupLabelByKey.get(replyGroupKey) || replyGroupKey
+                  : groupLabelByKey?.[replyGroupKey] || replyGroupKey
             }
           />
         </div>
@@ -1813,6 +1995,8 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       decryptedById,
       shiftHeldRef,
       coarse,
+      finePointer,
+      mobileContextMenu,
       sheetMessage?.id,
       reactionPickerMsgId,
       peekedCollapsedId,
@@ -1828,6 +2012,10 @@ const ChatMessageList = forwardRef(function ChatMessageList(
       handleSelectCopy,
       handleReloadOg,
       openMobileSheet,
+      selectionMode,
+      selectedIds,
+      onEnterSelection,
+      onToggleSelect,
       ogReloadById,
     ],
   );
@@ -1849,7 +2037,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
           className="h-full max-h-full overscroll-contain"
           data={rows}
           shift={shift}
-          keepMounted={keepMounted}
+          {...(keepMounted ? { keepMounted } : {})}
           onScroll={handleScroll}
           style={{ overflowX: 'clip' }}
         >
@@ -1858,6 +2046,7 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         {overlayDate ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-30">
             <ChatDateDivider
+              id={`chat-date-overlay-${overlayDate.dateStr}`}
               sticky={false}
               label={overlayDate.label}
               className="pointer-events-none shadow-sm"
@@ -1889,32 +2078,39 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         />
       </div>
       <ChatMessageContextMenu
-        open={Boolean(sheetMessage)}
-        message={sheetMessage}
-        linkHref={sheetLinkHref}
-        decryptedBody={
-          sheetMessage?.id != null && decryptedById[sheetMessage.id] != null
-            ? decryptedById[sheetMessage.id]
-            : null
-        }
-        onOpenChange={(next) => {
-          if (!next) closeMobileSheet();
-        }}
-        onReply={onReply}
-        onDelete={onDelete}
-        onEdit={onEdit}
-        onAddToNote={onAddToNote}
-        onViewEditHistory={onViewEditHistory}
-        onTogglePin={onTogglePin}
-        onToggleCollapse={onToggleCollapse}
-        onOpenReactionPicker={(m) => {
-          closeMobileSheet();
-          setReactionPickerMsgId(m?.id || null);
-        }}
-        onReloadOg={handleReloadOg}
-        onSelectCopy={handleSelectCopy}
-        getPresignedUrl={getPresignedUrl}
-        shiftHeldRef={shiftHeldRef}
+        {...({
+          open: Boolean(sheetMessage),
+          message: sheetMessage,
+          linkHref: sheetLinkHref,
+          decryptedBody:
+            sheetMessage?.id != null && decryptedById[sheetMessage.id] != null
+              ? decryptedById[sheetMessage.id]
+              : null,
+          onOpenChange: (next: boolean) => {
+            if (!next) closeMobileSheet();
+          },
+          onReply,
+          onDelete,
+          onEdit,
+          onAddToNote,
+          onViewEditHistory,
+          onTogglePin,
+          onToggleCollapse,
+          onOpenReactionPicker: (m: { id?: string }) => {
+            closeMobileSheet();
+            setReactionPickerMsgId(m?.id || null);
+          },
+          onReloadOg: handleReloadOg,
+          onSelectCopy: handleSelectCopy,
+          onEnterSelection: (m: { id?: string }) => {
+            closeMobileSheet();
+            if (m && typeof m.id === 'string') {
+              onEnterSelection?.(m as ChatListMessage);
+            }
+          },
+          getPresignedUrl: getPresignedUrl ?? null,
+          shiftHeldRef,
+        } as ChatMessageContextMenuProps)}
       />
       <ChatMessageSelectCopyModal
         open={Boolean(selectCopyMessage)}
@@ -1922,25 +2118,45 @@ const ChatMessageList = forwardRef(function ChatMessageList(
         onOpenChange={(next) => {
           if (!next) setSelectCopyMessage(null);
         }}
-        ogStorage={ogStorage}
-        timeZone={timeZone}
-        getPresignedUrl={getPresignedUrl}
-        noteExists={noteExists}
-        folderExists={folderExists}
-        listFolderFiles={listFolderFiles}
-        onOpenNote={onOpenNote}
-        groupLabel={
-          selectCopyMessage
-            ? groupLabelByKey instanceof Map
-              ? groupLabelByKey.get(selectCopyMessage.group) ||
-                selectCopyMessage.group
-              : groupLabelByKey?.[selectCopyMessage.group] ||
-                selectCopyMessage.group
-            : undefined
-        }
+        {...(ogStorage != null && typeof ogStorage === 'object'
+          ? { ogStorage: ogStorage as object }
+          : {})}
+        {...(typeof timeZone === 'string' ? { timeZone } : {})}
+        {...(getPresignedUrl != null
+          ? {
+              getPresignedUrl: async (path: string) =>
+                (await Promise.resolve(getPresignedUrl(path))) ?? null,
+            }
+          : {})}
+        {...(noteExists != null ? { noteExists } : {})}
+        {...(folderExists != null ? { folderExists } : {})}
+        {...(listFolderFiles != null ? { listFolderFiles } : {})}
+        {...(onOpenNote
+          ? {
+              onOpenNote: (path: string, message?: unknown) =>
+                onOpenNote(path, message as ChatListMessage | undefined),
+            }
+          : {})}
+        {...(selectCopyMessage
+          ? {
+              groupLabel: (() => {
+                const g =
+                  typeof selectCopyMessage.group === 'string'
+                    ? selectCopyMessage.group
+                    : SELF_GROUP;
+                if (groupLabelByKey instanceof Map) {
+                  return groupLabelByKey.get(g) || g;
+                }
+                return groupLabelByKey?.[g] || g;
+              })(),
+            }
+          : {})}
       />
     </>
   );
-});
+  },
+);
 
 export default ChatMessageList;
+export type { ChatListMessage, ChatMessageListHandle, ChatMessageListProps };
+

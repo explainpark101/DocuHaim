@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MutableRefObject, type ReactNode } from 'react';
 import {
   Copy,
   FilePlus2,
@@ -15,6 +15,7 @@ import {
   RefreshCw,
   TextSelect,
   Link2,
+  MousePointerClick,
 } from 'lucide-react';
 import MobileContextMenuModal from '@/components/contextMenu/MobileContextMenuModal';
 import {
@@ -34,6 +35,59 @@ import { copyText } from '@/utils/copyText';
 
 /** Briefly block selection after open (long-press residual selection). */
 const SELECT_NONE_MS = 200;
+
+/** Minimal message shape used by the mobile context menu. */
+export type ChatMessageContextMenuMessage = {
+  id?: string;
+  body?: string;
+  group?: string;
+  editedAt?: string;
+  pinnedAt?: string;
+  collapsed?: string | boolean;
+  encrypted?: string | boolean;
+  [key: string]: unknown;
+};
+
+export type ChatMessageDeleteOptions = {
+  skipConfirm?: boolean;
+};
+
+export type ChatMessageContextMenuProps = {
+  open: boolean;
+  message: ChatMessageContextMenuMessage | null | undefined;
+  linkHref?: string | null;
+  decryptedBody?: string | null;
+  onOpenChange?: ((open: boolean) => void) | undefined;
+  onReply?: ((message: ChatMessageContextMenuMessage) => void) | undefined;
+  onDelete?:
+    | ((
+        message: ChatMessageContextMenuMessage,
+        options?: ChatMessageDeleteOptions,
+      ) => void)
+    | undefined;
+  onEdit?: ((message: ChatMessageContextMenuMessage) => void) | undefined;
+  onAddToNote?: ((message: ChatMessageContextMenuMessage) => void) | undefined;
+  onViewEditHistory?:
+    | ((message: ChatMessageContextMenuMessage) => void)
+    | undefined;
+  onTogglePin?: ((message: ChatMessageContextMenuMessage) => void) | undefined;
+  onToggleCollapse?:
+    | ((message: ChatMessageContextMenuMessage) => void)
+    | undefined;
+  onOpenReactionPicker?:
+    | ((message: ChatMessageContextMenuMessage) => void)
+    | undefined;
+  onReloadOg?: ((message: ChatMessageContextMenuMessage) => void) | undefined;
+  onSelectCopy?: ((message: ChatMessageContextMenuMessage) => void) | undefined;
+  onEnterSelection?:
+    | ((message: ChatMessageContextMenuMessage) => void)
+    | undefined;
+  getPresignedUrl?:
+    | ((path: string) => Promise<string | null | undefined>)
+    | null
+    | undefined;
+  shiftHeldRef?: MutableRefObject<boolean> | null | undefined;
+};
 
 /**
  * Mobile message actions dialog (centered).
@@ -55,9 +109,10 @@ export default function ChatMessageContextMenu({
   onOpenReactionPicker,
   onReloadOg,
   onSelectCopy,
+  onEnterSelection,
   getPresignedUrl,
   shiftHeldRef,
-}) {
+}: ChatMessageContextMenuProps): ReactNode {
   const [selectNone, setSelectNone] = useState(false);
   const isOpen = Boolean(open && message);
 
@@ -80,19 +135,20 @@ export default function ChatMessageContextMenu({
   const encryptedLocked =
     isChatMessageEncrypted(message) && decryptedBody == null;
   const resolvedMsg =
-    decryptedBody != null
+    decryptedBody != null && message
       ? { ...message, body: decryptedBody, encrypted: false }
       : message;
   const shareAvailable = canOfferWebShare();
   const hasLinks = encryptedLocked
     ? false
-    : extractUrls(resolvedMsg?.body || '').length > 0;
+    : extractUrls(String(resolvedMsg?.body || '')).length > 0;
   const copyLinkHref = String(linkHref || '').trim() || null;
 
   const messagePreview = encryptedLocked
     ? ENCRYPTED_MESSAGE_LABEL
-    : (resolvedMsg?.body || '').replace(/\s+/g, ' ').slice(0, 120) ||
-      '(빈 메시지)';
+    : String(resolvedMsg?.body || '')
+        .replace(/\s+/g, ' ')
+        .slice(0, 120) || '(빈 메시지)';
 
   const menuBtnClass = MOBILE_CONTEXT_MENU_ITEM_CLASS;
 
@@ -108,7 +164,7 @@ export default function ChatMessageContextMenu({
         type="button"
         className={menuBtnClass}
         onClick={() => {
-          onReply?.(message);
+          if (message) onReply?.(message);
           onOpenChange?.(false);
         }}
       >
@@ -119,14 +175,25 @@ export default function ChatMessageContextMenu({
         type="button"
         className={menuBtnClass}
         onClick={() => {
-          onOpenReactionPicker?.(message);
+          if (message) onEnterSelection?.(message);
+          onOpenChange?.(false);
+        }}
+      >
+        <MousePointerClick size={16} className="shrink-0 text-gray-500" />
+        선택
+      </button>
+      <button
+        type="button"
+        className={menuBtnClass}
+        onClick={() => {
+          if (message) onOpenReactionPicker?.(message);
           onOpenChange?.(false);
         }}
       >
         <SmilePlus size={16} className="shrink-0 text-gray-500" />
         반응 추가
       </button>
-      {!encryptedLocked ? (
+      {!encryptedLocked && message ? (
         <button
           type="button"
           className={menuBtnClass}
@@ -139,7 +206,7 @@ export default function ChatMessageContextMenu({
           수정
         </button>
       ) : null}
-      {hasEditHistory ? (
+      {hasEditHistory && message ? (
         <button
           type="button"
           className={menuBtnClass}
@@ -156,7 +223,7 @@ export default function ChatMessageContextMenu({
         type="button"
         className={menuBtnClass}
         onClick={() => {
-          onTogglePin?.(message);
+          if (message) onTogglePin?.(message);
           onOpenChange?.(false);
         }}
       >
@@ -170,7 +237,7 @@ export default function ChatMessageContextMenu({
         type="button"
         className={menuBtnClass}
         onClick={() => {
-          onToggleCollapse?.(message);
+          if (message) onToggleCollapse?.(message);
           onOpenChange?.(false);
         }}
       >
@@ -201,7 +268,9 @@ export default function ChatMessageContextMenu({
         type="button"
         className={menuBtnClass}
         onClick={() => {
-          void copyText(formatChatMessagePlainText(resolvedMsg));
+          if (resolvedMsg) {
+            void copyText(formatChatMessagePlainText(resolvedMsg));
+          }
           onOpenChange?.(false);
         }}
       >
@@ -212,7 +281,7 @@ export default function ChatMessageContextMenu({
         type="button"
         className={menuBtnClass}
         onClick={() => {
-          onSelectCopy?.(resolvedMsg);
+          if (resolvedMsg) onSelectCopy?.(resolvedMsg);
           onOpenChange?.(false);
         }}
       >
@@ -223,14 +292,16 @@ export default function ChatMessageContextMenu({
         type="button"
         className={menuBtnClass}
         onClick={() => {
-          void copyText(formatChatMessageMarkdownCopy(resolvedMsg));
+          if (resolvedMsg) {
+            void copyText(formatChatMessageMarkdownCopy(resolvedMsg));
+          }
           onOpenChange?.(false);
         }}
       >
         <FileText size={16} className="shrink-0 text-gray-500" />
         MD 복사
       </button>
-      {hasLinks ? (
+      {hasLinks && message ? (
         <button
           type="button"
           className={menuBtnClass}
@@ -243,13 +314,15 @@ export default function ChatMessageContextMenu({
           OpenGraph 캐시 재로딩
         </button>
       ) : null}
-      {shareAvailable && !encryptedLocked ? (
+      {shareAvailable && !encryptedLocked && resolvedMsg ? (
         <button
           type="button"
           className={menuBtnClass}
           onClick={() => {
             void (async () => {
-              await shareChatMessage(resolvedMsg, { getPresignedUrl });
+              await shareChatMessage(resolvedMsg, {
+                ...(getPresignedUrl ? { getPresignedUrl } : {}),
+              });
               onOpenChange?.(false);
             })();
           }}
@@ -258,7 +331,7 @@ export default function ChatMessageContextMenu({
           공유
         </button>
       ) : null}
-      {!encryptedLocked ? (
+      {!encryptedLocked && resolvedMsg ? (
         <button
           type="button"
           className={menuBtnClass}
@@ -278,9 +351,11 @@ export default function ChatMessageContextMenu({
           if (shiftHeldRef) shiftHeldRef.current = e.shiftKey;
         }}
         onClick={() => {
-          onDelete?.(message, {
-            skipConfirm: Boolean(shiftHeldRef?.current),
-          });
+          if (message) {
+            onDelete?.(message, {
+              skipConfirm: Boolean(shiftHeldRef?.current),
+            });
+          }
           onOpenChange?.(false);
         }}
       >
