@@ -423,7 +423,7 @@ export default function HaimCodeBlockView({
       editable={editable}
       onCopy={onCopy}
       onToggleCollapse={() => setCollapsed((v) => !v)}
-      onLanguageChange={editable ? onLanguageChange : undefined}
+      {...(editable ? { onLanguageChange } : {})}
       extra={
         isMermaid && editable && !collapsed ? (
           <IconActionButton
