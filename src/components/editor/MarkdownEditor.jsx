@@ -11,7 +11,7 @@ import { bindCatalogClickScrollFix } from '@/utils/catalogClickScrollFix';
 import "@/styles/md-editor-rt/style.css";
 import KO_KR from '@vavt/cm-extension/dist/locale/ko-KR';
 import LlmAssistToolbar from '@/components/LlmAssistToolbar';
-import ChecklistProgressFloatingPanel from '@/components/ChecklistProgressFloatingPanel';
+import ChecklistProgressSidebar from '@/components/ChecklistProgressSidebar';
 import ChecklistProgressToolbar from '@/components/ChecklistProgressToolbar';
 import ExportPDF from '@/components/ExportPDF';
 import MarkdownPageBreakToolbar from '@/components/MarkdownPageBreakToolbar';
@@ -2715,29 +2715,39 @@ export default function MarkdownEditor({
           )}
         </div>
       )}
-      <MdEditor
-        key={`footnotes-${previewFootnotesRenderKey}`}
-        ref={editorRef}
-        id={editorId}
-        modelValue={value}
-        onChange={onChangeWithUndoHistory}
-        mdHeadingId={buildPreviewHeadingId}
-        className="h-full! max-h-dvh"
-        theme={theme}
-        language="ko-KR"
-        codeTheme={MD_EDITOR_CODE_THEME}
-        customIcon={MD_EDITOR_CUSTOM_ICONS}
-        previewOnly={previewOnly}
-        noMermaid
-        autoDetectCode={true}
-        // Built-in scrollAuto uses stale data-line maps + height ratios; images break it.
-        // previewScrollFollow: image-aware bidirectional scroll + caret follow.
-        scrollAuto={false}
-        footers={['markdownTotal']}
-        toolbars={toolbars}
-        defToolbars={defToolbars}
-        onUploadImg={onUploadImg}
-      />
+      <div className="relative flex min-h-0 min-w-0 flex-1">
+        <div className="relative min-h-0 min-w-0 flex-1">
+          <MdEditor
+            key={`footnotes-${previewFootnotesRenderKey}`}
+            ref={editorRef}
+            id={editorId}
+            modelValue={value}
+            onChange={onChangeWithUndoHistory}
+            mdHeadingId={buildPreviewHeadingId}
+            className="h-full! max-h-dvh"
+            theme={theme}
+            language="ko-KR"
+            codeTheme={MD_EDITOR_CODE_THEME}
+            customIcon={MD_EDITOR_CUSTOM_ICONS}
+            previewOnly={previewOnly}
+            noMermaid
+            autoDetectCode={true}
+            // Built-in scrollAuto uses stale data-line maps + height ratios; images break it.
+            // previewScrollFollow: image-aware bidirectional scroll + caret follow.
+            scrollAuto={false}
+            footers={['markdownTotal']}
+            toolbars={toolbars}
+            defToolbars={defToolbars}
+            onUploadImg={onUploadImg}
+          />
+        </div>
+        <ChecklistProgressSidebar
+          open={checklistProgressOpen}
+          onOpenChange={setChecklistProgressOpen}
+          markdown={value ?? ''}
+          onMarkdownChange={onChangeWithUndoHistory}
+        />
+      </div>
       <MdEditorToolbarTooltips containerRef={containerRef} enabled={isSurfaceLive} />
       <PreviewFootnoteTooltips containerRef={containerRef} enabled={isSurfaceLive} />
       <WikiImageSizeModal
@@ -2915,12 +2925,6 @@ export default function MarkdownEditor({
           setHeadingRemapOpen(false);
           setHeadingRemapSelection(null);
         }}
-      />
-      <ChecklistProgressFloatingPanel
-        editorRef={editorRef}
-        onChange={onChangeWithUndoHistory}
-        open={checklistProgressOpen}
-        onOpenChange={setChecklistProgressOpen}
       />
     </div>
   );

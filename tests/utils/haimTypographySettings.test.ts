@@ -68,6 +68,25 @@ describe('document-settings haimTypography', () => {
     expect(md).toContain('haimTypography');
     const { meta } = parseDocumentSettingsMeta(md);
     expect(meta?.haimTypography).toEqual({ emDash: false, ellipsis: true });
+    expect(meta?.taskCheckbox).toBe('check');
+  });
+
+  it('round-trips taskCheckbox status mode', () => {
+    const md = upsertDocumentSettingsMeta('# Hi\n', {
+      v: 1,
+      sourceList: { show: true, title: 'Sources' },
+      fonts: {
+        body: 'Paperozi',
+        heading: 'Paperozi',
+        bold: 'Paperozi',
+        code: 'D2Coding',
+      },
+      webfontCss: '',
+      taskCheckbox: 'status',
+    });
+    expect(md).toContain('"taskCheckbox":"status"');
+    const { meta } = parseDocumentSettingsMeta(md);
+    expect(meta?.taskCheckbox).toBe('status');
   });
 
   it('omits haimTypography when all rules inherit', () => {

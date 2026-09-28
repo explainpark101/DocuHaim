@@ -381,7 +381,7 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
   {
     id: 'editor-checklist-progress',
     title: '체크리스트 진행률',
-    description: '체크리스트 진행률 도구 열기',
+    description: '체크리스트 진행률 사이드바 열기',
     keywords: ['checklist', 'progress', '진행률', '체크리스트'],
   },
   {

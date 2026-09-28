@@ -179,10 +179,39 @@ function applyCheckboxDom(
 
 /**
  * Task item with regular (`check`) or status (`status`) checkboxes.
- * - check: click toggles todo ↔ done
- * - status: click cycles todo → doing → done → todo
+ * Document setting `taskCheckbox` (via storage.preferredKind) chooses click cycle.
  */
-export const HaimTaskItem = TaskItem.extend<TaskItemOptions>({
+
+type HaimTaskItemStorage = {
+  preferredKind: TaskCheckboxKind;
+};
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    taskItem: {
+      setHaimTaskCheckboxPreferredKind: (kind: TaskCheckboxKind) => ReturnType;
+    };
+  }
+}
+
+export const HaimTaskItem = TaskItem.extend<TaskItemOptions, HaimTaskItemStorage>({
+  addStorage() {
+    return {
+      preferredKind: 'check' satisfies TaskCheckboxKind,
+    };
+  },
+
+  addCommands() {
+    return {
+      setHaimTaskCheckboxPreferredKind:
+        (kind: TaskCheckboxKind) =>
+        () => {
+          this.storage.preferredKind = kind === 'status' ? 'status' : 'check';
+          return true;
+        },
+    };
+  },
+
   addAttributes() {
     return {
       kind: {
@@ -358,19 +387,21 @@ export const HaimTaskItem = TaskItem.extend<TaskItemOptions>({
         event.stopPropagation();
 
         const attrs = readTaskItemAttrs(currentNode.attrs);
+        const preferred: TaskCheckboxKind =
+          editor.storage.taskItem?.preferredKind === 'status'
+            ? 'status'
+            : 'check';
 
         if (!editor.isEditable && !this.options.onReadOnlyChecked) {
           syncDom(currentNode);
           return;
         }
 
-        const nextStatus = advanceTaskCheckboxStatus(attrs.status, attrs.kind);
-        const nextKind: TaskCheckboxKind =
-          nextStatus === 'doing' ? 'status' : attrs.kind;
+        const nextStatus = advanceTaskCheckboxStatus(attrs.status, preferred);
         const next: TaskItemAttrs = {
           status: nextStatus,
           checked: nextStatus === 'done',
-          kind: nextKind,
+          kind: preferred,
         };
 
         if (editor.isEditable) {
@@ -435,21 +466,33 @@ export const HaimTaskItem = TaskItem.extend<TaskItemOptions>({
     return [
       new InputRule({
         find: haimTaskShortInputRegex,
-        handler: ({ state, range, match }) =>
-          applyHaimTaskCheckboxInputRule(
-            state,
-            range,
-            attrsFromMatchChar(match[2]),
-          ),
+        handler: ({ state, range, match }) => {
+          const preferred: TaskCheckboxKind =
+            this.editor.storage.taskItem?.preferredKind === 'status'
+              ? 'status'
+              : 'check';
+          const fromMarker = attrsFromMatchChar(match[2]);
+          return applyHaimTaskCheckboxInputRule(state, range, {
+            status: fromMarker.status,
+            checked: fromMarker.checked,
+            kind: preferred,
+          });
+        },
       }),
       new InputRule({
         find: haimTaskMarkdownPrefixInputRegex,
-        handler: ({ state, range, match }) =>
-          applyHaimTaskCheckboxInputRule(
-            state,
-            range,
-            attrsFromMatchChar(match[1]),
-          ),
+        handler: ({ state, range, match }) => {
+          const preferred: TaskCheckboxKind =
+            this.editor.storage.taskItem?.preferredKind === 'status'
+              ? 'status'
+              : 'check';
+          const fromMarker = attrsFromMatchChar(match[1]);
+          return applyHaimTaskCheckboxInputRule(state, range, {
+            status: fromMarker.status,
+            checked: fromMarker.checked,
+            kind: preferred,
+          });
+        },
       }),
     ];
   },

@@ -20,12 +20,15 @@ GFM task list plus an app-custom **status** checkbox. Used in Haim Editor WYSIWY
 
 ### Kinds
 
-| Kind | Click / Ctrl-Tab | Notes |
-|------|------------------|-------|
-| `check` (일반) | `todo ↔ done` | GFM-compatible; never writes `~` |
-| `status` (상태) | `todo → doing → done → todo` | Created by typing `[~]` or slash 「상태 할 일」 |
+Document setting `taskCheckbox` in `<!-- document-settings -->` chooses the mode for the whole file (Document Settings modal):
 
-Vault markdown only encodes status while the marker is `~`. After a status item moves to `[ ]`/`[x]`, reload may treat it as `check` again until `[~]` is used.
+| `taskCheckbox` | Click / Ctrl-Tab | Notes |
+|----------------|------------------|-------|
+| `check` (default) | `todo ↔ done` | GFM-compatible; never writes `~` on toggle |
+| `status` | `todo → doing → done → todo` | Creates / advances `[~]` doing state |
+
+Per-item `data-kind` still exists in the editor DOM; clicks follow the **document** preference.
+Typing `[~]` still parses as `doing`; in `check` mode the next click goes to `done`.
 
 ## Spec (interop)
 
@@ -99,10 +102,10 @@ Static HTML cannot set the DOM `indeterminate` property — use `data-status="do
 
 ### 6. Non-goals
 
+- Persisting per-item `kind=status` across vault reload when the marker is not `~` and document mode is `check`.
 - Patching md-editor-rt vendor `github-task-lists`.
 - Div-only custom checkboxes (native `<input type="checkbox">` + `accent-color`).
 - Chat-specific task markers.
-- Persisting `kind=status` across vault reload when the marker is not `~`.
 
 ## Implementation
 

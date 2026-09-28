@@ -12,9 +12,11 @@ import {
   Search,
 } from 'lucide-react';
 import {
-  advanceTaskCheckboxMarker,
+  advanceTaskCheckboxStatus,
   parseTaskCheckboxMarker,
+  serializeTaskCheckboxMarkerForKind,
 } from '@/utils/taskCheckboxStatus';
+import { resolveDocumentTaskCheckbox } from '@/utils/documentSettingsMeta';
 
 function parseChecklistMarkdown(markdown) {
   const lines = String(markdown ?? '').split('\n');
@@ -77,7 +79,11 @@ function toggleTaskLine(markdown, lineIndex) {
   const line = lines[lineIndex];
   const match = line.match(/^(\s*(?:[-*]|\d+\.)\s+)\[([ xX~])\](.*)$/);
   if (!match) return markdown;
-  const next = advanceTaskCheckboxMarker(match[2]);
+  const preferred = resolveDocumentTaskCheckbox(markdown);
+  const next = serializeTaskCheckboxMarkerForKind(
+    advanceTaskCheckboxStatus(parseTaskCheckboxMarker(match[2]), preferred),
+    preferred,
+  );
   lines[lineIndex] = `${match[1]}[${next}]${match[3]}`;
   return lines.join('\n');
 }

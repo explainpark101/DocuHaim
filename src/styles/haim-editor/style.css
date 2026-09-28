@@ -658,14 +658,13 @@ html[data-haim-prose-width-clamp='1']
 .haim-editor-prose li.task-list-item,
 .md-editor-preview li.task-list-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.45em;
 }
 
 .haim-editor-prose ul[data-type='taskList'] li > label,
 .haim-editor-prose li.task-list-item > label,
 .md-editor-preview li.task-list-item > label {
-  margin-top: 0.22em;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;

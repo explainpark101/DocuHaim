@@ -23,7 +23,11 @@ import {
   createNoteCoverFoldExtension,
   setNoteCoverFoldDocKey,
 } from '@/utils/noteCover/noteCoverFoldExtension';
-import { toggleTaskCheckboxBetweenChecked } from '@/utils/editorMarkdownStyle';
+import {
+  makeToggleTaskCheckboxHandler,
+} from '@/utils/editorMarkdownStyle';
+import type { TaskCheckboxKind } from '@/utils/taskCheckboxStatus';
+import { DEFAULT_DOCUMENT_TASK_CHECKBOX } from '@/utils/documentSettingsMeta';
 
 type Props = {
   initialValue: string;
@@ -39,6 +43,8 @@ type Props = {
   noteCoverFoldDocKey?: string | null | undefined;
   /** Collapse long `data:image/...;base64,...` payloads (and mermaid fences). */
   foldBase64Images?: boolean | undefined;
+  /** Document task-checkbox mode (from document-settings). */
+  getTaskCheckboxKind?: (() => TaskCheckboxKind) | undefined;
 };
 
 /**
@@ -56,6 +62,7 @@ export default function HaimSourcePane({
   onPasteImages,
   noteCoverFoldDocKey = null,
   foldBase64Images = true,
+  getTaskCheckboxKind,
 }: Props) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const onDocChangedRef = useRef(onDocChanged);
@@ -66,6 +73,8 @@ export default function HaimSourcePane({
   onPasteImagesRef.current = onPasteImages;
   const foldDocKeyRef = useRef(noteCoverFoldDocKey);
   foldDocKeyRef.current = noteCoverFoldDocKey;
+  const getTaskCheckboxKindRef = useRef(getTaskCheckboxKind);
+  getTaskCheckboxKindRef.current = getTaskCheckboxKind;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -89,7 +98,10 @@ export default function HaimSourcePane({
         ...historyKeymap,
         {
           key: 'Ctrl-Tab',
-          run: toggleTaskCheckboxBetweenChecked,
+          run: makeToggleTaskCheckboxHandler(
+            () =>
+              getTaskCheckboxKindRef.current?.() ?? DEFAULT_DOCUMENT_TASK_CHECKBOX,
+          ),
         },
       ]),
       markdown(),

@@ -12,6 +12,7 @@ import { invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import HaimToolbar from '@/components/haimEditor/HaimToolbar';
 import HaimSourcePane from '@/components/haimEditor/HaimSourcePane';
 import HaimTocPanel from '@/components/haimEditor/HaimTocPanel';
+import ChecklistProgressSidebar from '@/components/ChecklistProgressSidebar';
 import HaimLinkHoverHint from '@/components/haimEditor/HaimLinkHoverHint';
 import { getHaimSelectedPlainText } from '@/components/haimEditor/getHaimSelectedPlainText';
 import {
@@ -30,7 +31,6 @@ import {
   normalizeUploadResult,
 } from '@/utils/haimImageAnnotateUpload';
 import { registerHaimOpenViewPath } from '@/utils/haimOpenViewPath';
-import { countTaskCheckboxLines } from '@/utils/taskCheckboxStatus';
 import DocuhaimNoteLinkModal from '@/components/haimEditor/DocuhaimNoteLinkModal';
 import HaimUrlLinkModal from '@/components/haimEditor/HaimUrlLinkModal';
 import {
@@ -58,7 +58,10 @@ import {
   loadHaimTocLayout,
   type HaimTocLayout,
 } from '@/utils/haimTocLayoutSettings';
-import { parseDocumentSettingsMeta } from '@/utils/documentSettingsMeta';
+import {
+  parseDocumentSettingsMeta,
+  resolveDocumentTaskCheckbox,
+} from '@/utils/documentSettingsMeta';
 import {
   HAIM_TYPOGRAPHY_CHANGED_EVENT,
   loadHaimTypographyGlobal,
@@ -180,6 +183,7 @@ export default function HaimEditor({
   const [foldBase64Images] = useBase64ImageFold();
   const noteCoverFoldDocKey = getNoteCoverFoldKeyFromFile(currentFile);
   const [tocOpen, setTocOpen] = useState(false);
+  const [checklistProgressOpen, setChecklistProgressOpen] = useState(false);
   const [tocLayout, setTocLayout] = useState<HaimTocLayout>(() => loadHaimTocLayout());
   const [globalTypography, setGlobalTypography] = useState<HaimTypographyRules>(() =>
     loadHaimTypographyGlobal(),
@@ -206,7 +210,6 @@ export default function HaimEditor({
   const [clipCropFile, setClipCropFile] = useState<File | null>(null);
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [invisibleCharsVisible, setInvisibleCharsVisible] = useState(false);
-  const [checklistHint, setChecklistHint] = useState<string | null>(null);
   const [coverExportConfirmOpen, setCoverExportConfirmOpen] = useState(false);
   const [localImageUploading, setLocalImageUploading] = useState(false);
   const imageUploadingRef = useRef(false);
@@ -325,6 +328,16 @@ export default function HaimEditor({
     if (!editor) return;
     editor.commands.setHaimTypographyRules(resolvedTypography);
   }, [editor, resolvedTypography]);
+
+  const docTaskCheckbox = useMemo(
+    () => resolveDocumentTaskCheckbox(value || ''),
+    [value],
+  );
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.commands.setHaimTaskCheckboxPreferredKind(docTaskCheckbox);
+  }, [editor, docTaskCheckbox]);
 
   useEffect(() => {
     if (!editor) return;
@@ -1256,14 +1269,7 @@ export default function HaimEditor({
       },
       'editor-heading-remap': () => openHeadingRemap(),
       'editor-checklist-progress': () => {
-        const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-        const { total: tasks, completed: done } = countTaskCheckboxLines(md);
-        setChecklistHint(
-          tasks
-            ? `체크리스트 ${done}/${tasks} 완료`
-            : '문서에 체크리스트 항목이 없습니다',
-        );
-        window.setTimeout(() => setChecklistHint(null), 3200);
+        setChecklistProgressOpen(true);
       },
       'editor-image-upload': () => {
         // Advanced Search: open file picker via hidden input is awkward; prompt path
@@ -1378,14 +1384,7 @@ export default function HaimEditor({
       onCreateQrCode: openQrCodeCreate,
       onHeadingRemap: openHeadingRemap,
       onChecklistProgress: () => {
-        const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-        const { total: tasks, completed: done } = countTaskCheckboxLines(md);
-        setChecklistHint(
-          tasks
-            ? `체크리스트 ${done}/${tasks} 완료`
-            : '문서에 체크리스트 항목이 없습니다',
-        );
-        window.setTimeout(() => setChecklistHint(null), 3200);
+        setChecklistProgressOpen(true);
       },
       onLlmAssist: () => {
         llmAssist?.toggleAssist?.();
@@ -1515,14 +1514,7 @@ export default function HaimEditor({
             llmAssistActive: Boolean(llmAssist?.open),
             onHeadingRemap: openHeadingRemap,
             onChecklistProgress: () => {
-              const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-              const { total: tasks, completed: done } = countTaskCheckboxLines(md);
-              setChecklistHint(
-                tasks
-                  ? `체크리스트 ${done}/${tasks} 완료`
-                  : '문서에 체크리스트 항목이 없습니다',
-              );
-              window.setTimeout(() => setChecklistHint(null), 3200);
+              setChecklistProgressOpen(true);
             },
             onImageLink: () => setImageLinkOpen(true),
             onUrlLink: openUrlLinkModal,
@@ -1574,11 +1566,6 @@ export default function HaimEditor({
             />
           </Suspense>
         ) : null}
-        {checklistHint ? (
-          <div className="shrink-0 border-b border-slate-200 bg-indigo-50 px-3 py-1 text-xs text-indigo-900 dark:border-odp-borderStrong dark:bg-indigo-950/40 dark:text-indigo-100">
-            {checklistHint}
-          </div>
-        ) : null}
         <div className="relative flex min-h-0 flex-1">
           {showImageUploadOverlay ? (
             <div
@@ -1628,6 +1615,11 @@ export default function HaimEditor({
                   onViewReady={() => setCmRevision((n) => n + 1)}
                   noteCoverFoldDocKey={noteCoverFoldDocKey}
                   foldBase64Images={foldBase64Images}
+                  getTaskCheckboxKind={() =>
+                    resolveDocumentTaskCheckbox(
+                      metaPrefixRef.current || value || '',
+                    )
+                  }
                   {...(onUploadImage && !previewOnly
                     ? {
                         onPasteImages: (files: File[]) => {
@@ -1687,6 +1679,14 @@ export default function HaimEditor({
             wysiwygScrollRef={wysiwygScrollRef}
             cmViewRef={cmViewRef}
             layout={tocLayout}
+          />
+          <ChecklistProgressSidebar
+            open={checklistProgressOpen}
+            onOpenChange={setChecklistProgressOpen}
+            markdown={vaultMarkdown}
+            onMarkdownChange={(next) => {
+              setEditorMarkdown(editor, next, metaPrefixRef, { emitUpdate: true });
+            }}
           />
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RadioGroup } from 'radix-ui';
 import Modal from '@/components/modals/Modal';
 import Button from '@/components/Button';
@@ -6,9 +6,14 @@ import FontFamilyInput from '@/components/FontFamilyInput';
 import { IconBack, IconCheck, IconRefresh } from '@/components/icons';
 import {
   DEFAULT_DOCUMENT_SETTINGS_META,
+  DEFAULT_DOCUMENT_TASK_CHECKBOX,
   DEFAULT_SOURCE_LIST_TITLE,
   type DocumentSettingsMeta,
 } from '@/utils/documentSettingsMeta';
+import type {
+  TaskCheckboxKind,
+  TaskCheckboxStatus,
+} from '@/utils/taskCheckboxStatus';
 import { buildFontFamilyOptions } from '@/utils/fontOptions';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 import {
@@ -70,6 +75,91 @@ const TYPOGRAPHY_MODE_OPTIONS: ReadonlyArray<{
   { value: 'inherit', label: '전역' },
   { value: 'on', label: '켜기' },
   { value: 'off', label: '끄기' },
+];
+
+type PreviewSample = {
+  status: TaskCheckboxStatus;
+  label: string;
+};
+
+function TaskCheckboxHtmlPreview({
+  kind,
+  samples,
+}: {
+  kind: TaskCheckboxKind;
+  samples: readonly PreviewSample[];
+}) {
+  return (
+    <ul
+      className={[
+        'mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border border-gray-200/80 bg-white/90 px-2.5 py-2 text-[12px] text-gray-700 dark:border-odp-borderStrong dark:bg-odp-bgSoft/90 dark:text-odp-fg',
+        kind === 'status'
+          ? 'accent-amber-600 dark:accent-amber-400'
+          : 'accent-blue-600 dark:accent-sky-400',
+      ].join(' ')}
+      aria-hidden
+    >
+      {samples.map((sample) => (
+        <TaskCheckboxHtmlPreviewItem
+          key={`${kind}-${sample.status}`}
+          kind={kind}
+          status={sample.status}
+          label={sample.label}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function TaskCheckboxHtmlPreviewItem({
+  kind,
+  status,
+  label,
+}: {
+  kind: TaskCheckboxKind;
+  status: TaskCheckboxStatus;
+  label: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.checked = status === 'done';
+    el.indeterminate = status === 'doing';
+  }, [status]);
+
+  return (
+    <li className="inline-flex items-center gap-1.5">
+      <input
+        ref={inputRef}
+        type="checkbox"
+        tabIndex={-1}
+        readOnly
+        disabled
+        className="pointer-events-none h-[1.05em] w-[1.05em] shrink-0"
+        data-status={status}
+        data-kind={kind}
+        aria-checked={
+          status === 'doing' ? 'mixed' : status === 'done' ? 'true' : 'false'
+        }
+      />
+      <span className={status === 'done' ? 'opacity-60 line-through' : undefined}>
+        {label}
+      </span>
+    </li>
+  );
+}
+
+const CHECK_PREVIEW_SAMPLES: readonly PreviewSample[] = [
+  { status: 'todo', label: '할 일' },
+  { status: 'done', label: '완료' },
+];
+
+const STATUS_PREVIEW_SAMPLES: readonly PreviewSample[] = [
+  { status: 'todo', label: '할 일' },
+  { status: 'doing', label: '진행 중' },
+  { status: 'done', label: '완료' },
 ];
 
 /**
@@ -167,6 +257,8 @@ export default function DocumentSettingsModal({
       },
       fonts: { ...DEFAULT_DOCUMENT_SETTINGS_META.fonts, ...local.fonts },
       webfontCss: local.webfontCss ?? '',
+      taskCheckbox:
+        local.taskCheckbox === 'status' ? 'status' : DEFAULT_DOCUMENT_TASK_CHECKBOX,
     };
     if (haimTypography) next.haimTypography = haimTypography;
     else delete next.haimTypography;
@@ -220,6 +312,70 @@ export default function DocumentSettingsModal({
                 placeholder={DEFAULT_SOURCE_LIST_TITLE}
               />
             </label>
+          </section>
+
+          <section
+            className={settingsSectionCardClass('amber')}
+            aria-label="할 일 체크박스"
+          >
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
+              할 일 체크박스
+            </h3>
+            <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+              이 문서에서 체크박스 클릭 / Ctrl-Tab 동작을 고릅니다.
+            </p>
+            <RadioGroup.Root
+              className="mt-2 flex flex-col gap-2"
+              value={local.taskCheckbox === 'status' ? 'status' : 'check'}
+              onValueChange={(v) =>
+                setLocal((prev) => ({
+                  ...prev,
+                  taskCheckbox: (v === 'status' ? 'status' : 'check') as TaskCheckboxKind,
+                }))
+              }
+              aria-label="체크박스 종류"
+            >
+              <label className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white/80 px-3 py-2 dark:border-odp-borderStrong dark:bg-odp-bgSoft/80">
+                <RadioGroup.Item
+                  value="check"
+                  className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-gray-400 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 data-[state=checked]:border-blue-600 dark:border-odp-borderStrong"
+                >
+                  <RadioGroup.Indicator className="flex h-full w-full items-center justify-center after:block after:h-2 after:w-2 after:rounded-full after:bg-blue-600" />
+                </RadioGroup.Item>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-gray-800 dark:text-odp-fgStrong">
+                    기본 체크박스
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[11px] text-gray-500 dark:text-odp-muted">
+                    [ ] ↔ [x] (GFM)
+                  </span>
+                  <TaskCheckboxHtmlPreview
+                    kind="check"
+                    samples={CHECK_PREVIEW_SAMPLES}
+                  />
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white/80 px-3 py-2 dark:border-odp-borderStrong dark:bg-odp-bgSoft/80">
+                <RadioGroup.Item
+                  value="status"
+                  className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-gray-400 outline-none focus-visible:ring-2 focus-visible:ring-amber-400 data-[state=checked]:border-amber-600 dark:border-odp-borderStrong"
+                >
+                  <RadioGroup.Indicator className="flex h-full w-full items-center justify-center after:block after:h-2 after:w-2 after:rounded-full after:bg-amber-600" />
+                </RadioGroup.Item>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-gray-800 dark:text-odp-fgStrong">
+                    상태 체크박스
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[11px] text-gray-500 dark:text-odp-muted">
+                    [ ] → [~] → [x]
+                  </span>
+                  <TaskCheckboxHtmlPreview
+                    kind="status"
+                    samples={STATUS_PREVIEW_SAMPLES}
+                  />
+                </span>
+              </label>
+            </RadioGroup.Root>
           </section>
 
           <section

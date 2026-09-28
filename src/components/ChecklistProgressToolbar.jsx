@@ -1,19 +1,12 @@
 import { BarChart3 } from 'lucide-react';
 
-const MOBILE_MQ = '(max-width: 768px)';
-
-function isMobileViewport() {
-  return typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches;
-}
-
-/** md-editor-rt defToolbars: opens checklist progress floating panel (desktop only) */
+/** md-editor-rt defToolbars: opens checklist progress right sidebar */
 export default function ChecklistProgressToolbar({ onOpen }) {
   return (
     <button
       type="button"
-      className="md-editor-toolbar-item max-md:hidden"
+      className="md-editor-toolbar-item"
       onClick={() => {
-        if (isMobileViewport()) return;
         onOpen?.();
       }}
       title="체크리스트 진행률"
