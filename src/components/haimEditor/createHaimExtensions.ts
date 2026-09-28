@@ -138,7 +138,12 @@ export function createHaimExtensions(
     Subscript,
     Superscript,
     HaimTypography.configure({ initialRules: typographyRules }),
-    Placeholder.configure({ placeholder }),
+    Placeholder.configure({
+      placeholder,
+      // Chat composer: show like a textarea (even when unfocused).
+      // Note editor: keep TipTap default (current empty node only).
+      ...(isNote ? {} : { showOnlyCurrent: false }),
+    }),
     CharacterCount,
     Focus.configure({ className: 'haim-node-focused' }),
     Selection,
