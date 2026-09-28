@@ -42,8 +42,12 @@ function shouldSkipEnter(
   if (isContentEditableTarget(event.target)) return true;
   const tag = targetTagName(event.target);
   if (tag === 'textarea') return true;
-  if (ignoreEnterInFields && (tag === 'input' || tag === 'select')) return true;
-  return false;
+  if (!ignoreEnterInFields) return false;
+  if (tag !== 'input' && tag !== 'select') return false;
+  // Only skip when the field is inside a dialog. Leftover focus outside
+  // (e.g. tree rename input) must not block Confirm Enter.
+  const el = event.target as HTMLElement | null;
+  return Boolean(el?.closest?.('[role="dialog"], [aria-modal="true"]'));
 }
 
 function consumeKeyEvent(event: KeyboardEvent): void {

@@ -1772,10 +1772,7 @@ export function useTreeOpsDomain() {
         return;
       }
 
-      const originalName = node.name || '';
-      const lastDot = originalName.lastIndexOf('.');
-      const ext = lastDot > 0 ? originalName.slice(lastDot) : '';
-      const newName = `${trimmed}${ext}`;
+      const newName = trimmed;
       const oldPath = node.path;
       const lastSlash = oldPath.lastIndexOf('/');
       const dirPrefix = lastSlash >= 0 ? oldPath.slice(0, lastSlash + 1) : '';

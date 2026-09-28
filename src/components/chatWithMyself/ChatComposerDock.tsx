@@ -8,16 +8,30 @@ import {
 } from 'react';
 import { motion as Motion } from 'motion/react';
 import { useResizablePanelHeight } from '@/hooks/useResizablePanelHeight';
+import {
+  CHAT_COMPOSER_DOCK_MIN_FIT_H,
+  CHAT_COMPOSER_DOCK_MIN_H,
+  COMPOSER_TOOLBAR_CHROME_H,
+  resolveChatComposerDockFitHeight,
+  resolveChatComposerDockTargetHeight,
+} from '@/components/chatWithMyself/chatComposerDockHeight';
+
+export {
+  COMPOSER_TOOLBAR_CHROME_H,
+  resolveChatComposerDockFitHeight,
+  resolveChatComposerDockTargetHeight,
+} from '@/components/chatWithMyself/chatComposerDockHeight';
 
 const STORAGE_KEY = 's3haim_chat_composer_dock_height';
 const DEFAULT_H = 280;
-const MIN_H = 140;
-/** Floor while auto-fitting: edit banner + group row + min editor + padding. */
-const MIN_FIT_H = 160;
+const MIN_H = CHAT_COMPOSER_DOCK_MIN_H;
+const MIN_FIT_H = CHAT_COMPOSER_DOCK_MIN_FIT_H;
 
 const HEIGHT_TRANSITION = {
-  duration: 0.32,
-  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+  type: 'spring' as const,
+  /** Snappy grow/shrink — most of the motion finishes within this window. */
+  visualDuration: 0.14,
+  bounce: 0,
 };
 
 /** Prefer the chat column height; fall back to visual viewport. */
@@ -52,15 +66,30 @@ export type ChatComposerDockProps = {
    * floor so edit pretext height can expand the dock further.
    */
   fitContentHeight?: number | null;
+  /**
+   * Extra height while the editor toolbar is visible. Applied on top of the
+   * persisted dock height (and included in autoFit grow) so the input area
+   * does not shrink below ~1 line.
+   */
+  toolbarChromeHeight?: number;
+  /**
+   * Extra height while helper text is visible (normal compose only). AutoFit
+   * folds helper into `fitContentHeight` instead.
+   */
+  helperChromeHeight?: number;
 };
 
 /**
  * Resizable bottom composer dock. Height is always the persisted max;
  * children fill the dock with no outer overflow scroll.
  *
- * When `autoFit` is true (reply / message edit), the dock grows by the preview
- * height and, when provided, up to `fitContentHeight` (pretext-sized editor),
- * capped at 70% of the message column. Manual resize via the handle always
+ * When the editor toolbar is visible, `toolbarChromeHeight` grows the dock on
+ * top of the persisted height so the input keeps at least ~1 line.
+ *
+ * When `autoFit` is true (reply / message edit), the dock tracks natural
+ * content height (`fitContentHeight`) so shorter pretext or hiding helper
+ * text can shrink it, capped at 70% of the message column. Height changes
+ * animate with a short Motion spring. Manual resize via the handle always
  * wins. Leaving autoFit restores the pre-fit dock height when the user did
  * not resize during the session.
  */
@@ -71,6 +100,8 @@ export default function ChatComposerDock({
   fitKey = '',
   fitPreviewHeight = 0,
   fitContentHeight = null,
+  toolbarChromeHeight = 0,
+  helperChromeHeight = 0,
 }: ChatComposerDockProps) {
   const [maxHeight, setMaxHeight] = useState(chatComposerAreaMaxHeight);
   const heightBeforeFitRef = useRef<number | null>(null);
@@ -78,6 +109,8 @@ export default function ChatComposerDock({
   const [fitHeight, setFitHeight] = useState<number | null>(null);
   /** Once the user drags the handle during autoFit, stop overriding with measures. */
   const userResizedDuringFitRef = useRef(false);
+  const toolbarBump = Math.max(0, Math.ceil(toolbarChromeHeight || 0));
+  const helperBump = Math.max(0, Math.ceil(helperChromeHeight || 0));
 
   useEffect(() => {
     const sync = () => setMaxHeight(chatComposerAreaMaxHeight());
@@ -106,9 +139,9 @@ export default function ChatComposerDock({
       if (heightBeforeFitRef.current == null) {
         heightBeforeFitRef.current = height;
         userResizedDuringFitRef.current = false;
-        // Start from current dock height so we do not flash to MIN_FIT_H
-        // before the first content measure (and fillParent) settles.
-        setFitHeight(height);
+        // Start from current dock height (incl. toolbar/helper chrome) so we
+        // do not flash shorter before the first content measure settles.
+        setFitHeight(Math.min(maxHeight, height + toolbarBump + helperBump));
       }
       return undefined;
     }
@@ -119,10 +152,19 @@ export default function ChatComposerDock({
     if (!userResizedDuringFitRef.current) {
       const restored = Math.min(maxHeight, Math.max(MIN_H, saved));
       setHeight(restored);
+    } else {
+      const chrome = toolbarBump + helperBump;
+      if (chrome > 0) {
+        // Fit measure folded chrome into height; strip it so the !autoFit
+        // display path (height + bumps) does not double-count.
+        setHeight((prev) =>
+          Math.min(maxHeight, Math.max(MIN_H, prev - chrome)),
+        );
+      }
     }
     userResizedDuringFitRef.current = false;
     return undefined;
-  }, [autoFit, height, maxHeight, setHeight]);
+  }, [autoFit, height, maxHeight, setHeight, toolbarBump, helperBump]);
 
   // While autoFit + user is dragging: treat height as the fit target.
   useLayoutEffect(() => {
@@ -131,7 +173,9 @@ export default function ChatComposerDock({
     setFitHeight(height);
   }, [autoFit, isResizing, height]);
 
-  // Grow-only fit: preview bump over pre-fit height, plus optional pretext content floor.
+  // Content-driven fit: grow and shrink with pretext / helper chrome.
+  // Do not floor to live observed height — fillParent children report the
+  // current dock size and would make shrink impossible.
   useLayoutEffect(() => {
     if (!autoFit) return undefined;
     if (userResizedDuringFitRef.current) return undefined;
@@ -139,37 +183,25 @@ export default function ChatComposerDock({
     const measure = () => {
       if (userResizedDuringFitRef.current) return;
       const base = heightBeforeFitRef.current ?? height;
-      const previewBump = Math.max(0, Math.ceil(fitPreviewHeight || 0));
-      const withPreview = base + previewBump;
-      const contentFloor =
-        typeof fitContentHeight === 'number' && fitContentHeight > 0
-          ? Math.ceil(fitContentHeight)
-          : 0;
-      const observed = contentRef.current
-        ? Math.ceil(
-            Math.max(
-              contentRef.current.scrollHeight,
-              contentRef.current.getBoundingClientRect().height,
-            ),
-          )
-        : 0;
-      const next = Math.min(
+      const next = resolveChatComposerDockFitHeight({
         maxHeight,
-        Math.max(MIN_FIT_H, withPreview, contentFloor, observed),
-      );
+        minFitHeight: MIN_FIT_H,
+        baseHeight: base,
+        fitPreviewHeight,
+        fitContentHeight,
+        toolbarChromeHeight: toolbarBump,
+      });
       setFitHeight((prev) => (prev === next ? prev : next));
     };
 
     measure();
     const raf1 = window.requestAnimationFrame(measure);
     const t1 = window.setTimeout(measure, 50);
-    const t2 = window.setTimeout(measure, 280);
 
     if (typeof ResizeObserver === 'undefined') {
       return () => {
         window.cancelAnimationFrame(raf1);
         window.clearTimeout(t1);
-        window.clearTimeout(t2);
       };
     }
     const el = contentRef.current;
@@ -179,7 +211,6 @@ export default function ChatComposerDock({
       ro?.disconnect();
       window.cancelAnimationFrame(raf1);
       window.clearTimeout(t1);
-      window.clearTimeout(t2);
     };
   }, [
     autoFit,
@@ -188,6 +219,7 @@ export default function ChatComposerDock({
     fitPreviewHeight,
     fitContentHeight,
     height,
+    toolbarBump,
   ]);
 
   // Keep persisted height in sync when autoFit settles (so handle aria + next open match).
@@ -197,8 +229,16 @@ export default function ChatComposerDock({
     if (height !== fitHeight) setHeight(fitHeight);
   }, [autoFit, fitHeight, height, isResizing, setHeight]);
 
-  const targetHeight =
-    autoFit && fitHeight != null && !isResizing ? fitHeight : height;
+  const targetHeight = resolveChatComposerDockTargetHeight({
+    height,
+    maxHeight,
+    minHeight: MIN_H,
+    autoFit,
+    fitHeight,
+    isResizing,
+    toolbarChromeHeight: toolbarBump,
+    helperChromeHeight: helperBump,
+  });
 
   return (
     <Motion.div

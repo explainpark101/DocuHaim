@@ -41,6 +41,8 @@ import {
   type TreeTransferBusyEntry,
 } from '@/utils/treeTransferBusy';
 import TreeNodeModifiedLabel from '@/components/TreeNodeModifiedLabel';
+import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import { getExt } from '@/App/helpers';
 import { collectOsDropPayload } from '@/utils/osDropPayload';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { isExcludedPath } from '@/utils/advancedSearch/collectSources';
@@ -247,6 +249,8 @@ export default function TreeNode({
   const [isRenaming, setIsRenaming] = useState(false);
   const [tempName, setTempName] = useState(node.name);
   const [isStickyPinned, setIsStickyPinned] = useState(false);
+  const [extensionConfirmName, setExtensionConfirmName] = useState<string | null>(null);
+  const skipRenameBlurCommitRef = useRef(false);
 
   useEffect(() => {
     if (
@@ -256,16 +260,11 @@ export default function TreeNode({
       renameTarget.node?.path === node.path
     ) {
       setIsRenaming(true);
-      setTempName(
-        node.type === 'file'
-          ? node.name?.includes('.')
-            ? node.name.slice(0, node.name.lastIndexOf('.'))
-            : node.name
-          : node.name,
-      );
+      // Files: edit the full name (including extension).
+      setTempName(node.name);
       onClearRenameTarget();
     }
-  }, [renameTarget, storageType, node.path, node.type, node.name, onClearRenameTarget]);
+  }, [renameTarget, storageType, node.path, node.name, onClearRenameTarget]);
 
   const isOpen =
     node.type === 'folder'
@@ -291,11 +290,6 @@ export default function TreeNode({
 
   const isTrashRoot = node.path === '.trash/';
   const displayName = isTrashRoot ? '쓰레기통' : node.name;
-
-  const baseName = node.name.includes('.')
-    ? node.name.slice(0, node.name.lastIndexOf('.'))
-    : node.name;
-  const extension = node.name.includes('.') ? node.name.slice(node.name.lastIndexOf('.')) : '';
 
   const titleContainerRef = useRef<HTMLSpanElement | null>(null);
   const rowRef = useRef<HTMLDivElement | null>(null);
@@ -667,23 +661,26 @@ export default function TreeNode({
   const handleRenameStart = (e: MouseEvent) => {
     e.stopPropagation();
     if (isNodeLocked) return;
-    if (node.type === 'file') {
-      setTempName(baseName);
-    } else if (node.type === 'folder') {
+    if (node.type === 'file' || node.type === 'folder') {
       setTempName(node.name);
     } else return;
     setIsRenaming(true);
   };
 
+  const finishRenameSession = (nextTempName: string) => {
+    skipRenameBlurCommitRef.current = true;
+    setTempName(nextTempName);
+    setIsRenaming(false);
+  };
+
   const commitRename = () => {
     if (isNodeLocked) {
-      setIsRenaming(false);
+      finishRenameSession(node.name);
       return;
     }
     const trimmed = tempName.trim();
     if (!trimmed) {
-      setTempName(node.type === 'file' ? baseName : node.name);
-      setIsRenaming(false);
+      finishRenameSession(node.name);
       return;
     }
     if (trimmed.includes('/')) {
@@ -692,25 +689,41 @@ export default function TreeNode({
           ? "폴더 이름에는 '/' 문자를 사용할 수 없습니다."
           : "파일 이름에는 '/' 문자를 사용할 수 없습니다.",
       );
-      setTempName(node.type === 'file' ? baseName : node.name);
-      setIsRenaming(false);
+      finishRenameSession(node.name);
       return;
     }
 
     if (node.type === 'file') {
-      if (trimmed === baseName) {
-        setIsRenaming(false);
-        return;
-      }
-      onRename?.(storageType, node, trimmed);
-    } else if (node.type === 'folder') {
       if (trimmed === node.name) {
-        setIsRenaming(false);
+        finishRenameSession(node.name);
+        return;
+      }
+      if (getExt(trimmed) !== getExt(node.name)) {
+        setExtensionConfirmName(trimmed);
+        finishRenameSession(node.name);
         return;
       }
       onRename?.(storageType, node, trimmed);
+      finishRenameSession(trimmed);
+      return;
     }
-    setIsRenaming(false);
+
+    if (node.type === 'folder') {
+      if (trimmed === node.name) {
+        finishRenameSession(node.name);
+        return;
+      }
+      onRename?.(storageType, node, trimmed);
+      finishRenameSession(trimmed);
+    }
+  };
+
+  const handleRenameBlur = () => {
+    if (skipRenameBlurCommitRef.current) {
+      skipRenameBlurCommitRef.current = false;
+      return;
+    }
+    commitRename();
   };
 
   const handleRenameKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -721,9 +734,19 @@ export default function TreeNode({
     } else if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      setTempName(node.type === 'file' ? baseName : node.name);
-      setIsRenaming(false);
+      finishRenameSession(node.name);
     }
+  };
+
+  const handleExtensionConfirm = () => {
+    const nextName = extensionConfirmName;
+    setExtensionConfirmName(null);
+    if (!nextName || node.type !== 'file') return;
+    onRename?.(storageType, node, nextName);
+  };
+
+  const handleExtensionConfirmCancel = () => {
+    setExtensionConfirmName(null);
   };
 
   const shouldShowStickyFolder =
@@ -791,6 +814,7 @@ export default function TreeNode({
   }, [shouldShowStickyFolder, stickyTopOffset, level]);
 
   return (
+    <>
     <div className={shouldShowStickyFolder ? 'relative' : ''}>
       <Motion.div
         ref={setRowRef}
@@ -910,22 +934,15 @@ export default function TreeNode({
           {isRenaming && !isTrashRoot && (node.type === 'file' || node.type === 'folder') ? (
             <span className="flex items-baseline gap-1 min-w-0">
               <input
-                className="bg-transparent border-none outline-none text-sm font-medium truncate placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                className="min-w-0 flex-1 bg-transparent border-none outline-none text-sm font-medium truncate placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 value={tempName}
                 onChange={(e) => setTempName(e.target.value)}
-                onBlur={commitRename}
+                onBlur={handleRenameBlur}
                 onKeyDown={handleRenameKeyDown}
                 onClick={(e) => e.stopPropagation()}
                 autoFocus
-                placeholder={
-                  node.type === 'file' ? baseName || '이름 없음' : node.name || '폴더명'
-                }
+                placeholder={node.name || (node.type === 'file' ? '이름 없음' : '폴더명')}
               />
-              {node.type === 'file' && extension && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
-                  {extension}
-                </span>
-              )}
             </span>
           ) : (
             <span className="flex min-w-0 flex-col overflow-hidden">
@@ -1057,5 +1074,17 @@ export default function TreeNode({
             />
           ))}
     </div>
+    {extensionConfirmName != null ? (
+      <ConfirmModal
+        isOpen
+        title="확장자 변경"
+        message={`확장자가 변경됩니다.\n${node.name} → ${extensionConfirmName}\n계속하시겠습니까?`}
+        confirmLabel="계속"
+        cancelLabel="취소"
+        onConfirm={handleExtensionConfirm}
+        onCancel={handleExtensionConfirmCancel}
+      />
+    ) : null}
+    </>
   );
 }
