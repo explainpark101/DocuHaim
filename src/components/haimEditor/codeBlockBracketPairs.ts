@@ -1,7 +1,7 @@
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 
-/** Opening → closing pairs (code-editor style). */
+/** Opening → closing pairs (code-editor style). Backtick is JS-family only. */
 export const CODE_BLOCK_BRACKET_PAIRS: Readonly<Record<string, string>> = {
   '(': ')',
   '[': ']',
@@ -10,6 +10,18 @@ export const CODE_BLOCK_BRACKET_PAIRS: Readonly<Record<string, string>> = {
   '"': '"',
   '`': '`',
 };
+
+/** Fence languages where backtick pairs like `[` (template / string wrap). */
+export const CODE_BLOCK_BACKTICK_LANGUAGES = new Set([
+  'js',
+  'javascript',
+  'jsx',
+  'mjs',
+  'cjs',
+  'ts',
+  'typescript',
+  'tsx',
+]);
 
 const CLOSE_CHARS = new Set(Object.values(CODE_BLOCK_BRACKET_PAIRS));
 
@@ -23,6 +35,18 @@ const pluginKey = new PluginKey('haimCodeBlockBracketPairs');
 function charAt(state: EditorState, pos: number): string {
   if (pos < 0 || pos >= state.doc.content.size) return '';
   return state.doc.textBetween(pos, pos + 1);
+}
+
+export function getCodeBlockLanguage(state: EditorState): string {
+  const { $from } = state.selection;
+  if ($from.parent.type.name !== 'codeBlock') return '';
+  return String($from.parent.attrs.language || '')
+    .trim()
+    .toLowerCase();
+}
+
+export function isCodeBlockBacktickLanguage(language: string): boolean {
+  return CODE_BLOCK_BACKTICK_LANGUAGES.has(String(language || '').trim().toLowerCase());
 }
 
 /** Both ends of the selection must sit inside the same codeBlock. */
@@ -42,6 +66,9 @@ export function resolveBracketPairKey(event: KeyLike): string | null {
     return null;
   }
   const { key, code } = event;
+  if (key === '`' || (code === 'Backquote' && !event.shiftKey)) {
+    return '`';
+  }
   if (key in CODE_BLOCK_BRACKET_PAIRS || CLOSE_CHARS.has(key)) {
     return key;
   }
@@ -65,14 +92,13 @@ function shouldAutoPairQuote(state: EditorState, quote: string): boolean {
   const before = charAt(state, from - 1);
   const after = charAt(state, from);
   if (isWordish(before) || isWordish(after)) return false;
-  // Don't stack another identical quote when the next char is already that quote
-  // (skip-over handles typing the closer).
   if (after === quote) return false;
   return true;
 }
 
 /**
  * Build a transaction for code-block bracket/quote behavior, or null if no-op.
+ * Backtick pairing only runs for JS-family fence languages.
  */
 export function buildCodeBlockBracketTransaction(
   state: EditorState,
@@ -80,23 +106,30 @@ export function buildCodeBlockBracketTransaction(
 ): Transaction | null {
   if (!isSelectionInsideSameCodeBlock(state)) return null;
 
+  if (typed === '`' && !isCodeBlockBacktickLanguage(getCodeBlockLanguage(state))) {
+    return null;
+  }
+
   const { selection } = state;
   const { from, to, empty } = selection;
   const close = CODE_BLOCK_BRACKET_PAIRS[typed];
 
-  // Opening char (or matching quote/backtick)
   if (close !== undefined) {
     if (!empty) {
       const selected = state.doc.textBetween(from, to);
       const tr = state.tr.insertText(`${typed}${selected}${close}`, from, to);
-      tr.setSelection(TextSelection.create(tr.doc, from + typed.length, from + typed.length + selected.length));
+      tr.setSelection(
+        TextSelection.create(
+          tr.doc,
+          from + typed.length,
+          from + typed.length + selected.length,
+        ),
+      );
       return tr;
     }
 
-    // Empty selection: auto-insert pair (quotes have word heuristics)
     if (typed === "'" || typed === '"' || typed === '`') {
       if (!shouldAutoPairQuote(state, typed)) {
-        // Still skip over an existing closer
         if (charAt(state, from) === typed) {
           return state.tr.setSelection(TextSelection.create(state.doc, from + 1));
         }
@@ -109,8 +142,11 @@ export function buildCodeBlockBracketTransaction(
     return tr;
   }
 
-  // Closing char: skip over when next char already matches
   if (CLOSE_CHARS.has(typed) && empty && charAt(state, from) === typed) {
+    // Closing backtick skip only in JS-family (we never auto-inserted elsewhere)
+    if (typed === '`' && !isCodeBlockBacktickLanguage(getCodeBlockLanguage(state))) {
+      return null;
+    }
     return state.tr.setSelection(TextSelection.create(state.doc, from + 1));
   }
 
@@ -130,6 +166,12 @@ export function buildCodeBlockBracketBackspaceTransaction(
   const after = charAt(state, from);
   const expectedClose = CODE_BLOCK_BRACKET_PAIRS[before];
   if (!expectedClose || after !== expectedClose) return null;
+  if (
+    before === '`' &&
+    !isCodeBlockBacktickLanguage(getCodeBlockLanguage(state))
+  ) {
+    return null;
+  }
 
   return state.tr.delete(from - 1, from + 1);
 }

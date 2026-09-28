@@ -278,6 +278,13 @@ html[data-haim-prose-line-numbers='1']
   outline: none;
 }
 
+.haim-editor .haim-code-block__lang-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .haim-editor .haim-code-block__lang-trigger:hover,
 .haim-editor .haim-code-block__lang-trigger[data-state='open'] {
   background: color-mix(in srgb, currentColor 10%, transparent);

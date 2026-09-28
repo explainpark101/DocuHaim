@@ -70,8 +70,9 @@ export function selectValueFromLanguageAttr(
 }
 
 /**
- * Options for the language Select. Always includes plain + mermaid + highlight
- * langs; if `current` is unknown (e.g. ```js), append it so Radix Select stays valid.
+ * Options for the language picker. Always includes plain + mermaid + highlight
+ * langs; if `current` is unknown (e.g. ```js), append it so the current value
+ * stays visible in the list.
  */
 export function buildHaimCodeBlockLanguageOptions(
   current?: string | null,
@@ -95,4 +96,27 @@ export function buildHaimCodeBlockLanguageOptions(
   if (cur) add(cur, cur);
 
   return options;
+}
+
+/** Case-insensitive filter by label or value. Empty query → all options. */
+export function filterHaimCodeBlockLanguageOptions(
+  options: readonly HaimCodeBlockLanguageOption[],
+  query: string,
+): HaimCodeBlockLanguageOption[] {
+  const q = String(query ?? '').trim().toLowerCase();
+  if (!q) return [...options];
+  return options.filter((opt) => {
+    const value = opt.value.toLowerCase();
+    const label = opt.label.toLowerCase();
+    return value.includes(q) || label.includes(q);
+  });
+}
+
+/** Display label for the compact trigger / list selection. */
+export function haimCodeBlockLanguageDisplayLabel(
+  language: string | null | undefined,
+): string {
+  const trimmed = String(language ?? '').trim();
+  if (!trimmed || trimmed === HAIM_CODE_BLOCK_PLAIN_SELECT_VALUE) return 'plain';
+  return trimmed;
 }
