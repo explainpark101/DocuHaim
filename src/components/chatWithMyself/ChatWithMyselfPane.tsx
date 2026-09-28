@@ -23,6 +23,7 @@ import ChatComposer, {
   type ChatComposerHandle,
 } from '@/components/chatWithMyself/ChatComposer';
 import ChatComposerDock from '@/components/chatWithMyself/ChatComposerDock';
+import { COMPOSER_TOOLBAR_CHROME_H } from '@/components/chatWithMyself/chatComposerDockHeight';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
 import ChatDatePanelRaw from '@/components/chatWithMyself/ChatDatePanel';
 import ChatFileDropOverlay from '@/components/chatWithMyself/ChatFileDropOverlay';
@@ -575,6 +576,15 @@ export default function ChatWithMyselfPane({
         }
         return next;
       });
+    },
+    [],
+  );
+  const [composerHelperChromeHeight, setComposerHelperChromeHeight] =
+    useState(0);
+  const handleComposerHelperChromeHeightChange = useCallback(
+    (next: number) => {
+      const value = Math.max(0, Math.ceil(next || 0));
+      setComposerHelperChromeHeight((prev) => (prev === value ? prev : value));
     },
     [],
   );
@@ -2853,9 +2863,13 @@ export default function ChatWithMyselfPane({
               autoFit={Boolean(editTarget || replyTo)}
               fitKey={`${editTarget?.id || ''}:${replyTo?.id || ''}`}
               fitPreviewHeight={composerFitHeights?.previewHeight ?? 0}
-              fitContentHeight={
-                editTarget ? composerFitHeights?.contentHeight ?? null : null
+              fitContentHeight={composerFitHeights?.contentHeight ?? null}
+              toolbarChromeHeight={
+                composerToolbarOpen && !composerLightweight
+                  ? COMPOSER_TOOLBAR_CHROME_H
+                  : 0
               }
+              helperChromeHeight={composerHelperChromeHeight}
             >
               <div className="mx-auto flex h-full min-h-0 w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3">
                 <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5">
@@ -2888,6 +2902,9 @@ export default function ChatWithMyselfPane({
                     seedBody={composerSeed}
                     onSeedConsumed={() => setComposerSeed(null)}
                     onFitHeightsChange={handleComposerFitHeightsChange}
+                    onHelperChromeHeightChange={
+                      handleComposerHelperChromeHeightChange
+                    }
                   />
                 </div>
               </div>

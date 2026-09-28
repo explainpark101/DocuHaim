@@ -256,7 +256,10 @@ export default function ChatComposerHaimEditor({
     >
       {showToolbar ? (
         <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-          <div className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-slate-300 bg-slate-50 px-1 dark:border-odp-borderStrong dark:bg-odp-bgSoft">
+          <div
+            data-composer-toolbar=""
+            className="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-slate-300 bg-slate-50 px-1 dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+          >
             <ToolBtn
               label="실행 취소"
               disabled={!s?.canUndo}

@@ -43,8 +43,51 @@ function resolveProbeElement(editorWrap: HTMLElement): HTMLElement {
   return editorWrap;
 }
 
+/** Sum vertical / horizontal padding from a computed style. */
+export function paddingBoxFromComputedStyle(cs: CSSStyleDeclaration): {
+  paddingY: number;
+  paddingX: number;
+} {
+  return {
+    paddingY:
+      (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0),
+    paddingX:
+      (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0),
+  };
+}
+
+/**
+ * Padding lives on `.cm-scroller` for CodeMirror (`.cm-content` is pad 0).
+ * Textarea / ProseMirror keep padding on the probe itself.
+ */
+export function resolveComposerPaddingBox(
+  editorWrap: HTMLElement,
+  probe: HTMLElement,
+): HTMLElement {
+  const scroller = editorWrap.querySelector('.cm-scroller');
+  if (
+    scroller instanceof HTMLElement &&
+    (probe.classList.contains('cm-content') ||
+      probe.closest('.cm-editor') != null)
+  ) {
+    return scroller;
+  }
+  return probe;
+}
+
+function measureComposerToolbarHeight(editorWrap: HTMLElement): number {
+  const toolbar =
+    editorWrap.querySelector('[data-composer-toolbar]') ||
+    editorWrap.querySelector('.md-editor-toolbar-wrapper') ||
+    editorWrap.querySelector('.md-editor-toolbar');
+  return toolbar instanceof HTMLElement
+    ? Math.ceil(toolbar.offsetHeight)
+    : 0;
+}
+
 /**
  * Pretext-based height for the composer editor body (plain text value).
+ * Includes the editor's top/bottom padding box (scroller for CodeMirror).
  */
 export function measureComposerEditorPretextHeight(
   editorWrap: HTMLElement | null,
@@ -59,19 +102,21 @@ export function measureComposerEditorPretextHeight(
 ): number {
   if (!editorWrap) return minHeight;
   const probe = resolveProbeElement(editorWrap);
-  const cs = window.getComputedStyle(probe);
-  const paddingY =
-    (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
-  const paddingX =
-    (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+  const paddingBox = resolveComposerPaddingBox(editorWrap, probe);
+  const padCs = window.getComputedStyle(paddingBox);
+  const { paddingY, paddingX } = paddingBoxFromComputedStyle(padCs);
+  const probeCs = window.getComputedStyle(probe);
   const lineHeightPx =
-    parseFloat(cs.lineHeight) || (parseFloat(cs.fontSize) || 14) * 1.45;
-  // Prefer wrap width when the probe collapsed under fillParent.
-  const contentWidth = Math.max(
-    0,
-    (probe.clientWidth > 0 ? probe.clientWidth : editorWrap.clientWidth) -
-      paddingX,
-  );
+    parseFloat(probeCs.lineHeight) ||
+    (parseFloat(probeCs.fontSize) || 14) * 1.45;
+  // Prefer padding-box width when the probe collapsed under fillParent.
+  const boxWidth =
+    paddingBox.clientWidth > 0
+      ? paddingBox.clientWidth
+      : probe.clientWidth > 0
+        ? probe.clientWidth
+        : editorWrap.clientWidth;
+  const contentWidth = Math.max(0, boxWidth - paddingX);
   const font = fontShorthandFromElement(probe);
   const textHeight = measurePretextBlockHeight(text, {
     font,
@@ -81,11 +126,7 @@ export function measureComposerEditorPretextHeight(
     minHeight: 0,
     maxHeight,
   });
-  const toolbar =
-    editorWrap.querySelector('.md-editor-toolbar-wrapper') ||
-    editorWrap.querySelector('.md-editor-toolbar');
-  const toolbarH =
-    toolbar instanceof HTMLElement ? Math.ceil(toolbar.offsetHeight) : 0;
+  const toolbarH = measureComposerToolbarHeight(editorWrap);
   let height = textHeight + toolbarH;
   if (minHeight > 0) height = Math.max(minHeight, height);
   if (maxHeight > 0) height = Math.min(maxHeight, height);
@@ -160,16 +201,16 @@ export function measureComposerFitHeights(
   ) as HTMLElement | null;
   const controlsChrome = measureControlsChrome(controls, editorWrap);
 
-  const liveEditorH = editorWrap
-    ? Math.ceil(editorWrap.getBoundingClientRect().height)
-    : 0;
-
+  // Edit: pretext-sized body (incl. padding + toolbar). Reply: min editor +
+  // toolbar only — live fillParent height tracks the dock and would force
+  // grow-only.
+  const toolbarH = editorWrap ? measureComposerToolbarHeight(editorWrap) : 0;
   const editorHeight = editing
     ? measureComposerEditorPretextHeight(editorWrap, text, {
         minHeight: minEditorHeight,
         maxHeight: maxEditorHeight,
       })
-    : Math.max(minEditorHeight, liveEditorH);
+    : minEditorHeight + toolbarH;
 
   const csRoot = window.getComputedStyle(root);
   const rootPad =

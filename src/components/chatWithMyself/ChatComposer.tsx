@@ -200,6 +200,11 @@ export type ChatComposerProps = {
   onFitHeightsChange?: (
     next: { previewHeight: number; contentHeight: number } | null,
   ) => void;
+  /**
+   * Helper-text chrome height while not auto-fitting. Dock shrinks by this
+   * when the helper is hidden (0).
+   */
+  onHelperChromeHeightChange?: (height: number) => void;
 };
 
 type DoSendOptions = {
@@ -463,6 +468,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       draftScope = '',
       autoFocusOnMount = true,
       onFitHeightsChange,
+      onHelperChromeHeightChange,
     },
     ref,
   ) {
@@ -917,6 +923,43 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     onFitHeightsChange?.(null);
     return undefined;
   }, [editTarget, replyTo, onFitHeightsChange]);
+
+  // Normal compose: report helper chrome so the dock can shrink when hidden.
+  // During reply/edit, helper is already folded into fit contentHeight.
+  useLayoutEffect(() => {
+    if (!fillParent || !onHelperChromeHeightChange) return undefined;
+    if (editTarget || replyTo) {
+      onHelperChromeHeightChange(0);
+      return undefined;
+    }
+    const measure = () => {
+      if (!showHelperText || isMobile) {
+        onHelperChromeHeightChange(0);
+        return;
+      }
+      const helper = rootRef.current?.querySelector('[data-composer-fit-helper]');
+      if (!(helper instanceof HTMLElement)) {
+        onHelperChromeHeightChange(0);
+        return;
+      }
+      const cs = window.getComputedStyle(helper);
+      const mt = parseFloat(cs.marginTop) || 0;
+      const mb = parseFloat(cs.marginBottom) || 0;
+      onHelperChromeHeightChange(
+        Math.ceil(helper.getBoundingClientRect().height + mt + mb),
+      );
+    };
+    measure();
+    const raf = window.requestAnimationFrame(measure);
+    return () => window.cancelAnimationFrame(raf);
+  }, [
+    fillParent,
+    editTarget,
+    replyTo,
+    showHelperText,
+    isMobile,
+    onHelperChromeHeightChange,
+  ]);
 
   // Leaving edit / switching to fillParent: drop the expanded editor height.
   useLayoutEffect(() => {
