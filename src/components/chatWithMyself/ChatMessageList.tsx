@@ -813,11 +813,11 @@ const MessageBubble = memo(function MessageBubble({
     self ? 'justify-end' : 'justify-start',
     isDeleting
       ? 'pointer-events-none select-none bg-red-500/20 dark:bg-red-500/25'
-      : 'hover:bg-black/10 dark:hover:bg-white/10',
+      : rowActive
+        ? // Selected sky tint; hover = denser blue-gray (not default black/white wash).
+          'bg-sky-500/25 hover:bg-sky-800/30 dark:bg-sky-400/25 dark:hover:bg-sky-300/30'
+        : 'hover:bg-black/10 dark:hover:bg-white/10',
     !isDeleting && persistedCollapsed ? 'cursor-pointer' : '',
-    !isDeleting && rowActive
-      ? 'bg-sky-500/25 hover:bg-sky-500/30 dark:bg-sky-400/25 dark:hover:bg-sky-400/30'
-      : '',
     highlight && !isDeleting ? 'ring-2 ring-amber-400' : '',
     isSwiping ? 'select-none' : '',
   ]

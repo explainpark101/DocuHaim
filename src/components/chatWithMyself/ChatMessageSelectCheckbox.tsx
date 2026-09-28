@@ -1,8 +1,10 @@
 import { Check } from 'lucide-react';
-import { Checkbox } from 'radix-ui';
 
 const BOX_CLASS =
-  'flex h-4 w-4 shrink-0 items-center justify-center rounded border border-sky-500/80 bg-white outline-none focus-visible:ring-2 focus-visible:ring-sky-400 data-[state=checked]:border-sky-600 data-[state=checked]:bg-sky-600 dark:border-sky-400/70 dark:bg-odp-bgSoft dark:data-[state=checked]:border-sky-400 dark:data-[state=checked]:bg-sky-500';
+  'flex h-4 w-4 shrink-0 items-center justify-center rounded border border-sky-500/80 bg-white dark:border-sky-400/70 dark:bg-odp-bgSoft';
+
+const BOX_CHECKED_CLASS =
+  'border-sky-600 bg-sky-600 dark:border-sky-400 dark:bg-sky-500';
 
 export type ChatMessageSelectCheckboxProps = {
   checked: boolean;
@@ -14,6 +16,9 @@ export type ChatMessageSelectCheckboxProps = {
 /**
  * Fine-pointer selection control on the left of a chat bubble.
  * Hit area is intentionally larger than the visible box.
+ *
+ * Single outer button owns the toggle — no nested checkbox control, so
+ * click cannot fire selection twice.
  */
 export default function ChatMessageSelectCheckbox({
   checked,
@@ -32,7 +37,7 @@ export default function ChatMessageSelectCheckbox({
         'pointer-events-auto',
       ].join(' ')}
       aria-label="메시지 선택"
-      aria-checked={checked}
+      aria-pressed={checked}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -46,21 +51,14 @@ export default function ChatMessageSelectCheckbox({
         e.stopPropagation();
       }}
     >
-      <Checkbox.Root
-        className={BOX_CLASS}
-        checked={checked}
-        tabIndex={-1}
-        onCheckedChange={() => onToggle()}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+      <span
+        className={`${BOX_CLASS} ${checked ? BOX_CHECKED_CLASS : ''}`}
         aria-hidden
       >
-        <Checkbox.Indicator className="text-white">
-          <Check size={10} strokeWidth={3} />
-        </Checkbox.Indicator>
-      </Checkbox.Root>
+        {checked ? (
+          <Check size={10} strokeWidth={3} className="text-white" />
+        ) : null}
+      </span>
     </button>
   );
 }
