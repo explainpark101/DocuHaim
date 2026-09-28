@@ -6,18 +6,20 @@ import {
 } from '@/components/haimEditor/extensions/HaimTaskItem';
 
 describe('markdownItTaskListPlugin 3-state', () => {
-  it('renders [~] as data-status=doing with aria-checked=mixed', () => {
+  it('renders [~] as status kind with data-status=doing', () => {
     const html = renderAppMarkdown('- [~] in progress\n');
     expect(html).toContain('data-status="doing"');
+    expect(html).toContain('data-kind="status"');
     expect(html).toContain('aria-checked="mixed"');
-    expect(html).toContain('task-list-item-checkbox');
+    expect(html).toContain('task-list-item-checkbox--status');
     expect(html).not.toContain('checked=""');
   });
 
-  it('renders [ ] / [x] with todo and done statuses', () => {
+  it('renders [ ] / [x] as check kind', () => {
     const html = renderAppMarkdown('- [ ] todo\n- [x] done\n- [X] also done\n');
     expect(html).toContain('data-status="todo"');
     expect(html).toContain('data-status="done"');
+    expect(html).toContain('data-kind="check"');
     expect(html).toContain('aria-checked="false"');
     expect(html).toContain('aria-checked="true"');
     expect(html).toContain('contains-task-list');
@@ -30,6 +32,9 @@ describe('Haim task input rules', () => {
     expect(haimTaskShortInputRegex.test('[~] ')).toBe(true);
     expect(haimTaskShortInputRegex.test('[x] ')).toBe(true);
     expect(haimTaskMarkdownPrefixInputRegex.test('- [ ] ')).toBe(true);
+    expect(haimTaskMarkdownPrefixInputRegex.test('-[ ] ')).toBe(true);
+    expect(haimTaskMarkdownPrefixInputRegex.test('-[~] ')).toBe(true);
+    expect(haimTaskMarkdownPrefixInputRegex.test('-[x] ')).toBe(true);
     expect(haimTaskMarkdownPrefixInputRegex.test('* [~] ')).toBe(true);
     expect(haimTaskMarkdownPrefixInputRegex.test('+ [x] ')).toBe(true);
   });
@@ -38,6 +43,7 @@ describe('Haim task input rules', () => {
     expect(haimTaskMarkdownPrefixInputRegex.test('- ')).toBe(false);
     expect(haimTaskMarkdownPrefixInputRegex.test('-')).toBe(false);
     expect(haimTaskMarkdownPrefixInputRegex.test('- [')).toBe(false);
+    expect(haimTaskMarkdownPrefixInputRegex.test('-[')).toBe(false);
   });
 });
 
@@ -92,16 +98,27 @@ describe('HaimTaskItem MD round-trip', () => {
 
       const json = ed.getJSON();
       const statuses: string[] = [];
-      const walk = (node: { type?: string; attrs?: { status?: string }; content?: unknown[] }) => {
+      const kinds: string[] = [];
+      const walk = (node: {
+        type?: string;
+        attrs?: { status?: string; kind?: string };
+        content?: unknown[];
+      }) => {
         if (node.type === 'taskItem' && node.attrs?.status) {
           statuses.push(node.attrs.status);
+          kinds.push(node.attrs.kind ?? 'check');
         }
         for (const child of node.content ?? []) {
           walk(child as typeof node);
         }
       };
-      walk(json as { type?: string; attrs?: { status?: string }; content?: unknown[] });
+      walk(json as {
+        type?: string;
+        attrs?: { status?: string; kind?: string };
+        content?: unknown[];
+      });
       expect(statuses).toEqual(['todo', 'doing', 'done', 'done']);
+      expect(kinds).toEqual(['check', 'status', 'check', 'check']);
     } finally {
       ed.destroy();
     }

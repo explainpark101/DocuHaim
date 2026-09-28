@@ -12,9 +12,8 @@ import {
   Search,
 } from 'lucide-react';
 import {
-  cycleTaskCheckboxStatus,
+  advanceTaskCheckboxMarker,
   parseTaskCheckboxMarker,
-  serializeTaskCheckboxMarker,
 } from '@/utils/taskCheckboxStatus';
 
 function parseChecklistMarkdown(markdown) {
@@ -78,9 +77,7 @@ function toggleTaskLine(markdown, lineIndex) {
   const line = lines[lineIndex];
   const match = line.match(/^(\s*(?:[-*]|\d+\.)\s+)\[([ xX~])\](.*)$/);
   if (!match) return markdown;
-  const next = serializeTaskCheckboxMarker(
-    cycleTaskCheckboxStatus(parseTaskCheckboxMarker(match[2])),
-  );
+  const next = advanceTaskCheckboxMarker(match[2]);
   lines[lineIndex] = `${match[1]}[${next}]${match[3]}`;
   return lines.join('\n');
 }

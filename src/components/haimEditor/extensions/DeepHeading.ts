@@ -1,4 +1,13 @@
-import { Node } from '@tiptap/core';
+import { Node, mergeAttributes } from '@tiptap/core';
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    deepHeading: {
+      setDeepHeading: (attributes: { level: number }) => ReturnType;
+      toggleDeepHeading: (attributes: { level: number }) => ReturnType;
+    };
+  }
+}
 
 /**
  * ATX headings ####### … ########## → h6 + data-heading-level (print/preview parity).
@@ -23,6 +32,23 @@ export const DeepHeading = Node.create({
     };
   },
 
+  addCommands() {
+    return {
+      setDeepHeading:
+        (attributes) =>
+        ({ commands }) => {
+          const level = Math.min(10, Math.max(7, Number(attributes.level) || 7));
+          return commands.setNode(this.name, { level });
+        },
+      toggleDeepHeading:
+        (attributes) =>
+        ({ commands }) => {
+          const level = Math.min(10, Math.max(7, Number(attributes.level) || 7));
+          return commands.toggleNode(this.name, 'paragraph', { level });
+        },
+    };
+  },
+
   parseHTML() {
     return [
       {
@@ -41,11 +67,10 @@ export const DeepHeading = Node.create({
     const level = Number(node.attrs.level) || 7;
     return [
       'h6',
-      {
-        ...HTMLAttributes,
+      mergeAttributes(HTMLAttributes, {
         'data-heading-level': String(level),
         class: `haim-deep-heading haim-h${level}`,
-      },
+      }),
       0,
     ];
   },

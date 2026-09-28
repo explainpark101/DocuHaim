@@ -68,6 +68,7 @@ import {
 } from '@/utils/haimTypographySettings';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import { registerEditorActions } from '@/utils/advancedSearch/editorActions';
+import type { HaimSlashAppActions } from '@/components/haimEditor/slashCommands/haimSlashCommandItems';
 import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useNavigate } from 'react-router';
@@ -1210,7 +1211,46 @@ export default function HaimEditor({
         run(() => editor.chain().focus().toggleHeading({ level: 3 }).run()),
       'editor-h4': () =>
         run(() => editor.chain().focus().toggleHeading({ level: 4 }).run()),
+      'editor-h5': () =>
+        run(() => editor.chain().focus().toggleHeading({ level: 5 }).run()),
+      'editor-h6': () =>
+        run(() => editor.chain().focus().toggleHeading({ level: 6 }).run()),
+      'editor-h7': () =>
+        run(() => editor.chain().focus().toggleDeepHeading({ level: 7 }).run()),
+      'editor-h8': () =>
+        run(() => editor.chain().focus().toggleDeepHeading({ level: 8 }).run()),
+      'editor-h9': () =>
+        run(() => editor.chain().focus().toggleDeepHeading({ level: 9 }).run()),
+      'editor-h10': () =>
+        run(() => editor.chain().focus().toggleDeepHeading({ level: 10 }).run()),
       'editor-catalog': () => setTocOpen((v) => !v),
+      'editor-find-replace': () => setFindReplaceOpen((v) => !v),
+      'editor-invisible-chars': () => toggleInvisibleChars(),
+      'editor-mermaid': () => {
+        editor
+          .chain()
+          .focus()
+          .insertContent('```mermaid\ngraph TD\n  A-->B\n```\n', {
+            contentType: 'markdown',
+          } as never)
+          .run();
+      },
+      'editor-katex': () => {
+        const cmds = editor.commands as typeof editor.commands & {
+          insertBlockMath?: (opts: { latex: string }) => boolean;
+        };
+        if (typeof cmds.insertBlockMath === 'function') {
+          cmds.insertBlockMath({ latex: 'E=mc^2' });
+          return;
+        }
+        editor
+          .chain()
+          .focus()
+          .insertContent(
+            '<div data-type="block-math" data-latex="E=mc^2"></div>',
+          )
+          .run();
+      },
       'editor-llm-assist': () => {
         llmAssist?.toggleAssist?.();
       },
@@ -1273,6 +1313,110 @@ export default function HaimEditor({
     insertPageBreak,
     openUrlLinkModal,
     openDocuhaimNoteLinkModal,
+    toggleInvisibleChars,
+  ]);
+
+  useEffect(() => {
+    if (!editor || previewOnly) return undefined;
+    const storage = editor.storage.haimSlashCommands;
+    if (!storage) return undefined;
+
+    storage.getAppActions = (): HaimSlashAppActions => ({
+      onUrlLink: openUrlLinkModal,
+      onDocuhaimNoteLink: openDocuhaimNoteLinkModal,
+      onInsertPageBreak: insertPageBreak,
+      onInsertMermaid: () => {
+        editor
+          .chain()
+          .focus()
+          .insertContent('```mermaid\ngraph TD\n  A-->B\n```\n', {
+            contentType: 'markdown',
+          } as never)
+          .run();
+      },
+      onInsertKatex: () => {
+        const cmds = editor.commands as typeof editor.commands & {
+          insertBlockMath?: (opts: { latex: string }) => boolean;
+        };
+        if (typeof cmds.insertBlockMath === 'function') {
+          cmds.insertBlockMath({ latex: 'E=mc^2' });
+          return;
+        }
+        editor
+          .chain()
+          .focus()
+          .insertContent(
+            '<div data-type="block-math" data-latex="E=mc^2"></div>',
+          )
+          .run();
+      },
+      onImageLink: () => setImageLinkOpen(true),
+      onImageUpload: () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = true;
+        input.onchange = () => {
+          void handleUploadFiles(Array.from(input.files || []));
+        };
+        input.click();
+      },
+      onImageClip: () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = () => {
+          const file = input.files?.[0];
+          if (file) setClipCropFile(file);
+        };
+        input.click();
+      },
+      onCreateWhiteboard: () => {
+        if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
+        setWhiteboardOpen(true);
+      },
+      onCreateQrCode: openQrCodeCreate,
+      onHeadingRemap: openHeadingRemap,
+      onChecklistProgress: () => {
+        const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
+        const { total: tasks, completed: done } = countTaskCheckboxLines(md);
+        setChecklistHint(
+          tasks
+            ? `체크리스트 ${done}/${tasks} 완료`
+            : '문서에 체크리스트 항목이 없습니다',
+        );
+        window.setTimeout(() => setChecklistHint(null), 3200);
+      },
+      onLlmAssist: () => {
+        llmAssist?.toggleAssist?.();
+      },
+      onExportPdf: () => {
+        flush();
+        navigateToExportPdf();
+      },
+      onFindReplaceToggle: () => setFindReplaceOpen((v) => !v),
+      onInvisibleCharsToggle: toggleInvisibleChars,
+      onTocToggle: () => setTocOpen((v) => !v),
+    });
+
+    return () => {
+      storage.getAppActions = () => null;
+    };
+  }, [
+    editor,
+    previewOnly,
+    openUrlLinkModal,
+    openDocuhaimNoteLinkModal,
+    insertPageBreak,
+    handleUploadFiles,
+    onUploadImage,
+    showImageUploadOverlay,
+    openQrCodeCreate,
+    openHeadingRemap,
+    llmAssist,
+    flush,
+    navigateToExportPdf,
+    toggleInvisibleChars,
   ]);
 
   useEffect(() => {

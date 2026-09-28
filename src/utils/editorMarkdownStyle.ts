@@ -5,9 +5,7 @@
 import { EditorSelection, type ChangeSpec, type SelectionRange, type Text } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import {
-  cycleTaskCheckboxStatus,
-  parseTaskCheckboxMarker,
-  serializeTaskCheckboxMarker,
+  advanceTaskCheckboxMarker,
 } from '@/utils/taskCheckboxStatus';
 
 const UNORDERED_LIST_LINE_RE = /^(\s*)([-+*])(\s+)(.*)$/;
@@ -266,10 +264,8 @@ function toggleTaskCheckboxMarker(text: string): string | null {
   const prefix = match[1] ?? '';
   const marker = match[2] ?? ' ';
   const rest = match[3] ?? '';
-  const next = serializeTaskCheckboxMarker(
-    cycleTaskCheckboxStatus(parseTaskCheckboxMarker(marker)),
-  );
-  return `${prefix}[${next}]${rest}`;
+  // Regular checks toggle binary; `[~]` uses status 3-cycle.
+  return `${prefix}[${advanceTaskCheckboxMarker(marker)}]${rest}`;
 }
 
 export function toggleListTypeBetweenUlAndOl(view: EditorView): boolean {

@@ -35,7 +35,7 @@ import {
   TableOfContents,
   getHierarchicalIndexes,
 } from '@tiptap/extension-table-of-contents';
-import { NodeRange } from '@tiptap/extension-node-range';
+import { HaimNodeRange } from '@/components/haimEditor/extensions/HaimNodeRange';
 import { PageBreak } from '@/components/haimEditor/extensions/PageBreak';
 import { WikiImage } from '@/components/haimEditor/extensions/WikiImage';
 import { WikiFigure } from '@/components/haimEditor/extensions/WikiFigure';
@@ -43,6 +43,8 @@ import { Figcaption } from '@/components/haimEditor/extensions/Figcaption';
 import { NoteCover } from '@/components/haimEditor/extensions/NoteCover';
 import { RawMarkdownBlock } from '@/components/haimEditor/extensions/RawMarkdownBlock';
 import { DeepHeading } from '@/components/haimEditor/extensions/DeepHeading';
+import { HaimSlashCommands } from '@/components/haimEditor/slashCommands/HaimSlashCommands';
+import { HaimShiftArrowSelect } from '@/components/haimEditor/extensions/HaimShiftArrowSelect';
 import { MathBlock } from '@/components/haimEditor/extensions/MathBlock';
 import {
   HaimBlockMath,
@@ -164,6 +166,8 @@ export function createHaimExtensions(
     RawMarkdownBlock,
     DeepHeading,
     MathBlock,
+    HaimShiftArrowSelect,
+    ...(isNote ? [HaimSlashCommands] : []),
   ];
 
   if (!isNote) {
@@ -196,6 +200,6 @@ export function createHaimExtensions(
     TableOfContents.configure({
       getIndex: getHierarchicalIndexes,
     }),
-    NodeRange,
+    HaimNodeRange,
   ];
 }

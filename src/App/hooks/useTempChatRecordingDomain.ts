@@ -32,7 +32,6 @@ import { deleteRecordingById, deleteRecordingFragments } from '@/utils/recording
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { createWebdavBackend, createLocalBackend } from '@/utils/storage';
-import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { usePwaNewFileShortcut } from '@/hooks/usePwaNewFileShortcut';
 import { useNewTempFileShortcut } from '@/hooks/useNewTempFileShortcut';
 import {
@@ -51,7 +50,7 @@ export function useTempChatRecordingDomain() {
   const { showAlert } = useAlertModal();
   const { isUnlocked, s3Creds } = useAuth();
   const { canScanStorageUsage, getS3Client, loadS3Files, localRootHandle, localTree, refreshLocalTree, refreshWebdavTree, s3Tree, upsertSessionWorkspace, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
-  const { applySessionFileToEditorRef, currentFile, currentFileRef, editedFileName, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, revokeSessionObjectUrlsRef, selectFileRef, sessionVaultBindingsRef, sessionWorkspacesRef } = useFileSessionOwned();
+  const { applySessionFileToEditorRef, currentFile, currentFileRef, editedFileName, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, revokeSessionObjectUrlsRef, sessionVaultBindingsRef, sessionWorkspacesRef } = useFileSessionOwned();
   const { saveCurrentMarkdownBeforeSwitch, selectFileRaw, openAdvancedSearchFile } = useFileSession();
   const { confirmAndCancelEditorImageUploadRef, setSelectedIds } = useTreeOpsOwned();
   const { lastSelectedIdRef, requestNewFile, toSelectKey } = useTreeOps();

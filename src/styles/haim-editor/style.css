@@ -1,6 +1,12 @@
 /* Haim Editor (TipTap) surface styles — keep separate from md-editor-rt. */
 @import './preview-tokens.css';
 
+/* Slash command floating menu (mounted on document.body via Suggestion). */
+.haim-slash-menu-root {
+  z-index: 100010;
+  max-width: min(92vw, 300px);
+}
+
 .haim-editor {
   --haim-pgbr-color: #94a3b8;
 }
@@ -622,12 +628,30 @@ html[data-haim-prose-width-clamp='1']
   accent-color: var(--color-blue-600, #2563eb);
 }
 
+/* Status checkboxes use a distinct accent so they are visually separate from GFM checks. */
+.haim-editor-prose .task-list-item-checkbox--status,
+.md-editor-preview .task-list-item-checkbox--status,
+.export-pdf-paged-source .task-list-item-checkbox--status,
+.pagedjs_page_content .task-list-item-checkbox--status,
+.haim-editor-prose li[data-kind='status'] > label > input[type='checkbox'],
+.md-editor-preview li[data-kind='status'] .task-list-item-checkbox {
+  accent-color: var(--color-amber-600, #d97706);
+}
+
 .haim-editor--dark .haim-editor-prose ul[data-type='taskList'],
 .haim-editor--dark .haim-editor-prose .contains-task-list,
 :is(.dark) .haim-editor-prose ul[data-type='taskList'],
 :is(.dark) .md-editor-preview .contains-task-list,
 .haim-editor--dark .md-editor-preview .contains-task-list {
   accent-color: var(--color-odp-accentBlue, #60a5fa);
+}
+
+.haim-editor--dark .haim-editor-prose .task-list-item-checkbox--status,
+:is(.dark) .md-editor-preview .task-list-item-checkbox--status,
+.haim-editor--dark .md-editor-preview .task-list-item-checkbox--status,
+.haim-editor--dark .haim-editor-prose li[data-kind='status'] > label > input[type='checkbox'],
+:is(.dark) .md-editor-preview li[data-kind='status'] .task-list-item-checkbox {
+  accent-color: var(--color-amber-400, #fbbf24);
 }
 
 .haim-editor-prose ul[data-type='taskList'] li,

@@ -1,6 +1,8 @@
 import type { MarkdownIt as MarkdownItInstance, StateCore, Token } from 'markdown-it';
 import {
   parseTaskCheckboxMarker,
+  taskCheckboxKindFromMarker,
+  type TaskCheckboxKind,
   type TaskCheckboxStatus,
 } from '@/utils/taskCheckboxStatus';
 
@@ -37,12 +39,15 @@ function isListItemOpen(token: Token | undefined): boolean {
 
 function matchTaskMarker(content: string): {
   status: TaskCheckboxStatus;
+  kind: TaskCheckboxKind;
   markerLen: number;
 } | null {
   const m = content.match(TASK_MARKER_RE);
   if (!m) return null;
+  const marker = m[1];
   return {
-    status: parseTaskCheckboxMarker(m[1]),
+    status: parseTaskCheckboxMarker(marker),
+    kind: taskCheckboxKindFromMarker(marker),
     markerLen: m[0]?.length ?? 4,
   };
 }
@@ -89,19 +94,22 @@ function labeledCheckboxToken(
 
 function checkboxToken(
   status: TaskCheckboxStatus,
+  kind: TaskCheckboxKind,
   TokenCtor: typeof Token,
   options: TaskListOptions,
 ): Token {
   const token = new TokenCtor('html_inline', '', 0);
   const disabledAttr = options.enabled ? ' ' : ' disabled="" ';
   const checkedAttr = status === 'done' ? ' checked=""' : '';
+  const kindClass =
+    kind === 'status' ? ' task-list-item-checkbox--status' : '';
   const aria =
     status === 'doing'
       ? ' aria-checked="mixed"'
       : status === 'done'
         ? ' aria-checked="true"'
         : ' aria-checked="false"';
-  token.content = `<input class="task-list-item-checkbox" data-status="${status}"${aria}${checkedAttr}${disabledAttr}type="checkbox">`;
+  token.content = `<input class="task-list-item-checkbox${kindClass}" data-status="${status}" data-kind="${kind}"${aria}${checkedAttr}${disabledAttr}type="checkbox">`;
   return token;
 }
 
@@ -110,10 +118,13 @@ function decorateTaskItem(
   state: StateCore,
   options: TaskListOptions,
   status: TaskCheckboxStatus,
+  kind: TaskCheckboxKind,
   markerLen: number,
 ): void {
   inlineToken.children = inlineToken.children ?? [];
-  inlineToken.children.unshift(checkboxToken(status, state.Token, options));
+  inlineToken.children.unshift(
+    checkboxToken(status, kind, state.Token, options),
+  );
   if (inlineToken.children[1]) {
     inlineToken.children[1].content = inlineToken.children[1].content.slice(
       markerLen,
@@ -139,7 +150,7 @@ function decorateTaskItem(
 
 /**
  * GitHub-style task lists plus `[~]` doing state.
- * `- [ ]` / `- [~]` / `- [x]` → `data-status` on `li` + checkbox.
+ * `- [ ]` / `- [x]` → kind=check; `- [~]` → kind=status.
  */
 export function markdownItTaskListPlugin(
   md: MarkdownItInstance,
@@ -156,6 +167,7 @@ export function markdownItTaskListPlugin(
         state,
         options,
         matched.status,
+        matched.kind,
         matched.markerLen,
       );
       attrSet(
@@ -164,6 +176,7 @@ export function markdownItTaskListPlugin(
         `task-list-item${options.enabled ? ' enabled' : ''}`,
       );
       attrSet(tokens[i - 2]!, 'data-status', matched.status);
+      attrSet(tokens[i - 2]!, 'data-kind', matched.kind);
       if (matched.status === 'done') {
         attrSet(tokens[i - 2]!, 'data-checked', 'true');
       }

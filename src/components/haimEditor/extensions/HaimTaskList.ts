@@ -1,7 +1,8 @@
 import { TaskList } from '@tiptap/extension-list';
 import { parseIndentedBlocks } from '@tiptap/core';
 import {
-  parseTaskCheckboxMarker,
+  taskItemAttrsFromMarker,
+  type TaskCheckboxKind,
   type TaskCheckboxStatus,
 } from '@/utils/taskCheckboxStatus';
 
@@ -13,7 +14,40 @@ type TaskItemExtract = {
   mainContent: string;
   checked: boolean;
   status: TaskCheckboxStatus;
+  kind: TaskCheckboxKind;
 };
+
+function extractFromMatch(match: RegExpMatchArray): TaskItemExtract {
+  const attrs = taskItemAttrsFromMarker(match[3]);
+  return {
+    indentLevel: match[1]?.length ?? 0,
+    mainContent: match[4] ?? '',
+    checked: attrs.checked,
+    status: attrs.status,
+    kind: attrs.kind,
+  };
+}
+
+function createTaskItemToken(
+  data: TaskItemExtract,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  lexer: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nestedTokens?: any[],
+) {
+  return {
+    type: 'taskItem',
+    raw: '',
+    mainContent: data.mainContent,
+    indentLevel: data.indentLevel,
+    checked: data.checked,
+    status: data.status,
+    kind: data.kind,
+    text: data.mainContent,
+    tokens: lexer.inlineTokens(data.mainContent),
+    nestedTokens,
+  };
+}
 
 /**
  * Task list tokenizer that recognizes `[ ]` / `[~]` / `[x]`.
@@ -33,26 +67,9 @@ export const HaimTaskList = TaskList.extend({
           content,
           {
             itemPattern: TASK_ITEM_PATTERN,
-            extractItemData: (match: RegExpMatchArray): TaskItemExtract => {
-              const status = parseTaskCheckboxMarker(match[3]);
-              return {
-                indentLevel: match[1]?.length ?? 0,
-                mainContent: match[4] ?? '',
-                checked: status === 'done',
-                status,
-              };
-            },
-            createToken: (data: TaskItemExtract, nestedTokens: unknown) => ({
-              type: 'taskItem',
-              raw: '',
-              mainContent: data.mainContent,
-              indentLevel: data.indentLevel,
-              checked: data.checked,
-              status: data.status,
-              text: data.mainContent,
-              tokens: lexer.inlineTokens(data.mainContent),
-              nestedTokens,
-            }),
+            extractItemData: extractFromMatch,
+            createToken: (data: TaskItemExtract, nestedTokens?: any[]) =>
+              createTaskItemToken(data, lexer, nestedTokens),
             customNestedParser: parseTaskListContent,
           },
           lexer,
@@ -76,26 +93,9 @@ export const HaimTaskList = TaskList.extend({
         src,
         {
           itemPattern: TASK_ITEM_PATTERN,
-          extractItemData: (match: RegExpMatchArray): TaskItemExtract => {
-            const status = parseTaskCheckboxMarker(match[3]);
-            return {
-              indentLevel: match[1]?.length ?? 0,
-              mainContent: match[4] ?? '',
-              checked: status === 'done',
-              status,
-            };
-          },
-          createToken: (data: TaskItemExtract, nestedTokens: unknown) => ({
-            type: 'taskItem',
-            raw: '',
-            mainContent: data.mainContent,
-            indentLevel: data.indentLevel,
-            checked: data.checked,
-            status: data.status,
-            text: data.mainContent,
-            tokens: lexer.inlineTokens(data.mainContent),
-            nestedTokens,
-          }),
+          extractItemData: extractFromMatch,
+          createToken: (data: TaskItemExtract, nestedTokens?: any[]) =>
+            createTaskItemToken(data, lexer, nestedTokens),
           customNestedParser: parseTaskListContent,
         },
         lexer,

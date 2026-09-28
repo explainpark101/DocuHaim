@@ -1,24 +1,31 @@
 # Task list (`[ ]` / `[~]` / `[x]`)
 
-GFM task list plus an app-custom **doing** marker. Used in Haim Editor WYSIWYG, source (Ctrl-Tab), preview, and Export PDF.
+GFM task list plus an app-custom **status** checkbox. Used in Haim Editor WYSIWYG, source (Ctrl-Tab), preview, and Export PDF.
 
 ## 문법
 
 ```markdown
-- [ ] 할 일
-- [~] 진행 중
-- [x] 완료
+- [ ] 일반 할 일 (check)
+- [x] 일반 완료
+- [~] 상태 할 일 — 진행 중 (status)
 * [X] 완료 (대문자 X → 저장 시 `[x]`)
 1. [ ] 번호 목록도 동일
 ```
 
-| Marker | Status | UI |
-|--------|--------|-----|
-| `[ ]` | `todo` | unchecked |
-| `[~]` | `doing` | indeterminate |
-| `[x]` / `[X]` | `done` | checked (canonical `[x]`) |
+| Marker | Kind | Status | UI |
+|--------|------|--------|-----|
+| `[ ]` | `check` | `todo` | unchecked |
+| `[x]` / `[X]` | `check` | `done` | checked (canonical `[x]`) |
+| `[~]` | `status` | `doing` | indeterminate |
 
-Click / Ctrl-Tab cycle: `todo → doing → done → todo`.
+### Kinds
+
+| Kind | Click / Ctrl-Tab | Notes |
+|------|------------------|-------|
+| `check` (일반) | `todo ↔ done` | GFM-compatible; never writes `~` |
+| `status` (상태) | `todo → doing → done → todo` | Created by typing `[~]` or slash 「상태 할 일」 |
+
+Vault markdown only encodes status while the marker is `~`. After a status item moves to `[ ]`/`[x]`, reload may treat it as `check` again until `[~]` is used.
 
 ## Spec (interop)
 
@@ -41,16 +48,20 @@ Regex (line start):
 ### 2. Parse
 
 1. Capture marker char in group 1.
-2. Map: ` ` → `todo`, `~` → `doing`, `x`/`X` → `done`.
-3. Unknown → `todo`.
+2. Map status: ` ` → `todo`, `~` → `doing`, `x`/`X` → `done`.
+3. Map kind: `~` → `status`, otherwise `check`.
+4. Unknown marker → `todo` / `check`.
 
 ### 3. Serialize
 
-| Status | Marker |
-|--------|--------|
-| `todo` | ` ` |
-| `doing` | `~` |
-| `done` | `x` |
+| Kind + Status | Marker |
+|---------------|--------|
+| check + todo | ` ` |
+| check + done | `x` |
+| check + doing (invalid) | ` ` (coerce) |
+| status + todo | ` ` |
+| status + doing | `~` |
+| status + done | `x` |
 
 Prefer list bullet `-` when writing from TipTap.
 
@@ -58,17 +69,18 @@ Prefer list bullet `-` when writing from TipTap.
 
 ```html
 <ul class="contains-task-list" data-type="taskList">
-  <li class="task-list-item" data-status="todo" data-type="taskItem">
+  <li class="task-list-item" data-kind="check" data-status="todo" data-type="taskItem">
     <label>
       <input class="task-list-item-checkbox" type="checkbox"
-             data-status="todo" aria-checked="false" disabled="">
+             data-kind="check" data-status="todo" aria-checked="false" disabled="">
     </label>
     …
   </li>
-  <li class="task-list-item" data-status="doing">
-    <input … data-status="doing" aria-checked="mixed">
+  <li class="task-list-item" data-kind="status" data-status="doing">
+    <input class="task-list-item-checkbox task-list-item-checkbox--status"
+           data-kind="status" data-status="doing" aria-checked="mixed">
   </li>
-  <li class="task-list-item" data-status="done" data-checked="true">
+  <li class="task-list-item" data-kind="check" data-status="done" data-checked="true">
     <input … data-status="done" aria-checked="true" checked="">
   </li>
 </ul>
@@ -79,20 +91,24 @@ Static HTML cannot set the DOM `indeterminate` property — use `data-status="do
 ### 5. TipTap typing (WYSIWYG)
 
 - `- ` alone → bullet list (unchanged).
-- `- [ ]` / `- [~]` / `- [x]` + trailing space → task item with status.
-- Short form `[ ]` / `[~]` / `[x]` + space (incl. inside a bullet line) → promote to task.
+- `-[ ]` / `- [ ]` / `- [x]` + trailing space → `kind=check` task item.
+- `-[~]` / `- [~]` + trailing space → `kind=status`, `status=doing`.
+- Short form `[ ]` / `[x]` / `[~]` + space (incl. after `- ` turned into a bullet) → promote bullet/ordered list to task list with matching kind.
+- Slash 「할 일 목록」 → regular task list (`check`).
+- Slash 「상태 할 일」 → task item with `kind=status`, `status=doing`.
 
 ### 6. Non-goals
 
 - Patching md-editor-rt vendor `github-task-lists`.
 - Div-only custom checkboxes (native `<input type="checkbox">` + `accent-color`).
 - Chat-specific task markers.
+- Persisting `kind=status` across vault reload when the marker is not `~`.
 
 ## Implementation
 
 | Role | Path |
 |------|------|
-| Status helper | `src/utils/taskCheckboxStatus.ts` |
+| Status / kind helper | `src/utils/taskCheckboxStatus.ts` |
 | TipTap | `HaimTaskItem.ts` / `HaimTaskList.ts` |
 | Preview HTML | `markdownItTaskListPlugin.ts` + `appMarkdownItPlugins.ts` |
 | Source Ctrl-Tab | `editorMarkdownStyle.ts` + `HaimSourcePane.tsx` |
