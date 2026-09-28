@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-27T18:01:22.517Z",
-  "totalBytes": 4135907,
+  "generatedAt": "2026-09-28T10:27:07.648Z",
+  "totalBytes": 4151479,
   "assets": [
     {
       "file": "assets/vendor-react-BDjpSibw.js",
@@ -34,7 +34,7 @@
       "label": "압축 유틸"
     },
     {
-      "file": "assets/vendor-motion-Djo_xQxQ.js",
+      "file": "assets/vendor-motion-Dw-WnPM7.js",
       "bytes": 134000,
       "label": "애니메이션"
     },
@@ -49,8 +49,8 @@
       "label": "UI 컴포넌트"
     },
     {
-      "file": "assets/index-C2cCZxw5.css",
-      "bytes": 314582,
+      "file": "assets/index-ClVhkmoB.css",
+      "bytes": 316797,
       "label": "스타일시트"
     },
     {
@@ -59,8 +59,8 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-ahe6T7wM.js",
-      "bytes": 1942522,
+      "file": "assets/index-CfCFWUoL.js",
+      "bytes": 1955879,
       "label": "앱 코어"
     }
   ]
