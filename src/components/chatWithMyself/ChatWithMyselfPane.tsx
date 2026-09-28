@@ -22,7 +22,7 @@ import {
 import ChatComposer, {
   type ChatComposerHandle,
 } from '@/components/chatWithMyself/ChatComposer';
-import ChatComposerDockRaw from '@/components/chatWithMyself/ChatComposerDock';
+import ChatComposerDock from '@/components/chatWithMyself/ChatComposerDock';
 import ChatComposerSettingsModal from '@/components/chatWithMyself/ChatComposerSettingsModal';
 import ChatDatePanelRaw from '@/components/chatWithMyself/ChatDatePanel';
 import ChatFileDropOverlay from '@/components/chatWithMyself/ChatFileDropOverlay';
@@ -49,7 +49,6 @@ import {
 import type { ChatStorageCtx } from '@/utils/chatWithMyself/backends';
 
 /** Untyped JSX child panels — cast until those modules are migrated. */
-const ChatComposerDock = ChatComposerDockRaw as any;
 const ChatDatePanel = ChatDatePanelRaw as any;
 const ChatGroupPanel = ChatGroupPanelRaw as any;
 const ChatMessageList = ChatMessageListRaw as any;
@@ -559,6 +558,26 @@ export default function ChatWithMyselfPane({
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<any>(null);
   const [editTarget, setEditTarget] = useState<any>(null);
+  const [composerFitHeights, setComposerFitHeights] = useState<{
+    previewHeight: number;
+    contentHeight: number;
+  } | null>(null);
+  const handleComposerFitHeightsChange = useCallback(
+    (next: { previewHeight: number; contentHeight: number } | null) => {
+      setComposerFitHeights((prev) => {
+        if (!next) return prev == null ? prev : null;
+        if (
+          prev &&
+          prev.previewHeight === next.previewHeight &&
+          prev.contentHeight === next.contentHeight
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    },
+    [],
+  );
   const [addToNoteMessage, setAddToNoteMessage] = useState<any>(null);
   const [historyMessage, setHistoryMessage] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
@@ -2831,8 +2850,12 @@ export default function ChatWithMyselfPane({
               }
             />
             <ChatComposerDock
-              autoFit={Boolean(editTarget)}
-              fitKey={editTarget?.id || ''}
+              autoFit={Boolean(editTarget || replyTo)}
+              fitKey={`${editTarget?.id || ''}:${replyTo?.id || ''}`}
+              fitPreviewHeight={composerFitHeights?.previewHeight ?? 0}
+              fitContentHeight={
+                editTarget ? composerFitHeights?.contentHeight ?? null : null
+              }
             >
               <div className="mx-auto flex h-full min-h-0 w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3">
                 <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5">
@@ -2864,6 +2887,7 @@ export default function ChatWithMyselfPane({
                     isMobileLayout={isMobileLayout}
                     seedBody={composerSeed}
                     onSeedConsumed={() => setComposerSeed(null)}
+                    onFitHeightsChange={handleComposerFitHeightsChange}
                   />
                 </div>
               </div>

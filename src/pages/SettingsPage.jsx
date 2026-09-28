@@ -9,6 +9,7 @@ import StatusBarClockSettings from '@/components/settings/StatusBarClockSettings
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import HaimProseWidthSettings from '@/components/settings/HaimProseWidthSettings';
+import HaimTypographySettings from '@/components/settings/HaimTypographySettings';
 import OgWorkerSettings from '@/components/settings/OgWorkerSettings';
 import QuizSettingsSection from '@/components/settings/QuizSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
@@ -1429,6 +1430,7 @@ export default function SettingsPage({
                 </Switch.Root>
               </div>
               <HaimProseWidthSettings />
+              <HaimTypographySettings />
               <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">

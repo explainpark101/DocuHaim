@@ -11,8 +11,13 @@ import {
   type NodeViewProps,
 } from '@tiptap/react';
 import { Check, ChevronDown, ChevronUp, Code2, Copy, Eye } from 'lucide-react';
-import { Tooltip } from 'radix-ui';
+import { Select, Tooltip } from 'radix-ui';
 import HaimLineNumberGutter from '@/components/haimEditor/HaimLineNumberGutter';
+import {
+  buildHaimCodeBlockLanguageOptions,
+  languageAttrFromSelectValue,
+  selectValueFromLanguageAttr,
+} from '@/components/haimEditor/haimCodeBlockLanguages';
 import { renderMermaidSourceToSvg } from '@/utils/lazyMermaid';
 
 function isMermaidLanguage(language: unknown): boolean {
@@ -36,6 +41,12 @@ function resolveHaimMermaidTheme(dom: HTMLElement | null): 'dark' | 'default' {
 
 const tooltipContentClass =
   'z-100001 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fg';
+
+const langSelectContentClass =
+  'z-100010 max-h-72 min-w-[9rem] overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-odp-borderStrong dark:bg-odp-bgSoft';
+
+const langSelectItemClass =
+  'relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-7 pr-3 text-xs text-gray-800 outline-none data-highlighted:bg-gray-100 dark:text-odp-fg dark:data-highlighted:bg-odp-focusBg';
 
 function IconActionButton({
   label,
@@ -73,24 +84,94 @@ function IconActionButton({
   );
 }
 
+function CodeBlockLanguageSelect({
+  language,
+  onChange,
+}: {
+  language: string;
+  onChange: (next: string | null) => void;
+}) {
+  const options = buildHaimCodeBlockLanguageOptions(language);
+  const value = selectValueFromLanguageAttr(language);
+
+  return (
+    <Select.Root
+      value={value}
+      onValueChange={(next) => onChange(languageAttrFromSelectValue(next))}
+    >
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <Select.Trigger
+            className="haim-code-block__lang-trigger"
+            aria-label="코드 언어"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Select.Value placeholder="plain" />
+            <Select.Icon className="haim-code-block__lang-chevron">
+              <ChevronDown size={12} aria-hidden />
+            </Select.Icon>
+          </Select.Trigger>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content side="bottom" sideOffset={6} className={tooltipContentClass}>
+            언어
+            <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+      <Select.Portal>
+        <Select.Content
+          className={langSelectContentClass}
+          position="popper"
+          sideOffset={4}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <Select.Viewport className="p-1">
+            {options.map((opt) => (
+              <Select.Item
+                key={opt.value}
+                value={opt.value}
+                className={langSelectItemClass}
+              >
+                <Select.ItemIndicator className="absolute left-1.5 inline-flex items-center">
+                  <Check size={12} aria-hidden />
+                </Select.ItemIndicator>
+                <Select.ItemText>{opt.label}</Select.ItemText>
+              </Select.Item>
+            ))}
+          </Select.Viewport>
+        </Select.Content>
+      </Select.Portal>
+    </Select.Root>
+  );
+}
+
 function CodeBlockToolbar({
   language,
   collapsed,
   copied,
+  editable,
   onCopy,
   onToggleCollapse,
+  onLanguageChange,
   extra,
 }: {
   language: string;
   collapsed: boolean;
   copied: boolean;
+  editable: boolean;
   onCopy: () => void;
   onToggleCollapse: () => void;
+  onLanguageChange?: (next: string | null) => void;
   extra?: ReactNode;
 }) {
   return (
     <div className="haim-code-block__header">
-      <span className="haim-code-block__lang">{language || 'code'}</span>
+      {editable && onLanguageChange ? (
+        <CodeBlockLanguageSelect language={language} onChange={onLanguageChange} />
+      ) : (
+        <span className="haim-code-block__lang">{language || 'plain'}</span>
+      )}
       <div className="haim-code-block__actions">
         {extra}
         <IconActionButton
@@ -118,12 +199,13 @@ function CodeBlockToolbar({
 
 /**
  * TipTap code-block node view: mermaid → chart; other languages → lowlight DOM.
- * Header always exposes copy + fold/unfold.
+ * Header exposes language picker (when editable), copy, and fold/unfold.
  */
 export default function HaimCodeBlockView({
   node,
   editor,
   selected,
+  updateAttributes,
 }: NodeViewProps) {
   const language = String(node.attrs.language || '');
   const isMermaid = isMermaidLanguage(language);
@@ -181,10 +263,48 @@ export default function HaimCodeBlockView({
     done();
   }, [source]);
 
+  const onLanguageChange = useCallback(
+    (next: string | null) => {
+      updateAttributes({ language: next });
+      if (!isMermaidLanguage(next)) {
+        setEditing(false);
+        setSvg(null);
+        setError(false);
+      }
+    },
+    [updateAttributes],
+  );
+
   const hiddenContent = (
     <pre className="haim-mermaid-block__source-hidden" aria-hidden>
       <NodeViewContent as={'code' as 'div'} />
     </pre>
+  );
+
+  const toolbar = (
+    <CodeBlockToolbar
+      language={language}
+      collapsed={collapsed}
+      copied={copied}
+      editable={editable}
+      onCopy={onCopy}
+      onToggleCollapse={() => setCollapsed((v) => !v)}
+      onLanguageChange={editable ? onLanguageChange : undefined}
+      extra={
+        isMermaid && editable && !collapsed ? (
+          <IconActionButton
+            label={editing || error ? '차트 보기' : '소스 편집'}
+            onClick={() => setEditing((v) => !v)}
+          >
+            {editing || error ? (
+              <Eye size={14} aria-hidden />
+            ) : (
+              <Code2 size={14} aria-hidden />
+            )}
+          </IconActionButton>
+        ) : null
+      }
+    />
   );
 
   if (isMermaid && !editing && svg && !collapsed) {
@@ -195,20 +315,7 @@ export default function HaimCodeBlockView({
         data-language="mermaid"
       >
         <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-          <CodeBlockToolbar
-            language="mermaid"
-            collapsed={collapsed}
-            copied={copied}
-            onCopy={onCopy}
-            onToggleCollapse={() => setCollapsed((v) => !v)}
-            extra={
-              editable ? (
-                <IconActionButton label="소스 편집" onClick={() => setEditing(true)}>
-                  <Code2 size={14} aria-hidden />
-                </IconActionButton>
-              ) : null
-            }
-          />
+          {toolbar}
         </Tooltip.Provider>
         <div
           className="haim-mermaid-block__chart"
@@ -231,27 +338,7 @@ export default function HaimCodeBlockView({
       data-language={language || undefined}
     >
       <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-        <CodeBlockToolbar
-          language={language || (isMermaid ? 'mermaid' : 'code')}
-          collapsed={collapsed}
-          copied={copied}
-          onCopy={onCopy}
-          onToggleCollapse={() => setCollapsed((v) => !v)}
-          extra={
-            isMermaid && editable && !collapsed ? (
-              <IconActionButton
-                label={editing || error ? '차트 보기' : '소스 편집'}
-                onClick={() => setEditing((v) => !v)}
-              >
-                {editing || error ? (
-                  <Eye size={14} aria-hidden />
-                ) : (
-                  <Code2 size={14} aria-hidden />
-                )}
-              </IconActionButton>
-            ) : null
-          }
-        />
+        {toolbar}
       </Tooltip.Provider>
       {collapsed ? (
         hiddenContent

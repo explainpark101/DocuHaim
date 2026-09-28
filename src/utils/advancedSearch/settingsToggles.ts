@@ -142,6 +142,12 @@ import {
   saveHaimTocDockEnabled,
 } from '@/utils/haimTocLayoutSettings';
 import {
+  HAIM_TYPOGRAPHY_RULE_DEFS,
+  loadHaimTypographyGlobal,
+  saveHaimTypographyGlobalRule,
+  type HaimTypographyRuleId,
+} from '@/utils/haimTypographySettings';
+import {
   loadBase64ImageFoldEnabled,
   saveBase64ImageFoldEnabled,
 } from '@/utils/base64ImageFoldSettings';
@@ -179,7 +185,8 @@ export type SettingsToggleId =
   | 'settings-haim-code-line-numbers'
   | 'settings-haim-raw-line-numbers'
   | 'settings-haim-code-wrap'
-  | 'settings-base64-image-fold';
+  | 'settings-base64-image-fold'
+  | `settings-haim-typography-${HaimTypographyRuleId}`;
 
 export type SettingsToggleDef = {
   id: SettingsToggleId;
@@ -444,6 +451,26 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     load: loadBase64ImageFoldEnabled,
     save: saveBase64ImageFoldEnabled,
   },
+  ...HAIM_TYPOGRAPHY_RULE_DEFS.map(
+    (def): SettingsToggleDef => ({
+      id: `settings-haim-typography-${def.id}`,
+      enableTitle: `Haim Typography ${def.label} 켜기`,
+      disableTitle: `Haim Typography ${def.label} 끄기`,
+      description: `WYSIWYG 입력 편의: ${def.hint} (저장 마크다운에 반영)`,
+      keywords: [
+        'haim',
+        'typography',
+        '타이포',
+        '입력',
+        '편의',
+        def.id,
+        def.label,
+        def.hint,
+      ],
+      load: () => loadHaimTypographyGlobal()[def.id],
+      save: (enabled) => saveHaimTypographyGlobalRule(def.id, enabled),
+    }),
+  ),
   {
     id: 'settings-alt-vim',
     enableTitle: 'Alt+Vim 커서 이동 켜기',

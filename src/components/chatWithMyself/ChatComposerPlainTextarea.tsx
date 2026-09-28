@@ -25,7 +25,7 @@ const ChatComposerPlainTextarea = forwardRef<
     onChange,
     fillParent = false,
     minHeight = 40,
-    placeholder = '메시지 입력…',
+    placeholder = '채팅을 입력해주세요',
     className = '',
     autoFocus = false,
   },

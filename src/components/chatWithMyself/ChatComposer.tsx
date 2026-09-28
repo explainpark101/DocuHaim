@@ -25,6 +25,7 @@ import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 import { chatComposerAreaMaxHeight } from '@/components/chatWithMyself/ChatComposerDock';
+import { measureComposerFitHeights } from '@/components/chatWithMyself/composerFitMeasure';
 import PromptModal from '@/components/modals/PromptModal';
 import {
   ADD_GROUP_VALUE,
@@ -192,6 +193,13 @@ export type ChatComposerProps = {
   fillParent?: boolean;
   draftScope?: string;
   autoFocusOnMount?: boolean;
+  /**
+   * Dock autoFit: preview block height (reply/edit banner) and natural
+   * content height (pretext-sized editor while editing). `null` clears.
+   */
+  onFitHeightsChange?: (
+    next: { previewHeight: number; contentHeight: number } | null,
+  ) => void;
 };
 
 type DoSendOptions = {
@@ -454,6 +462,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       fillParent = false,
       draftScope = '',
       autoFocusOnMount = true,
+      onFitHeightsChange,
     },
     ref,
   ) {
@@ -477,6 +486,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           Reflect.apply(openChatImageRaw, null, [url, options]);
         }
       : null;
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -830,19 +840,94 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   }, [draftReady, editTarget, selectedGroup, replyTo, draftScope]);
 
   const syncEditorHeight = useCallback(() => {
+    // fillParent compose fills the dock; fillParent+edit uses pretext fit effect.
     if (fillParent) return;
     const next = measureComposerHeight(wrapRef.current, contentMaxH);
     setEditorHeight((prev) => (prev === next ? prev : next));
   }, [contentMaxH, fillParent]);
 
+  // fillParent + reply/edit: report preview bump + (edit) pretext content height to the dock.
+  useLayoutEffect(() => {
+    if (!fillParent || (!editTarget && !replyTo)) {
+      return undefined;
+    }
+
+    const syncFit = () => {
+      const editing = Boolean(editTarget);
+      const maxEditor = getComposerContentMaxH({ editing: true });
+      if (editing) {
+        setContentMaxH((prev) => (prev === maxEditor ? prev : maxEditor));
+      }
+      const measured = measureComposerFitHeights(
+        rootRef.current,
+        wrapRef.current,
+        value,
+        {
+          editing,
+          minEditorHeight: COMPOSER_MIN_H,
+          maxEditorHeight: maxEditor,
+        },
+      );
+      if (editing) {
+        setEditorHeight((prev) =>
+          prev === measured.editorHeight ? prev : measured.editorHeight,
+        );
+      }
+      // Outer card (py) + dock padding — keep input from losing space to the preview.
+      const outerChrome = 28;
+      onFitHeightsChange?.({
+        previewHeight: measured.previewHeight,
+        contentHeight: measured.contentHeight + outerChrome,
+      });
+    };
+
+    syncFit();
+    const raf = window.requestAnimationFrame(syncFit);
+    const t1 = window.setTimeout(syncFit, 50);
+    const t2 = window.setTimeout(syncFit, 280);
+    const root = rootRef.current;
+    const ro =
+      root && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(syncFit)
+        : null;
+    if (root && ro) ro.observe(root);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      ro?.disconnect();
+    };
+  }, [
+    fillParent,
+    editTarget,
+    replyTo,
+    value,
+    imageQueue.length,
+    showToolbar,
+    showLineNumbers,
+    useLightweightEditor,
+    showHelperText,
+    isMobile,
+    inlineAddOpen,
+    onFitHeightsChange,
+  ]);
+
+  useEffect(() => {
+    if (editTarget || replyTo) return undefined;
+    onFitHeightsChange?.(null);
+    return undefined;
+  }, [editTarget, replyTo, onFitHeightsChange]);
+
   // Leaving edit / switching to fillParent: drop the expanded editor height.
   useLayoutEffect(() => {
     if (!fillParent) return;
+    if (editTarget) return;
     setEditorHeight(COMPOSER_MIN_H);
     setContentMaxH(getComposerContentMaxH({ editing: false }));
-  }, [fillParent]);
+  }, [fillParent, editTarget]);
 
   useEffect(() => {
+    if (fillParent && editTarget) return undefined;
     if (fillParent) return undefined;
     const syncMax = () => {
       const next = getComposerContentMaxH({ editing: Boolean(editTarget) });
@@ -1364,8 +1449,11 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     />
   );
 
+  const sizeEditorToContent = Boolean(editTarget) || !fillParent;
+
   return (
     <div
+      ref={rootRef}
       className={
         fillParent
           ? `flex h-full min-h-0 flex-col overflow-hidden ${editTarget ? 'pb-0.5' : ''}`
@@ -1383,7 +1471,10 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
               : 'px-2 py-1 md:px-3 md:py-1.5'
         }
       >        {editTarget ? (
-          <div className="mb-1 flex items-start gap-2 rounded-md border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 px-2 py-1 dark:border-amber-800/60 dark:border-l-amber-400 dark:bg-amber-950/40">
+          <div
+            data-composer-fit-preview=""
+            className="mb-1 flex items-start gap-2 rounded-md border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50 px-2 py-1 dark:border-amber-800/60 dark:border-l-amber-400 dark:bg-amber-950/40"
+          >
             <Pencil size={14} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
             <div className="min-w-0 flex-1">
               <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">
@@ -1411,7 +1502,10 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           </div>
         ) : null}
         {replyTo && !editTarget ? (
-          <div className="mb-1 min-w-0 max-w-full overflow-hidden rounded-md border border-blue-200 border-l-4 border-l-blue-500 bg-blue-100 px-2 py-1 shadow-sm dark:border-blue-800/60 dark:border-l-blue-400 dark:bg-blue-950 dark:shadow-none">
+          <div
+            data-composer-fit-preview=""
+            className="mb-1 min-w-0 max-w-full overflow-hidden rounded-md border border-blue-200 border-l-4 border-l-blue-500 bg-blue-100 px-2 py-1 shadow-sm dark:border-blue-800/60 dark:border-l-blue-400 dark:bg-blue-950 dark:shadow-none"
+          >
             <div className="flex min-w-0 items-start gap-2">
               <div className="min-w-0 flex-1 overflow-hidden">
                 <div className="truncate text-[11px] font-semibold text-blue-700 dark:text-blue-300">
@@ -1451,7 +1545,10 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         ) : null}
 
         {imageQueue.length > 0 ? (
-          <div className="mb-1 flex flex-wrap gap-2">
+          <div
+            data-composer-fit-attachments=""
+            className="mb-1 flex flex-wrap gap-2"
+          >
             {imageQueue.map((item) =>
               item.kind === 'file' || item.kind === 'note' || item.kind === 'folder' ? (
                 <div
@@ -1570,12 +1667,13 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         />
 
         <div
+          data-composer-fit-controls=""
           className={
             showToolbar
-              ? fillParent
+              ? fillParent && !editTarget
                 ? 'grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-1.5'
                 : 'grid grid-cols-[auto_minmax(0,1fr)] gap-1.5'
-              : fillParent
+              : fillParent && !editTarget
                 ? 'flex min-h-0 flex-1 flex-col gap-1.5'
                 : 'flex flex-col gap-1.5'
           }
@@ -1698,7 +1796,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           <div
             className={`flex items-start gap-2 ${
               showToolbar ? 'col-span-2' : ''
-            } ${fillParent ? 'min-h-0 flex-1' : ''}`}
+            } ${fillParent && !editTarget ? 'min-h-0 flex-1' : ''}`}
           >
             {!showToolbar ? (
               <button
@@ -1721,11 +1819,10 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                 useLightweightEditor || !showToolbar
                   ? 'chat-composer-editor--no-toolbar'
                   : ''
-              } ${fillParent ? 'h-full min-h-0' : 'shrink-0'}`}
+              } ${fillParent && !editTarget ? 'h-full min-h-0' : 'shrink-0'}`}
               style={
-                fillParent
-                  ? undefined
-                  : {
+                sizeEditorToContent
+                  ? {
                       height: editorHeight,
                       minHeight: COMPOSER_MIN_H,
                       // Instant while editing so the dock can grow with content;
@@ -1734,6 +1831,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                         ? undefined
                         : EDITOR_HEIGHT_CSS_TRANSITION,
                     }
+                  : undefined
               }
             >
               {useLightweightEditor ? (
@@ -1741,7 +1839,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   ref={textareaRef}
                   value={value}
                   onChange={applyComposerValue}
-                  fillParent={fillParent}
+                  fillParent={fillParent && !editTarget}
                   minHeight={COMPOSER_MIN_H}
                 />
               ) : (
@@ -1750,7 +1848,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     <ChatComposerPlainTextarea
                       value={value}
                       onChange={applyComposerValue}
-                      fillParent={fillParent}
+                      fillParent={fillParent && !editTarget}
                       minHeight={COMPOSER_MIN_H}
                     />
                   }
@@ -1808,7 +1906,10 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           </div>
         </div>
         {!isMobile && showHelperText ? (
-          <div className="mt-0.5 flex shrink-0 items-center gap-1.5">
+          <div
+            data-composer-fit-helper=""
+            className="mt-0.5 flex shrink-0 items-center gap-1.5"
+          >
             <p className="min-w-0 flex-1 text-[10px] text-gray-400 dark:text-gray-500">
               {editTarget
                 ? `${sendModLabel} 수정 완료 · Enter / Shift+Enter 줄바꿈 · Ctrl+M 마크다운`

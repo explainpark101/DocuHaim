@@ -1,6 +1,7 @@
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { common, createLowlight } from 'lowlight';
+import { createCodeBlockBracketPairsPlugin } from '@/components/haimEditor/codeBlockBracketPairs';
 import HaimCodeBlockView from '@/components/haimEditor/extensions/HaimCodeBlockView';
 import { createTrimCodeBlockEdgesPlugin } from '@/components/haimEditor/trimCodeBlockEdges';
 
@@ -11,6 +12,7 @@ const lowlight = createLowlight(common);
  * - language=mermaid → chart preview
  * - other languages → lowlight token classes (needs highlight.js CSS)
  * - trim leading/trailing blank lines when leaving the block
+ * - code-editor bracket/quote pairing inside the block
  */
 export const HaimCodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
@@ -20,6 +22,7 @@ export const HaimCodeBlock = CodeBlockLowlight.extend({
     return [
       ...(this.parent?.() ?? []),
       createTrimCodeBlockEdgesPlugin(),
+      createCodeBlockBracketPairsPlugin(),
     ];
   },
 }).configure({

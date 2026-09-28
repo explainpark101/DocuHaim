@@ -2,7 +2,7 @@
  * Split-pane freeze (isSurfaceLive=false) for md-editor-rt / editor panes.
  *
  * Modes:
- * - off — never freeze (not recommended; heavier when many splits are open)
+ * - off — never freeze (default; heavier when many splits are open)
  * - hover-or-focus — live while hovered or keyboard focus-within
  * - focus — live only while keyboard focus-within
  *
@@ -28,8 +28,8 @@ export const WORKSPACE_PANE_FREEZE_MODES = [
   'focus',
 ] as const satisfies readonly WorkspacePaneFreezeMode[];
 
-/** Default: unfreeze on hover or keyboard focus. */
-export const WORKSPACE_PANE_FREEZE_DEFAULT: WorkspacePaneFreezeMode = 'hover-or-focus';
+/** Default: never freeze (all visible panes stay live). */
+export const WORKSPACE_PANE_FREEZE_DEFAULT: WorkspacePaneFreezeMode = 'off';
 
 export type WorkspacePaneFreezeModeOption = {
   value: WorkspacePaneFreezeMode;
@@ -40,7 +40,7 @@ export type WorkspacePaneFreezeModeOption = {
 export const WORKSPACE_PANE_FREEZE_OPTIONS: readonly WorkspacePaneFreezeModeOption[] = [
   {
     value: 'off',
-    label: '프리징 없음 (비권장)',
+    label: '프리징 없음',
     description:
       '모든 분할 페인을 항상 활성으로 둡니다. 분할이 많을 때 성능이 떨어질 수 있습니다. 비활성 페인도 전체 에디터를 유지합니다.',
   },

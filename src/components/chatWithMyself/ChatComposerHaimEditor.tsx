@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent, useEditorState } from '@tiptap/react';
 import {
   Bold,
@@ -22,6 +22,11 @@ import {
 } from '@/components/haimEditor/markdownCache';
 import type { ChatComposerEditorProps } from '@/components/chatWithMyself/ChatComposerLegacyMdEditor';
 import ChatComposerPlainTextarea from '@/components/chatWithMyself/ChatComposerPlainTextarea';
+import {
+  HAIM_TYPOGRAPHY_CHANGED_EVENT,
+  loadHaimTypographyGlobal,
+  type HaimTypographyRules,
+} from '@/utils/haimTypographySettings';
 import '@/styles/haim-editor/style.css';
 
 function ToolBtn({
@@ -86,13 +91,25 @@ export default function ChatComposerHaimEditor({
   const lastEmittedMdRef = useRef(value || '');
   const composingRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [typographyRules, setTypographyRules] = useState<HaimTypographyRules>(() =>
+    loadHaimTypographyGlobal(),
+  );
+
+  useEffect(() => {
+    const sync = () => setTypographyRules(loadHaimTypographyGlobal());
+    window.addEventListener(HAIM_TYPOGRAPHY_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(HAIM_TYPOGRAPHY_CHANGED_EVENT, sync);
+  }, []);
 
   const extensions = useMemo(
     () =>
       createHaimExtensions({
-        placeholder: '메시지 입력…',
+        placeholder: '채팅을 입력해주세요',
         profile: 'composer',
+        typographyRules,
       }),
+    // Live updates via setHaimTypographyRules
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount once
     [],
   );
 
@@ -112,6 +129,11 @@ export default function ChatComposerHaimEditor({
     },
     [extensions],
   );
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.commands.setHaimTypographyRules(typographyRules);
+  }, [editor, typographyRules]);
 
   const emitMarkdown = useCallback(() => {
     if (!editor) return;
