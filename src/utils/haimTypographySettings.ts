@@ -68,6 +68,22 @@ export const HAIM_TYPOGRAPHY_RULE_DEFS: readonly HaimTypographyRuleDef[] = [
   { id: 'superscriptThree', label: '³', hint: '^3 → ³' },
 ];
 
+/** Case-insensitive filter by id / label / hint. Empty query → all defs. */
+export function filterHaimTypographyRuleDefs(
+  query: string,
+  defs: readonly HaimTypographyRuleDef[] = HAIM_TYPOGRAPHY_RULE_DEFS,
+): HaimTypographyRuleDef[] {
+  const q = String(query ?? '').trim().toLowerCase();
+  if (!q) return [...defs];
+  return defs.filter((def) => {
+    return (
+      def.id.toLowerCase().includes(q) ||
+      def.label.toLowerCase().includes(q) ||
+      def.hint.toLowerCase().includes(q)
+    );
+  });
+}
+
 /** Match prior hard-coded Typography: quotes off, everything else on. */
 export const HAIM_TYPOGRAPHY_DEFAULTS: HaimTypographyRules = {
   emDash: true,

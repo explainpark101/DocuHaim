@@ -8,6 +8,8 @@ import { useModalsOwned } from '@/App/providers/AppModalsStateProvider';
 import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { markAutoSaveSyncTimestamp } from '@/App/hooks/autoSaveBridge';
+import { loadTreeRevealOnOpenEnabled } from '@/utils/treeRevealOnOpenSettings';
+import { scrollSidebarTreeNodeIntoView } from '@/utils/scrollSidebarTreeNodeIntoView';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -1019,6 +1021,9 @@ export function useFileSessionDomain() {
       const parentPaths = getParentPathsToExpand(parentPath);
       if (parentPaths.length) {
         expandPathsRef.current?.(type, parentPaths);
+      }
+      if (loadTreeRevealOnOpenEnabled()) {
+        scrollSidebarTreeNodeIntoView(type, path);
       }
       let node = null;
       if (type === STORAGE_MODE_LOCAL) {

@@ -6,7 +6,7 @@ export type HaimTypographyStatusTone = 'on' | 'off';
 
 const TONE_CLASS: Record<HaimTypographyStatusTone, string> = {
   on: 'bg-emerald-500 dark:bg-emerald-400',
-  off: 'bg-slate-400 dark:bg-slate-500',
+  off: 'bg-red-500 dark:bg-red-400',
 };
 
 const TONE_LABEL: Record<HaimTypographyStatusTone, string> = {

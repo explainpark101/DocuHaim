@@ -795,6 +795,8 @@ export default function TreeNode({
       <Motion.div
         ref={setRowRef}
         data-tree-node-row
+        data-tree-path={node.path}
+        data-tree-storage={storageType}
         data-tree-drop-storage={canAcceptOsDrop ? storageType : undefined}
         data-tree-drop-path={canAcceptOsDrop ? effectiveDropTarget.path : undefined}
         layout={false}
