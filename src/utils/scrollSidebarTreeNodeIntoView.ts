@@ -39,8 +39,11 @@ export function scrollSidebarTreeNodeIntoView(
     const row = root.querySelector(
       `[data-tree-node-row][data-tree-path="${pathEsc}"][data-tree-storage="${typeEsc}"]`,
     );
-    if (row instanceof HTMLElement) {
-      row.scrollIntoView({ block, behavior });
+    if (
+      row &&
+      typeof (row as HTMLElement).scrollIntoView === 'function'
+    ) {
+      (row as HTMLElement).scrollIntoView({ block, behavior });
       return;
     }
     if (left > 0) requestAnimationFrame(() => tryScroll(left - 1));

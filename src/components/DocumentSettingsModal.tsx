@@ -23,6 +23,7 @@ import {
   haimTypographyStatusTone,
 } from '@/components/settings/HaimTypographyStatusDot';
 import HaimTypographySearchField from '@/components/settings/HaimTypographySearchField';
+import { settingsSectionCardClass } from '@/utils/settingsSectionCard';
 
 export type DocumentSettingsModalProps = {
   isOpen: boolean;
@@ -180,180 +181,192 @@ export default function DocumentSettingsModal({
       ignoreEnterInFields
       contentClassName="max-w-[min(92vw,720px)] max-h-[90vh]"
     >
-      <div className="flex max-h-[90vh] flex-col gap-5 overflow-y-auto p-6">
-        <div>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header className="shrink-0 border-b border-gray-100 px-6 py-4 dark:border-odp-borderSoft">
           <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
             문서 설정
           </h2>
           <p className="mt-1 text-xs text-gray-500 dark:text-odp-muted">
             이 설정은 현재 마크다운 문서에만 저장됩니다.
           </p>
+        </header>
+
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-4">
+          <section
+            className={settingsSectionCardClass('sky')}
+            aria-label="각주 Source List"
+          >
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
+              각주 Source List
+            </h3>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-odp-fgStrong">
+              <input
+                type="checkbox"
+                checked={local.sourceList?.show !== false}
+                onChange={(e) => updateSourceList({ show: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+              />
+              문서 아래쪽에 source list 표시
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-odp-fgStrong">
+                표시 이름
+              </span>
+              <input
+                type="text"
+                value={local.sourceList?.title ?? DEFAULT_SOURCE_LIST_TITLE}
+                onChange={(e) => updateSourceList({ title: e.target.value })}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fgStrong"
+                placeholder={DEFAULT_SOURCE_LIST_TITLE}
+              />
+            </label>
+          </section>
+
+          <section
+            className={settingsSectionCardClass('violet')}
+            aria-label="문서 폰트"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+              <h3 className="shrink-0 text-sm font-semibold whitespace-nowrap text-gray-800 dark:text-odp-fgStrong">
+                문서 폰트
+              </h3>
+              <Button type="button" variant="tertiary" size="sm" onClick={handleResetFonts}>
+                <IconRefresh size={14} />
+                폰트 초기화
+              </Button>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {FONT_FIELDS.map(([key, label, placeholder]) => (
+                <label key={key} className="block">
+                  <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-odp-fgStrong">
+                    {label}
+                  </span>
+                  <FontFamilyInput
+                    id={`document-font-${key}`}
+                    value={local.fonts?.[key] ?? ''}
+                    onChange={(v) => updateFont(key, v)}
+                    options={fontOptions}
+                    placeholder={placeholder}
+                  />
+                </label>
+              ))}
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-odp-fgStrong">
+                이 문서 전용 Webfont CSS
+              </span>
+              <textarea
+                value={local.webfontCss ?? ''}
+                onChange={(e) =>
+                  setLocal((prev) => ({ ...prev, webfontCss: e.target.value }))
+                }
+                rows={7}
+                className="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-xs text-gray-800 outline-none focus:border-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fgStrong"
+                placeholder="@import url('https://...');&#10;@font-face { font-family: 'My Font'; src: url('...'); }"
+                spellCheck={false}
+              />
+            </label>
+          </section>
+
+          <section
+            className={settingsSectionCardClass('emerald')}
+            aria-label="Haim Typography 입력 편의"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
+                  Haim Typography 입력 편의
+                </h3>
+                <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                  이 문서만 전역 설정을 덮어씁니다. 「전역 따름」은 설정의 값을
+                  사용합니다.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="tertiary"
+                size="sm"
+                onClick={handleResetTypography}
+              >
+                <IconRefresh size={14} />
+                전부 전역 따름
+              </Button>
+            </div>
+            <HaimTypographySearchField
+              id="haim-typography-document-search"
+              value={typographyQuery}
+              onChange={setTypographyQuery}
+            />
+            <ul className="max-h-72 divide-y divide-gray-200 overflow-y-auto rounded-md border border-gray-200 bg-white/80 dark:divide-odp-borderStrong dark:border-odp-borderStrong dark:bg-odp-bgSoft/80">
+              {filteredTypographyDefs.length === 0 ? (
+                <li className="px-3 py-3 text-center text-[11px] text-gray-500 dark:text-odp-muted">
+                  일치하는 규칙이 없습니다.
+                </li>
+              ) : (
+                filteredTypographyDefs.map((def) => {
+                  const mode = modeFromOverride(local.haimTypography, def.id);
+                  const globalOn = globalTypography[def.id];
+                  const globalTone = haimTypographyStatusTone(globalOn);
+                  const effectiveTone =
+                    mode === 'inherit'
+                      ? globalTone
+                      : haimTypographyStatusTone(mode === 'on');
+                  return (
+                    <li
+                      key={def.id}
+                      className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-odp-fg">
+                          <HaimTypographyStatusDot tone={effectiveTone} />
+                          {def.label}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[11px] text-gray-500 dark:text-odp-muted">
+                          {def.hint}
+                        </p>
+                      </div>
+                      <RadioGroup.Root
+                        className="inline-flex shrink-0 overflow-hidden rounded-md border border-gray-300 dark:border-odp-borderStrong"
+                        value={mode}
+                        onValueChange={(v) =>
+                          handleTypographyMode(def.id, v as TypographyMode)
+                        }
+                        aria-label={`${def.label} 문서 Typography`}
+                      >
+                        {TYPOGRAPHY_MODE_OPTIONS.map((opt) => {
+                          const selected = mode === opt.value;
+                          const optionTone =
+                            opt.value === 'inherit'
+                              ? globalTone
+                              : haimTypographyStatusTone(opt.value === 'on');
+                          return (
+                            <RadioGroup.Item
+                              key={opt.value}
+                              value={opt.value}
+                              className={[
+                                'inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] outline-none transition-all',
+                                'focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-blue-400',
+                                'border-r border-gray-300 last:border-r-0 dark:border-odp-borderStrong',
+                                selected
+                                  ? 'bg-blue-600 font-bold text-white shadow-sm dark:bg-blue-500 dark:text-white'
+                                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-odp-bgSoft dark:text-odp-fgMuted dark:hover:bg-odp-borderStrong dark:hover:text-odp-fg',
+                              ].join(' ')}
+                            >
+                              <HaimTypographyStatusDot tone={optionTone} />
+                              {opt.label}
+                            </RadioGroup.Item>
+                          );
+                        })}
+                      </RadioGroup.Root>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </section>
         </div>
 
-        <section className="grid gap-3">
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
-            각주 Source List
-          </h3>
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-odp-fgStrong">
-            <input
-              type="checkbox"
-              checked={local.sourceList?.show !== false}
-              onChange={(e) => updateSourceList({ show: e.target.checked })}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600"
-            />
-            문서 아래쪽에 source list 표시
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-odp-fgStrong">
-              표시 이름
-            </span>
-            <input
-              type="text"
-              value={local.sourceList?.title ?? DEFAULT_SOURCE_LIST_TITLE}
-              onChange={(e) => updateSourceList({ title: e.target.value })}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none focus:border-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fgStrong"
-              placeholder={DEFAULT_SOURCE_LIST_TITLE}
-            />
-          </label>
-        </section>
-
-        <section className="grid gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-            <h3 className="shrink-0 text-sm font-semibold whitespace-nowrap text-gray-800 dark:text-odp-fgStrong">
-              문서 폰트
-            </h3>
-            <Button type="button" variant="tertiary" size="sm" onClick={handleResetFonts}>
-              <IconRefresh size={14} />
-              폰트 초기화
-            </Button>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {FONT_FIELDS.map(([key, label, placeholder]) => (
-              <label key={key} className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-odp-fgStrong">
-                  {label}
-                </span>
-                <FontFamilyInput
-                  id={`document-font-${key}`}
-                  value={local.fonts?.[key] ?? ''}
-                  onChange={(v) => updateFont(key, v)}
-                  options={fontOptions}
-                  placeholder={placeholder}
-                />
-              </label>
-            ))}
-          </div>
-        </section>
-
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-odp-fgStrong">
-            이 문서 전용 Webfont CSS
-          </span>
-          <textarea
-            value={local.webfontCss ?? ''}
-            onChange={(e) => setLocal((prev) => ({ ...prev, webfontCss: e.target.value }))}
-            rows={7}
-            className="w-full resize-y rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-xs text-gray-800 outline-none focus:border-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft dark:text-odp-fgStrong"
-            placeholder="@import url('https://...');&#10;@font-face { font-family: 'My Font'; src: url('...'); }"
-            spellCheck={false}
-          />
-        </label>
-
-        <section className="grid gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-odp-fgStrong">
-                Haim Typography 입력 편의
-              </h3>
-              <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
-                이 문서만 전역 설정을 덮어씁니다. 「전역 따름」은 설정의 값을
-                사용합니다.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="tertiary"
-              size="sm"
-              onClick={handleResetTypography}
-            >
-              <IconRefresh size={14} />
-              전부 전역 따름
-            </Button>
-          </div>
-          <HaimTypographySearchField
-            id="haim-typography-document-search"
-            value={typographyQuery}
-            onChange={setTypographyQuery}
-          />
-          <ul className="max-h-72 divide-y divide-gray-200 overflow-y-auto rounded-md border border-gray-200 dark:divide-odp-borderStrong dark:border-odp-borderStrong">
-            {filteredTypographyDefs.length === 0 ? (
-              <li className="px-3 py-3 text-center text-[11px] text-gray-500 dark:text-odp-muted">
-                일치하는 규칙이 없습니다.
-              </li>
-            ) : (
-              filteredTypographyDefs.map((def) => {
-                const mode = modeFromOverride(local.haimTypography, def.id);
-                const globalOn = globalTypography[def.id];
-                const globalTone = haimTypographyStatusTone(globalOn);
-                const effectiveTone =
-                  mode === 'inherit'
-                    ? globalTone
-                    : haimTypographyStatusTone(mode === 'on');
-                return (
-                  <li
-                    key={def.id}
-                    className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-odp-fg">
-                        <HaimTypographyStatusDot tone={effectiveTone} />
-                        {def.label}
-                      </p>
-                      <p className="mt-0.5 font-mono text-[11px] text-gray-500 dark:text-odp-muted">
-                        {def.hint}
-                      </p>
-                    </div>
-                    <RadioGroup.Root
-                      className="inline-flex shrink-0 overflow-hidden rounded-md border border-gray-300 dark:border-odp-borderStrong"
-                      value={mode}
-                      onValueChange={(v) =>
-                        handleTypographyMode(def.id, v as TypographyMode)
-                      }
-                      aria-label={`${def.label} 문서 Typography`}
-                    >
-                      {TYPOGRAPHY_MODE_OPTIONS.map((opt) => {
-                        const selected = mode === opt.value;
-                        const optionTone =
-                          opt.value === 'inherit'
-                            ? globalTone
-                            : haimTypographyStatusTone(opt.value === 'on');
-                        return (
-                          <RadioGroup.Item
-                            key={opt.value}
-                            value={opt.value}
-                            className={[
-                              'inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] outline-none transition-all',
-                              'focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-blue-400',
-                              'border-r border-gray-300 last:border-r-0 dark:border-odp-borderStrong',
-                              selected
-                                ? 'bg-blue-600 font-bold text-white shadow-sm dark:bg-blue-500 dark:text-white'
-                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-odp-bgSoft dark:text-odp-fgMuted dark:hover:bg-odp-borderStrong dark:hover:text-odp-fg',
-                            ].join(' ')}
-                          >
-                            <HaimTypographyStatusDot tone={optionTone} />
-                            {opt.label}
-                          </RadioGroup.Item>
-                        );
-                      })}
-                    </RadioGroup.Root>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-        </section>
-
-        <div className="flex justify-end gap-2 pt-1">
+        <footer className="flex shrink-0 justify-end gap-2 border-t border-gray-100 px-6 py-4 dark:border-odp-borderSoft">
           <Button type="button" variant="secondary" size="md" onClick={onClose}>
             <IconBack size={16} />
             취소
@@ -362,7 +375,7 @@ export default function DocumentSettingsModal({
             <IconCheck size={16} />
             적용
           </Button>
-        </div>
+        </footer>
       </div>
     </Modal>
   );

@@ -37,6 +37,7 @@ import {
   HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT,
   loadHaimProseLineNumbersEnabled,
 } from '@/utils/haimWysiwygLineNumberSettings';
+import { settingsSectionCardClass } from '@/utils/settingsSectionCard';
 
 /**
  * Draggable floating panel for live Haim WYSIWYG prose max-width tuning.
@@ -183,19 +184,19 @@ export default function HaimProseWidthFloatingPanel() {
       </div>
       <div className="flex flex-col gap-2.5 p-3">
         <section
-          className="rounded-md border border-slate-200/90 bg-slate-50/70 p-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft/50"
+          className={settingsSectionCardClass('sky', { compact: true })}
           aria-label="WYSIWYG 본문 너비 제한"
         >
           <HaimProseWidthControls settings={settings} compact />
         </section>
         <section
-          className="rounded-md border border-slate-200/90 bg-slate-50/70 p-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft/50"
+          className={settingsSectionCardClass('violet', { compact: true })}
           aria-label="WYSIWYG 줄 번호"
         >
           <HaimProseLineNumbersControls enabled={proseLineNumbers} compact />
         </section>
         <section
-          className="rounded-md border border-slate-200/90 bg-slate-50/70 p-2.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft/50"
+          className={settingsSectionCardClass('amber', { compact: true })}
           aria-label="코드 줄 바꿈"
         >
           <HaimCodeWrapControls enabled={codeWrap} compact />

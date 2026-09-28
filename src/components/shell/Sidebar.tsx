@@ -2060,9 +2060,10 @@ export default function Sidebar({
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedS3}
                     onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
-                      setLastFocusedS3FolderPath(node ? node.path || '' : null)
-                    }
+                    onFolderFocus={(node) => {
+                      setLastFocusedS3FolderPath(node ? node.path || '' : null);
+                      if (node) activateTreeNode('s3', node);
+                    }}
                     focusedFolderPath={
                       chatWithMyselfActive
                         ? undefined
@@ -2246,11 +2247,12 @@ export default function Sidebar({
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedLocal}
                     onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
+                    onFolderFocus={(node) => {
                       setLastFocusedLocalFolder(
                         node ? { path: node.path || '', handle: node.handle } : null,
-                      )
-                    }
+                      );
+                      if (node) activateTreeNode('local', node);
+                    }}
                     focusedFolderPath={
                       chatWithMyselfActive
                         ? undefined
@@ -2402,9 +2404,10 @@ export default function Sidebar({
                   isSearching={!!searchTerm}
                   expandedPaths={effectiveExpandedIdb}
                   onExpandedChange={handleExpandedChange}
-                  onFolderFocus={(node) =>
-                    setLastFocusedIdbFolderPath(node ? node.path || '' : null)
-                  }
+                  onFolderFocus={(node) => {
+                    setLastFocusedIdbFolderPath(node ? node.path || '' : null);
+                    if (node) activateTreeNode('idb', node);
+                  }}
                   focusedFolderPath={
                     chatWithMyselfActive ? undefined : (lastFocusedIdbFolderPath ?? undefined)
                   }
@@ -2553,9 +2556,10 @@ export default function Sidebar({
                     isSearching={!!searchTerm}
                     expandedPaths={effectiveExpandedWebdav}
                     onExpandedChange={handleExpandedChange}
-                    onFolderFocus={(node) =>
-                      setLastFocusedWebdavFolderPath(node ? node.path || '' : null)
-                    }
+                    onFolderFocus={(node) => {
+                      setLastFocusedWebdavFolderPath(node ? node.path || '' : null);
+                      if (node) activateTreeNode('webdav', node);
+                    }}
                     focusedFolderPath={
                       chatWithMyselfActive
                         ? undefined

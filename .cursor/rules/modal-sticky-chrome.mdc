@@ -1,0 +1,47 @@
+---
+description: Modal chrome (title header + action footer) stays fixed; only the body scrolls. Apply to all app modals/dialogs.
+alwaysApply: true
+---
+
+# Modal sticky header / footer
+
+Scrollable modals must keep **header** and **footer** fixed inside the panel. Only the **body** scrolls. Do not put `overflow-y-auto` on a wrapper that also contains the title or action buttons.
+
+## Shell (required)
+
+`Modal` panel is already `flex flex-col overflow-hidden`. Inside `children`:
+
+```tsx
+<Modal contentClassName="max-w-… max-h-[90vh]" …>
+  <div className="flex min-h-0 flex-1 flex-col">
+    <header className="shrink-0 border-b … px-6 py-4">
+      {/* title / subtitle */}
+    </header>
+    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+      {/* scrollable fields */}
+    </div>
+    <footer className="flex shrink-0 justify-end gap-2 border-t … px-6 py-4">
+      {/* cancel / apply */}
+    </footer>
+  </div>
+</Modal>
+```
+
+Reference: `SettingsModal`, `DocumentSettingsModal`.
+
+## Checklist
+
+1. Panel has a height cap (`max-h-[90vh]` or equivalent) so overflow can occur.
+2. Outer child: `flex min-h-0 flex-1 flex-col` (not `overflow-y-auto` on the whole thing).
+3. Header + footer: `shrink-0` (optional `border-b` / `border-t`).
+4. Body: `min-h-0 flex-1 overflow-y-auto`.
+5. Short confirm dialogs with no long body may omit the scroll region, but still keep actions in a distinct footer if both title and buttons exist.
+
+```text
+❌ BAD — one overflow-y-auto wrapper around title + form + Apply
+❌ BAD — sticky footer inside a scrolling parent (header still scrolls away)
+✅ GOOD — flex column; only middle pane scrolls
+✅ GOOD — SettingsModal / DocumentSettingsModal pattern
+```
+
+Prefer **English** in new code comments if Korean Unicode might corrupt.
