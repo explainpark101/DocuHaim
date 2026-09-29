@@ -1,10 +1,14 @@
 name: Release Tauri Android
 
+# Optional APK-only rebuild for an existing (or new) vX.Y.Z release.
+# Prefer the unified "Release Tauri" workflow for normal shipping.
+# Never uses android-v* tags — those steal /releases/latest and break desktop auto-update.
+
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Semver for Android release tag (e.g. 1.4.0). Empty = package.json version.'
+        description: 'Semver for release tag (e.g. 1.4.0). Empty = package.json version. Tag is always vX.Y.Z.'
         required: false
         type: string
         default: ''
@@ -77,7 +81,7 @@ jobs:
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Using Android release version $VERSION"
+          echo "Using Android release version $VERSION (tag v$VERSION)"
           bun run sync:tauri-version
 
       - name: Generate Tauri icons
@@ -95,30 +99,42 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist-android
-          find src-tauri/gen/android -type f -name '*.apk' -print0 | while IFS= read -r -d '' f; do
-            cp -v "$f" "dist-android/$(basename "$f")"
-          done
-          count="$(find dist-android -type f -name '*.apk' | wc -l | tr -d ' ')"
-          if [[ "$count" -eq 0 ]]; then
+          VERSION="${{ steps.app_version.outputs.version }}"
+          OUT="dist-android/DocuHaim_${VERSION}_universal-debug.apk"
+          mapfile -d '' apks < <(find src-tauri/gen/android -type f -name '*.apk' -print0)
+          if [[ "${#apks[@]}" -eq 0 ]]; then
             echo "No APK found under src-tauri/gen/android"
             find src-tauri/gen/android -type f | head -100 || true
             exit 1
           fi
+          pick=""
+          for f in "${apks[@]}"; do
+            if [[ "$(basename "$f")" == *universal* ]]; then
+              pick="$f"
+              break
+            fi
+          done
+          if [[ -z "$pick" ]]; then
+            pick="${apks[0]}"
+          fi
+          cp -v "$pick" "$OUT"
           ls -la dist-android
 
-      - name: Create Android GitHub Release
+      - name: Upload Android APK to unified v* GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: android-v${{ steps.app_version.outputs.version }}
-          name: DocuHaim Android v${{ steps.app_version.outputs.version }}
+          tag_name: v${{ steps.app_version.outputs.version }}
+          name: DocuHaim v${{ steps.app_version.outputs.version }}
           body: |
-            Android sideload APK (not on Google Play).
+            Android sideload APK attached to the unified `vX.Y.Z` release (same tag as DMG / NSIS / `latest.json`).
 
             Install on device: enable “Install unknown apps”, then open the `.apk`.
 
-            - Separate from desktop DMG/NSIS releases (`vX.Y.Z`)
+            - **Do not** use `android-v*` tags (they break `/releases/latest` for the desktop updater)
             - **Debug-signed** build (installable without a release keystore)
             - See docs/desktop/android-sideload.md
+          # Never steal GitHub "Latest" from a full desktop release that already has latest.json.
+          make_latest: false
           prerelease: ${{ inputs.prerelease }}
           files: dist-android/*.apk
         env:

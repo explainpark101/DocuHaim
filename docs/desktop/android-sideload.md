@@ -1,24 +1,27 @@
 # Android sideload (Tauri APK)
 
-DocuHaim Android is a **Tauri v2** shell around the same SPA. It is **not** distributed on Google Play. Install the APK from a dedicated GitHub Release.
+DocuHaim Android is a **Tauri v2** shell around the same SPA. It is **not** distributed on Google Play. Install the APK from the unified GitHub Release.
 
 ## Releases
 
 | Channel | Workflow | Tag | Artifacts |
 |---------|----------|-----|-----------|
-| Desktop | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS |
-| Android | `.github/workflows/release-tauri-android.yml` | `android-vX.Y.Z` | debug-signed APK |
+| Unified (preferred) | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS / APK / `latest.json` |
+| Android-only (optional) | `.github/workflows/release-tauri-android.yml` | `vX.Y.Z` (same) | debug-signed APK only (`make_latest: false`) |
 
-Android and desktop releases are **separate**. Desktop workflow does not upload APKs.
+Android APKs ship on the **same** `vX.Y.Z` release as desktop. Do **not** publish separate `android-v*` tags — GitHub `/releases/latest` would point at them and break desktop auto-update (`latest.json` 404).
 
-CI currently builds **`tauri android build --debug --apk`** so the published APK is sideload-installable without a release keystore.
+CI builds **`tauri android build --debug --apk`** so the published APK is sideload-installable without a release keystore.
 
-### Publish an Android build
+### Publish (normal)
+
+1. Actions → **Release Tauri** → Run workflow.
+2. Download DMG / EXE / APK from the new `v…` release (also linked from [releases/latest](https://github.com/explainpark101/DocuHaim/releases/latest)).
+
+### Publish APK only (rebuild)
 
 1. Actions → **Release Tauri Android** → Run workflow.
-2. Optional `version` input (defaults to root `package.json` version).
-3. Download the APK from the new `android-v…` release.
-
+2. Optional `version` input (defaults to root `package.json` version). Uploads to `vX.Y.Z` without changing which release is “Latest”.
 
 ## Install (sideload)
 

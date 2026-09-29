@@ -1,6 +1,6 @@
 # Desktop code signing
 
-DocuHaim desktop releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml).
+DocuHaim desktop + Android releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml) into **one** GitHub Release tag `vX.Y.Z` (DMG / NSIS / APK / `latest.json`).
 
 **If signing secrets are missing, the workflow still uploads unsigned DMG / NSIS artifacts.** Gatekeeper (macOS) and SmartScreen (Windows) will warn users until secrets are configured.
 
@@ -39,7 +39,13 @@ Empty secrets are ignored; **do not** set `APPLE_CERTIFICATE` (or other signing 
 
 ## Auto-update (Tauri updater)
 
-Desktop auto-update uses GitHub Releases as the update endpoint (`latest.json` on each release). The public key is committed in `src-tauri/tauri.conf.json` (see also `src-tauri/updater.key.pub`).
+Desktop auto-update fetches:
+
+`https://github.com/explainpark101/DocuHaim/releases/latest/download/latest.json`
+
+That URL follows GitHub’s **Latest** release. Every shipping tag must be a unified `vX.Y.Z` that includes `latest.json` (from desktop jobs). Never publish a separate non-prerelease `android-v*` release — it becomes Latest and the updater fails with “Could not fetch a valid release JSON”.
+
+The public key is committed in `src-tauri/tauri.conf.json` (see also `src-tauri/updater.key.pub`).
 
 ### Generate or rotate updater keys
 
