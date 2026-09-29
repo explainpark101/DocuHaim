@@ -37,6 +37,7 @@ import {
   haimCodeFenceIndentUnitExtension,
 } from '@/components/haimEditor/cmCodeFenceIndent';
 import { CODE_FENCE_BRACKET_PAIRS_EXTENSION } from '@/components/haimEditor/cmCodeFenceBracketPairs';
+import { CODE_FENCE_ENTER_KEYMAP } from '@/components/haimEditor/cmCodeFenceEnter';
 import type { TaskCheckboxKind } from '@/utils/taskCheckboxStatus';
 import { DEFAULT_DOCUMENT_TASK_CHECKBOX } from '@/utils/documentSettingsMeta';
 
@@ -105,8 +106,9 @@ export default function HaimSourcePane({
       drawSelection(),
       history(),
       haimCodeFenceIndentUnitExtension(),
-      // Match WYSIWYG code-block keys inside ``` fences (brackets/quotes + Tab indent).
+      // Match WYSIWYG code-block keys inside ``` fences (brackets/quotes + Tab/Enter indent).
       CODE_FENCE_BRACKET_PAIRS_EXTENSION,
+      CODE_FENCE_ENTER_KEYMAP,
       // Fence-aware Tab first (Prec.high); falls through to indentWithTab outside fences.
       CODE_FENCE_INDENT_KEYMAP,
       INSERT_LINE_ABOVE_KEYMAP,

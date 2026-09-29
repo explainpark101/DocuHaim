@@ -1,12 +1,8 @@
 import type { Editor } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { trimCodeFenceBlankLines } from '@/components/haimEditor/codeBlockEnterShared';
 
-/** Strip leading/trailing blank lines from fenced code body. */
-export function trimCodeFenceBlankLines(text: string): string {
-  return String(text ?? '')
-    .replace(/^(?:\r?\n)+/, '')
-    .replace(/(?:\r?\n)+$/, '');
-}
+export { trimCodeFenceBlankLines } from '@/components/haimEditor/codeBlockEnterShared';
 
 /**
  * Rewrite every codeBlock node's text to drop edge blank lines.
