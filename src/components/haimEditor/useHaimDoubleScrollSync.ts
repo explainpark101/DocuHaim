@@ -214,12 +214,6 @@ function collectDataLineMarkers(
   return markers;
 }
 
-function markersCacheValid(markers: DataLineMarker[] | null): markers is DataLineMarker[] {
-  if (markers == null) return false;
-  if (markers.length === 0) return true;
-  return markers.every((m) => m.el.isConnected);
-}
-
 function cmLineTop(view: EditorView, line0: number): number {
   const lineNumber = Math.min(
     Math.max(1, line0 + 1),
@@ -358,7 +352,13 @@ export function useHaimDoubleScrollSync({
     };
 
     const getMarkers = (wysiwyg: HTMLElement): DataLineMarker[] => {
-      if (markersCacheValid(markerCache)) return markerCache;
+      if (
+        markerCache != null &&
+        (markerCache.length === 0 ||
+          markerCache.every((m) => m.el.isConnected))
+      ) {
+        return markerCache;
+      }
       markerCache = collectDataLineMarkers(wysiwyg, wysiwyg);
       return markerCache;
     };
