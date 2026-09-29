@@ -45,6 +45,7 @@ import { RawMarkdownBlock } from '@/components/haimEditor/extensions/RawMarkdown
 import { DeepHeading } from '@/components/haimEditor/extensions/DeepHeading';
 import { HaimSlashCommands } from '@/components/haimEditor/slashCommands/HaimSlashCommands';
 import { HaimShiftArrowSelect } from '@/components/haimEditor/extensions/HaimShiftArrowSelect';
+import { HaimInsertLineAbove } from '@/components/haimEditor/extensions/HaimInsertLineAbove';
 import { MathBlock } from '@/components/haimEditor/extensions/MathBlock';
 import {
   HaimBlockMath,
@@ -167,6 +168,7 @@ export function createHaimExtensions(
     DeepHeading,
     MathBlock,
     HaimShiftArrowSelect,
+    HaimInsertLineAbove,
     ...(isNote ? [HaimSlashCommands] : []),
   ];
 

@@ -1,0 +1,43 @@
+---
+description: New editor features must ship on HaimEditor first (TipTap), not MarkdownEditor-only
+alwaysApply: true
+---
+
+# HaimEditor first
+
+All **new editor features** (shortcuts, toolbar actions, syntax, paste, selection, sync, settings that affect editing) must be designed and implemented for **HaimEditor** first.
+
+HaimEditor = TipTap / ProseMirror under `src/components/haimEditor/` (`createHaimExtensions`, extensions, dual source pane).
+
+`MarkdownEditor` (md-editor-rt / CodeMirror) is **secondary** — keep parity when the feature also applies there, but never ship MarkdownEditor-only and leave HaimEditor for “later”.
+
+## Policy
+
+1. **Implement in HaimEditor first** — TipTap extension / command / keymap / UI in `src/components/haimEditor/`.
+2. **Wire into `createHaimExtensions`** (or the correct Haim surface: toolbar, source pane, dual sync) in the **same change**.
+3. **Then** port or share with MarkdownEditor / CM if the feature is editor-agnostic or still needed on the legacy path.
+4. Prefer **shared helpers** (`src/utils/…`) when both surfaces need the same behavior; Haim must call them — do not leave Haim unwired.
+5. Dual mode: if the feature applies to raw markdown, also wire **`HaimSourcePane`** (CodeMirror) when relevant.
+6. Prefer **English** in new code comments if Korean Unicode might corrupt.
+
+## Out of scope
+
+- Pure non-editor work (settings chrome, S3, chat-only UI with no note editor).
+- Bugfixes that only exist on MarkdownEditor and have no Haim equivalent yet — still ask whether Haim needs the same fix.
+
+## Checklist
+
+1. Does this change editing behavior? → HaimEditor path first.
+2. TipTap: extension + `createHaimExtensions` (or toolbar / pane) in the same PR.
+3. Dual source affected? → `HaimSourcePane` too.
+4. MarkdownEditor parity? → only after Haim works, or via shared util used by both.
+5. Do **not** add CM `keymap` / md-editor-rt handlers alone and call the feature “done”.
+
+```text
+❌ BAD — Ctrl+Shift+Enter insert-line-above only in MarkdownEditor.jsx
+❌ BAD — new toolbar action registered only for md-editor-rt
+❌ BAD — “Haim later” while shipping MarkdownEditor-only UX
+✅ GOOD — HaimInsertLineAbove TipTap extension + createHaimExtensions, then CM parity
+✅ GOOD — shared util + Haim wiring first; MarkdownEditor reuses the util
+✅ GOOD — source-pane CM keymap when dual-mode raw edit needs the same chord
+```

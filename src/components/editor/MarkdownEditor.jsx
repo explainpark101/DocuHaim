@@ -87,6 +87,11 @@ import {
   undo,
 } from '@codemirror/commands';
 import { insertNewlineContinueMarkupCommand } from '@codemirror/lang-markdown';
+import {
+  INSERT_LINE_ABOVE_KEYMAP,
+  insertLineAboveInEditorView,
+  isInsertLineAboveKeyEvent,
+} from '@/utils/cmInsertLineAbove';
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
 import {
   highlightSelectionMatches,
@@ -272,17 +277,6 @@ function markdownEnterSingleNewline(view) {
 const MARKDOWN_SINGLE_NEWLINE_ENTER_KEYMAP = Prec.highest(
   keymap.of([{ key: 'Enter', run: markdownEnterSingleNewline }]),
 );
-
-function insertLineAboveInEditorView(view) {
-  if (!view?.state) return;
-  const head = view.state.selection?.main?.head;
-  if (typeof head !== 'number') return;
-  const line = view.state.doc.lineAt(head);
-  view.dispatch({
-    changes: { from: line.from, to: line.from, insert: '\n' },
-    selection: { anchor: line.from },
-  });
-}
 
 function runAltVimNavigation(view, command) {
   if (!loadAltVimNavigationEnabled()) return false;
@@ -507,6 +501,10 @@ config({
       {
         type: 'markdownSingleNewlineEnter',
         extension: MARKDOWN_SINGLE_NEWLINE_ENTER_KEYMAP,
+      },
+      {
+        type: 'insertLineAbove',
+        extension: INSERT_LINE_ABOVE_KEYMAP,
       },
       {
         type: 'lineNumbers',
@@ -1842,15 +1840,16 @@ export default function MarkdownEditor({
             return true;
           }
 
-          const keyCombo = getKeyComboFromEvent(e);
-          if (!keyCombo) return;
-
-          if (keyCombo === 'mod+shift+enter') {
+          // Prefer CodeMirror keymap (INSERT_LINE_ABOVE_KEYMAP); keep DOM fallback.
+          if (isInsertLineAboveKeyEvent(e)) {
             e.preventDefault();
             e.stopPropagation();
             insertLineAboveInEditorView(view);
-            return false;
+            return true;
           }
+
+          const keyCombo = getKeyComboFromEvent(e);
+          if (!keyCombo) return;
 
           if (keyCombo === 'mod+s') return;
 

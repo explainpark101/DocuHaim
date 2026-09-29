@@ -26,6 +26,7 @@ import {
 import {
   makeToggleTaskCheckboxHandler,
 } from '@/utils/editorMarkdownStyle';
+import { INSERT_LINE_ABOVE_KEYMAP } from '@/utils/cmInsertLineAbove';
 import type { TaskCheckboxKind } from '@/utils/taskCheckboxStatus';
 import { DEFAULT_DOCUMENT_TASK_CHECKBOX } from '@/utils/documentSettingsMeta';
 
@@ -93,6 +94,7 @@ export default function HaimSourcePane({
       highlightActiveLine(),
       drawSelection(),
       history(),
+      INSERT_LINE_ABOVE_KEYMAP,
       keymap.of([
         ...defaultKeymap,
         ...historyKeymap,
