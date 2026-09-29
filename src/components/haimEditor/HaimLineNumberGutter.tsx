@@ -32,6 +32,15 @@ function resolveMeasureTarget(root: HTMLElement | null): HTMLElement | null {
   );
 }
 
+function heightsEqual(a: number[] | null, b: number[] | null): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (Math.abs((a[i] ?? 0) - (b[i] ?? 0)) > 0.5) return false;
+  }
+  return true;
+}
+
 /**
  * Line-number column locked to painted hard-line bands
  * (lowlight TipTap code + plain/raw pre).
@@ -72,12 +81,14 @@ export default function HaimLineNumberGutter({
         const nextCount = resolveHaimGutterLineCount(target, text);
         const lh = probeHaimLineHeightPx(target);
         const nextHeights = measureHaimHardLineHeights(target, text, nextCount);
-        setCount(nextCount);
-        setLineHeightPx(lh);
-        setHeights(
+        const nextHeightsOrNull =
           nextHeights.length === nextCount && nextHeights.every((h) => h > 0)
             ? nextHeights
-            : null,
+            : null;
+        setCount((prev) => (prev === nextCount ? prev : nextCount));
+        setLineHeightPx((prev) => (prev === lh ? prev : lh));
+        setHeights((prev) =>
+          heightsEqual(prev, nextHeightsOrNull) ? prev : nextHeightsOrNull,
         );
       });
     };
@@ -89,12 +100,12 @@ export default function HaimLineNumberGutter({
     const pre = el.closest('pre');
     if (pre && pre !== el && pre !== root) ro.observe(pre);
 
+    // Skip attributes — class tweaks from lowlight would thrash remasure.
     const mo = new MutationObserver(sync);
     mo.observe(el, {
       subtree: true,
       childList: true,
       characterData: true,
-      attributes: true,
     });
 
     const boot = window.setTimeout(sync, 0);

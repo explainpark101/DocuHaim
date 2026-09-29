@@ -27,11 +27,22 @@ function parseCssLineHeightPx(el: HTMLElement): number {
 /**
  * Used line-box height in px (CSS line-height), never glyph ink height.
  * Glyph getClientRects are shorter than the line box and caused gutter drift.
+ * Cached per element until font / line-height CSS changes.
  */
+const lineHeightProbeCache = new WeakMap<
+  HTMLElement,
+  { key: string; value: number }
+>();
+
 export function probeHaimLineHeightPx(el: HTMLElement): number {
+  const cs = getComputedStyle(el);
+  const cacheKey = `${cs.font}|${cs.fontSize}|${cs.lineHeight}|${cs.fontFamily}|${cs.fontWeight}`;
+  const hit = lineHeightProbeCache.get(el);
+  if (hit && hit.key === cacheKey) return hit.value;
+
   const cssLh = parseCssLineHeightPx(el);
+  let value = cssLh;
   try {
-    const cs = getComputedStyle(el);
     const mirror = document.createElement('div');
     mirror.setAttribute('aria-hidden', 'true');
     mirror.style.cssText = [
@@ -57,11 +68,12 @@ export function probeHaimLineHeightPx(el: HTMLElement): number {
     document.body.appendChild(mirror);
     const h = mirror.getBoundingClientRect().height || mirror.offsetHeight;
     mirror.remove();
-    if (h > 0) return h;
+    if (h > 0) value = h;
   } catch {
-    // fall through
+    // keep cssLh
   }
-  return cssLh;
+  lineHeightProbeCache.set(el, { key: cacheKey, value });
+  return value;
 }
 
 function parseTabSize(el: HTMLElement): number {

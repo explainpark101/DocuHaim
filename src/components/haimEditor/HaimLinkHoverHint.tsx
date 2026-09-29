@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { Tooltip } from 'radix-ui';
 import { motion } from 'motion/react';
@@ -34,6 +34,8 @@ export default function HaimLinkHoverHint({
   );
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
 
   useEffect(() => {
     const sync = () => {
@@ -87,20 +89,26 @@ export default function HaimLinkHoverHint({
     };
 
     const onScroll = () => {
+      if (!openRef.current) return;
       setOpen(false);
       setAnchor(null);
     };
 
+    const scrollOpts: AddEventListenerOptions = {
+      capture: true,
+      passive: true,
+    };
+
     root.addEventListener('pointerover', onPointerOver);
     root.addEventListener('pointerout', onPointerOut);
-    root.addEventListener('scroll', onScroll, true);
-    window.addEventListener('scroll', onScroll, true);
+    root.addEventListener('scroll', onScroll, scrollOpts);
+    window.addEventListener('scroll', onScroll, scrollOpts);
 
     return () => {
       root.removeEventListener('pointerover', onPointerOver);
       root.removeEventListener('pointerout', onPointerOut);
-      root.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('scroll', onScroll, true);
+      root.removeEventListener('scroll', onScroll, scrollOpts);
+      window.removeEventListener('scroll', onScroll, scrollOpts);
     };
   }, [editor, enabled, requireModClick]);
 

@@ -42,8 +42,11 @@ type Options = {
 
 const SCROLL_ALIGN_PAD_PX = 32;
 const SYNC_LOCK_RELEASE_MS = 32;
-/** Retries after image load / layout settle (same spirit as previewScrollFollow). */
-const IMAGE_RETRY_MS = [0, 16, 48, 120, 280, 600] as const;
+/**
+ * Fewer layout-settle retries than before; RO/image storms are coalesced
+ * into one scheduleImageResync window (see below).
+ */
+const IMAGE_RETRY_MS = [0, 100, 320] as const;
 
 type ScrollDir = 'up' | 'down';
 type SyncSource = 'none' | 'cm' | 'wysiwyg';
@@ -60,10 +63,16 @@ function cmScroller(view: EditorView | null): HTMLElement | null {
   return view.scrollDOM ?? null;
 }
 
-function offsetTopWithinScroller(el: HTMLElement, scroller: HTMLElement): number {
+function offsetTopWithinScroller(
+  el: HTMLElement,
+  scroller: HTMLElement,
+  scrollerRect?: DOMRect,
+  scrollTop?: number,
+): number {
   const elRect = el.getBoundingClientRect();
-  const scrollerRect = scroller.getBoundingClientRect();
-  return elRect.top - scrollerRect.top + scroller.scrollTop;
+  const sRect = scrollerRect ?? scroller.getBoundingClientRect();
+  const top = scrollTop ?? scroller.scrollTop;
+  return elRect.top - sRect.top + top;
 }
 
 function maxScrollTop(scroller: HTMLElement): number {
@@ -189,18 +198,26 @@ function collectDataLineMarkers(
   scroller: HTMLElement,
 ): DataLineMarker[] {
   const markers: DataLineMarker[] = [];
+  const scrollerRect = scroller.getBoundingClientRect();
+  const scrollTop = scroller.scrollTop;
   for (const el of queryOutermostDataLineBlocks(root)) {
     const line0 = Number(el.getAttribute('data-line'));
     if (!Number.isFinite(line0)) continue;
     markers.push({
       line0,
-      top: offsetTopWithinScroller(el, scroller),
+      top: offsetTopWithinScroller(el, scroller, scrollerRect, scrollTop),
       height: Math.max(1, el.offsetHeight),
       el,
     });
   }
   markers.sort((a, b) => a.line0 - b.line0 || a.top - b.top);
   return markers;
+}
+
+function markersCacheValid(markers: DataLineMarker[] | null): markers is DataLineMarker[] {
+  if (markers == null) return false;
+  if (markers.length === 0) return true;
+  return markers.every((m) => m.el.isConnected);
 }
 
 function cmLineTop(view: EditorView, line0: number): number {
@@ -332,6 +349,19 @@ export function useHaimDoubleScrollSync({
     let lastDriver: Exclude<SyncSource, 'none'> = 'cm';
     let imageRetryTimers: ReturnType<typeof setTimeout>[] = [];
     let resizeObserver: ResizeObserver | null = null;
+    /** Cached [data-line] geometry — invalidated on layout/image/content changes. */
+    let markerCache: DataLineMarker[] | null = null;
+    let imageResyncCoalesceRaf = 0;
+
+    const invalidateMarkerCache = () => {
+      markerCache = null;
+    };
+
+    const getMarkers = (wysiwyg: HTMLElement): DataLineMarker[] => {
+      if (markersCacheValid(markerCache)) return markerCache;
+      markerCache = collectDataLineMarkers(wysiwyg, wysiwyg);
+      return markerCache;
+    };
 
     const clearRetry = () => {
       if (retryTimer != null) {
@@ -375,7 +405,7 @@ export function useHaimDoubleScrollSync({
       if (isWysiwygFocused(wysiwyg)) return;
 
       const scrollDom = view.scrollDOM;
-      const markers = collectDataLineMarkers(wysiwyg, wysiwyg);
+      const markers = getMarkers(wysiwyg);
       const wysiwygBottom = markersContentBottom(markers);
       if (
         wysiwygBottom != null &&
@@ -407,7 +437,7 @@ export function useHaimDoubleScrollSync({
       if (isCmFocused(view)) return;
 
       const scrollDom = view.scrollDOM;
-      const markers = collectDataLineMarkers(wysiwyg, wysiwyg);
+      const markers = getMarkers(wysiwyg);
       const wysiwygBottom = markersContentBottom(markers);
       if (
         wysiwygBottom != null &&
@@ -450,12 +480,27 @@ export function useHaimDoubleScrollSync({
       applyDriverSync(lastDriver, lastDir);
     };
 
+    /**
+     * Coalesce RO / image-load storms into one rAF, then a short retry chain.
+     * Always invalidate markers so the next sync remeasures.
+     */
     const scheduleImageResync = () => {
       if (disposed) return;
-      clearImageRetries();
-      for (const ms of IMAGE_RETRY_MS) {
-        imageRetryTimers.push(setTimeout(resyncAfterLayout, ms));
-      }
+      invalidateMarkerCache();
+      if (imageResyncCoalesceRaf) return;
+      imageResyncCoalesceRaf = requestAnimationFrame(() => {
+        imageResyncCoalesceRaf = 0;
+        if (disposed) return;
+        clearImageRetries();
+        for (const ms of IMAGE_RETRY_MS) {
+          imageRetryTimers.push(
+            setTimeout(() => {
+              invalidateMarkerCache();
+              resyncAfterLayout();
+            }, ms),
+          );
+        }
+      });
     };
 
     const onCmScroll = () => {
@@ -585,8 +630,10 @@ export function useHaimDoubleScrollSync({
       clearLockTimer();
       if (cmSyncRaf) cancelAnimationFrame(cmSyncRaf);
       if (wysiwygSyncRaf) cancelAnimationFrame(wysiwygSyncRaf);
+      if (imageResyncCoalesceRaf) cancelAnimationFrame(imageResyncCoalesceRaf);
       detach?.();
       syncingFromRef.current = 'none';
+      markerCache = null;
     };
   }, [enabled, wysiwygScrollRef, cmViewRef, cmRevision, suppressScrollSyncUntilRef]);
 }

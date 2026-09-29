@@ -33,6 +33,21 @@ function measureProseColumnLeft(
   );
 }
 
+function proseLinesEqual(
+  a: HaimProseLineStart[],
+  b: HaimProseLineStart[],
+): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (!left || !right) return false;
+    if (left.n !== right.n || Math.abs(left.top - right.top) > 0.5) return false;
+  }
+  return true;
+}
+
 /**
  * Document line-number gutter for live Haim WYSIWYG (not code/raw block gutters).
  * Anchors to the left edge of the (possibly clamped) .tiptap column.
@@ -71,14 +86,25 @@ export default function HaimProseLineNumberGutter({
           return;
         }
         const pm = editor.view.dom as HTMLElement;
-        setColumnLeft(measureProseColumnLeft(scrollEl, pm));
-        setLines(collectHaimProseLineStarts(editor, scrollEl));
+        const nextLeft = measureProseColumnLeft(scrollEl, pm);
+        const nextLines = collectHaimProseLineStarts(editor, scrollEl);
+        setColumnLeft((prev) => (Math.abs(prev - nextLeft) < 0.5 ? prev : nextLeft));
+        setLines((prev) => (proseLinesEqual(prev, nextLines) ? prev : nextLines));
       });
     };
 
+    const onEditorUpdate = ({
+      transaction,
+    }: {
+      transaction: { docChanged: boolean };
+    }) => {
+      // Caret-only updates do not move line anchors — skip remasure.
+      if (!transaction.docChanged) return;
+      sync();
+    };
+
     sync();
-    editor.on('update', sync);
-    editor.on('selectionUpdate', sync);
+    editor.on('update', onEditorUpdate);
 
     const scrollEl = scrollRef.current;
     const ro = new ResizeObserver(sync);
@@ -92,8 +118,7 @@ export default function HaimProseLineNumberGutter({
     window.addEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, sync);
     return () => {
       cancelAnimationFrame(raf);
-      editor.off('update', sync);
-      editor.off('selectionUpdate', sync);
+      editor.off('update', onEditorUpdate);
       ro.disconnect();
       window.removeEventListener('resize', sync);
       window.removeEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, sync);
