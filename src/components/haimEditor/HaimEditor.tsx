@@ -8,6 +8,7 @@ import {
   markdownToEditorContent,
   setEditorMarkdown,
 } from '@/components/haimEditor/markdownIo';
+import { protectCustomMarkdown } from '@/components/haimEditor/protectCustomMarkdown';
 import { invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import HaimToolbar from '@/components/haimEditor/HaimToolbar';
 import HaimSourcePane from '@/components/haimEditor/HaimSourcePane';
@@ -15,6 +16,10 @@ import HaimTocPanel from '@/components/haimEditor/HaimTocPanel';
 import ChecklistProgressSidebar from '@/components/ChecklistProgressSidebar';
 import HaimLinkHoverHint from '@/components/haimEditor/HaimLinkHoverHint';
 import { getHaimSelectedPlainText } from '@/components/haimEditor/getHaimSelectedPlainText';
+import {
+  getHaimHeadingRemapSelection,
+  type HaimHeadingRemapRange,
+} from '@/components/haimEditor/getHaimHeadingRemapSelection';
 import {
   useHaimDualSync,
 } from '@/components/haimEditor/useHaimDualSync';
@@ -199,7 +204,7 @@ export default function HaimEditor({
   const [cmRevision, setCmRevision] = useState(0);
   const [headingRemapOpen, setHeadingRemapOpen] = useState(false);
   const [headingRemapSelection, setHeadingRemapSelection] = useState('');
-  const headingRemapRangeRef = useRef<{ from: number; to: number } | null>(null);
+  const headingRemapRangeRef = useRef<HaimHeadingRemapRange | null>(null);
   const [imageLinkOpen, setImageLinkOpen] = useState(false);
   const [urlLinkOpen, setUrlLinkOpen] = useState(false);
   const [urlLinkInitialText, setUrlLinkInitialText] = useState('');
@@ -644,16 +649,25 @@ export default function HaimEditor({
 
   const openHeadingRemap = useCallback(() => {
     if (!editor) return;
-    const { from, to, empty } = editor.state.selection;
-    if (empty) {
+    const cm = cmViewRef.current;
+    const preferSource =
+      cm != null &&
+      (cm.hasFocus ||
+        effectiveMode === HAIM_VIEW_MODE_SOURCE ||
+        (showSource && !showWysiwyg));
+    const snap = getHaimHeadingRemapSelection(editor, cm, {
+      sourceVisible: showSource,
+      preferSource,
+    });
+    if (snap) {
+      headingRemapRangeRef.current = snap.range;
+      setHeadingRemapSelection(snap.markdown);
+    } else {
       headingRemapRangeRef.current = null;
       setHeadingRemapSelection('');
-    } else {
-      headingRemapRangeRef.current = { from, to };
-      setHeadingRemapSelection(editor.state.doc.textBetween(from, to, '\n'));
     }
     setHeadingRemapOpen(true);
-  }, [editor]);
+  }, [editor, effectiveMode, showSource, showWysiwyg]);
 
   const openQrCodeCreate = useCallback(() => {
     if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
@@ -832,16 +846,34 @@ export default function HaimEditor({
   const applyHeadingRemap = useCallback(
     (nextMarkdown: string, scope: HeadingRemapScope) => {
       if (!editor) return;
-      if (scope === 'selection' && headingRemapRangeRef.current) {
-        const { from, to } = headingRemapRangeRef.current;
-        editor
-          .chain()
-          .focus()
-          .deleteRange({ from, to })
-          .insertContentAt(from, nextMarkdown, {
-            contentType: 'markdown',
-          } as never)
-          .run();
+      const range = headingRemapRangeRef.current;
+      if (scope === 'selection' && range) {
+        if (range.kind === 'cm') {
+          const cm = cmViewRef.current;
+          const docText =
+            cm?.state.doc.toString() ??
+            editorToVaultMarkdown(editor, metaPrefixRef.current);
+          const spliced = `${docText.slice(0, range.from)}${nextMarkdown}${docText.slice(range.to)}`;
+          if (spliced !== docText) {
+            originRef.current = 'external';
+            setEditorMarkdown(editor, spliced, metaPrefixRef, { emitUpdate: false });
+            emitVault(spliced);
+            if (cm) replaceCmDocPreservingView(cm, spliced);
+            originRef.current = null;
+          }
+        } else {
+          const { from, to } = range;
+          editor
+            .chain()
+            .focus()
+            .deleteRange({ from, to })
+            .insertContentAt(from, protectCustomMarkdown(nextMarkdown), {
+              contentType: 'markdown',
+            } as never)
+            .run();
+          invalidateMarkdownCache(editor);
+          pushEditorMarkdownToCmNow();
+        }
       } else {
         setEditorMarkdown(editor, nextMarkdown, metaPrefixRef, { emitUpdate: true });
         emitVault(nextMarkdown);
@@ -850,7 +882,7 @@ export default function HaimEditor({
       setHeadingRemapSelection('');
       headingRemapRangeRef.current = null;
     },
-    [editor, emitVault],
+    [editor, emitVault, pushEditorMarkdownToCmNow],
   );
 
   /**
