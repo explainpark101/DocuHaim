@@ -1,6 +1,6 @@
 # Desktop code signing
 
-DocuHaim desktop + Android releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml) into **one** GitHub Release tag `vX.Y.Z` (DMG / NSIS / APK / `latest.json`).
+DocuHaim desktop + Android releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml) into **one** GitHub Release tag `vX.Y.Z` (DMG / NSIS / per-ABI + universal APK / `latest.json`). Release notes template: [`github-release-body.md`](./github-release-body.md).
 
 **If signing secrets are missing, the workflow still uploads unsigned DMG / NSIS artifacts.** Gatekeeper (macOS) and SmartScreen (Windows) will warn users until secrets are configured.
 

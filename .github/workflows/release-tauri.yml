@@ -65,6 +65,16 @@ jobs:
       - name: Generate Tauri icons
         run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
 
+      - name: Load release notes
+        id: release_notes
+        shell: bash
+        run: |
+          {
+            echo 'body<<RELEASE_BODY_EOF'
+            cat docs/desktop/github-release-body.md
+            echo 'RELEASE_BODY_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       # Secrets cannot be referenced in step `if:` — probe via env in a shell step.
       # Empty strings still trigger tauri-action import/codesign and fail.
       - name: Resolve signing mode
@@ -114,17 +124,7 @@ jobs:
           updaterJsonPreferNsis: true
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
-          releaseBody: |
-            Unified release (macOS DMG / Windows NSIS / Android APK) with auto-update manifest.
-
-            - macOS: universal DMG
-            - Windows: NSIS installer (.exe)
-            - Android: debug-signed sideload APK (same tag; see docs/desktop/android-sideload.md)
-            - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
-
-            Install / update endpoint: https://github.com/explainpark101/DocuHaim/releases/latest
-
-            Unsigned desktop builds if signing secrets are not configured — see docs/desktop/code-signing.md.
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: false
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
@@ -146,17 +146,7 @@ jobs:
           updaterJsonPreferNsis: true
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
-          releaseBody: |
-            Unified release (macOS DMG / Windows NSIS / Android APK) with auto-update manifest.
-
-            - macOS: universal DMG
-            - Windows: NSIS installer (.exe)
-            - Android: debug-signed sideload APK (same tag; see docs/desktop/android-sideload.md)
-            - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
-
-            Install / update endpoint: https://github.com/explainpark101/DocuHaim/releases/latest
-
-            Unsigned desktop builds if signing secrets are not configured — see docs/desktop/code-signing.md.
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: false
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
@@ -174,15 +164,7 @@ jobs:
           updaterJsonPreferNsis: true
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
-          releaseBody: |
-            Unified release (macOS DMG / Windows NSIS / Android APK) with auto-update manifest.
-
-            - macOS: universal DMG
-            - Windows: NSIS installer (.exe)
-            - Android: debug-signed sideload APK (same tag; see docs/desktop/android-sideload.md)
-            - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
-
-            Install / update endpoint: https://github.com/explainpark101/DocuHaim/releases/latest
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: false
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
@@ -248,56 +230,25 @@ jobs:
       - name: Generate Tauri icons
         run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
 
-      # Debug-signed APK for sideload (no release keystore yet).
-      - name: Build Android APK (debug)
-        run: bunx tauri android build --debug --apk
+      # Debug-signed APKs for sideload (no release keystore yet).
+      # split-per-abi → one APK per ABI; second build → universal (all ABIs).
+      - name: Build Android APKs (per-ABI + universal, debug)
+        run: |
+          bunx tauri android build --debug --apk --split-per-abi
+          bunx tauri android build --debug --apk
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
       - name: Collect APK artifacts
-        id: apk
-        shell: bash
-        run: |
-          mkdir -p dist-android
-          VERSION="${{ steps.app_version.outputs.version }}"
-          OUT="dist-android/DocuHaim_${VERSION}_universal-debug.apk"
-          # Prefer universal APK when present; otherwise first APK found.
-          mapfile -d '' apks < <(find src-tauri/gen/android -type f -name '*.apk' -print0)
-          if [[ "${#apks[@]}" -eq 0 ]]; then
-            echo "No APK found under src-tauri/gen/android"
-            find src-tauri/gen/android -type f | head -100 || true
-            exit 1
-          fi
-          pick=""
-          for f in "${apks[@]}"; do
-            if [[ "$(basename "$f")" == *universal* ]]; then
-              pick="$f"
-              break
-            fi
-          done
-          if [[ -z "$pick" ]]; then
-            pick="${apks[0]}"
-          fi
-          cp -v "$pick" "$OUT"
-          ls -la dist-android
+        run: bun scripts/collect-android-release-apks.mjs "${{ steps.app_version.outputs.version }}"
 
-      - name: Upload Android APK to unified GitHub Release
+      - name: Upload Android APKs to unified GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.app_version.outputs.version }}
           name: DocuHaim v${{ steps.app_version.outputs.version }}
-          body: |
-            Unified release (macOS DMG / Windows NSIS / Android APK) with auto-update manifest.
-
-            - macOS: universal DMG
-            - Windows: NSIS installer (.exe)
-            - Android: debug-signed sideload APK
-            - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
-
-            Install / update endpoint: https://github.com/explainpark101/DocuHaim/releases/latest
-
-            See docs/desktop/android-sideload.md and docs/desktop/code-signing.md.
+          body_path: docs/desktop/github-release-body.md
           prerelease: ${{ inputs.prerelease }}
           files: dist-android/*.apk
         env:

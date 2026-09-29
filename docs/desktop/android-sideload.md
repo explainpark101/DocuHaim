@@ -6,17 +6,44 @@ DocuHaim Android is a **Tauri v2** shell around the same SPA. It is **not** dist
 
 | Channel | Workflow | Tag | Artifacts |
 |---------|----------|-----|-----------|
-| Unified (preferred) | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS / APK / `latest.json` |
-| Android-only (optional) | `.github/workflows/release-tauri-android.yml` | `vX.Y.Z` (same) | debug-signed APK only (`make_latest: false`) |
+| Unified (preferred) | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS / **per-ABI + universal** APK / `latest.json` |
+| Android-only (optional) | `.github/workflows/release-tauri-android.yml` | `vX.Y.Z` (same) | same debug-signed APK set (`make_latest: false`) |
 
 Android APKs ship on the **same** `vX.Y.Z` release as desktop. Do **not** publish separate `android-v*` tags — GitHub `/releases/latest` would point at them and break desktop auto-update (`latest.json` 404).
 
-CI builds **`tauri android build --debug --apk`** so the published APK is sideload-installable without a release keystore.
+CI builds **debug-signed** APKs (sideload without a release keystore):
+
+1. `tauri android build --debug --apk --split-per-abi` → one APK per ABI  
+2. `tauri android build --debug --apk` → universal APK (all ABIs)
+
+Assets are renamed by [`scripts/collect-android-release-apks.mjs`](../../scripts/collect-android-release-apks.mjs) to `DocuHaim_<version>_<abi>-debug.apk`. Release notes come from [`github-release-body.md`](./github-release-body.md).
+
+### Which APK to download
+
+| Asset suffix | ABI | Typical devices |
+|--------------|-----|-----------------|
+| `arm64-v8a-debug.apk` | `arm64-v8a` | Most phones / tablets (**preferred**) |
+| `armeabi-v7a-debug.apk` | `armeabi-v7a` | Older 32-bit ARM |
+| `x86_64-debug.apk` | `x86_64` | Many Android emulators |
+| `x86-debug.apk` | `x86` | Older x86 emulators |
+| `universal-debug.apk` | all | Any device (largest) |
+
+### How to check your architecture
+
+**On device:** Settings → About phone / About device → CPU / Hardware, or an app such as CPU-Z (SoC → ABI / Instruction Sets). Most modern phones are **`arm64-v8a`**.
+
+**With adb:**
+
+```bash
+adb shell getprop ro.product.cpu.abi
+```
+
+Match the printed ABI to the table above. If unsure, use **universal**.
 
 ### Publish (normal)
 
 1. Actions → **Release Tauri** → Run workflow.
-2. Download DMG / EXE / APK from the new `v…` release (also linked from [releases/latest](https://github.com/explainpark101/DocuHaim/releases/latest)).
+2. Download DMG / EXE / the matching APK from the new `v…` release (also linked from [releases/latest](https://github.com/explainpark101/DocuHaim/releases/latest)).
 
 ### Publish APK only (rebuild)
 
@@ -26,7 +53,7 @@ CI builds **`tauri android build --debug --apk`** so the published APK is sidelo
 ## Install (sideload)
 
 1. On the phone, allow install from the browser/Files app (“unknown apps”).
-2. Open the downloaded `.apk` and install.
+2. Open the downloaded `.apk` for **your ABI** (or universal) and install.
 3. First launch: unlock with master password and/or **생체 인식** (platform biometric via Stronghold — not browser WebAuthn/PRF).
 
 ## Features on Android
