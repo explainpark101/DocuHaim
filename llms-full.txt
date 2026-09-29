@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-09-29T18:01:33.955Z
+Generated: 2026-09-29T18:12:27.480Z
 
 ============================================================
 Advanced Search
@@ -3462,17 +3462,44 @@ DocuHaim Android is a **Tauri v2** shell around the same SPA. It is **not** dist
 
 | Channel | Workflow | Tag | Artifacts |
 |---------|----------|-----|-----------|
-| Unified (preferred) | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS / APK / `latest.json` |
-| Android-only (optional) | `.github/workflows/release-tauri-android.yml` | `vX.Y.Z` (same) | debug-signed APK only (`make_latest: false`) |
+| Unified (preferred) | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS / **per-ABI + universal** APK / `latest.json` |
+| Android-only (optional) | `.github/workflows/release-tauri-android.yml` | `vX.Y.Z` (same) | same debug-signed APK set (`make_latest: false`) |
 
 Android APKs ship on the **same** `vX.Y.Z` release as desktop. Do **not** publish separate `android-v*` tags — GitHub `/releases/latest` would point at them and break desktop auto-update (`latest.json` 404).
 
-CI builds **`tauri android build --debug --apk`** so the published APK is sideload-installable without a release keystore.
+CI builds **debug-signed** APKs (sideload without a release keystore):
+
+1. `tauri android build --debug --apk --split-per-abi` → one APK per ABI  
+2. `tauri android build --debug --apk` → universal APK (all ABIs)
+
+Assets are renamed by [`scripts/collect-android-release-apks.mjs`](../../scripts/collect-android-release-apks.mjs) to `DocuHaim_<version>_<abi>-debug.apk`. Release notes come from [`github-release-body.md`](./github-release-body.md).
+
+### Which APK to download
+
+| Asset suffix | ABI | Typical devices |
+|--------------|-----|-----------------|
+| `arm64-v8a-debug.apk` | `arm64-v8a` | Most phones / tablets (**preferred**) |
+| `armeabi-v7a-debug.apk` | `armeabi-v7a` | Older 32-bit ARM |
+| `x86_64-debug.apk` | `x86_64` | Many Android emulators |
+| `x86-debug.apk` | `x86` | Older x86 emulators |
+| `universal-debug.apk` | all | Any device (largest) |
+
+### How to check your architecture
+
+**On device:** Settings → About phone / About device → CPU / Hardware, or an app such as CPU-Z (SoC → ABI / Instruction Sets). Most modern phones are **`arm64-v8a`**.
+
+**With adb:**
+
+```bash
+adb shell getprop ro.product.cpu.abi
+```
+
+Match the printed ABI to the table above. If unsure, use **universal**.
 
 ### Publish (normal)
 
 1. Actions → **Release Tauri** → Run workflow.
-2. Download DMG / EXE / APK from the new `v…` release (also linked from [releases/latest](https://github.com/explainpark101/DocuHaim/releases/latest)).
+2. Download DMG / EXE / the matching APK from the new `v…` release (also linked from [releases/latest](https://github.com/explainpark101/DocuHaim/releases/latest)).
 
 ### Publish APK only (rebuild)
 
@@ -3482,7 +3509,7 @@ CI builds **`tauri android build --debug --apk`** so the published APK is sidelo
 ## Install (sideload)
 
 1. On the phone, allow install from the browser/Files app (“unknown apps”).
-2. Open the downloaded `.apk` and install.
+2. Open the downloaded `.apk` for **your ABI** (or universal) and install.
 3. First launch: unlock with master password and/or **생체 인식** (platform biometric via Stronghold — not browser WebAuthn/PRF).
 
 ## Features on Android
@@ -3527,7 +3554,7 @@ URL: https://explainpark101.github.io/DocuHaim/docs/desktop/code-signing/
 
 # Desktop code signing
 
-DocuHaim desktop + Android releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml) into **one** GitHub Release tag `vX.Y.Z` (DMG / NSIS / APK / `latest.json`).
+DocuHaim desktop + Android releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml) into **one** GitHub Release tag `vX.Y.Z` (DMG / NSIS / per-ABI + universal APK / `latest.json`). Release notes template: [`github-release-body.md`](./github-release-body.md).
 
 **If signing secrets are missing, the workflow still uploads unsigned DMG / NSIS artifacts.** Gatekeeper (macOS) and SmartScreen (Windows) will warn users until secrets are configured.
 
@@ -3637,6 +3664,58 @@ Artifacts appear under `src-tauri/target/release/bundle/` (`dmg/`, `nsis/`).
 - Desktop builds use `VITE_ELECTRON=true` / `build:tauri` (HashRouter, no PWA) so the same SPA ships in the shell.
 - `.md` / `.markdown` file associations are registered in `src-tauri/tauri.conf.json`. Composite `.enc.md` opens as markdown via the same association on most OSes.
 - **Touch ID / Windows Hello unlock** uses `tauri-plugin-biometry` (not WebView WebAuthn). On macOS, keychain-backed storage needs a properly signed app (Developer ID); unsigned local builds may fail to persist biometric secrets.
+
+============================================================
+github-release-body.md
+============================================================
+
+URL: https://explainpark101.github.io/DocuHaim/docs/desktop/github-release-body/
+
+Unified release (macOS DMG / Windows NSIS / Android APK) with auto-update manifest.
+
+- macOS: universal DMG
+- Windows: NSIS installer (`.exe`)
+- Android: debug-signed sideload APKs — **prefer the matching ABI**; `universal` includes all ABIs (larger)
+- `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
+
+Install / update endpoint: https://github.com/explainpark101/DocuHaim/releases/latest
+
+Unsigned desktop builds if signing secrets are not configured — see docs/desktop/code-signing.md.
+
+## Android APK — which file to download
+
+| Asset name pattern | ABI | Typical devices |
+|--------------------|-----|-----------------|
+| `DocuHaim_*_arm64-v8a-debug.apk` | `arm64-v8a` | Most phones / tablets (recommended) |
+| `DocuHaim_*_armeabi-v7a-debug.apk` | `armeabi-v7a` | Older 32-bit ARM devices |
+| `DocuHaim_*_x86_64-debug.apk` | `x86_64` | Many Android emulators |
+| `DocuHaim_*_x86-debug.apk` | `x86` | Older x86 emulators |
+| `DocuHaim_*_universal-debug.apk` | all of the above | Any device (largest download) |
+
+### How to check your device architecture
+
+**On the phone (no PC)**
+
+1. Open **Settings → About phone** (or **About device**).
+2. Look for **CPU** / **Hardware** / **Processor**, or install a free app such as **CPU-Z** and check **SoC → ABI** / **Instruction Sets**.
+3. If you see `arm64-v8a` (or `aarch64`), download the **arm64-v8a** APK.
+
+**With a USB cable + `adb` (developer options enabled)**
+
+```bash
+adb shell getprop ro.product.cpu.abi
+```
+
+Example outputs:
+
+- `arm64-v8a` → download `*_arm64-v8a-debug.apk`
+- `armeabi-v7a` → download `*_armeabi-v7a-debug.apk`
+- `x86_64` → download `*_x86_64-debug.apk`
+
+If unsure, use the **universal** APK.
+
+Sideload: allow “Install unknown apps”, then open the `.apk`.  
+Docs: [android-sideload.md](https://github.com/explainpark101/DocuHaim/blob/main/docs/desktop/android-sideload.md) · [code-signing.md](https://github.com/explainpark101/DocuHaim/blob/main/docs/desktop/code-signing.md)
 
 ============================================================
 Docu Haim Docs

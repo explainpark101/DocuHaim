@@ -30,5 +30,6 @@ https://explainpark101.github.io/DocuHaim/docs/custom-markdown/task-list/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/wiki-image/
 https://explainpark101.github.io/DocuHaim/docs/desktop/android-sideload/
 https://explainpark101.github.io/DocuHaim/docs/desktop/code-signing/
+https://explainpark101.github.io/DocuHaim/docs/desktop/github-release-body/
 https://explainpark101.github.io/DocuHaim/docs/
 
