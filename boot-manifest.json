@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-28T17:58:58.338Z",
+  "generatedAt": "2026-09-29T05:00:04.638Z",
   "totalBytes": 4191628,
   "assets": [
     {
@@ -59,7 +59,7 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-BMO-408b.js",
+      "file": "assets/index-BVEYTKrI.js",
       "bytes": 1989307,
       "label": "앱 코어"
     }

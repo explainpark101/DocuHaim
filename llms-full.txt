@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-09-28T17:58:21.462Z
+Generated: 2026-09-29T04:59:23.644Z
 
 ============================================================
 Advanced Search
@@ -3456,25 +3456,28 @@ URL: https://explainpark101.github.io/DocuHaim/docs/desktop/android-sideload/
 
 # Android sideload (Tauri APK)
 
-DocuHaim Android is a **Tauri v2** shell around the same SPA. It is **not** distributed on Google Play. Install the APK from a dedicated GitHub Release.
+DocuHaim Android is a **Tauri v2** shell around the same SPA. It is **not** distributed on Google Play. Install the APK from the unified GitHub Release.
 
 ## Releases
 
 | Channel | Workflow | Tag | Artifacts |
 |---------|----------|-----|-----------|
-| Desktop | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS |
-| Android | `.github/workflows/release-tauri-android.yml` | `android-vX.Y.Z` | debug-signed APK |
+| Unified (preferred) | `.github/workflows/release-tauri.yml` | `vX.Y.Z` | DMG / NSIS / APK / `latest.json` |
+| Android-only (optional) | `.github/workflows/release-tauri-android.yml` | `vX.Y.Z` (same) | debug-signed APK only (`make_latest: false`) |
 
-Android and desktop releases are **separate**. Desktop workflow does not upload APKs.
+Android APKs ship on the **same** `vX.Y.Z` release as desktop. Do **not** publish separate `android-v*` tags — GitHub `/releases/latest` would point at them and break desktop auto-update (`latest.json` 404).
 
-CI currently builds **`tauri android build --debug --apk`** so the published APK is sideload-installable without a release keystore.
+CI builds **`tauri android build --debug --apk`** so the published APK is sideload-installable without a release keystore.
 
-### Publish an Android build
+### Publish (normal)
+
+1. Actions → **Release Tauri** → Run workflow.
+2. Download DMG / EXE / APK from the new `v…` release (also linked from [releases/latest](https://github.com/explainpark101/DocuHaim/releases/latest)).
+
+### Publish APK only (rebuild)
 
 1. Actions → **Release Tauri Android** → Run workflow.
-2. Optional `version` input (defaults to root `package.json` version).
-3. Download the APK from the new `android-v…` release.
-
+2. Optional `version` input (defaults to root `package.json` version). Uploads to `vX.Y.Z` without changing which release is “Latest”.
 
 ## Install (sideload)
 
@@ -3524,7 +3527,7 @@ URL: https://explainpark101.github.io/DocuHaim/docs/desktop/code-signing/
 
 # Desktop code signing
 
-DocuHaim desktop releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml).
+DocuHaim desktop + Android releases are built by [`.github/workflows/release-tauri.yml`](../../.github/workflows/release-tauri.yml) into **one** GitHub Release tag `vX.Y.Z` (DMG / NSIS / APK / `latest.json`).
 
 **If signing secrets are missing, the workflow still uploads unsigned DMG / NSIS artifacts.** Gatekeeper (macOS) and SmartScreen (Windows) will warn users until secrets are configured.
 
@@ -3563,7 +3566,13 @@ Empty secrets are ignored; **do not** set `APPLE_CERTIFICATE` (or other signing 
 
 ## Auto-update (Tauri updater)
 
-Desktop auto-update uses GitHub Releases as the update endpoint (`latest.json` on each release). The public key is committed in `src-tauri/tauri.conf.json` (see also `src-tauri/updater.key.pub`).
+Desktop auto-update fetches:
+
+`https://github.com/explainpark101/DocuHaim/releases/latest/download/latest.json`
+
+That URL follows GitHub’s **Latest** release. Every shipping tag must be a unified `vX.Y.Z` that includes `latest.json` (from desktop jobs). Never publish a separate non-prerelease `android-v*` release — it becomes Latest and the updater fails with “Could not fetch a valid release JSON”.
+
+The public key is committed in `src-tauri/tauri.conf.json` (see also `src-tauri/updater.key.pub`).
 
 ### Generate or rotate updater keys
 
