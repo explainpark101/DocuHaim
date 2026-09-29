@@ -6,7 +6,12 @@ import {
   highlightActiveLine,
   drawSelection,
 } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
@@ -27,6 +32,11 @@ import {
   makeToggleTaskCheckboxHandler,
 } from '@/utils/editorMarkdownStyle';
 import { INSERT_LINE_ABOVE_KEYMAP } from '@/utils/cmInsertLineAbove';
+import {
+  CODE_FENCE_INDENT_KEYMAP,
+  haimCodeFenceIndentUnitExtension,
+} from '@/components/haimEditor/cmCodeFenceIndent';
+import { CODE_FENCE_BRACKET_PAIRS_EXTENSION } from '@/components/haimEditor/cmCodeFenceBracketPairs';
 import type { TaskCheckboxKind } from '@/utils/taskCheckboxStatus';
 import { DEFAULT_DOCUMENT_TASK_CHECKBOX } from '@/utils/documentSettingsMeta';
 
@@ -94,8 +104,14 @@ export default function HaimSourcePane({
       highlightActiveLine(),
       drawSelection(),
       history(),
+      haimCodeFenceIndentUnitExtension(),
+      // Match WYSIWYG code-block keys inside ``` fences (brackets/quotes + Tab indent).
+      CODE_FENCE_BRACKET_PAIRS_EXTENSION,
+      // Fence-aware Tab first (Prec.high); falls through to indentWithTab outside fences.
+      CODE_FENCE_INDENT_KEYMAP,
       INSERT_LINE_ABOVE_KEYMAP,
       keymap.of([
+        indentWithTab,
         ...defaultKeymap,
         ...historyKeymap,
         {
