@@ -49,7 +49,10 @@ import {
 import {
   runAppLockAction,
 } from '@/utils/advancedSearch/appLockActions';
-import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
+import {
+  compareAdvancedSearchRelevance,
+  scoreFuzzyRelevance,
+} from '@/utils/advancedSearch/fuzzyMatch';
 import { requestOpenAdvancedSearch } from '@/utils/advancedSearch/openRequest';
 import {
   FOOTNOTE_INSERT_COMMAND_ID,
@@ -437,12 +440,12 @@ export default function AdvancedSearchHost({
               score,
             };
           })
-          .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'));
+          .sort((a, b) => compareAdvancedSearchRelevance(a, b, query));
 
         const seen = new Set<string>();
         const merged: AdvancedSearchHit[] = [];
-        for (const hit of [...tocHits, ...hits].sort(
-          (a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'),
+        for (const hit of [...tocHits, ...hits].sort((a, b) =>
+          compareAdvancedSearchRelevance(a, b, query),
         )) {
           if (seen.has(hit.docId)) continue;
           seen.add(hit.docId);

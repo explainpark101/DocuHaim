@@ -10,7 +10,7 @@ import {
   type AppCommandContext,
   type AppCommandId,
 } from '@/utils/advancedSearch/commands';
-import { fuzzyMatchText, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
+import { fuzzyMatchText, scoreFuzzyRelevance, compareAdvancedSearchRelevance } from '@/utils/advancedSearch/fuzzyMatch';
 
 export type MatchReason = 'command' | 'name' | 'path' | 'content';
 
@@ -362,7 +362,7 @@ export async function runAdvancedSearch(options: {
   }
 
   return Array.from(hits.values())
-    .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'))
+    .sort((a, b) => compareAdvancedSearchRelevance(a, b, q))
     .slice(0, limit);
 }
 

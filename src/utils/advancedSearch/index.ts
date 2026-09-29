@@ -189,6 +189,11 @@ export {
   fuzzyMatchTokensInHaystacks,
   scoreFuzzyRelevance,
   scoreFuzzyFields,
+  getFuzzyMatchRate,
+  isFuzzyExactMatch,
+  compareAdvancedSearchRelevance,
+  FUZZY_EXACT_MATCH_SCORE,
+  normalizeFuzzyText,
 } from '@/utils/advancedSearch/fuzzyMatch';
 export {
   requestOpenAdvancedSearch,

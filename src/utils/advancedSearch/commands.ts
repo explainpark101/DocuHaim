@@ -56,7 +56,12 @@ import {
   type AppLockActionId,
 } from '@/utils/advancedSearch/appLockActions';
 import { hasDesktopAppEntryLock } from '@/utils/desktopAppEntryLock';
-import { scoreFuzzyFields, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
+import {
+  compareAdvancedSearchRelevance,
+  isFuzzyExactMatch,
+  scoreFuzzyFields,
+  scoreFuzzyRelevance,
+} from '@/utils/advancedSearch/fuzzyMatch';
 import { isSafariBrowser } from '@/utils/isSafariBrowser';
 
 /** Dynamic snippet command (created from snippetConfig). */
@@ -1221,6 +1226,11 @@ export function scoreCommandRelevance(cmd: AppCommand, query: string): number {
   const path = normalize(cmd.path);
   const keywords = (cmd.keywords || []).map(normalize).filter(Boolean);
 
+  // Title perfect match (same text + length) always wins over keywords/path.
+  if (isFuzzyExactMatch(title, q)) {
+    return scoreFuzzyRelevance(title, q);
+  }
+
   const titleScore = scoreFuzzyRelevance(title, q);
   const keywordScore = Math.max(
     0,
@@ -1310,7 +1320,14 @@ export function matchAppCommandsRanked(
         score: scoreCommandRelevance(command, q),
       }))
       .filter((r) => r.score > 0)
-      .sort((a, b) => b.score - a.score || a.command.title.localeCompare(b.command.title, 'ko'));
+      .sort(
+        (a, b) =>
+          compareAdvancedSearchRelevance(
+            { title: a.command.title, score: a.score },
+            { title: b.command.title, score: b.score },
+            q,
+          ),
+      );
   }
 
   const q = normalize(query);
@@ -1365,7 +1382,11 @@ export function matchAppCommandsRanked(
     const bCircle = b.command.id === CIRCLE_NUMBER_INSERT_COMMAND_ID;
     if (aCircle && isCircleNumberInsertCommandId(b.command.id) && !bCircle) return -1;
     if (bCircle && isCircleNumberInsertCommandId(a.command.id) && !aCircle) return 1;
-    return b.score - a.score || a.command.title.localeCompare(b.command.title, 'ko');
+    return compareAdvancedSearchRelevance(
+      { title: a.command.title, score: a.score },
+      { title: b.command.title, score: b.score },
+      q,
+    );
   });
   return ranked;
 }

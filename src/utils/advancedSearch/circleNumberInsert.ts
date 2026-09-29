@@ -2,7 +2,10 @@
  * Advanced Search nested picker: insert Unicode circled numbers (①, ②, …).
  */
 import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
-import { scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
+import {
+  compareAdvancedSearchRelevance,
+  scoreFuzzyRelevance,
+} from '@/utils/advancedSearch/fuzzyMatch';
 import {
   CIRCLE_NUMBER_PICKER_MAX,
   CIRCLE_NUMBER_PICKER_MIN,
@@ -59,7 +62,7 @@ export function listCircleNumberHits(query: string, limit = 80): AdvancedSearchH
   }
 
   if (q) {
-    hits.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'));
+    hits.sort((a, b) => compareAdvancedSearchRelevance(a, b, q));
   }
   return hits.slice(0, limit);
 }

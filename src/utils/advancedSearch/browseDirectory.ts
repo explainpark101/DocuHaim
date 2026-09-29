@@ -4,7 +4,11 @@
 
 import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
 import type { AppCommandId } from '@/utils/advancedSearch/commands';
-import { fuzzyMatchText, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
+import {
+  compareAdvancedSearchRelevance,
+  fuzzyMatchText,
+  scoreFuzzyRelevance,
+} from '@/utils/advancedSearch/fuzzyMatch';
 
 export type BrowseTreeNode = {
   type?: string;
@@ -245,9 +249,7 @@ export function listBrowseDirectoryHits(
     index += 1;
   }
 
-  hits.sort(
-    (a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'),
-  );
+  hits.sort((a, b) => compareAdvancedSearchRelevance(a, b, q));
 
   // Always pin create actions below folders/files (order: 새 파일, 새 폴더).
   const room = Math.max(0, limit - createHits.length);

@@ -4,7 +4,11 @@
 
 import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
 import type { AdvancedSearchHit } from '@/utils/advancedSearch/query';
-import { fuzzyMatchText, scoreFuzzyRelevance } from '@/utils/advancedSearch/fuzzyMatch';
+import {
+  compareAdvancedSearchRelevance,
+  fuzzyMatchText,
+  scoreFuzzyRelevance,
+} from '@/utils/advancedSearch/fuzzyMatch';
 
 export type ChatGroupEntry = {
   id: string;
@@ -157,9 +161,7 @@ export function listChatGroupHits(
     hits.push(hit);
   }
 
-  hits.sort(
-    (a, b) => b.score - a.score || a.title.localeCompare(b.title, 'ko'),
-  );
+  hits.sort((a, b) => compareAdvancedSearchRelevance(a, b, q));
 
   const clearHit = clearGroupHit(q);
   const room = clearHit ? Math.max(0, limit - 1) : limit;
