@@ -9,9 +9,28 @@ import type { EditorView } from '@codemirror/view';
 import type { Editor } from '@tiptap/react';
 import { TextSelection } from '@tiptap/pm/state';
 import { setEditorMarkdown } from '@/components/haimEditor/markdownIo';
+import { HAIM_DUAL_SYNC_DEBOUNCE_MS_DEFAULT } from '@/utils/haimDualSyncDebounceSettings';
 
-/** Idle debounce while local input is ongoing (TipTap or CM). */
-export const HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS = 300;
+/** Idle debounce while local input is ongoing (TipTap or CM). Default 150ms. */
+export const HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS = HAIM_DUAL_SYNC_DEBOUNCE_MS_DEFAULT;
+
+/** Which dual pane owns keyboard focus and drives content sync. */
+export type HaimDualSyncAuthor = 'tiptap' | 'cm';
+
+/**
+ * Resolve the sync author from keyboard focus.
+ * Focused pane wins; if neither (or both) report focus, keep `lastAuthor`.
+ */
+export function resolveHaimDualSyncAuthor(options: {
+  tipTapFocused: boolean;
+  cmFocused: boolean;
+  lastAuthor: HaimDualSyncAuthor;
+}): HaimDualSyncAuthor {
+  const { tipTapFocused, cmFocused, lastAuthor } = options;
+  if (tipTapFocused && !cmFocused) return 'tiptap';
+  if (cmFocused && !tipTapFocused) return 'cm';
+  return lastAuthor;
+}
 
 /**
  * Follower pane must not be rewritten while it has focus (user is typing there).
@@ -30,6 +49,7 @@ export function isLocalInputDebounceActive(
   debounceMs: number = HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
 ): boolean {
   if (lastLocalInputAtMs <= 0) return false;
+  if (debounceMs <= 0) return false;
   return nowMs - lastLocalInputAtMs < debounceMs;
 }
 

@@ -4,13 +4,56 @@ import {
   clampCmOffset,
   clampPmSelection,
   isLocalInputDebounceActive,
+  resolveHaimDualSyncAuthor,
   shouldRewriteFollowerPane,
 } from '@/components/haimEditor/haimDualSyncApply';
 import { isVaultValueEcho } from '@/components/haimEditor/haimExternalValueSync';
 
 describe('HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS', () => {
-  it('uses 300ms while local input is ongoing', () => {
-    expect(HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS).toBe(300);
+  it('defaults to 150ms while local input is ongoing', () => {
+    expect(HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS).toBe(150);
+  });
+});
+
+describe('resolveHaimDualSyncAuthor', () => {
+  it('prefers the focused TipTap pane', () => {
+    expect(
+      resolveHaimDualSyncAuthor({
+        tipTapFocused: true,
+        cmFocused: false,
+        lastAuthor: 'cm',
+      }),
+    ).toBe('tiptap');
+  });
+
+  it('prefers the focused source (CM) pane', () => {
+    expect(
+      resolveHaimDualSyncAuthor({
+        tipTapFocused: false,
+        cmFocused: true,
+        lastAuthor: 'tiptap',
+      }),
+    ).toBe('cm');
+  });
+
+  it('keeps lastAuthor when neither pane is focused', () => {
+    expect(
+      resolveHaimDualSyncAuthor({
+        tipTapFocused: false,
+        cmFocused: false,
+        lastAuthor: 'cm',
+      }),
+    ).toBe('cm');
+  });
+
+  it('keeps lastAuthor when both report focus (rare race)', () => {
+    expect(
+      resolveHaimDualSyncAuthor({
+        tipTapFocused: true,
+        cmFocused: true,
+        lastAuthor: 'tiptap',
+      }),
+    ).toBe('tiptap');
   });
 });
 
@@ -29,10 +72,16 @@ describe('isLocalInputDebounceActive', () => {
     expect(isLocalInputDebounceActive(1000, 0)).toBe(false);
   });
 
-  it('is active inside the 300ms window after a keystroke', () => {
+  it('is active inside the default 150ms window after a keystroke', () => {
     const t0 = 10_000;
-    expect(isLocalInputDebounceActive(t0 + 299, t0)).toBe(true);
-    expect(isLocalInputDebounceActive(t0 + 300, t0)).toBe(false);
+    expect(isLocalInputDebounceActive(t0 + 149, t0)).toBe(true);
+    expect(isLocalInputDebounceActive(t0 + 150, t0)).toBe(false);
+  });
+
+  it('is never active when debounceMs is 0 (immediate sync)', () => {
+    const t0 = 10_000;
+    expect(isLocalInputDebounceActive(t0, t0, 0)).toBe(false);
+    expect(isLocalInputDebounceActive(t0 + 1, t0, 0)).toBe(false);
   });
 
   it('blocks parent value apply while typing ahead of last emit (list race)', () => {

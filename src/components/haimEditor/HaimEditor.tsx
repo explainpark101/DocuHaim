@@ -16,7 +16,6 @@ import ChecklistProgressSidebar from '@/components/ChecklistProgressSidebar';
 import HaimLinkHoverHint from '@/components/haimEditor/HaimLinkHoverHint';
 import { getHaimSelectedPlainText } from '@/components/haimEditor/getHaimSelectedPlainText';
 import {
-  HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
   useHaimDualSync,
 } from '@/components/haimEditor/useHaimDualSync';
 import {
@@ -53,6 +52,10 @@ import {
   loadHaimDoubleScrollSyncEnabled,
   saveHaimDoubleScrollSyncEnabled,
 } from '@/utils/haimDoubleScrollSyncSettings';
+import {
+  HAIM_DUAL_SYNC_DEBOUNCE_CHANGED_EVENT,
+  loadHaimDualSyncDebounceMs,
+} from '@/utils/haimDualSyncDebounceSettings';
 import {
   HAIM_TOC_LAYOUT_CHANGED_EVENT,
   loadHaimTocLayout,
@@ -180,6 +183,11 @@ export default function HaimEditor({
   const [scrollSyncEnabled, setScrollSyncEnabled] = useState(() =>
     loadHaimDoubleScrollSyncEnabled(),
   );
+  const [dualSyncDebounceMs, setDualSyncDebounceMs] = useState(() =>
+    loadHaimDualSyncDebounceMs(),
+  );
+  const dualSyncDebounceMsRef = useRef(dualSyncDebounceMs);
+  dualSyncDebounceMsRef.current = dualSyncDebounceMs;
   const [foldBase64Images] = useBase64ImageFold();
   const noteCoverFoldDocKey = getNoteCoverFoldKeyFromFile(currentFile);
   const [tocOpen, setTocOpen] = useState(false);
@@ -250,6 +258,13 @@ export default function HaimEditor({
     window.addEventListener(HAIM_DOUBLE_SCROLL_SYNC_CHANGED_EVENT, onEvt);
     return () =>
       window.removeEventListener(HAIM_DOUBLE_SCROLL_SYNC_CHANGED_EVENT, onEvt);
+  }, []);
+
+  useEffect(() => {
+    const onEvt = () => setDualSyncDebounceMs(loadHaimDualSyncDebounceMs());
+    window.addEventListener(HAIM_DUAL_SYNC_DEBOUNCE_CHANGED_EVENT, onEvt);
+    return () =>
+      window.removeEventListener(HAIM_DUAL_SYNC_DEBOUNCE_CHANGED_EVENT, onEvt);
   }, []);
 
   useEffect(() => {
@@ -367,7 +382,7 @@ export default function HaimEditor({
     cmViewRef,
     metaPrefixRef,
     enabled: Boolean(editor) && isSurfaceLive && !previewOnly,
-    debounceMs: HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
+    debounceMs: dualSyncDebounceMs,
     onVaultChange: emitVault,
     wysiwygScrollRef,
     suppressScrollSyncUntilRef,
@@ -393,7 +408,11 @@ export default function HaimEditor({
     // (prevents caret jumping to the bottom mid-keystroke).
     if (
       !fileChanged &&
-      isLocalInputDebounceActive(Date.now(), localInputAtRef.current)
+      isLocalInputDebounceActive(
+        Date.now(),
+        localInputAtRef.current,
+        dualSyncDebounceMsRef.current,
+      )
     ) {
       return;
     }

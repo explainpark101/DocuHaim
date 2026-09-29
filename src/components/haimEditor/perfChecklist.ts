@@ -3,9 +3,9 @@
  *
  * - NoteEditorSurface must lazy-import only the selected engine.
  * - Dual mode mounts HaimSourcePane only when viewMode === dual.
- * - useHaimDualSync debounces TipTap↔CM (300ms); origin tags + lastPushed skip feedback.
+ * - useHaimDualSync: keyboard-focus author drives TipTap↔CM (default 150ms debounce, 0 = immediate); origin tags + lastPushed skip feedback.
  * - HaimEditor skips parent `value` echo (lastEmitted) + local-input debounce window.
- * - Follower rewrite skipped while focused; CM/TipTap replace preserves caret/scroll.
+ * - Follower rewrite skipped while focused; focus handoff flushes previous author once.
  * - getCachedMarkdown skips serialize when JSON identity unchanged.
  * - vite manualChunks: vendor-tiptap separate from vendor-md-editor.
  * - Frozen panes use MarkdownPreviewSurface with engineHint="legacy" (no TipTap)
