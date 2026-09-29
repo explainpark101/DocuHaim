@@ -33,10 +33,9 @@ describe('collectTopLevelBlocksInRange', () => {
     expect(result).not.toBeNull();
     expect(result!.from).toBe(0);
     expect(result!.to).toBe(18);
-    expect(result!.nodes.map((n) => (n as { name: string }).name)).toEqual([
-      'h1',
-      'h2',
-    ]);
+    expect(
+      result!.nodes.map((n) => (n as unknown as { name: string }).name),
+    ).toEqual(['h1', 'h2']);
   });
 });
 
