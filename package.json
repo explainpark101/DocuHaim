@@ -1,7 +1,7 @@
 {
   "name": "docu-haim",
   "private": true,
-  "version": "2.2.8",
+  "version": "2.2.9",
   "author": "Jaehyung Park <explainpark101@gmail.com>",
   "type": "module",
   "scripts": {

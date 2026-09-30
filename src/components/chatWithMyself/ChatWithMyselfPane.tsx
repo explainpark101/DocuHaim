@@ -3326,9 +3326,9 @@ export default function ChatWithMyselfPane({
                   : undefined
               }
             />
-            {selectionMode && selectedIds.size > 0 ? (
+            <div className="relative shrink-0">
               <ChatMessageSelectionBar
-                count={selectedIds.size}
+                count={selectionMode ? selectedIds.size : 0}
                 allPinned={selectionAllPinned}
                 canMerge={selectedIds.size >= 2}
                 onClose={clearMessageSelection}
@@ -3339,19 +3339,18 @@ export default function ChatWithMyselfPane({
                 onMerge={handleBulkMergeRequest}
                 onDelete={handleBulkDeleteRequest}
               />
-            ) : null}
-            <ChatComposerDock
-              autoFit={Boolean(editTarget || replyTo)}
-              fitKey={`${editTarget?.id || ''}:${replyTo?.id || ''}`}
-              fitPreviewHeight={composerFitHeights?.previewHeight ?? 0}
-              fitContentHeight={composerFitHeights?.contentHeight ?? null}
-              toolbarChromeHeight={
-                composerToolbarOpen && !composerLightweight
-                  ? COMPOSER_TOOLBAR_CHROME_H
-                  : 0
-              }
-              helperChromeHeight={composerHelperChromeHeight}
-            >
+              <ChatComposerDock
+                autoFit={Boolean(editTarget || replyTo)}
+                fitKey={`${editTarget?.id || ''}:${replyTo?.id || ''}`}
+                fitPreviewHeight={composerFitHeights?.previewHeight ?? 0}
+                fitContentHeight={composerFitHeights?.contentHeight ?? null}
+                toolbarChromeHeight={
+                  composerToolbarOpen && !composerLightweight
+                    ? COMPOSER_TOOLBAR_CHROME_H
+                    : 0
+                }
+                helperChromeHeight={composerHelperChromeHeight}
+              >
               <div className="mx-auto flex h-full min-h-0 w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3">
                 <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5">
                   <ChatComposer
@@ -3389,7 +3388,8 @@ export default function ChatWithMyselfPane({
                   />
                 </div>
               </div>
-            </ChatComposerDock>
+              </ChatComposerDock>
+            </div>
           </div>
           {!isMobileLayout ? (
             <>
