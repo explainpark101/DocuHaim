@@ -985,9 +985,9 @@ const MessageBubble = memo(function MessageBubble({
           onToggle={(options) =>
             onToggleSelect?.(msg, {
               fromCheckbox: true,
-              shiftKey: options?.shiftKey,
-              metaKey: options?.metaKey,
-              ctrlKey: options?.ctrlKey,
+              shiftKey: Boolean(options?.shiftKey),
+              metaKey: Boolean(options?.metaKey),
+              ctrlKey: Boolean(options?.ctrlKey),
             })
           }
         />
