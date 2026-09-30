@@ -95,6 +95,7 @@ export function useHaimDualSync({
   localInputAtRef,
 }: Options): {
   originRef: React.MutableRefObject<SyncOrigin>;
+  lastAuthorRef: React.MutableRefObject<HaimDualSyncAuthor>;
   notifyCmDocChanged: () => void;
   flush: () => void;
   cancelPending: () => void;
@@ -410,6 +411,7 @@ export function useHaimDualSync({
 
   return {
     originRef,
+    lastAuthorRef,
     notifyCmDocChanged,
     flush,
     cancelPending,

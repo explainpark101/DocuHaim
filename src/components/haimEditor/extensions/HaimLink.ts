@@ -4,8 +4,8 @@ import type { Editor } from '@tiptap/core';
 import type { MarkType } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
-import { loadHaimLinkOpenOnClick } from '@/utils/haimLinkOpenSettings';
 import { isDocuhaimHref, parseDocuhaimHref } from '@/utils/docuhaimLink';
+import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
 import { openHaimViewPath } from '@/utils/haimOpenViewPath';
 
 /** Applied to the ProseMirror root while Ctrl/Cmd is held (CSS cursor:pointer on links). */
@@ -36,13 +36,6 @@ function resolveHref(view: EditorView, type: MarkType, link: HTMLAnchorElement):
   const fromAttrs = String(attrs.href || '').trim();
   if (fromAttrs) return fromAttrs;
   return String(link.getAttribute('href') || link.href || '').trim();
-}
-
-/** Same browsing-context behavior as clicking `<a target="_blank" rel="noopener noreferrer">`. */
-function openHrefLikeAnchor(href: string, link: HTMLAnchorElement): void {
-  const rawTarget = (link.getAttribute('target') || link.target || '_blank').trim();
-  const target = !rawTarget || rawTarget === '_self' ? '_blank' : rawTarget;
-  window.open(href, target, 'noopener,noreferrer');
 }
 
 /**
@@ -114,31 +107,37 @@ function tryOpenLinkFromEvent(
   if (!href) return false;
 
   const docuhaimPath = parseDocuhaimHref(href);
-  const openOnClick = loadHaimLinkOpenOnClick();
   const mod = event.metaKey || event.ctrlKey;
 
+  // Editable: never navigate on plain click (use hover-card 「열기」 or Mod+click).
+  if (view.editable) {
+    event.preventDefault();
+    if (!mod) return true;
+
+    if (docuhaimPath) {
+      event.stopPropagation();
+      openHaimViewPath(docuhaimPath);
+      return true;
+    }
+
+    const rawTarget = (link.getAttribute('target') || link.target || '_blank').trim();
+    openHaimLinkHref(href, { target: rawTarget });
+    return true;
+  }
+
+  // Preview / read-only: docuhaim opens in-app; leave http(s) to the host.
   if (docuhaimPath) {
-    // Preview / read-only: always open in-app (avoid target=_blank on custom scheme).
-    // Editable: same as other links (plain click when setting on, else Mod+click).
-    if (view.editable && !mod && !openOnClick) return false;
     event.preventDefault();
     event.stopPropagation();
     openHaimViewPath(docuhaimPath);
     return true;
   }
 
-  if (!view.editable) return false;
-
-  // Mod+click always opens; plain click only when the setting allows.
-  if (!mod && !openOnClick) return false;
-
-  event.preventDefault();
-  openHrefLikeAnchor(href, link);
-  return true;
+  return false;
 }
 
 /**
- * Live click policy for Haim links (reads settings on each click).
+ * Live click policy for Haim links.
  * TipTap stock openOnClick stays false; we own open behavior here.
  */
 function haimLinkClickPlugin(editor: Editor, type: MarkType): Plugin {
@@ -155,7 +154,7 @@ function haimLinkClickPlugin(editor: Editor, type: MarkType): Plugin {
 }
 
 /**
- * TipTap Link with settings-aware open (click vs Ctrl/Cmd+click) and docuhaim://.
+ * TipTap Link: plain click does not open; Mod+click / hover-card 「열기」 does.
  */
 export const HaimLink = Link.extend({
   renderHTML({ HTMLAttributes }) {

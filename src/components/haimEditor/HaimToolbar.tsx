@@ -45,6 +45,7 @@ import {
   type HaimViewMode,
   saveHaimViewMode,
 } from '@/utils/haimViewModeSettings';
+import type { HaimFormatCommand } from '@/components/haimEditor/runHaimFormatCommand';
 
 export type HaimToolbarAppActions = {
   onExportPdf?: (() => void) | undefined;
@@ -83,6 +84,11 @@ type Props = {
   tocOpen?: boolean | undefined;
   onTocOpenChange?: ((open: boolean) => void) | undefined;
   appActions?: HaimToolbarAppActions | undefined;
+  /**
+   * Route format toggles (bold/lists/…) to TipTap or CM source.
+   * When omitted, falls back to TipTap-only (legacy).
+   */
+  onFormatCommand?: ((command: HaimFormatCommand) => void) | undefined;
 };
 
 function ToolBtn({
@@ -105,6 +111,10 @@ function ToolBtn({
           type="button"
           aria-label={label}
           disabled={disabled}
+          onMouseDown={(event) => {
+            // Keep editor selection / focus (CM source or TipTap) when clicking the toolbar.
+            event.preventDefault();
+          }}
           onClick={() => {
             onClick();
           }}
@@ -145,6 +155,7 @@ export default function HaimToolbar({
   tocOpen = false,
   onTocOpenChange,
   appActions,
+  onFormatCommand,
 }: Props) {
   const state = useEditorState({
     editor,
@@ -194,6 +205,66 @@ export default function HaimToolbar({
 
   const s = state;
 
+  const runFormat = (command: HaimFormatCommand) => {
+    if (onFormatCommand) {
+      onFormatCommand(command);
+      return;
+    }
+    // Legacy TipTap-only fallback (e.g. chat composer embeds).
+    switch (command) {
+      case 'undo':
+        editor.chain().focus().undo().run();
+        break;
+      case 'redo':
+        editor.chain().focus().redo().run();
+        break;
+      case 'bold':
+        editor.chain().focus().toggleBold().run();
+        break;
+      case 'italic':
+        editor.chain().focus().toggleItalic().run();
+        break;
+      case 'underline':
+        editor.chain().focus().toggleUnderline().run();
+        break;
+      case 'strike':
+        editor.chain().focus().toggleStrike().run();
+        break;
+      case 'code':
+        editor.chain().focus().toggleCode().run();
+        break;
+      case 'sub':
+        editor.chain().focus().toggleSubscript().run();
+        break;
+      case 'sup':
+        editor.chain().focus().toggleSuperscript().run();
+        break;
+      case 'h1':
+        editor.chain().focus().toggleHeading({ level: 1 }).run();
+        break;
+      case 'h2':
+        editor.chain().focus().toggleHeading({ level: 2 }).run();
+        break;
+      case 'h3':
+        editor.chain().focus().toggleHeading({ level: 3 }).run();
+        break;
+      case 'bullet':
+        editor.chain().focus().toggleBulletList().run();
+        break;
+      case 'ordered':
+        editor.chain().focus().toggleOrderedList().run();
+        break;
+      case 'task':
+        editor.chain().focus().toggleTaskList().run();
+        break;
+      case 'quote':
+        editor.chain().focus().toggleBlockquote().run();
+        break;
+      default:
+        break;
+    }
+  };
+
   const setMode = (mode: HaimViewMode) => {
     // Persist as default for new editors; do not broadcast so split panes stay independent.
     saveHaimViewMode(mode, { broadcast: false });
@@ -210,18 +281,18 @@ export default function HaimToolbar({
         <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-odp-borderStrong" />
         <ToolBtn
           label="실행 취소"
-          disabled={Boolean(s?.canUndo) === false}
+          disabled={onFormatCommand ? false : Boolean(s?.canUndo) === false}
           onClick={() => {
-            editor.chain().focus().undo().run();
+            runFormat('undo');
           }}
         >
           <Undo2 size={14} />
         </ToolBtn>
         <ToolBtn
           label="다시 실행"
-          disabled={Boolean(s?.canRedo) === false}
+          disabled={onFormatCommand ? false : Boolean(s?.canRedo) === false}
           onClick={() => {
-            editor.chain().focus().redo().run();
+            runFormat('redo');
           }}
         >
           <Redo2 size={14} />
@@ -231,7 +302,7 @@ export default function HaimToolbar({
           label="굵게"
           active={Boolean(s?.bold)}
           onClick={() => {
-            editor.chain().focus().toggleBold().run();
+            runFormat('bold');
           }}
         >
           <Bold size={14} />
@@ -240,7 +311,7 @@ export default function HaimToolbar({
           label="기울임"
           active={Boolean(s?.italic)}
           onClick={() => {
-            editor.chain().focus().toggleItalic().run();
+            runFormat('italic');
           }}
         >
           <Italic size={14} />
@@ -249,7 +320,7 @@ export default function HaimToolbar({
           label="밑줄"
           active={Boolean(s?.underline)}
           onClick={() => {
-            editor.chain().focus().toggleUnderline().run();
+            runFormat('underline');
           }}
         >
           <UnderlineIcon size={14} />
@@ -258,7 +329,7 @@ export default function HaimToolbar({
           label="취소선"
           active={Boolean(s?.strike)}
           onClick={() => {
-            editor.chain().focus().toggleStrike().run();
+            runFormat('strike');
           }}
         >
           <Strikethrough size={14} />
@@ -267,7 +338,7 @@ export default function HaimToolbar({
           label="인라인 코드"
           active={Boolean(s?.code)}
           onClick={() => {
-            editor.chain().focus().toggleCode().run();
+            runFormat('code');
           }}
         >
           <Code size={14} />
@@ -276,7 +347,7 @@ export default function HaimToolbar({
           label="아래 첨자"
           active={Boolean(s?.sub)}
           onClick={() => {
-            editor.chain().focus().toggleSubscript().run();
+            runFormat('sub');
           }}
         >
           <Subscript size={14} />
@@ -285,7 +356,7 @@ export default function HaimToolbar({
           label="위 첨자"
           active={Boolean(s?.sup)}
           onClick={() => {
-            editor.chain().focus().toggleSuperscript().run();
+            runFormat('sup');
           }}
         >
           <Superscript size={14} />
@@ -295,7 +366,7 @@ export default function HaimToolbar({
           label="제목 1"
           active={Boolean(s?.h1)}
           onClick={() => {
-            editor.chain().focus().toggleHeading({ level: 1 }).run();
+            runFormat('h1');
           }}
         >
           <Heading1 size={14} />
@@ -304,7 +375,7 @@ export default function HaimToolbar({
           label="제목 2"
           active={Boolean(s?.h2)}
           onClick={() => {
-            editor.chain().focus().toggleHeading({ level: 2 }).run();
+            runFormat('h2');
           }}
         >
           <Heading2 size={14} />
@@ -313,7 +384,7 @@ export default function HaimToolbar({
           label="제목 3"
           active={Boolean(s?.h3)}
           onClick={() => {
-            editor.chain().focus().toggleHeading({ level: 3 }).run();
+            runFormat('h3');
           }}
         >
           <Heading3 size={14} />
@@ -322,7 +393,7 @@ export default function HaimToolbar({
           label="글머리"
           active={Boolean(s?.bullet)}
           onClick={() => {
-            editor.chain().focus().toggleBulletList().run();
+            runFormat('bullet');
           }}
         >
           <List size={14} />
@@ -331,7 +402,7 @@ export default function HaimToolbar({
           label="번호 목록"
           active={Boolean(s?.ordered)}
           onClick={() => {
-            editor.chain().focus().toggleOrderedList().run();
+            runFormat('ordered');
           }}
         >
           <ListOrdered size={14} />
@@ -340,7 +411,7 @@ export default function HaimToolbar({
           label="할 일"
           active={Boolean(s?.task)}
           onClick={() => {
-            editor.chain().focus().toggleTaskList().run();
+            runFormat('task');
           }}
         >
           <ListTodo size={14} />
@@ -349,7 +420,7 @@ export default function HaimToolbar({
           label="인용"
           active={Boolean(s?.quote)}
           onClick={() => {
-            editor.chain().focus().toggleBlockquote().run();
+            runFormat('quote');
           }}
         >
           <Quote size={14} />

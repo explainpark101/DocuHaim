@@ -23,6 +23,11 @@ import {
 import {
   useHaimDualSync,
 } from '@/components/haimEditor/useHaimDualSync';
+import { preferHaimSourceSurface } from '@/components/haimEditor/preferHaimSourceSurface';
+import {
+  runHaimFormatCommand,
+  type HaimFormatCommand,
+} from '@/components/haimEditor/runHaimFormatCommand';
 import {
   isLocalInputDebounceActive,
   replaceCmDocPreservingView,
@@ -379,6 +384,7 @@ export default function HaimEditor({
     notifyCmDocChanged,
     flush,
     originRef,
+    lastAuthorRef,
     cancelPending,
     pushEditorMarkdownToCmNow,
     pushCmMarkdownToEditorNow,
@@ -647,14 +653,40 @@ export default function HaimEditor({
     [editor, currentFile, theme, navigate, tabsCtx],
   );
 
+  const shouldPreferSource = useCallback(() => {
+    return preferHaimSourceSurface({
+      cm: cmViewRef.current,
+      tipTapFocused: Boolean(editor?.isFocused),
+      lastAuthor: lastAuthorRef.current,
+      effectiveMode,
+      showSource,
+      showWysiwyg,
+    });
+  }, [editor, effectiveMode, showSource, showWysiwyg, lastAuthorRef]);
+
+  const runFormatCommand = useCallback(
+    (command: HaimFormatCommand) => {
+      if (!editor) return;
+      runHaimFormatCommand(command, {
+        editor,
+        cm: cmViewRef.current,
+        preferSource: shouldPreferSource(),
+      });
+    },
+    [editor, shouldPreferSource],
+  );
+
   const openHeadingRemap = useCallback(() => {
     if (!editor) return;
     const cm = cmViewRef.current;
-    const preferSource =
-      cm != null &&
-      (cm.hasFocus ||
-        effectiveMode === HAIM_VIEW_MODE_SOURCE ||
-        (showSource && !showWysiwyg));
+    const preferSource = preferHaimSourceSurface({
+      cm,
+      tipTapFocused: Boolean(editor.isFocused),
+      lastAuthor: lastAuthorRef.current,
+      effectiveMode,
+      showSource,
+      showWysiwyg,
+    });
     const snap = getHaimHeadingRemapSelection(editor, cm, {
       sourceVisible: showSource,
       preferSource,
@@ -667,7 +699,7 @@ export default function HaimEditor({
       setHeadingRemapSelection('');
     }
     setHeadingRemapOpen(true);
-  }, [editor, effectiveMode, showSource, showWysiwyg]);
+  }, [editor, effectiveMode, showSource, showWysiwyg, lastAuthorRef]);
 
   const openQrCodeCreate = useCallback(() => {
     if (typeof onUploadImage !== 'function' || showImageUploadOverlay) return;
@@ -719,12 +751,7 @@ export default function HaimEditor({
     if (!editor) return;
     // Prefer CodeMirror selection when source pane is active
     const cm = cmViewRef.current;
-    const preferCm =
-      cm != null &&
-      (cm.hasFocus ||
-        effectiveMode === HAIM_VIEW_MODE_SOURCE ||
-        (showSource && !showWysiwyg));
-    if (preferCm) {
+    if (shouldPreferSource() && cm) {
       const md = cm.state.doc.toString();
       const { from, to } = cm.state.selection.main;
       const block = findHaimTableBlockAt(md, from, to);
@@ -792,7 +819,7 @@ export default function HaimEditor({
     }
     const empty = createEmptyHaimTableRaw();
     setTableEdit({ mode: 'insert', meta: empty.meta, grid: empty.grid });
-  }, [editor, effectiveMode, showSource, showWysiwyg]);
+  }, [editor, shouldPreferSource]);
 
   const applyHaimTableEdit = useCallback(
     (meta: HaimTableMeta, grid: HaimTableGrid) => {
@@ -896,11 +923,14 @@ export default function HaimEditor({
 
       // Snapshot cursor/selection BEFORE await — paste-time position.
       const cmAtStart = cmViewRef.current;
-      const preferSource =
-        cmAtStart != null &&
-        (cmAtStart.hasFocus ||
-          effectiveMode === HAIM_VIEW_MODE_SOURCE ||
-          (showSource && !showWysiwyg));
+      const preferSource = preferHaimSourceSurface({
+        cm: cmAtStart,
+        tipTapFocused: Boolean(editor.isFocused),
+        lastAuthor: lastAuthorRef.current,
+        effectiveMode,
+        showSource,
+        showWysiwyg,
+      });
       const insertTarget = preferSource && cmAtStart
         ? {
             surface: 'cm' as const,
@@ -980,6 +1010,7 @@ export default function HaimEditor({
       showSource,
       showWysiwyg,
       originRef,
+      lastAuthorRef,
       pushCmMarkdownToEditorNow,
       pushEditorMarkdownToCmNow,
     ],
@@ -1184,13 +1215,7 @@ export default function HaimEditor({
   const insertPageBreak = useCallback(() => {
     if (!editor) return;
     const cm = cmViewRef.current;
-    const preferCm =
-      cm != null &&
-      (cm.hasFocus ||
-        effectiveMode === HAIM_VIEW_MODE_SOURCE ||
-        (showSource && !showWysiwyg));
-
-    if (preferCm && cm) {
+    if (shouldPreferSource() && cm) {
       const { from, to } = cm.state.selection.main;
       const insertion = '\n\n<pgbr/>\n\n';
       cm.dispatch({
@@ -1210,52 +1235,43 @@ export default function HaimEditor({
     }
   }, [
     editor,
-    effectiveMode,
-    showSource,
-    showWysiwyg,
+    shouldPreferSource,
     pushCmMarkdownToEditorNow,
     pushEditorMarkdownToCmNow,
   ]);
 
   useEffect(() => {
     if (previewOnly || !isSurfaceLive || !editor) return undefined;
-    const run = (fn: () => unknown) => {
-      fn();
+    const format = (command: HaimFormatCommand) => {
+      runFormatCommand(command);
     };
     const unregister = registerEditorActions({
-      'editor-bold': () => run(() => editor.chain().focus().toggleBold().run()),
-      'editor-italic': () => run(() => editor.chain().focus().toggleItalic().run()),
-      'editor-underline': () =>
-        run(() => editor.chain().focus().toggleUnderline().run()),
-      'editor-strikeThrough': () =>
-        run(() => editor.chain().focus().toggleStrike().run()),
-      'editor-quote': () =>
-        run(() => editor.chain().focus().toggleBlockquote().run()),
-      'editor-unorderedList': () =>
-        run(() => editor.chain().focus().toggleBulletList().run()),
-      'editor-orderedList': () =>
-        run(() => editor.chain().focus().toggleOrderedList().run()),
-      'editor-task': () => run(() => editor.chain().focus().toggleTaskList().run()),
-      'editor-codeRow': () => run(() => editor.chain().focus().toggleCode().run()),
-      'editor-code': () =>
-        run(() => editor.chain().focus().toggleCodeBlock().run()),
+      'editor-bold': () => format('bold'),
+      'editor-italic': () => format('italic'),
+      'editor-underline': () => format('underline'),
+      'editor-strikeThrough': () => format('strike'),
+      'editor-quote': () => format('quote'),
+      'editor-unorderedList': () => format('bullet'),
+      'editor-orderedList': () => format('ordered'),
+      'editor-task': () => format('task'),
+      'editor-codeRow': () => format('code'),
+      'editor-code': () => format('codeBlock'),
       'editor-link': () => {
         openUrlLinkModal();
       },
       'editor-docuhaim-link': () => {
         openDocuhaimNoteLinkModal();
       },
-      'editor-table': () =>
-        run(() =>
-          editor
-            .chain()
-            .focus()
-            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-            .run(),
-        ),
-      'editor-revoke': () => run(() => editor.chain().focus().undo().run()),
-      'editor-next': () => run(() => editor.chain().focus().redo().run()),
-      'editor-pgbr': () => run(() => insertPageBreak()),
+      'editor-table': () => {
+        editor
+          .chain()
+          .focus()
+          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+          .run();
+      },
+      'editor-revoke': () => format('undo'),
+      'editor-next': () => format('redo'),
+      'editor-pgbr': () => insertPageBreak(),
       'editor-export-pdf': () => {
         flush();
         navigateToExportPdf();
@@ -1263,30 +1279,18 @@ export default function HaimEditor({
       'editor-convert-all-images-to-wiki': () => {
         onRequestConvertAllImagesToWiki?.();
       },
-      'editor-sub': () =>
-        run(() => editor.chain().focus().toggleSubscript().run()),
-      'editor-sup': () =>
-        run(() => editor.chain().focus().toggleSuperscript().run()),
-      'editor-h1': () =>
-        run(() => editor.chain().focus().toggleHeading({ level: 1 }).run()),
-      'editor-h2': () =>
-        run(() => editor.chain().focus().toggleHeading({ level: 2 }).run()),
-      'editor-h3': () =>
-        run(() => editor.chain().focus().toggleHeading({ level: 3 }).run()),
-      'editor-h4': () =>
-        run(() => editor.chain().focus().toggleHeading({ level: 4 }).run()),
-      'editor-h5': () =>
-        run(() => editor.chain().focus().toggleHeading({ level: 5 }).run()),
-      'editor-h6': () =>
-        run(() => editor.chain().focus().toggleHeading({ level: 6 }).run()),
-      'editor-h7': () =>
-        run(() => editor.chain().focus().toggleDeepHeading({ level: 7 }).run()),
-      'editor-h8': () =>
-        run(() => editor.chain().focus().toggleDeepHeading({ level: 8 }).run()),
-      'editor-h9': () =>
-        run(() => editor.chain().focus().toggleDeepHeading({ level: 9 }).run()),
-      'editor-h10': () =>
-        run(() => editor.chain().focus().toggleDeepHeading({ level: 10 }).run()),
+      'editor-sub': () => format('sub'),
+      'editor-sup': () => format('sup'),
+      'editor-h1': () => format('h1'),
+      'editor-h2': () => format('h2'),
+      'editor-h3': () => format('h3'),
+      'editor-h4': () => format('h4'),
+      'editor-h5': () => format('h5'),
+      'editor-h6': () => format('h6'),
+      'editor-h7': () => format('h7'),
+      'editor-h8': () => format('h8'),
+      'editor-h9': () => format('h9'),
+      'editor-h10': () => format('h10'),
       'editor-catalog': () => setTocOpen((v) => !v),
       'editor-find-replace': () => setFindReplaceOpen((v) => !v),
       'editor-invisible-chars': () => toggleInvisibleChars(),
@@ -1371,6 +1375,7 @@ export default function HaimEditor({
     openUrlLinkModal,
     openDocuhaimNoteLinkModal,
     toggleInvisibleChars,
+    runFormatCommand,
   ]);
 
   useEffect(() => {
@@ -1548,6 +1553,7 @@ export default function HaimEditor({
           onViewModeChange={setViewMode}
           previewOnly={previewOnly}
           onInsertPageBreak={insertPageBreak}
+          onFormatCommand={runFormatCommand}
           scrollSyncEnabled={scrollSyncEnabled}
           onScrollSyncChange={(next) => {
             setScrollSyncEnabled(next);
