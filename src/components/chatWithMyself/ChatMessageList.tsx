@@ -951,7 +951,13 @@ const MessageBubble = memo(function MessageBubble({
         ) {
           return;
         }
-        if (selectionMode) {
+        // Modifiers start / extend multi-select without opening the bubble.
+        if (
+          selectionMode ||
+          e.shiftKey ||
+          e.metaKey ||
+          e.ctrlKey
+        ) {
           onToggleSelect?.(msg, {
             shiftKey: e.shiftKey,
             metaKey: e.metaKey,
@@ -976,8 +982,13 @@ const MessageBubble = memo(function MessageBubble({
         <ChatMessageSelectCheckbox
           checked={rowSelected}
           visible={selectionMode || rowSelected}
-          onToggle={() =>
-            onToggleSelect?.(msg, { fromCheckbox: true })
+          onToggle={(options) =>
+            onToggleSelect?.(msg, {
+              fromCheckbox: true,
+              shiftKey: options?.shiftKey,
+              metaKey: options?.metaKey,
+              ctrlKey: options?.ctrlKey,
+            })
           }
         />
       ) : null}

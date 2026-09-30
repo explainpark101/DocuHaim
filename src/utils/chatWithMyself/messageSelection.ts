@@ -2,6 +2,12 @@
  * Pure helpers for chat message multi-select (Telegram-style).
  */
 
+import {
+  normalizeReaction,
+  reactionKey,
+  type ChatReaction,
+} from '@/utils/chatWithMyself/reactions';
+
 export function toggleSelectedId(
   selected: ReadonlySet<string>,
   id: string,
@@ -53,4 +59,88 @@ export function sortMessagesByAtAsc<T extends { at?: string }>(
     const tb = Date.parse(String(b?.at || '')) || 0;
     return ta - tb;
   });
+}
+
+function isTruthyMarkdownFlag(value: unknown): boolean {
+  return value === true || value === '1' || value === 'true';
+}
+
+/** Join message bodies for merge (trim trailing whitespace per body). */
+export function joinMessageBodiesForMerge(
+  messages: ReadonlyArray<{ body?: string | null }>,
+): string {
+  return messages
+    .map((m) => String(m?.body ?? '').replace(/\s+$/u, ''))
+    .filter((body) => body.length > 0)
+    .join('\n\n');
+}
+
+/** Union reactions in encounter order (dedupe by reactionKey). */
+export function unionMessageReactions(
+  messages: ReadonlyArray<{ reactions?: ChatReaction[] | null }>,
+): ChatReaction[] {
+  const out: ChatReaction[] = [];
+  const seen = new Set<string>();
+  for (const msg of messages) {
+    const list = Array.isArray(msg?.reactions) ? msg.reactions : [];
+    for (const item of list) {
+      const reaction = normalizeReaction(item);
+      if (!reaction) continue;
+      const key = reactionKey(reaction);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(reaction);
+    }
+  }
+  return out;
+}
+
+export type MergeChatMessagesInput = {
+  id: string;
+  at?: string;
+  body?: string | null;
+  group?: string;
+  markdown?: boolean | string;
+  reactions?: ChatReaction[] | null;
+  pinnedAt?: string | null;
+};
+
+export type MergeChatMessagesPlan<T extends MergeChatMessagesInput> = {
+  keep: T;
+  remove: T[];
+  body: string;
+  markdown: boolean;
+  reactions: ChatReaction[];
+  reactionsAt: string;
+  pinnedAt: string;
+};
+
+/**
+ * Plan merging 2+ messages into the earliest (`at`) survivor.
+ * Caller deletes `remove` and writes body/reactions/pin onto `keep`.
+ */
+export function planMergeChatMessages<T extends MergeChatMessagesInput>(
+  messages: readonly T[],
+): MergeChatMessagesPlan<T> | null {
+  if (messages.length < 2) return null;
+  const ordered = sortMessagesByAtAsc(messages);
+  const keep = ordered[0];
+  if (!keep) return null;
+  const remove = ordered.slice(1);
+  const body = joinMessageBodiesForMerge(ordered);
+  const reactions = unionMessageReactions(ordered);
+  const reactionsAt =
+    reactions.length > 0 ? new Date().toISOString() : '';
+  const pinnedAt =
+    ordered.map((m) => String(m?.pinnedAt || '').trim()).find(Boolean) || '';
+  const markdown = ordered.some((m) => isTruthyMarkdownFlag(m?.markdown));
+  return {
+    keep,
+    remove,
+    body,
+    markdown,
+    reactions,
+    reactionsAt,
+    pinnedAt,
+  };
 }

@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react';
+import type { ChatMessageToggleSelectOptions } from '@/components/chatWithMyself/chatMessageListTypes';
 
 const BOX_CLASS =
   'flex h-4 w-4 shrink-0 items-center justify-center rounded border border-sky-500/80 bg-white dark:border-sky-400/70 dark:bg-odp-bgSoft';
@@ -10,7 +11,7 @@ export type ChatMessageSelectCheckboxProps = {
   checked: boolean;
   /** Visible when hovered / selected / selection mode. */
   visible: boolean;
-  onToggle: () => void;
+  onToggle: (options?: ChatMessageToggleSelectOptions) => void;
 };
 
 /**
@@ -29,9 +30,11 @@ export default function ChatMessageSelectCheckbox({
     <button
       type="button"
       data-chat-msg-select-hit=""
+      tabIndex={visible ? 0 : -1}
       className={[
         'absolute inset-y-0 left-0 z-20 flex w-10 items-center justify-center',
         'transition-opacity duration-150',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400',
         visible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
         // Keep hittable while invisible so hover-reveal clicks work immediately.
         'pointer-events-auto',
@@ -41,7 +44,12 @@ export default function ChatMessageSelectCheckbox({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        onToggle();
+        onToggle({
+          fromCheckbox: true,
+          shiftKey: e.shiftKey,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey,
+        });
       }}
       onPointerDown={(e) => {
         e.stopPropagation();
@@ -56,7 +64,7 @@ export default function ChatMessageSelectCheckbox({
         aria-hidden
       >
         {checked ? (
-          <Check size={10} strokeWidth={3} className="text-white" />
+          <Check size={10} strokeWidth={3} className="text-white" aria-hidden />
         ) : null}
       </span>
     </button>

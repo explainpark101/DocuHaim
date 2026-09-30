@@ -47,6 +47,7 @@ import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import PromptModal from '@/components/modals/PromptModal';
 import { copyText } from '@/utils/copyText';
 import {
+  planMergeChatMessages,
   rangeSelectIds,
   shouldBulkPin,
   sortMessagesByAtAsc,
@@ -605,6 +606,7 @@ export default function ChatWithMyselfPane({
   const [bulkDeleteTargets, setBulkDeleteTargets] = useState<any[] | null>(
     null,
   );
+  const [bulkMergeTargets, setBulkMergeTargets] = useState<any[] | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectionAnchorIdRef = useRef<string | null>(null);
@@ -1887,6 +1889,7 @@ export default function ChatWithMyselfPane({
     setBulkGroupModalOpen(false);
     setBulkReactionPickerOpen(false);
     setBulkDeleteTargets(null);
+    setBulkMergeTargets(null);
   }, []);
 
   const handleEnterSelection = useCallback((message: any) => {
@@ -2007,9 +2010,8 @@ export default function ChatWithMyselfPane({
     const targets = bulkDeleteTargets || [];
     setBulkDeleteTargets(null);
     clearMessageSelection();
-    for (const message of targets) {
-      await performDeleteMessage(message);
-    }
+    // Run deletes together so bubbles enter deleting state at once.
+    await Promise.all(targets.map((message) => performDeleteMessage(message)));
   }, [bulkDeleteTargets, clearMessageSelection, performDeleteMessage]);
 
   const handleBulkChangeGroup = useCallback(
@@ -2018,42 +2020,47 @@ export default function ChatWithMyselfPane({
       const msgs = selectedMessages.filter((m: any) => m?.id);
       const group = groupId || SELF_GROUP;
       setError('');
-      for (const message of msgs) {
-        if (isChatMessageEncrypted(message) && decryptedById[message.id] == null) {
-          continue;
-        }
-        const dateStr =
-          message.dateStr ||
-          localDateString(new Date(message.at), detectTimeZone());
-        const body =
-          decryptedById[message.id] != null
-            ? decryptedById[message.id]
-            : message.body;
-        const markdown =
-          message.markdown === true ||
-          message.markdown === '1' ||
-          message.markdown === 'true';
-        try {
-          const updated = await updateChatMessage(ctx, dateStr, message.id, {
-            body,
-            group,
-            markdown,
-            encrypted: false,
-          });
-          if (!updated) continue;
-          const patch = { ...updated, dateStr, pendingSync: undefined };
-          setMessages((prev: any) =>
-            prev.map((m: any) =>
-              m.id === message.id ? { ...m, ...patch } : m,
-            ),
-          );
-          noteLocalDayWrite(dateStr);
-          postChatSyncEvent('day', { dateStr });
-        } catch (e: any) {
-          setError(e?.message || '그룹 변경 실패');
-        }
-      }
       clearMessageSelection();
+      await Promise.all(
+        msgs.map(async (message: any) => {
+          if (
+            isChatMessageEncrypted(message) &&
+            decryptedById[message.id] == null
+          ) {
+            return;
+          }
+          const dateStr =
+            message.dateStr ||
+            localDateString(new Date(message.at), detectTimeZone());
+          const body =
+            decryptedById[message.id] != null
+              ? decryptedById[message.id]
+              : message.body;
+          const markdown =
+            message.markdown === true ||
+            message.markdown === '1' ||
+            message.markdown === 'true';
+          try {
+            const updated = await updateChatMessage(ctx, dateStr, message.id, {
+              body,
+              group,
+              markdown,
+              encrypted: false,
+            });
+            if (!updated) return;
+            const patch = { ...updated, dateStr, pendingSync: undefined };
+            setMessages((prev: any) =>
+              prev.map((m: any) =>
+                m.id === message.id ? { ...m, ...patch } : m,
+              ),
+            );
+            noteLocalDayWrite(dateStr);
+            postChatSyncEvent('day', { dateStr });
+          } catch (e: any) {
+            setError(e?.message || '그룹 변경 실패');
+          }
+        }),
+      );
     },
     [
       storageReady,
@@ -2064,6 +2071,209 @@ export default function ChatWithMyselfPane({
       clearMessageSelection,
     ],
   );
+
+  const handleBulkMergeRequest = useCallback(() => {
+    const msgs = selectedMessages.filter(
+      (m: any) => m?.id && m.pendingSync !== 'delete',
+    );
+    if (msgs.length < 2) return;
+    const locked = msgs.some(
+      (m: any) =>
+        isChatMessageEncrypted(m) && decryptedById[m.id] == null,
+    );
+    if (locked) {
+      setError('암호화된 메시지는 잠금 해제 후 합칠 수 있습니다.');
+      return;
+    }
+    setBulkMergeTargets(msgs);
+  }, [selectedMessages, decryptedById]);
+
+  const confirmBulkMerge = useCallback(async () => {
+    const targets = bulkMergeTargets || [];
+    setBulkMergeTargets(null);
+    if (!storageReady || targets.length < 2) return;
+
+    const prepared = targets.map((m: any) => {
+      const unlocked =
+        decryptedById[m.id] != null
+          ? { ...m, body: decryptedById[m.id], encrypted: false }
+          : m;
+      return unlocked;
+    });
+    const plan = planMergeChatMessages(prepared);
+    if (!plan) return;
+
+    clearMessageSelection();
+    setError('');
+
+    const keepDateStr =
+      plan.keep.dateStr ||
+      localDateString(new Date(plan.keep.at), detectTimeZone());
+    const removeIds = new Set(plan.remove.map((m) => m.id));
+
+    // Optimistic: show merged body on survivor and mark others deleting.
+    setMessages((prev: any) =>
+      prev
+        .map((m: any) => {
+          if (m.id === plan.keep.id) {
+            return {
+              ...m,
+              body: plan.body,
+              markdown: plan.markdown,
+              reactions: plan.reactions,
+              reactionsAt: plan.reactionsAt,
+              pinnedAt: plan.pinnedAt,
+              encrypted: false,
+              editedAt: new Date().toISOString(),
+              pendingSync: 'edit',
+            };
+          }
+          if (removeIds.has(m.id)) {
+            return { ...m, pendingSync: 'delete' };
+          }
+          return m;
+        }),
+    );
+
+    try {
+      const updated = await updateChatMessage(ctx, keepDateStr, plan.keep.id, {
+        body: plan.body,
+        group: plan.keep.group || SELF_GROUP,
+        markdown: plan.markdown,
+        encrypted: false,
+      });
+      if (!updated) {
+        setError('메시지를 찾지 못했습니다.');
+        setMessages((prev: any) =>
+          prev.map((m: any) => {
+            if (m.id === plan.keep.id || removeIds.has(m.id)) {
+              const original = targets.find((t: any) => t.id === m.id);
+              return original ? { ...original } : m;
+            }
+            return m;
+          }),
+        );
+        return;
+      }
+
+      let metaPatch = updated as any;
+      const withMeta = await patchChatMessageMeta(
+        ctx,
+        keepDateStr,
+        plan.keep.id,
+        {
+          reactions: plan.reactions,
+          reactionsAt: plan.reactionsAt,
+          pinnedAt: plan.pinnedAt,
+        },
+      );
+      if (withMeta) metaPatch = withMeta;
+
+      const keepPatch = {
+        ...metaPatch,
+        dateStr: keepDateStr,
+        body: plan.body,
+        markdown: plan.markdown,
+        reactions: plan.reactions,
+        reactionsAt: plan.reactionsAt,
+        pinnedAt: plan.pinnedAt,
+        encrypted: false,
+        pendingSync: undefined,
+      };
+
+      const deletedDateStrs = new Set<string>();
+      await Promise.all(
+        plan.remove.map(async (message) => {
+          const dateStr =
+            message.dateStr ||
+            localDateString(new Date(message.at), detectTimeZone());
+          const ok = await deleteChatMessage(ctx, dateStr, message.id);
+          if (!ok) {
+            throw new Error('메시지를 찾지 못했습니다.');
+          }
+          deletedDateStrs.add(dateStr);
+          localTombstonesRef.current.add(message.id);
+        }),
+      );
+
+      setMessages((prev: any) =>
+        prev
+          .filter((m: any) => !removeIds.has(m.id))
+          .map((m: any) =>
+            m.id === plan.keep.id ? { ...m, ...keepPatch } : m,
+          ),
+      );
+      setPinnedResults((prev: any) => {
+        const withoutRemoved = prev.filter((m: any) => !removeIds.has(m.id));
+        if (!plan.pinnedAt) {
+          return withoutRemoved.filter((m: any) => m.id !== plan.keep.id);
+        }
+        const rest = withoutRemoved.filter((m: any) => m.id !== plan.keep.id);
+        return [{ ...keepPatch }, ...rest];
+      });
+      const stripRemoved = (prev: any) =>
+        prev
+          .filter((m: any) => !removeIds.has(m.id))
+          .map((m: any) =>
+            m.id === plan.keep.id ? { ...m, ...keepPatch } : m,
+          );
+      setNotedResults(stripRemoved);
+      setEditedResults(stripRemoved);
+      setLinkResults(stripRemoved);
+      setFileResults(stripRemoved);
+      setPhotoResults(stripRemoved);
+      setSearchResults(stripRemoved);
+      setDecryptedById((prev: any) => {
+        const next = { ...prev };
+        for (const id of removeIds) delete next[id];
+        next[plan.keep.id] = plan.body;
+        return next;
+      });
+      setDayCounts((prev: any) => {
+        const next = { ...prev };
+        for (const dateStr of deletedDateStrs) {
+          next[dateStr] = Math.max(
+            0,
+            (next[dateStr] || 0) -
+              plan.remove.filter((m) => {
+                const d =
+                  m.dateStr ||
+                  localDateString(new Date(m.at), detectTimeZone());
+                return d === dateStr;
+              }).length,
+          );
+        }
+        return next;
+      });
+
+      noteLocalDayWrite(keepDateStr);
+      postChatSyncEvent('day', { dateStr: keepDateStr });
+      for (const dateStr of deletedDateStrs) {
+        if (dateStr !== keepDateStr) {
+          noteLocalDayWrite(dateStr);
+          postChatSyncEvent('day', { dateStr });
+        }
+      }
+    } catch (e: any) {
+      setError(e?.message || '메시지 합치기 실패');
+      setMessages((prev: any) =>
+        prev.map((m: any) => {
+          if (m.id === plan.keep.id || removeIds.has(m.id)) {
+            const original = targets.find((t: any) => t.id === m.id);
+            return original ? { ...original } : m;
+          }
+          return m;
+        }),
+      );
+    }
+  }, [
+    bulkMergeTargets,
+    storageReady,
+    decryptedById,
+    clearMessageSelection,
+    ctx,
+    noteLocalDayWrite,
+  ]);
 
   const ensureMessageLoaded = useCallback(
     async (messageId: any) => {
@@ -2502,20 +2712,47 @@ export default function ChatWithMyselfPane({
     const msgs = selectedMessages.filter((m: any) => m?.id);
     if (msgs.length === 0) return;
     const pin = shouldBulkPin(msgs);
-    for (const message of msgs) {
-      const currentlyPinned = Boolean(message.pinnedAt);
-      if (pin === currentlyPinned) continue;
-      await handleTogglePin(message);
-    }
+    const targets = msgs.filter(
+      (message: any) => Boolean(message.pinnedAt) !== pin,
+    );
+    if (targets.length === 0) return;
+    const nextPinnedAt = pin ? new Date().toISOString() : '';
+    const idSet = new Set(targets.map((m: any) => m.id));
+    // Paint all pin changes together before storage writes finish.
+    const applyOptimistic = (prev: any) =>
+      prev.map((m: any) =>
+        idSet.has(m.id) ? { ...m, pinnedAt: nextPinnedAt } : m,
+      );
+    setMessages(applyOptimistic);
+    setPinnedResults((prev: any) => {
+      if (!nextPinnedAt) {
+        return prev.filter((m: any) => !idSet.has(m.id));
+      }
+      const rest = prev.filter((m: any) => !idSet.has(m.id));
+      const added = targets.map((m: any) => ({
+        ...m,
+        pinnedAt: nextPinnedAt,
+      }));
+      return [...added, ...rest];
+    });
+    setLinkResults(applyOptimistic);
+    setFileResults(applyOptimistic);
+    setPhotoResults(applyOptimistic);
+    setNotedResults(applyOptimistic);
+    setEditedResults(applyOptimistic);
+    await Promise.all(
+      targets.map((message: any) => handleTogglePin(message)),
+    );
   }, [selectedMessages, handleTogglePin]);
 
   const handleBulkReaction = useCallback(
     async (reaction: ChatReaction) => {
       const msgs = selectedMessages.filter((m: any) => m?.id);
       setBulkReactionPickerOpen(false);
-      for (const message of msgs) {
-        await handleToggleReaction(message, reaction);
-      }
+      // Start all toggles together so optimistic UI lands in one paint.
+      await Promise.all(
+        msgs.map((message: any) => handleToggleReaction(message, reaction)),
+      );
     },
     [selectedMessages, handleToggleReaction],
   );
@@ -3093,11 +3330,13 @@ export default function ChatWithMyselfPane({
               <ChatMessageSelectionBar
                 count={selectedIds.size}
                 allPinned={selectionAllPinned}
+                canMerge={selectedIds.size >= 2}
                 onClose={clearMessageSelection}
                 onReaction={() => setBulkReactionPickerOpen(true)}
                 onChangeGroup={() => setBulkGroupModalOpen(true)}
                 onCopy={handleBulkCopy}
                 onTogglePin={() => void handleBulkTogglePin()}
+                onMerge={handleBulkMergeRequest}
                 onDelete={handleBulkDeleteRequest}
               />
             ) : null}
@@ -3455,6 +3694,23 @@ export default function ChatWithMyselfPane({
         }}
         onCancel={() => {
           setBulkDeleteTargets(null);
+        }}
+      />
+      <ConfirmModal
+        isOpen={Boolean(bulkMergeTargets?.length)}
+        title="메시지 합치기"
+        message={
+          bulkMergeTargets?.length
+            ? `선택한 ${bulkMergeTargets.length}개 메시지를 하나로 합칠까요? 가장 이른 메시지에 내용이 모이고 나머지는 삭제됩니다.`
+            : ''
+        }
+        confirmLabel="합치기"
+        cancelLabel="취소"
+        onConfirm={() => {
+          void confirmBulkMerge();
+        }}
+        onCancel={() => {
+          setBulkMergeTargets(null);
         }}
       />
       <ChatBulkGroupChangeModal
