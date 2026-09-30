@@ -58,6 +58,7 @@ export function filterVaultTree<T extends VaultTreeNodeLike>(
     if (
       node.type === 'file' &&
       hideRecordingCompanionFiles &&
+      typeof node.path === 'string' &&
       isRecordingCompanionFileKey(node.path)
     ) {
       return null;
