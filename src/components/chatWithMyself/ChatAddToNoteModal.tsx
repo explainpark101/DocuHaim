@@ -44,6 +44,7 @@ import {
   detectTimeZone,
   formatMessageFileNameBase,
 } from '@/utils/chatWithMyself';
+import { filterVaultTreeForDisplay } from '@/utils/filterVaultTreeForDisplay';
 
 const EMPTY_SELECTED_IDS: Set<string> = new Set();
 
@@ -239,14 +240,17 @@ export default function ChatAddToNoteModal({
 }: ChatAddToNoteModalProps) {
   const vaultWithoutHandle =
     storageType === 's3' || storageType === 'webdav' || storageType === 'idb';
-  const tree =
-    storageType === 's3'
-      ? (s3Tree ?? [])
-      : storageType === 'webdav'
-        ? (webdavTree ?? [])
-        : storageType === 'idb'
-          ? (idbTree ?? [])
-          : (localTree ?? []);
+  const tree = useMemo(() => {
+    const raw =
+      storageType === 's3'
+        ? (s3Tree ?? [])
+        : storageType === 'webdav'
+          ? (webdavTree ?? [])
+          : storageType === 'idb'
+            ? (idbTree ?? [])
+            : (localTree ?? []);
+    return filterVaultTreeForDisplay(raw);
+  }, [storageType, s3Tree, localTree, webdavTree, idbTree]);
   const tz = timeZone || detectTimeZone();
   const defaultBaseName = useMemo(
     () => formatMessageFileNameBase(message?.at || new Date().toISOString(), tz),

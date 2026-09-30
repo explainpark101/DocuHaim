@@ -5,9 +5,13 @@ import Modal from '@/components/modals/Modal';
 import TreeNode from '@/components/TreeNode';
 import type { SidebarTreeNode } from '@/components/shell/TreeNode';
 import { useVault } from '@/App/hooks/useVault';
+import { useFileSession } from '@/App/hooks/useFileSession';
 import { findNodeByPath } from '@/utils/s3Tree';
 import type { HaimInsertPlacement } from '@/utils/haimEditorInsertRange';
 import { toTreeSelectKey } from '@/utils/vault/treeMove';
+import { getParentPathsToExpand } from '@/App/helpers';
+import { filterVaultTreeForDisplay } from '@/utils/filterVaultTreeForDisplay';
+import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 
 export type DocuhaimNoteLinkConfirm = {
   path: string;
@@ -26,6 +30,15 @@ export type DocuhaimNoteLinkModalProps = {
 function fileBaseName(path: string): string {
   const parts = path.replace(/\\/g, '/').split('/');
   return parts[parts.length - 1] || path;
+}
+
+function storageTypesMatch(
+  storageType: string,
+  fileType: string | null | undefined,
+): boolean {
+  const t = String(fileType || '').trim();
+  if (!t) return storageType === 's3';
+  return t === storageType;
 }
 
 /**
@@ -50,14 +63,20 @@ export default function DocuhaimNoteLinkModal({
     webdavFolderLoadingPath,
     idbFolderLoadingPath,
   } = useVault();
+  const { currentFile } = useFileSession();
 
   const storageType = storageMode || 's3';
-  const tree = useMemo((): SidebarTreeNode[] => {
+  const rawTree = useMemo((): SidebarTreeNode[] => {
     if (storageType === 'local') return (localTree as SidebarTreeNode[]) || [];
     if (storageType === 'webdav') return (webdavTree as SidebarTreeNode[]) || [];
     if (storageType === 'idb') return (idbTree as SidebarTreeNode[]) || [];
     return (s3Tree as SidebarTreeNode[]) || [];
   }, [storageType, s3Tree, localTree, webdavTree, idbTree]);
+
+  const tree = useMemo(
+    () => filterVaultTreeForDisplay(rawTree),
+    [rawTree],
+  );
 
   const folderLoadingPath =
     storageType === 'local'
@@ -75,11 +94,54 @@ export default function DocuhaimNoteLinkModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    setExpandedPaths(new Set());
     setSelectedPath(null);
     setLabel(String(initialText || '').trim());
     setError('');
-  }, [isOpen, initialText]);
+
+    // Default: expand ancestors of the currently open vault note.
+    const filePath = String(currentFile?.id || '').trim().replace(/^\/+/, '');
+    const fileType = currentFile?.type as string | undefined;
+    if (
+      filePath &&
+      fileType !== SESSION_STORAGE_TYPE &&
+      storageTypesMatch(storageType, fileType)
+    ) {
+      const slash = filePath.lastIndexOf('/');
+      const parentPath = slash >= 0 ? filePath.slice(0, slash + 1) : '';
+      setExpandedPaths(new Set(getParentPathsToExpand(parentPath)));
+    } else {
+      setExpandedPaths(new Set());
+    }
+  }, [isOpen, initialText, currentFile?.id, currentFile?.type, storageType]);
+
+  // Lazy-load children for programmatically expanded folders (local/webdav/idb).
+  useEffect(() => {
+    if (!isOpen || !expandedPaths.size || !rawTree.length) return;
+    const visit = (nodes: SidebarTreeNode[]) => {
+      for (const node of nodes) {
+        if (node?.type !== 'folder') continue;
+        if (
+          expandedPaths.has(node.path) &&
+          (node as SidebarTreeNode & { childrenLoaded?: boolean }).childrenLoaded !==
+            true
+        ) {
+          if (storageType === 'local') void loadLocalFolderChildren(node);
+          else if (storageType === 'webdav') void loadWebdavFolderChildren(node);
+          else if (storageType === 'idb') void loadIdbFolderChildren(node);
+        }
+        if (node.children?.length) visit(node.children);
+      }
+    };
+    visit(rawTree);
+  }, [
+    isOpen,
+    expandedPaths,
+    rawTree,
+    storageType,
+    loadLocalFolderChildren,
+    loadWebdavFolderChildren,
+    loadIdbFolderChildren,
+  ]);
 
   const selectedIds = useMemo(() => {
     if (!selectedPath) return new Set<string>();
@@ -96,7 +158,7 @@ export default function DocuhaimNoteLinkModal({
       });
 
       if (!isOpenNext) return;
-      const node = findNodeByPath(tree, path) as SidebarTreeNode | null;
+      const node = findNodeByPath(rawTree, path) as SidebarTreeNode | null;
       if (!node || node.type !== 'folder') return;
       if ((node as SidebarTreeNode & { childrenLoaded?: boolean }).childrenLoaded === true) {
         return;
@@ -106,7 +168,7 @@ export default function DocuhaimNoteLinkModal({
       else if (storageType === 'idb') void loadIdbFolderChildren(node);
     },
     [
-      tree,
+      rawTree,
       storageType,
       loadLocalFolderChildren,
       loadWebdavFolderChildren,

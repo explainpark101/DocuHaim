@@ -40,9 +40,9 @@ import { isQuizTreeSourceDroppableId } from '@/utils/quiz/quizTreeSourceDrop';
 import { isKanbanTreeCardDroppableId } from '@/utils/kanban/kanbanTreeCardDrop';
 import {
   findNodeByPath,
-  isRecordingCompanionFileKey,
   buildRecordingBasePathSetFromTrees,
 } from '@/utils/s3Tree';
+import { filterVaultTree } from '@/utils/filterVaultTreeForDisplay';
 import {
   getParentFolderPath,
   resolveDragItems,
@@ -178,13 +178,6 @@ type ExpandPathsRef = MutableRefObject<((storageType: string, paths: string[]) =
 type FileTabContextMenuRef = MutableRefObject<{
   open: (args: FileTabContextMenuOpenArgs) => void;
 } | null>;
-
-type FilterTreeOptions = {
-  hideDotFolders?: boolean;
-  hideTrashFolder?: boolean;
-  hideRecordingCompanionFiles?: boolean;
-  searchTerm?: string;
-};
 
 type SelectedFolderForMove = {
   node: SidebarTreeNode;
@@ -387,50 +380,6 @@ function ChatWithMyselfEntry({ isActive, onOpen }: ChatWithMyselfEntryProps) {
       <span className="text-gray-500 dark:text-gray-400 truncate">나와의 채팅</span>
     </button>
   );
-}
-
-function filterTree(
-  nodes: SidebarTreeNode[],
-  {
-    hideDotFolders,
-    hideTrashFolder,
-    hideRecordingCompanionFiles,
-    searchTerm,
-  }: FilterTreeOptions = {},
-): SidebarTreeNode[] {
-  const q = searchTerm ? searchTerm.toLowerCase() : '';
-  const isTrashFolder = (node: SidebarTreeNode) =>
-    node.type === 'folder' && (node.name === '.trash' || node.path === '.trash/');
-  const walk = (node: SidebarTreeNode): SidebarTreeNode | null => {
-    if (node.type === 'folder') {
-      if (isTrashFolder(node)) {
-        if (hideTrashFolder) return null;
-      } else if (hideDotFolders && node.name.startsWith('.')) {
-        return null;
-      }
-    }
-    if (node.type === 'file' && hideRecordingCompanionFiles && isRecordingCompanionFileKey(node.path)) {
-      return null;
-    }
-    const nameMatch =
-      !q ||
-      node.name.toLowerCase().includes(q) ||
-      (node.path && node.path.toLowerCase().includes(q));
-    if (node.type === 'folder' && node.children) {
-      const children = node.children
-        .map(walk)
-        .filter((child): child is SidebarTreeNode => child !== null);
-      if (children.length || nameMatch) {
-        return { ...node, children };
-      }
-      return null;
-    }
-    return nameMatch ? node : null;
-  };
-
-  return nodes
-    .map(walk)
-    .filter((node): node is SidebarTreeNode => node !== null);
 }
 
 function getSelectedFolderForMove(
@@ -1198,7 +1147,7 @@ export default function Sidebar({
 
   const filteredS3Tree = useMemo(
     () =>
-      filterTree(s3Tree, {
+      filterVaultTree(s3Tree, {
         hideDotFolders: !showHiddenFolders,
         hideTrashFolder: !showTrashFolder,
         hideRecordingCompanionFiles: hideRecordingCompanions,
@@ -1208,7 +1157,7 @@ export default function Sidebar({
   );
   const filteredLocalTree = useMemo(
     () =>
-      filterTree(localTree, {
+      filterVaultTree(localTree, {
         hideDotFolders: !showHiddenFolders,
         hideTrashFolder: !showTrashFolder,
         hideRecordingCompanionFiles: hideRecordingCompanions,
@@ -1218,7 +1167,7 @@ export default function Sidebar({
   );
   const filteredWebdavTree = useMemo(
     () =>
-      filterTree(webdavTree, {
+      filterVaultTree(webdavTree, {
         hideDotFolders: !showHiddenFolders,
         hideTrashFolder: !showTrashFolder,
         hideRecordingCompanionFiles: hideRecordingCompanions,
@@ -1228,7 +1177,7 @@ export default function Sidebar({
   );
   const filteredIdbTree = useMemo(
     () =>
-      filterTree(idbTree, {
+      filterVaultTree(idbTree, {
         hideDotFolders: !showHiddenFolders,
         hideTrashFolder: !showTrashFolder,
         hideRecordingCompanionFiles: hideRecordingCompanions,
