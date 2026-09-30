@@ -784,3 +784,29 @@ html[data-haim-prose-width-clamp='1']
     transparent
   );
 }
+
+/* WYSIWYG multi-occurrence selection (secondary ranges; primary uses native selection). */
+.haim-editor .haim-multi-selection {
+  background-color: color-mix(in srgb, #3b82f6 35%, transparent);
+  border-radius: 1px;
+}
+
+.haim-editor--dark .haim-multi-selection,
+:is(.dark) .haim-editor .haim-multi-selection {
+  background-color: color-mix(in srgb, #60a5fa 40%, transparent);
+}
+
+.haim-editor .haim-multi-cursor {
+  display: inline-block;
+  width: 0;
+  border-left: 2px solid #2563eb;
+  margin-left: -1px;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  pointer-events: none;
+}
+
+.haim-editor--dark .haim-multi-cursor,
+:is(.dark) .haim-editor .haim-multi-cursor {
+  border-left-color: #93c5fd;
+}

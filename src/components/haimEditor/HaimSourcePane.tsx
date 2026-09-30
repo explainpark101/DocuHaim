@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import {
   EditorView,
   keymap,
@@ -12,6 +12,11 @@ import {
   historyKeymap,
   indentWithTab,
 } from '@codemirror/commands';
+import {
+  highlightSelectionMatches,
+  selectNextOccurrence,
+  selectSelectionMatches,
+} from '@codemirror/search';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { collectClipboardImageFiles } from '@/utils/clipboardImageFiles';
@@ -105,6 +110,16 @@ export default function HaimSourcePane({
       highlightActiveLine(),
       drawSelection(),
       history(),
+      // Multi-cursor (pane-local; independent from WYSIWYG TipTap selection).
+      EditorState.allowMultipleSelections.of(true),
+      EditorView.clickAddsSelectionRange.of((event) => {
+        const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+        return event.altKey || (isMac ? event.metaKey : event.ctrlKey);
+      }),
+      highlightSelectionMatches({
+        minSelectionLength: 2,
+        maxMatches: 200,
+      }),
       haimCodeFenceIndentUnitExtension(),
       // Match WYSIWYG code-block keys inside ``` fences (brackets/quotes + Tab/Enter indent).
       CODE_FENCE_BRACKET_PAIRS_EXTENSION,
@@ -112,6 +127,21 @@ export default function HaimSourcePane({
       // Fence-aware Tab first (Prec.high); falls through to indentWithTab outside fences.
       CODE_FENCE_INDENT_KEYMAP,
       INSERT_LINE_ABOVE_KEYMAP,
+      // Above defaultKeymap so Mod-d wins over macOS Ctrl-d deleteCharForward.
+      Prec.high(
+        keymap.of([
+          {
+            key: 'Mod-d',
+            preventDefault: true,
+            run: selectNextOccurrence,
+          },
+          {
+            key: 'Mod-Shift-l',
+            preventDefault: true,
+            run: selectSelectionMatches,
+          },
+        ]),
+      ),
       keymap.of([
         indentWithTab,
         ...defaultKeymap,
