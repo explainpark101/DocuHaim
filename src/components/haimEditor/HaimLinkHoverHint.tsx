@@ -5,7 +5,10 @@ import { AnimatePresence, motion, type MotionStyle } from 'motion/react';
 import { ExternalLink } from 'lucide-react';
 import Button from '@/components/Button';
 import { parseDocuhaimHref } from '@/utils/docuhaimLink';
-import { getHaimLinkOpenHintText } from '@/utils/haimLinkOpenSettings';
+import {
+  getHaimLinkOpenHintText,
+  HAIM_LINK_OPEN_CHANGED_EVENT,
+} from '@/utils/haimLinkOpenSettings';
 import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
 
 type AnchorRect = {
@@ -89,8 +92,15 @@ export default function HaimLinkHoverHint({
   enabled = true,
 }: Props) {
   const [tip, setTip] = useState<LinkTip | null>(null);
+  const [hint, setHint] = useState(() => getHaimLinkOpenHintText());
   const tipRef = useRef<LinkTip | null>(null);
   tipRef.current = tip;
+
+  useEffect(() => {
+    const syncHint = () => setHint(getHaimLinkOpenHintText());
+    window.addEventListener(HAIM_LINK_OPEN_CHANGED_EVENT, syncHint);
+    return () => window.removeEventListener(HAIM_LINK_OPEN_CHANGED_EVENT, syncHint);
+  }, []);
 
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,8 +235,6 @@ export default function HaimLinkHoverHint({
   }, [tip]);
 
   if (!enabled || typeof document === 'undefined') return null;
-
-  const hint = getHaimLinkOpenHintText();
 
   return createPortal(
     <AnimatePresence>

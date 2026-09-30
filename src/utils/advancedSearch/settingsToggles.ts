@@ -126,6 +126,10 @@ import {
   saveHaimProseWidthClampEnabled,
 } from '@/utils/haimProseWidthSettings';
 import {
+  loadHaimLinkOpenOnClick,
+  saveHaimLinkOpenOnClick,
+} from '@/utils/haimLinkOpenSettings';
+import {
   loadHaimDocuhaimLinkIconEnabled,
   saveHaimDocuhaimLinkIconEnabled,
 } from '@/utils/haimDocuhaimLinkIconSettings';
@@ -185,6 +189,7 @@ export type SettingsToggleId =
   | 'settings-haim-toc-dock'
   | 'settings-haim-focus-outline'
   | 'settings-haim-prose-width-clamp'
+  | 'settings-haim-link-open-on-click'
   | 'settings-haim-docuhaim-link-icon'
   | 'settings-haim-prose-line-numbers'
   | 'settings-haim-code-line-numbers'
@@ -324,6 +329,30 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimProseWidthClampEnabled,
     save: saveHaimProseWidthClampEnabled,
+  },
+  {
+    id: 'settings-haim-link-open-on-click',
+    enableTitle: 'Haim 링크 클릭으로 열기',
+    disableTitle: 'Haim 링크 Ctrl/Cmd+클릭·호버로만 열기',
+    description:
+      '켜면 일반 클릭으로 링크를 엽니다. 끄면 호버 카드 「열기」 또는 Ctrl/Cmd+클릭으로 엽니다(기본)',
+    keywords: [
+      'haim',
+      'link',
+      '링크',
+      'click',
+      '클릭',
+      'ctrl',
+      'cmd',
+      'mod',
+      'open',
+      '열기',
+      'hover',
+      '호버',
+      'wysiwyg',
+    ],
+    load: loadHaimLinkOpenOnClick,
+    save: saveHaimLinkOpenOnClick,
   },
   {
     id: 'settings-haim-docuhaim-link-icon',

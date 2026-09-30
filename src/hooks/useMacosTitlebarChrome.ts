@@ -6,7 +6,13 @@ export function useMacosTitlebarChrome(): void {
   const isMac = isTauriMacOS();
 
   useEffect(() => {
-    if (!isMac) return undefined;
+    const root = document.documentElement;
+    root.classList.toggle('macos-titlebar', isMac);
+
+    if (!isMac) {
+      root.classList.remove('macos-titlebar-fullscreen');
+      return undefined;
+    }
 
     let unlistenResize: (() => void) | undefined;
     let cancelled = false;
@@ -21,7 +27,7 @@ export function useMacosTitlebarChrome(): void {
       } catch {
         // ignore — keep windowed inset
       }
-      document.documentElement.classList.toggle('macos-titlebar-fullscreen', fullscreen);
+      root.classList.toggle('macos-titlebar-fullscreen', fullscreen);
     };
 
     void syncInset();
@@ -44,7 +50,8 @@ export function useMacosTitlebarChrome(): void {
     return () => {
       cancelled = true;
       unlistenResize?.();
-      document.documentElement.classList.remove('macos-titlebar-fullscreen');
+      root.classList.remove('macos-titlebar-fullscreen');
+      // Keep `macos-titlebar` if another titlebar surface remounts; initDesktopViewport owns baseline.
     };
   }, [isMac]);
 }

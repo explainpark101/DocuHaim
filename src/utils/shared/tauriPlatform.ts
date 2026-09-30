@@ -1,5 +1,22 @@
 import { isDesktopApp } from '@/utils/isDesktopApp';
 
+type TauriOsPluginInternals = {
+  platform?: string;
+};
+
+function readTauriOsPlatform(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const internals = (
+      window as Window & { __TAURI_OS_PLUGIN_INTERNALS__?: TauriOsPluginInternals }
+    ).__TAURI_OS_PLUGIN_INTERNALS__;
+    const platform = internals?.platform;
+    return typeof platform === 'string' && platform.length > 0 ? platform : null;
+  } catch {
+    return null;
+  }
+}
+
 /** True in any Tauri shell (desktop or mobile). */
 export function isTauriApp(): boolean {
   return isDesktopApp();
@@ -8,12 +25,18 @@ export function isTauriApp(): boolean {
 /** Heuristic: Tauri on iOS / Android (not macOS / Windows desktop). */
 export function isTauriMobilePlatform(): boolean {
   if (!isTauriApp() || typeof navigator === 'undefined') return false;
+  const osPlatform = readTauriOsPlatform();
+  if (osPlatform === 'android' || osPlatform === 'ios') return true;
+  if (osPlatform) return false;
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 /** Tauri Android shell (sideload APK). */
 export function isTauriAndroid(): boolean {
   if (!isTauriApp() || typeof navigator === 'undefined') return false;
+  const osPlatform = readTauriOsPlatform();
+  if (osPlatform === 'android') return true;
+  if (osPlatform) return false;
   return /Android/i.test(navigator.userAgent);
 }
 
@@ -25,11 +48,15 @@ export function isTauriDesktopPlatform(): boolean {
 /** Tauri desktop on macOS (native traffic lights + Overlay titlebar). */
 export function isTauriMacOS(): boolean {
   if (!isTauriDesktopPlatform() || typeof navigator === 'undefined') return false;
+  const osPlatform = readTauriOsPlatform();
+  if (osPlatform) return osPlatform === 'macos';
   return /Mac|Macintosh/i.test(navigator.userAgent) || /Mac/i.test(navigator.platform || '');
 }
 
 /** Tauri desktop on Windows (borderless + custom window controls). */
 export function isTauriWindows(): boolean {
   if (!isTauriDesktopPlatform() || typeof navigator === 'undefined') return false;
+  const osPlatform = readTauriOsPlatform();
+  if (osPlatform) return osPlatform === 'windows';
   return /Windows/i.test(navigator.userAgent) || /Win/i.test(navigator.platform || '');
 }

@@ -5,6 +5,7 @@ import type { MarkType } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { isDocuhaimHref, parseDocuhaimHref } from '@/utils/docuhaimLink';
+import { loadHaimLinkOpenOnClick } from '@/utils/haimLinkOpenSettings';
 import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
 import { openHaimViewPath } from '@/utils/haimOpenViewPath';
 
@@ -107,12 +108,13 @@ function tryOpenLinkFromEvent(
   if (!href) return false;
 
   const docuhaimPath = parseDocuhaimHref(href);
+  const openOnClick = loadHaimLinkOpenOnClick();
   const mod = event.metaKey || event.ctrlKey;
 
-  // Editable: never navigate on plain click (use hover-card 「열기」 or Mod+click).
+  // Editable: always prevent browser navigation; open via setting, Mod+click, or hover 「열기」.
   if (view.editable) {
     event.preventDefault();
-    if (!mod) return true;
+    if (!mod && !openOnClick) return true;
 
     if (docuhaimPath) {
       event.stopPropagation();
@@ -154,7 +156,7 @@ function haimLinkClickPlugin(editor: Editor, type: MarkType): Plugin {
 }
 
 /**
- * TipTap Link: plain click does not open; Mod+click / hover-card 「열기」 does.
+ * TipTap Link: open via plain click (setting), Mod+click, or hover-card 「열기」.
  */
 export const HaimLink = Link.extend({
   renderHTML({ HTMLAttributes }) {

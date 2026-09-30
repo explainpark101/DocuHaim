@@ -1,4 +1,5 @@
 import { isDesktopApp } from '@/utils/shared/isDesktopApp';
+import { isTauriMacOS } from '@/utils/shared/tauriPlatform';
 
 /**
  * Tauri shells: pin the document to the dynamic viewport and block page scroll.
@@ -9,6 +10,8 @@ export function initDesktopViewport(): void {
 
   const root = document.documentElement;
   root.classList.add('desktop-app');
+  // macOS-only: traffic-light inset CSS (`--traffic-light-box`). Never set on Windows.
+  root.classList.toggle('macos-titlebar', isTauriMacOS());
 
   const resetDocumentScroll = () => {
     if (window.scrollX !== 0 || window.scrollY !== 0) {

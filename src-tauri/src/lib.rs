@@ -345,7 +345,7 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            // Windows: remove OS titlebar; custom controls live in the webview.
+            // Windows: borderless custom titlebar (also set in tauri.windows.conf.json).
             // macOS keeps decorations so Overlay traffic lights remain available.
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("main") {

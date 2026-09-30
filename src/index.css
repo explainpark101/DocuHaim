@@ -30,11 +30,12 @@
     --app-sidebar-mobile-top: var(--workspace-titlebar-tab-h);
   }
 
-  html.desktop-app {
+  /* macOS Overlay traffic lights only — never reserve this inset on Windows/Linux. */
+  html.desktop-app.macos-titlebar {
     --traffic-light-box: 5rem;
   }
 
-  html.desktop-app.macos-titlebar-fullscreen {
+  html.desktop-app.macos-titlebar.macos-titlebar-fullscreen {
     --traffic-light-box: 0px;
   }
 
@@ -60,10 +61,26 @@
     overflow: hidden;
   }
 
-  /* macOS traffic-light inset — titlebar margin + tab strip min-width. */
-  html.desktop-app .desktop-titlebar--mac {
+  /* macOS traffic-light inset — titlebar margin clears native controls. */
+  html.desktop-app.macos-titlebar .desktop-titlebar--mac {
     margin-left: var(--traffic-light-box);
     width: calc(100% - var(--traffic-light-box));
+  }
+
+  /*
+   * Windows WebView2 (IsNonClientRegionSupportEnabled): if any ancestor uses
+   * app-region:drag, interactive titlebar chrome must stay no-drag so left-side
+   * tabs remain clickable (no macOS traffic-light dead zone on Windows).
+   */
+  html.desktop-app .desktop-titlebar button,
+  html.desktop-app .desktop-titlebar [role='tab'],
+  html.desktop-app .desktop-titlebar a,
+  html.desktop-app .desktop-titlebar input,
+  html.desktop-app .desktop-titlebar textarea,
+  html.desktop-app .desktop-titlebar select,
+  html.desktop-app .desktop-titlebar [role='button'] {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
   }
 
   /* Export PDF: standalone route without DesktopTitlebar — top inset for overlay traffic lights. */
@@ -73,11 +90,11 @@
     padding: 0.75rem 1rem;
   }
 
-  html.desktop-app .export-pdf-layout--mac .export-pdf-toolbar {
+  html.desktop-app.macos-titlebar .export-pdf-layout--mac .export-pdf-toolbar {
     padding-top: calc(0.75rem + var(--desktop-titlebar-h, 2rem));
   }
 
-  html.desktop-app.macos-titlebar-fullscreen .export-pdf-layout--mac .export-pdf-toolbar {
+  html.desktop-app.macos-titlebar.macos-titlebar-fullscreen .export-pdf-layout--mac .export-pdf-toolbar {
     padding-top: 0.75rem;
   }
 
