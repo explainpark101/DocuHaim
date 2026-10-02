@@ -39,7 +39,7 @@ import {
   type StatusBarClockFormatCommandId,
   getStatusBarClockFormatCommands,
 } from '@/utils/advancedSearch/settingsToggles';
-import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { isTauriAndroid, isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import {
   FOOTNOTE_INSERT_COMMAND_ID,
   isFootnoteRelatedCommandId,
@@ -1130,6 +1130,9 @@ function getSettingsToggleCommands(): AppCommand[] {
   return SETTINGS_TOGGLE_DEFS.filter((def) => {
     if (def.id === 'settings-tauri-download-save-dialog') {
       return isTauriDesktopPlatform();
+    }
+    if (def.id === 'settings-android-system-status-bar') {
+      return isTauriAndroid();
     }
     return true;
   }).map((def) => {

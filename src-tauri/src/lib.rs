@@ -1,4 +1,6 @@
 mod as_index;
+#[cfg(target_os = "android")]
+mod android_native;
 #[cfg(desktop)]
 mod desktop_menu;
 mod stronghold_kdf;
@@ -316,7 +318,7 @@ pub fn run() {
             .on_menu_event(desktop_menu::on_desktop_menu_event);
     }
 
-    #[cfg(mobile)]
+    #[cfg(all(mobile, not(target_os = "android")))]
     {
         builder = builder
             .manage(pending)
@@ -340,6 +342,38 @@ pub fn run() {
                 as_index::commands::as_index_export_snapshot,
                 as_index::commands::as_index_search,
                 as_index::commands::as_index_cancel,
+            ]);
+    }
+
+    #[cfg(target_os = "android")]
+    {
+        builder = builder
+            .manage(pending)
+            .manage(as_index::AsIndexState::new())
+            .invoke_handler(tauri::generate_handler![
+                take_pending_open_paths,
+                read_open_uri,
+                gemini_api_fetch,
+                exit_app,
+                system_fonts::list_system_font_families,
+                as_index::commands::as_index_open,
+                as_index::commands::as_index_open_from_file,
+                as_index::commands::as_index_open_from_directory,
+                as_index::commands::as_index_materialize_snapshot_to_directory,
+                as_index::commands::as_index_migrate_gzip_to_directory,
+                as_index::commands::as_index_unpack_snapshot_files,
+                as_index::commands::as_index_close,
+                as_index::commands::as_index_upsert_batch,
+                as_index::commands::as_index_remove,
+                as_index::commands::as_index_commit,
+                as_index::commands::as_index_export_snapshot,
+                as_index::commands::as_index_search,
+                as_index::commands::as_index_cancel,
+                android_native::android_set_system_status_bar_visible,
+                android_native::android_is_system_status_bar_visible,
+                android_native::android_primary_abi,
+                android_native::android_install_apk,
+                android_native::android_download_and_install_apk,
             ]);
     }
 

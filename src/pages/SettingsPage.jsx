@@ -6,6 +6,9 @@ import SnippetSettings from '@/components/settings/SnippetSettings';
 import WebfontSettings from '@/components/settings/WebfontSettings';
 import AppUiFontSettings from '@/components/settings/AppUiFontSettings';
 import StatusBarClockSettings from '@/components/settings/StatusBarClockSettings';
+import AndroidSystemStatusBarSettings from '@/components/settings/AndroidSystemStatusBarSettings';
+import AppUpdateSection from '@/components/settings/AppUpdateSection';
+import TauriDownloadSettings from '@/components/settings/TauriDownloadSettings';
 import TableStyleSettings from '@/components/settings/TableStyleSettings';
 import CoverSettings from '@/components/settings/CoverSettings';
 import HaimProseWidthSettings from '@/components/settings/HaimProseWidthSettings';
@@ -140,12 +143,10 @@ import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
 import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLockSettings';
 import MlxVlmSettings from '@/components/settings/MlxVlmSettings';
 import LlamaCppSettings from '@/components/settings/LlamaCppSettings';
-import TauriDownloadSettings from '@/components/settings/TauriDownloadSettings';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
 } from '@/utils/llmProviderProfiles';
-import { getLocalAppBuildId } from '@/utils/pwaUpdate';
 import { RadioGroup, Switch } from 'radix-ui';
 import {
   advancedSearchEngine,
@@ -2579,38 +2580,11 @@ export default function SettingsPage({
               onOpenChange={(open) => setGroupOpenById('app', open)}
             >
         <TauriDownloadSettings />
-        {/* App update */}
-        <div
-          id="settings-app-update"
-          tabIndex={-1}
-          className="scroll-mt-4 bg-gray-50 dark:bg-odp-surface p-4 rounded-lg border border-gray-200 dark:border-odp-borderStrong"
-        >
-          <h3 className="text-sm font-bold text-gray-700 dark:text-odp-fgStrong mb-2">앱 업데이트</h3>
-          <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
-            배포 빌드 해시와 서비스 워커(PWA) 캐시를 확인해 최신 버전이 있는지 확인하고, 바로 적용할 수 있습니다.
-          </p>
-          <dl className="mb-3 space-y-1 text-xs text-gray-600 dark:text-odp-muted">
-            <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-              <dt className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">현재 버전</dt>
-              <dd className="min-w-0 break-all font-mono">{getLocalAppBuildId() || '알 수 없음'}</dd>
-            </div>
-            {latestAppBuildId ? (
-              <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                <dt className="shrink-0 font-semibold text-gray-700 dark:text-odp-fgStrong">최신 버전</dt>
-                <dd className="min-w-0 break-all font-mono">{latestAppBuildId}</dd>
-              </div>
-            ) : null}
-          </dl>
-          <button
-            type="button"
-            onClick={() => onCheckAppUpdate?.()}
-            disabled={isCheckingAppUpdate || typeof onCheckAppUpdate !== 'function'}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <IconRefresh size={16} />
-            {isCheckingAppUpdate ? '최신 버전 확인 중...' : '최신 버전 확인 및 즉시 업데이트'}
-          </button>
-        </div>
+        <AppUpdateSection
+          onCheckAppUpdate={onCheckAppUpdate}
+          isCheckingAppUpdate={isCheckingAppUpdate}
+          latestAppBuildId={latestAppBuildId}
+        />
             </SettingsPageGroup>
           </div>
         </div>
@@ -2626,3 +2600,4 @@ export default function SettingsPage({
     </div>
   );
 }
+                                              

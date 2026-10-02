@@ -41,6 +41,8 @@ import {
   Undo2,
   ClipboardList,
   Kanban,
+  Smartphone,
+  Maximize2,
 } from 'lucide-react';
 
 export const IconFolder = ({ size = 16, ...props }) => <Folder size={size} {...props} />;
@@ -92,3 +94,5 @@ export const IconAlert = ({ size = 14, ...props }) => <CircleAlert size={size} {
 export const IconCopy = ({ size = 14, ...props }) => <Copy size={size} {...props} />;
 /** Back / cancel ("돌아가기") affordance for ConfirmModal and similar dialogs. */
 export const IconBack = ({ size = 14, ...props }) => <Undo2 size={size} {...props} />;
+export const IconSmartphone = ({ size = 16, ...props }) => <Smartphone size={size} {...props} />;
+export const IconMaximize = ({ size = 16, ...props }) => <Maximize2 size={size} {...props} />;

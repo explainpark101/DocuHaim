@@ -1,7 +1,7 @@
 {
   "name": "docu-haim",
   "private": true,
-  "version": "2.2.9",
+  "version": "2.2.10",
   "author": "Jaehyung Park <explainpark101@gmail.com>",
   "type": "module",
   "scripts": {
@@ -30,6 +30,7 @@
     "sync:tauri-version": "bun scripts/sync-tauri-version-from-package.mjs",
     "tauri:vite": "cross-env VITE_ELECTRON=true vite",
     "tauri:android:init": "bun scripts/tauri-android.mjs init --ci",
+    "tauri:android:icons": "bun scripts/generate-android-icons.mjs",
     "tauri:android:dev": "bun run sync:tauri-version && bun scripts/tauri-android.mjs dev",
     "tauri:android:build": "bun run sync:tauri-version && bun scripts/tauri-android.mjs build --apk",
     "tauri:android:build:debug": "bun run sync:tauri-version && bun scripts/tauri-android.mjs build --debug --apk",

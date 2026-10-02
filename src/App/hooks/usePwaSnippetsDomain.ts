@@ -17,7 +17,13 @@ import {
   installPendingTauriDesktopUpdate,
   setTauriDesktopUpdateListener,
 } from '@/utils/tauriDesktopUpdater';
-import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import {
+  checkTauriAndroidUpdate,
+  initTauriAndroidUpdaterPolling,
+  installPendingTauriAndroidUpdate,
+  setTauriAndroidUpdateListener,
+} from '@/utils/tauriAndroidUpdater';
+import { isTauriAndroid, isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { getObjectBody, headObject, putObject } from '@/utils/s3Client';
 import { createWebdavBackend, createIdbBackend } from '@/utils/storage';
 
@@ -96,21 +102,37 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   });
 
   useEffect(() => {
-    if (!isTauriDesktopPlatform()) return undefined;
+    if (isTauriDesktopPlatform()) {
+      setTauriDesktopUpdateListener((result) => {
+        if (!result.updateAvailable) return;
+        setAppBuildLocalId(result.localVersion);
+        setAppBuildRemoteId(result.remoteVersion ?? '');
+        setAppUpdateCheckError('');
+        setAppUpdateAvailable(true);
+        setShowAppUpdateConfirmModal(true);
+      });
+      initTauriDesktopUpdaterPolling();
+      return () => {
+        setTauriDesktopUpdateListener(null);
+      };
+    }
 
-    setTauriDesktopUpdateListener((result) => {
-      if (!result.updateAvailable) return;
-      setAppBuildLocalId(result.localVersion);
-      setAppBuildRemoteId(result.remoteVersion ?? '');
-      setAppUpdateCheckError('');
-      setAppUpdateAvailable(true);
-      setShowAppUpdateConfirmModal(true);
-    });
-    initTauriDesktopUpdaterPolling();
+    if (isTauriAndroid()) {
+      setTauriAndroidUpdateListener((result) => {
+        if (!result.updateAvailable) return;
+        setAppBuildLocalId(result.localVersion);
+        setAppBuildRemoteId(result.remoteVersion ?? '');
+        setAppUpdateCheckError('');
+        setAppUpdateAvailable(true);
+        setShowAppUpdateConfirmModal(true);
+      });
+      initTauriAndroidUpdaterPolling();
+      return () => {
+        setTauriAndroidUpdateListener(null);
+      };
+    }
 
-    return () => {
-      setTauriDesktopUpdateListener(null);
-    };
+    return undefined;
   }, [
     setAppBuildLocalId,
     setAppBuildRemoteId,
@@ -120,7 +142,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   ]);
 
   useEffect(() => {
-    if (isTauriDesktopPlatform()) return undefined;
+    if (isTauriDesktopPlatform() || isTauriAndroid()) return undefined;
     if (!swRegistration) return undefined;
 
     const checkForUpdate = () => {
@@ -186,6 +208,20 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
         return;
       }
 
+      if (isTauriAndroid()) {
+        const androidCheck = await checkTauriAndroidUpdate();
+        setAppBuildLocalId(androidCheck.localVersion || '');
+        setAppBuildRemoteId(androidCheck.remoteVersion ?? '');
+        if (androidCheck.ok) {
+          setAppUpdateCheckError('');
+          setAppUpdateAvailable(androidCheck.updateAvailable);
+        } else {
+          setAppUpdateCheckError(androidCheck.error || 'unknown');
+          setAppUpdateAvailable(Boolean(androidCheck.updateAvailable));
+        }
+        return;
+      }
+
       const buildCheck = await checkAppBuildUpdate();
       setAppBuildLocalId(buildCheck.localId || getLocalAppBuildId());
 
@@ -237,6 +273,17 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
         await installPendingTauriDesktopUpdate();
       } catch (error) {
         console.error('Tauri desktop update apply failed:', error);
+        setIsApplyingPwaUpdate(false);
+      }
+      return;
+    }
+    if (isTauriAndroid()) {
+      try {
+        setIsApplyingPwaUpdate(true);
+        await installPendingTauriAndroidUpdate();
+        setIsApplyingPwaUpdate(false);
+      } catch (error) {
+        console.error('Tauri Android update apply failed:', error);
         setIsApplyingPwaUpdate(false);
       }
       return;

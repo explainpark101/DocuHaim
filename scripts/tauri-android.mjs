@@ -86,6 +86,18 @@ if (!args.length) {
   process.exit(1);
 }
 
+// Keep launcher icons in sync before Gradle packaging (adaptive safe-zone padding).
+if (args[0] === 'build' || args[0] === 'dev') {
+  const iconSync = spawnSync('bun', ['scripts/generate-android-icons.mjs'], {
+    env,
+    stdio: 'inherit',
+    shell: false,
+  });
+  if ((iconSync.status ?? 1) !== 0) {
+    process.exit(iconSync.status ?? 1);
+  }
+}
+
 console.log(`JAVA_HOME=${javaHome}`);
 if (androidHome) console.log(`ANDROID_HOME=${androidHome}`);
 if (ndkHome) console.log(`NDK_HOME=${ndkHome}`);

@@ -61,6 +61,31 @@
     overflow: hidden;
   }
 
+  /*
+   * Android WebView: backdrop-filter + sticky layers are a common stutter source.
+   * Prefer solid surfaces; keep safe-area padding when the system status bar is shown.
+   */
+  html.android-app {
+    --android-safe-top: env(safe-area-inset-top, 0px);
+  }
+
+  html.android-app.android-status-bar-visible #root {
+    padding-top: var(--android-safe-top);
+  }
+
+  html.android-app.android-status-bar-hidden #root {
+    padding-top: 0;
+  }
+
+  html.android-app [class*='backdrop-blur'],
+  html.android-app .backdrop-blur-sm,
+  html.android-app .backdrop-blur-md,
+  html.android-app .backdrop-blur-\[1px\],
+  html.android-app .backdrop-blur-\[2px\] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
   /* macOS traffic-light inset — titlebar margin clears native controls. */
   html.desktop-app.macos-titlebar .desktop-titlebar--mac {
     margin-left: var(--traffic-light-box);

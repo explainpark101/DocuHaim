@@ -93,6 +93,10 @@ import {
   saveTauriDownloadSaveDialogEnabled,
 } from '@/utils/tauriDownloadSettings';
 import {
+  loadAndroidSystemStatusBarVisible,
+  setAndroidSystemStatusBarVisible,
+} from '@/utils/androidSystemStatusBarSettings';
+import {
   loadStatusBarClockEnabled,
   saveStatusBarClockEnabled,
   loadStatusBarClockFormat,
@@ -183,6 +187,7 @@ export type SettingsToggleId =
   | 'settings-cover-place-preview'
   | 'settings-orphan-image-auto'
   | 'settings-tauri-download-save-dialog'
+  | 'settings-android-system-status-bar'
   | 'settings-quiz-dock-width-spring'
   | 'settings-haim-double'
   | 'settings-haim-double-scroll-sync'
@@ -777,6 +782,31 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     keywords: ['download', '다운로드', 'save', '저장', 'tauri', 'desktop', '데스크톱', 'dialog'],
     load: loadTauriDownloadSaveDialogEnabled,
     save: saveTauriDownloadSaveDialogEnabled,
+  },
+  {
+    id: 'settings-android-system-status-bar',
+    enableTitle: 'Android 상태 표시줄 보이기 모드',
+    disableTitle: 'Android 전체화면 (상태 표시줄 덮기) 모드',
+    description:
+      'Android: 상태 표시줄을 보이거나, 덮는 전체화면으로 전환',
+    keywords: [
+      'android',
+      'status bar',
+      'statusbar',
+      '상태표시줄',
+      '상태바',
+      'fullscreen',
+      '전체화면',
+      'immersive',
+      '커버',
+      '덮기',
+      '시스템',
+      '화면 모드',
+    ],
+    load: loadAndroidSystemStatusBarVisible,
+    save: (enabled) => {
+      void setAndroidSystemStatusBarVisible(enabled);
+    },
   },
   {
     id: 'settings-quiz-dock-width-spring',

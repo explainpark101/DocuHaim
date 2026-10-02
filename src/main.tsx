@@ -21,6 +21,7 @@ import { initHaimCodeWrapDom } from '@/utils/haimCodeWrapSettings'
 import { initTouchLongPressHaptics } from '@/utils/initTouchLongPressHaptics'
 import { initDesktopExternalLinks } from '@/utils/initDesktopExternalLinks'
 import { initDesktopViewport } from '@/utils/initDesktopViewport'
+import { initAndroidSystemStatusBar } from '@/utils/androidSystemStatusBarSettings'
 import { initDesktopWindowCloseGuard } from '@/utils/desktopWindowCloseGuard'
 import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
 import { initMdEditorToolbarScroll } from '@/utils/initMdEditorToolbarScroll'
@@ -39,6 +40,7 @@ initHaimWysiwygLineNumbersDom()
 initHaimCodeWrapDom()
 initTouchLongPressHaptics()
 initDesktopViewport()
+initAndroidSystemStatusBar()
 initDesktopWindowCloseGuard()
 initDesktopExternalLinks()
 initMdEditorCodeCopy()
