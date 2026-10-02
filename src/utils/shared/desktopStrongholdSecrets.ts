@@ -572,14 +572,26 @@ export async function tryRestoreDesktopStrongholdSession(): Promise<{
 }> {
   if (!isDesktopApp()) return { creds: null, webdav: null };
 
-  await migrateLegacyDesktopSecretsToStronghold();
-
-  if (await isBiometricLockEnabled()) {
+  const entryLockMode = getDesktopAppEntryLockModeSync();
+  if (entryLockMode === 'password' || entryLockMode === 'biometric') {
     return { creds: null, webdav: null };
   }
 
-  const entryLockMode = getDesktopAppEntryLockModeSync();
-  if (entryLockMode === 'password') {
+  // Avoid opening Stronghold on first Android/desktop launch when nothing is stored.
+  if (!hasDesktopStoredCredsMarker()) {
+    const hasLegacy =
+      Boolean(typeof localStorage !== 'undefined' && localStorage.getItem(LEGACY_ENCRYPTED_KEY)) ||
+      Boolean(typeof localStorage !== 'undefined' && localStorage.getItem(LEGACY_WEBAUTHN_KEY)) ||
+      Boolean(typeof localStorage !== 'undefined' && localStorage.getItem(LEGACY_WEBDAV_ENCRYPTED_KEY)) ||
+      Boolean(typeof localStorage !== 'undefined' && localStorage.getItem(LEGACY_WEBDAV_CONFIG_KEY));
+    if (!hasLegacy) {
+      return { creds: null, webdav: null };
+    }
+  }
+
+  await migrateLegacyDesktopSecretsToStronghold();
+
+  if (await isBiometricLockEnabled()) {
     return { creds: null, webdav: null };
   }
 

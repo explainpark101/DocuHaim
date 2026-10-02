@@ -43,6 +43,7 @@ import type { SidebarPaneDropItem } from '@/utils/workspaceTabs/sidebarPaneDrop'
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import { findNodeByPath } from '@/utils/s3Tree';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { useAppChrome } from '@/App/hooks/useAppChrome';
 import { useAppModals } from '@/App/hooks/useAppModals';
 import { useSessionWorkspace } from '@/App/hooks/useSessionWorkspace';
@@ -626,10 +627,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         isPasswordMode={!isStoredWithWebAuthn()}
       />
 
-      {/* Main UI (Blurred if locked) */}
+      {/* Main UI (Blurred if locked). Android: opacity scrim — filter:blur crashes WebView GPUs. */}
       <div
         className={`flex min-h-0 flex-1 w-full flex-col overflow-hidden transition-all duration-300 ${
-          !isUnlocked ? 'blur-md pointer-events-none select-none' : ''
+          !isUnlocked
+            ? isTauriAndroid()
+              ? 'android-lock-scrim'
+              : 'blur-md pointer-events-none select-none'
+            : ''
         }`}
       >
         <div className="relative flex min-h-0 flex-1">
@@ -651,7 +656,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             />
           )}
 
-          {/* Sidebar: mobile open z-60 above main z-50; closed z-40 + pointer-events-none */}
+          {/* Sidebar: mobile open z-60 above main z-50; closed z-40 + pointer-events-none.
+              Android: defer mounting the heavy Tree until unlocked — avoids WebView GPU/OOM
+              crashes right after splash while Auth/Stronghold settles. */}
           <ResizableSidebarPanel
             isMobile={isMobile}
             collapsed={sidebarCollapsed}
@@ -659,7 +666,17 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             onRequestCollapse={() => setSidebarCollapsed(true)}
             mobileBelowTitlebar={tauriMobileSidebar}
           >
-            <SidebarConnected
+            {isTauriAndroid() && !isUnlocked ? (
+              <div
+                className="flex h-full min-h-0 flex-col items-center justify-center gap-2 bg-gray-50 px-4 text-center text-sm text-gray-500 dark:bg-odp-bgSoft dark:text-odp-muted"
+                aria-hidden
+              >
+                <span className="text-xs font-medium tracking-wide text-gray-400 dark:text-odp-muted">
+                  DocuHaim
+                </span>
+              </div>
+            ) : (
+              <SidebarConnected
               isMobileLayout={isMobile}
               fileTabContextMenuRef={fileTabContextMenuRef}
               appName={appName}
@@ -700,6 +717,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
               }
               onCloseSessionWorkspace={closeSessionWorkspace}
             />
+            )}
           </ResizableSidebarPanel>
 
           {!isMobile && (

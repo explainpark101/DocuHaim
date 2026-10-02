@@ -26,6 +26,7 @@ import {
   saveStorageMode,
 } from '@/utils/storageSettings';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isTauriAndroid, isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { registerAppLockAction } from '@/utils/advancedSearch/appLockActions';
 import { clearAuthSession, saveAuthSession, tryRestoreAuthSession } from '@/utils/authSession';
 import {
@@ -471,6 +472,19 @@ export function useAppLogicSetupDomain() {
 
     let cancelled = false;
     (async () => {
+      // Let the first AppLayout/Sidebar paint finish before Stronghold / auth work.
+      // Concurrent crypto + filter blur has killed Android WebViews after splash.
+      if (isTauriAndroid()) {
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              window.setTimeout(resolve, 32);
+            });
+          });
+        });
+        if (cancelled) return;
+      }
+
       const session = await tryRestoreAuthSession();
       if (cancelled) return;
       if (session) {
@@ -488,15 +502,20 @@ export function useAppLogicSetupDomain() {
         return;
       }
 
+      // Stronghold auto-restore is desktop + Android Tauri (isDesktopApp).
+      // Skip opening the vault when there is no local marker / lock mode (cheap path).
       if (isDesktopApp()) {
         try {
-          await migrateLegacyDesktopSecretsToStronghold();
-          if (cancelled) return;
-          if (getDesktopAppEntryLockModeSync() === 'biometric' || (hasDesktopBiometricLockMarker() && hasDesktopStoredCredsMarker())) {
+          const entryLockMode = getDesktopAppEntryLockModeSync();
+          const hasCredsMarker = hasDesktopStoredCredsMarker();
+          const hasBiometricMarker = hasDesktopBiometricLockMarker();
+
+          if (entryLockMode === 'biometric' || (hasBiometricMarker && hasCredsMarker)) {
             setAuthWanted(true);
             return;
           }
-          if (getDesktopAppEntryLockModeSync() === 'password') {
+          if (entryLockMode === 'password') {
+            // Only touch Stronghold when a password lock is actually configured.
             const passwordBlob = await loadPasswordEncryptedCredsBlob();
             if (cancelled) return;
             if (passwordBlob) {
@@ -504,12 +523,17 @@ export function useAppLogicSetupDomain() {
               return;
             }
           }
-          const desktop = await tryRestoreDesktopStrongholdSession();
-          if (cancelled) return;
-          if (desktop.creds) {
-            unlock(desktop.creds as AuthS3Creds, '');
-            if (desktop.webdav) setWebdavConfig(desktop.webdav);
-            return;
+
+          if (hasCredsMarker || isTauriDesktopPlatform()) {
+            await migrateLegacyDesktopSecretsToStronghold();
+            if (cancelled) return;
+            const desktop = await tryRestoreDesktopStrongholdSession();
+            if (cancelled) return;
+            if (desktop.creds) {
+              unlock(desktop.creds as AuthS3Creds, '');
+              if (desktop.webdav) setWebdavConfig(desktop.webdav);
+              return;
+            }
           }
         } catch (err) {
           console.warn('Desktop Stronghold restore failed:', err);

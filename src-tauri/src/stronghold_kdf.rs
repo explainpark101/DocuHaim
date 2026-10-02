@@ -6,6 +6,9 @@ const SALT_LEN: usize = 32;
 
 /// Argon2 password hash compatible with `tauri_plugin_stronghold::kdf::KeyDerivation::argon2`,
 /// but never panics — failures return a zero hash so Stronghold IPC can surface an error to JS.
+///
+/// Android uses a lower mem_cost so cold-start Stronghold.load does not OOM-kill the process
+/// while the React shell (Sidebar/Tree) is painting.
 pub fn hash_password(password: &str, salt_path: &Path) -> Vec<u8> {
     if let Some(parent) = salt_path.parent() {
         if let Err(err) = std::fs::create_dir_all(parent) {
@@ -22,12 +25,30 @@ pub fn hash_password(password: &str, salt_path: &Path) -> Vec<u8> {
         }
     };
 
-    match argon2::hash_raw(password.as_bytes(), &salt, &argon2::Config::default()) {
+    let config = argon2_config();
+    match argon2::hash_raw(password.as_bytes(), &salt, &config) {
         Ok(hash) => hash,
         Err(err) => {
             eprintln!("[stronghold] argon2 hash failed: {err}");
             zero_hash()
         }
+    }
+}
+
+fn argon2_config() -> argon2::Config<'static> {
+    #[cfg(target_os = "android")]
+    {
+        argon2::Config {
+            // ~8 MiB — enough for sideload vaults; default can spike RAM during UI boot.
+            mem_cost: 8192,
+            time_cost: 2,
+            lanes: 1,
+            ..argon2::Config::default()
+        }
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        argon2::Config::default()
     }
 }
 
