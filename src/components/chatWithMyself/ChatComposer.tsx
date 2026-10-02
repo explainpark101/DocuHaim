@@ -132,17 +132,6 @@ export type ChatComposerGetPresignedUrl = (
   path: string,
 ) => Promise<string | null | undefined> | string | null | undefined;
 
-export type ChatImageLightboxOpenOptions = {
-  alt?: string;
-  backgroundColor?: string | null;
-  onBackgroundColorChange?: (next: string | null) => void;
-};
-
-export type ChatImageLightboxOpener = (
-  url: string,
-  options?: ChatImageLightboxOpenOptions,
-) => void;
-
 export type ChatComposerHandle = {
   enqueueFiles: (fileList: FileList | File[] | null | undefined) => Promise<void>;
   enqueueShareItems: (
@@ -486,13 +475,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   const [showHelperText, setShowHelperText] = useState(() => getComposerHelperTextVisible());
   const [encryptPromptOpen, setEncryptPromptOpen] = useState(false);
   const reduceMotion = useReducedMotion();
-  const openChatImageRaw: unknown = useChatImageLightbox();
-  const openChatImage: ChatImageLightboxOpener | null =
-    typeof openChatImageRaw === 'function'
-      ? (url, options) => {
-          Reflect.apply(openChatImageRaw, null, [url, options]);
-        }
-      : null;
+  const openChatImage = useChatImageLightbox();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);

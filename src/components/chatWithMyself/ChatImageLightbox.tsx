@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
@@ -17,10 +18,21 @@ import ChatImageBackgroundPicker, {
 import { useAppStatusBarInset } from '@/hooks/useAppStatusBarInset';
 import { normalizeCssHexColor } from '@/utils/cssColor';
 
-const ChatImageLightboxContext = createContext(null);
+export type ChatImageLightboxOpenOptions = {
+  alt?: string;
+  backgroundColor?: string | null;
+  onBackgroundColorChange?: (next: string | null) => void;
+};
 
-const OVERLAY_TRANSITION = { duration: 0.2, ease: [0.22, 1, 0.36, 1] };
-const PANEL_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
+export type ChatImageLightboxOpener = (
+  url: string,
+  options?: ChatImageLightboxOpenOptions,
+) => void;
+
+const ChatImageLightboxContext = createContext<ChatImageLightboxOpener | null>(null);
+
+const OVERLAY_TRANSITION = { duration: 0.2, ease: [0.22, 1, 0.36, 1] as const };
+const PANEL_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
 
 const CHECKERBOARD_STYLE = {
   backgroundColor: '#ffffff',
@@ -34,6 +46,16 @@ const CHECKERBOARD_STYLE = {
   backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
 };
 
+type ChatImageLightboxProps = {
+  src: string | null;
+  alt?: string;
+  open: boolean;
+  onClose?: (() => void) | undefined;
+  backgroundColor?: string | null;
+  onBackgroundColorChange?: ((next: string | null) => void) | undefined;
+  backgroundLabel?: string;
+};
+
 /**
  * Fullscreen in-app image viewer for chat surfaces.
  */
@@ -45,11 +67,11 @@ export function ChatImageLightbox({
   backgroundColor = null,
   onBackgroundColorChange,
   backgroundLabel = '보기 배경',
-}) {
+}: ChatImageLightboxProps) {
   const visible = Boolean(open && src);
   const color = normalizeCssHexColor(backgroundColor);
   const statusBarInset = useAppStatusBarInset(visible);
-  const [frameEl, setFrameEl] = useState(null);
+  const [frameEl, setFrameEl] = useState<HTMLDivElement | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const stageStyle = { bottom: statusBarInset };
 
@@ -181,19 +203,30 @@ export function ChatImageLightbox({
   );
 }
 
+type ChatImageLightboxProviderProps = {
+  children: ReactNode;
+};
+
+type LightboxState = {
+  src: string | null;
+  alt: string;
+  backgroundColor: string | null;
+  backgroundLabel: string;
+};
+
 /**
  * Provides `openChatImage(url, { alt, backgroundColor, onBackgroundColorChange })` to chat descendants.
  */
-export function ChatImageLightboxProvider({ children }) {
-  const [state, setState] = useState({
+export function ChatImageLightboxProvider({ children }: ChatImageLightboxProviderProps) {
+  const [state, setState] = useState<LightboxState>({
     src: null,
     alt: '',
     backgroundColor: null,
     backgroundLabel: '보기 배경',
   });
-  const persistRef = useRef(null);
+  const persistRef = useRef<((next: string | null) => void) | null>(null);
 
-  const openChatImage = useCallback((url, options = {}) => {
+  const openChatImage = useCallback<ChatImageLightboxOpener>((url, options = {}) => {
     const src = String(url || '').trim();
     if (!src) return;
     persistRef.current =
@@ -213,7 +246,7 @@ export function ChatImageLightboxProvider({ children }) {
     setState({ src: null, alt: '', backgroundColor: null, backgroundLabel: '보기 배경' });
   }, []);
 
-  const handleBackgroundColorChange = useCallback((next) => {
+  const handleBackgroundColorChange = useCallback((next: string | null) => {
     const color = normalizeCssHexColor(next);
     setState((prev) => ({ ...prev, backgroundColor: color }));
     persistRef.current?.(color);
@@ -237,6 +270,7 @@ export function ChatImageLightboxProvider({ children }) {
   );
 }
 
-export function useChatImageLightbox() {
+/** Open the chat image lightbox, or null outside the provider. */
+export function useChatImageLightbox(): ChatImageLightboxOpener | null {
   return useContext(ChatImageLightboxContext);
 }
