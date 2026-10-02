@@ -2,8 +2,11 @@
  * Reveal the Tauri main window after the first React paint.
  * Window starts with visible:false (tauri.conf); earlyBoot.ts may show it sooner
  * so the HTML splash is visible while the main module graph loads.
+ *
+ * Desktop only — Android/iOS Activity is already on-screen; calling window.show()
+ * there races the mobile webview during splash.
  */
-import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
 const REVEAL_FAILSAFE_MS = 15_000;
 
@@ -11,7 +14,7 @@ let revealed = false;
 let failsafeTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function showMainWindow(): Promise<void> {
-  if (!isDesktopApp()) return;
+  if (!isTauriDesktopPlatform()) return;
   // earlyBoot may already have shown; still set revealed / clear failsafe.
   if (revealed) return;
   revealed = true;
@@ -35,7 +38,7 @@ async function showMainWindow(): Promise<void> {
 
 /** Mark window as already shown (e.g. earlyBoot) so failsafe can still clear. */
 export function markTauriMainWindowRevealed(): void {
-  if (!isDesktopApp()) return;
+  if (!isTauriDesktopPlatform()) return;
   revealed = true;
   if (failsafeTimer != null) {
     clearTimeout(failsafeTimer);
@@ -45,7 +48,7 @@ export function markTauriMainWindowRevealed(): void {
 
 /** Schedule show after two animation frames (first paint committed). */
 export function scheduleRevealTauriMainWindow(): void {
-  if (!isDesktopApp()) return;
+  if (!isTauriDesktopPlatform()) return;
 
   if (failsafeTimer == null && !revealed) {
     failsafeTimer = setTimeout(() => {

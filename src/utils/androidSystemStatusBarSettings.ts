@@ -81,10 +81,25 @@ export async function setAndroidChromeMode(
   await setAndroidSystemStatusBarVisible(mode === 'status-bar');
 }
 
-/** Boot: mark html class + apply stored preference. */
+/** Boot: mark html class + apply stored preference after first paint. */
 export function initAndroidSystemStatusBar(): void {
   if (!isTauriAndroid() || typeof document === 'undefined') return;
   document.documentElement.classList.add('android-app');
   const visible = loadAndroidSystemStatusBarVisible();
-  void applyAndroidSystemStatusBarVisible(visible);
+  // Apply CSS classes immediately; defer JNI until the splash frame has painted
+  // so a slow/failing native call cannot race Activity startup.
+  document.documentElement.classList.toggle('android-status-bar-hidden', !visible);
+  document.documentElement.classList.toggle('android-status-bar-visible', visible);
+  document.documentElement.classList.toggle('android-chrome-fullscreen', !visible);
+  document.documentElement.classList.toggle('android-chrome-status-bar', visible);
+  const applyNative = () => {
+    void applyAndroidSystemStatusBarVisible(visible);
+  };
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(applyNative);
+    });
+  } else {
+    window.setTimeout(applyNative, 0);
+  }
 }

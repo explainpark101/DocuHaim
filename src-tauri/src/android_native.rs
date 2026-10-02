@@ -8,20 +8,28 @@ use jni::objects::{JObject, JValue};
 use jni::JavaVM;
 use tauri::{AppHandle, Manager};
 
+/// Borrow the process-wide Android activity jobject without deleting it on Drop.
+///
+/// `ndk_context::android_context().context()` is a shared handle (not an owned
+/// local ref). Wrapping it in `JObject` and letting Drop run would call
+/// `DeleteLocalRef` on that shared pointer and can abort the process.
 fn with_main_activity<T, F>(f: F) -> Result<T, String>
 where
-    F: FnOnce(&mut jni::JNIEnv, JObject) -> Result<T, String>,
+    F: FnOnce(&mut jni::JNIEnv, &JObject) -> Result<T, String>,
 {
     let ctx = ndk_context::android_context();
     let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
     let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
     let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
-    f(&mut env, activity)
+    let result = f(&mut env, &activity);
+    // Do not DeleteLocalRef the shared activity jobject.
+    std::mem::forget(activity);
+    result
 }
 
 fn call_activity_void(method: &str, sig: &str, args: &[JValue]) -> Result<(), String> {
     with_main_activity(|env, activity| {
-        env.call_method(&activity, method, sig, args)
+        env.call_method(activity, method, sig, args)
             .map_err(|e| e.to_string())?;
         Ok(())
     })
@@ -30,7 +38,7 @@ fn call_activity_void(method: &str, sig: &str, args: &[JValue]) -> Result<(), St
 fn call_activity_bool(method: &str, sig: &str, args: &[JValue]) -> Result<bool, String> {
     with_main_activity(|env, activity| {
         let value = env
-            .call_method(&activity, method, sig, args)
+            .call_method(activity, method, sig, args)
             .map_err(|e| e.to_string())?
             .z()
             .map_err(|e| e.to_string())?;
@@ -41,7 +49,7 @@ fn call_activity_bool(method: &str, sig: &str, args: &[JValue]) -> Result<bool, 
 fn call_activity_string(method: &str, sig: &str, args: &[JValue]) -> Result<String, String> {
     with_main_activity(|env, activity| {
         let obj = env
-            .call_method(&activity, method, sig, args)
+            .call_method(activity, method, sig, args)
             .map_err(|e| e.to_string())?
             .l()
             .map_err(|e| e.to_string())?;
@@ -80,7 +88,7 @@ pub fn android_install_apk(path: String) -> Result<(), String> {
         let path_j = env.new_string(&path).map_err(|e| e.to_string())?;
         let ok = env
             .call_method(
-                &activity,
+                activity,
                 "installApk",
                 "(Ljava/lang/String;)Z",
                 &[JValue::Object(&path_j)],

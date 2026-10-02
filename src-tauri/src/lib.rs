@@ -182,68 +182,73 @@ fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
 
     let ctx = ndk_context::android_context();
     let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
+    // Shared activity jobject — must not DeleteLocalRef on Drop (see android_native).
     let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
     let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
 
-    let uri_jstr = env.new_string(uri).map_err(|e| e.to_string())?;
-    let uri_class = env
-        .find_class("android/net/Uri")
-        .map_err(|e| e.to_string())?;
-    let parsed_uri = env
-        .call_static_method(
-            uri_class,
-            "parse",
-            "(Ljava/lang/String;)Landroid/net/Uri;",
-            &[JValue::Object(&uri_jstr)],
-        )
-        .map_err(|e| e.to_string())?
-        .l()
-        .map_err(|e| e.to_string())?;
-
-    let resolver = env
-        .call_method(
-            &activity,
-            "getContentResolver",
-            "()Landroid/content/ContentResolver;",
-            &[],
-        )
-        .map_err(|e| e.to_string())?
-        .l()
-        .map_err(|e| e.to_string())?;
-
-    let input_stream = env
-        .call_method(
-            &resolver,
-            "openInputStream",
-            "(Landroid/net/Uri;)Ljava/io/InputStream;",
-            &[JValue::Object(&parsed_uri)],
-        )
-        .map_err(|e| e.to_string())?
-        .l()
-        .map_err(|e| e.to_string())?;
-
-    if input_stream.is_null() {
-        return Err(format!("openInputStream returned null for {uri}"));
-    }
-
-    let mut out = Vec::new();
-    let buf = env.new_byte_array(8192).map_err(|e| e.to_string())?;
-    loop {
-        let n = env
-            .call_method(&input_stream, "read", "([B)I", &[(&buf).into()])
+    let result = (|| {
+        let uri_jstr = env.new_string(uri).map_err(|e| e.to_string())?;
+        let uri_class = env
+            .find_class("android/net/Uri")
+            .map_err(|e| e.to_string())?;
+        let parsed_uri = env
+            .call_static_method(
+                uri_class,
+                "parse",
+                "(Ljava/lang/String;)Landroid/net/Uri;",
+                &[JValue::Object(&uri_jstr)],
+            )
             .map_err(|e| e.to_string())?
-            .i()
+            .l()
             .map_err(|e| e.to_string())?;
-        if n <= 0 {
-            break;
+
+        let resolver = env
+            .call_method(
+                &activity,
+                "getContentResolver",
+                "()Landroid/content/ContentResolver;",
+                &[],
+            )
+            .map_err(|e| e.to_string())?
+            .l()
+            .map_err(|e| e.to_string())?;
+
+        let input_stream = env
+            .call_method(
+                &resolver,
+                "openInputStream",
+                "(Landroid/net/Uri;)Ljava/io/InputStream;",
+                &[JValue::Object(&parsed_uri)],
+            )
+            .map_err(|e| e.to_string())?
+            .l()
+            .map_err(|e| e.to_string())?;
+
+        if input_stream.is_null() {
+            return Err(format!("openInputStream returned null for {uri}"));
         }
-        let mut chunk = vec![0i8; n as usize];
-        env.get_byte_array_region(&buf, 0, &mut chunk)
-            .map_err(|e| e.to_string())?;
-        out.extend(chunk.into_iter().map(|b| b as u8));
-    }
-    let _ = env.call_method(&input_stream, "close", "()V", &[]);
-    Ok(out)
+
+        let mut out = Vec::new();
+        let buf = env.new_byte_array(8192).map_err(|e| e.to_string())?;
+        loop {
+            let n = env
+                .call_method(&input_stream, "read", "([B)I", &[(&buf).into()])
+                .map_err(|e| e.to_string())?
+                .i()
+                .map_err(|e| e.to_string())?;
+            if n <= 0 {
+                break;
+            }
+            let mut chunk = vec![0i8; n as usize];
+            env.get_byte_array_region(&buf, 0, &mut chunk)
+                .map_err(|e| e.to_string())?;
+            out.extend(chunk.into_iter().map(|b| b as u8));
+        }
+        let _ = env.call_method(&input_stream, "close", "()V", &[]);
+        Ok(out)
+    })();
+    std::mem::forget(activity);
+    result
 }
 
 /// Queue + emit paths from OS "open with" / file-association URLs (not CLI args).
