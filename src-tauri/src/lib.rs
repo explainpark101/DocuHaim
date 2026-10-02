@@ -177,16 +177,9 @@ fn read_open_uri(path: String) -> Result<Vec<u8>, String> {
 
 #[cfg(target_os = "android")]
 fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
-    use jni::objects::{JObject, JValue};
-    use jni::JavaVM;
+    use jni::objects::JValue;
 
-    let ctx = ndk_context::android_context();
-    let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
-    // Shared activity jobject — must not DeleteLocalRef on Drop (see android_native).
-    let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
-    let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
-
-    let result = (|| {
+    android_native::with_main_activity(|env, activity| {
         let uri_jstr = env.new_string(uri).map_err(|e| e.to_string())?;
         let uri_class = env
             .find_class("android/net/Uri")
@@ -204,7 +197,7 @@ fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
 
         let resolver = env
             .call_method(
-                &activity,
+                activity,
                 "getContentResolver",
                 "()Landroid/content/ContentResolver;",
                 &[],
@@ -246,9 +239,7 @@ fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
         }
         let _ = env.call_method(&input_stream, "close", "()V", &[]);
         Ok(out)
-    })();
-    std::mem::forget(activity);
-    result
+    })
 }
 
 /// Queue + emit paths from OS "open with" / file-association URLs (not CLI args).

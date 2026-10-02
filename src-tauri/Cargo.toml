@@ -1,6 +1,6 @@
 [package]
 name = "docuhaim"
-version = "2.2.0"
+version = "2.2.12"
 description = "DocuHaim desktop shell"
 authors = ["Jaehyung Park"]
 edition = "2021"
@@ -52,7 +52,6 @@ tauri-plugin-biometric = "2"
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"
-ndk-context = "0.1"
 
 # RUSTSEC-2024-0429: glib 0.18.5 VariantStrIter UB — upstream EOL, no 0.18.6 on crates.io.
 # Backport merged on gtk-rs-core 0.18 branch (PR #2009).

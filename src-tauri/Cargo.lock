@@ -1184,7 +1184,7 @@ dependencies = [
 
 [[package]]
 name = "docuhaim"
-version = "2.2.0"
+version = "2.2.12"
 dependencies = [
  "flate2",
  "font-kit",
@@ -1192,7 +1192,6 @@ dependencies = [
  "jni 0.21.1",
  "ld-lucivy",
  "lucivy-core",
- "ndk-context",
  "rayon",
  "reqwest 0.12.28",
  "rust-argon2 2.1.0",
@@ -3325,12 +3324,6 @@ dependencies = [
  "raw-window-handle",
  "thiserror 1.0.69",
 ]
-
-[[package]]
-name = "ndk-context"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27b02d87554356db9e9a873add8782d4ea6e3e58ea071a9adb9a2e8ddb884a8b"
 
 [[package]]
 name = "ndk-sys"

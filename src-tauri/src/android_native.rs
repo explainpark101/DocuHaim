@@ -1,4 +1,8 @@
 //! Android-only JNI helpers: system status bar, ABI, APK install / download.
+//!
+//! Uses tao's process-wide activity context (`main_android_context`), not the
+//! `ndk-context` crate. Modern Tauri/wry never call `ndk_context::initialize`,
+//! so `ndk_context::android_context()` panics and aborts IPC (`panic = "abort"`).
 
 use std::fs::File;
 use std::io::Write;
@@ -6,20 +10,22 @@ use std::path::PathBuf;
 
 use jni::objects::{JObject, JValue};
 use jni::JavaVM;
+use tauri::tao::platform::android::prelude::main_android_context;
 use tauri::{AppHandle, Manager};
 
 /// Borrow the process-wide Android activity jobject without deleting it on Drop.
 ///
-/// `ndk_context::android_context().context()` is a shared handle (not an owned
-/// local ref). Wrapping it in `JObject` and letting Drop run would call
-/// `DeleteLocalRef` on that shared pointer and can abort the process.
-fn with_main_activity<T, F>(f: F) -> Result<T, String>
+/// The jobject from tao is a shared handle (not an owned local ref). Wrapping it
+/// in `JObject` and letting Drop run would call `DeleteLocalRef` on that shared
+/// pointer and can abort the process.
+pub(crate) fn with_main_activity<T, F>(f: F) -> Result<T, String>
 where
     F: FnOnce(&mut jni::JNIEnv, &JObject) -> Result<T, String>,
 {
-    let ctx = ndk_context::android_context();
-    let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
-    let activity = unsafe { JObject::from_raw(ctx.context() as jni::sys::jobject) };
+    let ctx = main_android_context()
+        .ok_or_else(|| "Android activity context is not ready".to_string())?;
+    let vm = unsafe { JavaVM::from_raw(ctx.java_vm.cast()) }.map_err(|e| e.to_string())?;
+    let activity = unsafe { JObject::from_raw(ctx.context_jobject as jni::sys::jobject) };
     let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
     let result = f(&mut env, &activity);
     // Do not DeleteLocalRef the shared activity jobject.
