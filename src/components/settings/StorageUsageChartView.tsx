@@ -46,9 +46,12 @@ function ChartTooltip({
 }
 
 export default function StorageUsageChartView({ kind, data }: Props) {
+  // Explicit height: percentage + flex parents often collapse on Android WebView.
+  const chartHeight = 176;
+
   if (kind === 'bar') {
     return (
-      <ResponsiveContainer width="100%" height="100%" minHeight={160}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
           <XAxis
             dataKey="name"
@@ -76,7 +79,7 @@ export default function StorageUsageChartView({ kind, data }: Props) {
 
   const innerRadius = kind === 'donut' ? '52%' : 0;
   return (
-    <ResponsiveContainer width="100%" height="100%" minHeight={160}>
+    <ResponsiveContainer width="100%" height={chartHeight}>
       <PieChart>
         <Pie
           data={data}

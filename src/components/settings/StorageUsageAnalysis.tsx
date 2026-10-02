@@ -176,7 +176,7 @@ function AnalysisSection({
       </SettingsCollapsibleHeading>
       <SettingsCollapsibleContent>
         <div className="grid grid-cols-1 gap-3 border-t border-gray-200 p-3 dark:border-odp-borderStrong md:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)] md:items-stretch">
-          <div className="min-h-44 min-w-0 md:min-h-52">
+          <div className="h-52 min-w-0">
             <StorageUsageChart data={chartData} />
           </div>
           <div className="min-w-0">{children}</div>

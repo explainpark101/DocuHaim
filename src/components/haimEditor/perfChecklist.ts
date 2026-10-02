@@ -19,9 +19,12 @@
  *    Fix: single rAF + short timeout.
  *
  * 4. HaimSourceLine full-doc serialize on every TipTap doc change
- *    Cause: decorations remapped even in WYSIWYG-only mode.
+ *    Cause: decorations remapped (N+1 serialize) even while typing; also
+ *    ran in WYSIWYG-only mode.
  *    Fix: gate with isSourceLineEnabled (dual + scroll sync only);
- *    reuse mapping when PM doc identity unchanged.
+ *    shouldUpdate=false while WYSIWYG focused (map decorations only) +
+ *    120ms debounce force-remap; incremental remap via PM child identity;
+ *    line-index binary search on full rebuild.
  *
  * 5. Dual content sync TipTap ↔ CM full replace
  *    Cause: necessary for markdown fidelity; mitigated by 150ms debounce,
@@ -32,7 +35,8 @@
  *    Fix: lastEmitted echo skip + isLocalInputDebounceActive window.
  *
  * 7. Line-number gutters / drag-handle / find-replace
- *    Fix: lazy Suspense; gutters skip caret-only updates.
+ *    Fix: lazy Suspense; gutters skip caret-only updates; prose gutter
+ *    debounces remasure while WYSIWYG focused.
  *
  * --- Architecture checklist ---
  *
@@ -43,7 +47,7 @@
  * - Follower rewrite skipped while focused; focus handoff flushes previous author once.
  * - getCachedMarkdown skips serialize when PM doc identity unchanged.
  * - Scroll sync: warm marker cache on scroll; layout work deferred to scrollend when typing.
- * - HaimSourceLine only when dual + scroll sync enabled.
+ * - HaimSourceLine only when dual + scroll sync enabled; typing maps decorations, idle remaps.
  * - vite manualChunks: vendor-tiptap separate from vendor-md-editor.
  * - Frozen panes use MarkdownPreviewSurface with engineHint="legacy" (no TipTap)
  *   when demoted, even if the note editor type is Haim.
@@ -58,7 +62,8 @@
  *    scroll handlers stay light (no full marker remasure every frame).
  * 5. Toggle scroll sync off — [data-line] mapping stops (source-line gate).
  * 6. Toggle view to WYSIWYG-only — dual sync / scroll hooks idle.
- * 7. Run unit tests: haimDoubleScrollSyncCore, markdownCache, haimDualSyncApply.
+ * 7. Run unit tests: haimDoubleScrollSyncCore, markdownCache, haimDualSyncApply,
+ *    haimSourceLineMap.
  */
 
 export const HAIM_PERF_CHECKLIST = [
@@ -71,6 +76,9 @@ export const HAIM_PERF_CHECKLIST = [
   'scroll-sync-scrollend-flush',
   'scroll-sync-single-raf-lock',
   'source-line-dual-only',
+  'source-line-defer-while-focused',
+  'source-line-incremental-remap',
+  'prose-gutter-debounce-while-focused',
   'vendor-tiptap-chunk',
   'freeze-demote-preview-surface',
   'composer-lean-extensions',

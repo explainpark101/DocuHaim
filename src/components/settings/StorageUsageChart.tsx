@@ -107,7 +107,7 @@ export default function StorageUsageChart({
           }}
           options={CHART_KIND_OPTIONS}
           aria-label="차트 종류"
-          className="h-7 min-w-[7.5rem] text-[11px]"
+          className="h-7 min-w-30 text-[11px]"
         />
       </div>
       <div className="min-h-0 flex-1">

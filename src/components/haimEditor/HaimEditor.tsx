@@ -388,6 +388,25 @@ export default function HaimEditor({
     }
   }, [editor, doublePane, scrollSyncEnabled, previewOnly, isSurfaceLive]);
 
+  // Flush deferred source-line remap on blur so scroll sync sees fresh data-line.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return undefined;
+    if (!doublePane || !scrollSyncEnabled || previewOnly || !isSurfaceLive) {
+      return undefined;
+    }
+    const flushSourceLines = () => {
+      try {
+        editor.commands.updateDecorations('haimSourceLine');
+      } catch {
+        // ignore
+      }
+    };
+    editor.on('blur', flushSourceLines);
+    return () => {
+      editor.off('blur', flushSourceLines);
+    };
+  }, [editor, doublePane, scrollSyncEnabled, previewOnly, isSurfaceLive]);
+
   const emitVault = useCallback((md: string) => {
     lastEmittedMdRef.current = md;
     if (md !== valueRef.current) {

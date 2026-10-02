@@ -12,6 +12,9 @@ describe('HAIM_PERF_CHECKLIST', () => {
     );
     expect(HAIM_PERF_CHECKLIST).toContain('scroll-sync-scrollend-flush');
     expect(HAIM_PERF_CHECKLIST).toContain('source-line-dual-only');
+    expect(HAIM_PERF_CHECKLIST).toContain('source-line-defer-while-focused');
+    expect(HAIM_PERF_CHECKLIST).toContain('source-line-incremental-remap');
+    expect(HAIM_PERF_CHECKLIST).toContain('prose-gutter-debounce-while-focused');
   });
 
   it('lists manual dual-pane review steps for QA', () => {

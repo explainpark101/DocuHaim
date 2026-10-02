@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
@@ -154,6 +154,16 @@ export function useAppChromeDomain() {
     }
   }, []);
 
+  const [indexEnabled, setIndexEnabled] = useState(() =>
+    advancedSearchEngine.isEnabled(),
+  );
+  useEffect(() => {
+    setIndexEnabled(advancedSearchEngine.isEnabled());
+    return advancedSearchEngine.subscribe(() => {
+      setIndexEnabled(advancedSearchEngine.isEnabled());
+    });
+  }, []);
+
   useEffect(() => {
     const backend = getBackendForType(storageMode);
     const storageKey =
@@ -176,7 +186,7 @@ export function useAppChromeDomain() {
 
   useEffect(() => {
     if (!isUnlocked) return undefined;
-    if (!advancedSearchEngine.isEnabled()) return undefined;
+    if (!indexEnabled) return undefined;
     const backend = getBackendForType(storageMode);
     if (!backend?.isReady?.()) return undefined;
     let cancelled = false;
@@ -198,7 +208,7 @@ export function useAppChromeDomain() {
         cancelIdleCallback(idleId);
       }
     };
-  }, [isUnlocked, storageMode, getBackendForType, localRootHandle, s3Creds.bucket, webdavConfig]);
+  }, [isUnlocked, indexEnabled, storageMode, getBackendForType, localRootHandle, s3Creds.bucket, webdavConfig]);
 
   const api = {
     handleBrandClick,
