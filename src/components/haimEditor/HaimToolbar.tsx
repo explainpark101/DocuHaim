@@ -6,6 +6,7 @@ import {
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
+  SquareCode,
   Heading1,
   Heading2,
   Heading3,
@@ -167,6 +168,7 @@ export default function HaimToolbar({
         underline: ed.isActive('underline'),
         strike: ed.isActive('strike'),
         code: ed.isActive('code'),
+        codeBlock: ed.isActive('codeBlock'),
         h1: ed.isActive('heading', { level: 1 }),
         h2: ed.isActive('heading', { level: 2 }),
         h3: ed.isActive('heading', { level: 3 }),
@@ -232,6 +234,9 @@ export default function HaimToolbar({
         break;
       case 'code':
         editor.chain().focus().toggleCode().run();
+        break;
+      case 'codeBlock':
+        editor.chain().focus().toggleCodeBlock().run();
         break;
       case 'sub':
         editor.chain().focus().toggleSubscript().run();
@@ -342,6 +347,15 @@ export default function HaimToolbar({
           }}
         >
           <Code size={14} />
+        </ToolBtn>
+        <ToolBtn
+          label="코드 블록"
+          active={Boolean(s?.codeBlock)}
+          onClick={() => {
+            runFormat('codeBlock');
+          }}
+        >
+          <SquareCode size={14} />
         </ToolBtn>
         <ToolBtn
           label="아래 첨자"

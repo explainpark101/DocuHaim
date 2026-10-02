@@ -457,6 +457,8 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     currentFile?.type === SESSION_STORAGE_TYPE;
 
   const tauriMobileSidebar = isTauriDesktopPlatform() && isMobile;
+  /** Android: fill #root content box (not 100dvh) so top safe pad does not clip the app status bar. */
+  const androidShell = isTauriAndroid();
 
   return (
     <div
@@ -464,8 +466,10 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         lockChatViewport
           ? 'fixed inset-x-0 z-0 flex-col overflow-hidden'
           : isDesktopApp()
-            ? `relative h-dvh max-h-dvh min-h-0 overflow-hidden${
-                isTauriDesktopPlatform() ? ' flex-col' : ''
+            ? `relative min-h-0 overflow-hidden${
+                androidShell
+                  ? ' h-full max-h-full flex-col'
+                  : ` h-dvh max-h-dvh${isTauriDesktopPlatform() ? ' flex-col' : ''}`
               }`
             : 'relative h-screen'
       }`}

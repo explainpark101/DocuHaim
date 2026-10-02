@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
@@ -138,12 +138,30 @@ export function useAppChromeDomain() {
     sessionWorkspaces,
   };
 
-  // Tauri Android: never build/load lucivy inverted index (filename/path search only).
+  // Previous Android builds force-disabled Lucivy and persisted that off.
+  // Native as_index works on Android — restore default ON once, then respect user choice.
   useEffect(() => {
     if (!isTauriAndroid()) return;
-    if (advancedSearchEngine.isEnabled()) {
-      advancedSearchEngine.setEnabled(false);
+    const unlockKey = 's3haim_android_as_index_unlocked_v1';
+    try {
+      if (window.localStorage.getItem(unlockKey) === '1') return;
+      if (!advancedSearchEngine.isEnabled()) {
+        advancedSearchEngine.setEnabled(true);
+      }
+      window.localStorage.setItem(unlockKey, '1');
+    } catch {
+      // ignore
     }
+  }, []);
+
+  const [indexEnabled, setIndexEnabled] = useState(() =>
+    advancedSearchEngine.isEnabled(),
+  );
+  useEffect(() => {
+    setIndexEnabled(advancedSearchEngine.isEnabled());
+    return advancedSearchEngine.subscribe(() => {
+      setIndexEnabled(advancedSearchEngine.isEnabled());
+    });
   }, []);
 
   useEffect(() => {
@@ -168,7 +186,7 @@ export function useAppChromeDomain() {
 
   useEffect(() => {
     if (!isUnlocked) return undefined;
-    if (!advancedSearchEngine.isEnabled()) return undefined;
+    if (!indexEnabled) return undefined;
     const backend = getBackendForType(storageMode);
     if (!backend?.isReady?.()) return undefined;
     let cancelled = false;
@@ -190,7 +208,7 @@ export function useAppChromeDomain() {
         cancelIdleCallback(idleId);
       }
     };
-  }, [isUnlocked, storageMode, getBackendForType, localRootHandle, s3Creds.bucket, webdavConfig]);
+  }, [isUnlocked, indexEnabled, storageMode, getBackendForType, localRootHandle, s3Creds.bucket, webdavConfig]);
 
   const api = {
     handleBrandClick,

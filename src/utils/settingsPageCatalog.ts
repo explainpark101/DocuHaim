@@ -1,4 +1,5 @@
 import { isTauriDesktopPlatform, isTauriMacOS } from '@/utils/tauriPlatform';
+import { filterSettingsPageGroupsFuzzy } from '@/utils/settingsPageOptionSearch';
 
 export type SettingsPageCatalogContext = {
   isDesktopApp: boolean;
@@ -97,6 +98,18 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     title: '앱',
     sections: [
       { id: 'settings-tauri-download', label: '파일 다운로드', visible: () => isTauriDesktopPlatform() },
+      {
+        id: 'settings-android-system-status-bar',
+        label: 'Android 화면 모드',
+        visible: () => {
+          try {
+            // Avoid importing tauriPlatform here if it pulls heavy deps — UA is enough for TOC.
+            return typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+          } catch {
+            return false;
+          }
+        },
+      },
       { id: 'settings-app-update', label: '앱 업데이트' },
     ],
   },
@@ -152,22 +165,10 @@ export function createDefaultSettingsGroupOpenState(defaultOpen = true): Record<
   return out;
 }
 
-/** Filter TOC groups/sections by group title or section label (case-insensitive). */
+/** Filter TOC groups/sections (fuzzy; includes in-page option labels). */
 export function filterSettingsPageGroups(
   groups: SettingsPageGroupDef[],
   query: string,
 ): SettingsPageGroupDef[] {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return groups;
-
-  const filtered: SettingsPageGroupDef[] = [];
-  for (const group of groups) {
-    const groupMatches = group.title.toLowerCase().includes(normalized);
-    const sections = groupMatches
-      ? group.sections
-      : group.sections.filter((section) => section.label.toLowerCase().includes(normalized));
-    if (sections.length === 0) continue;
-    filtered.push({ ...group, sections });
-  }
-  return filtered;
+  return filterSettingsPageGroupsFuzzy(groups, query).groups;
 }

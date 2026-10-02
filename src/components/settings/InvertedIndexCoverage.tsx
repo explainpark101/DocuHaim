@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search, X } from 'lucide-react';
 import {
   AdaptiveContextMenu,
   AdaptiveMenuItem,
@@ -24,6 +24,13 @@ import {
   formatIndexCoveragePercent,
   type IndexCoverageFolderRow,
 } from '@/utils/advancedSearch/indexCoverageAnalysis';
+import {
+  enqueueFolderIndexPath,
+  folderIndexRowTone,
+  normalizeFolderIndexPath,
+  removeFolderIndexPath,
+  type FolderIndexRowTone,
+} from '@/utils/advancedSearch/folderIndexQueue';
 import { isSystemIndexExcludedFolder } from '@/utils/advancedSearch/paths';
 import {
   STORAGE_MODE_LOCAL,
@@ -58,6 +65,16 @@ function coverageBarColor(percent: number): string {
   const g = Math.round(68 * (1 - t) + 197 * t);
   const b = Math.round(68 * (1 - t) + 94 * t);
   return `rgb(${r} ${g} ${b})`;
+}
+
+function rowToneClass(tone: FolderIndexRowTone): string {
+  if (tone === 'active') {
+    return 'bg-sky-500/30 ring-1 ring-inset ring-sky-400/60';
+  }
+  if (tone === 'queued') {
+    return 'bg-amber-500/25 ring-1 ring-inset ring-amber-400/50';
+  }
+  return 'hover:bg-white/5';
 }
 
 function visibleFolderRows(
@@ -143,18 +160,20 @@ function CoverageFolderRowItem({
   row,
   index,
   expanded,
-  building,
+  tone,
   indexEnabled,
   onToggle,
-  onIndexFolder,
+  onEnqueueFolder,
+  onRemoveFromQueue,
 }: {
   row: IndexCoverageFolderRow;
   index: number;
   expanded: boolean;
-  building: boolean;
+  tone: FolderIndexRowTone;
   indexEnabled: boolean;
   onToggle: (path: string) => void;
-  onIndexFolder: (path: string) => void;
+  onEnqueueFolder: (path: string) => void;
+  onRemoveFromQueue: (path: string) => void;
 }) {
   const mobile = useMobileContextMenuMode();
   const {
@@ -166,8 +185,8 @@ function CoverageFolderRowItem({
 
   const clickable = row.hasChildFolders;
   const systemFolder = isSystemIndexExcludedFolder(row.path);
-  const canIndex =
-    indexEnabled && !building && !systemFolder;
+  const canEnqueue = indexEnabled && !systemFolder && tone === 'idle';
+  const canRemoveQueued = tone === 'queued';
   const percentLabel = formatIndexCoveragePercent(
     row.percent,
     row.indexableCount,
@@ -180,13 +199,12 @@ function CoverageFolderRowItem({
     onToggle(row.path);
   };
 
+  const statusLabel =
+    tone === 'active' ? '색인 중' : tone === 'queued' ? '대기열' : null;
+
   const rowEl = (
     <li
-      className={`flex items-center gap-2 rounded px-1 py-0.5 ${
-        clickable
-          ? 'cursor-pointer hover:bg-white/5 focus-visible:outline-1 focus-visible:outline-blue-400'
-          : ''
-      }`}
+      className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 focus-visible:outline-1 focus-visible:outline-blue-400 ${rowToneClass(tone)}`}
       onClick={() => {
         if (mobile && longPressOpenedRef.current) {
           longPressOpenedRef.current = false;
@@ -197,6 +215,8 @@ function CoverageFolderRowItem({
       onKeyDown={onRowKeyDown}
       tabIndex={clickable ? 0 : undefined}
       aria-expanded={clickable ? expanded : undefined}
+      aria-current={tone === 'active' ? 'true' : undefined}
+      data-index-tone={tone}
       {...(mobile ? bindPress : {})}
     >
       <span className="w-5 shrink-0 text-right tabular-nums text-gray-500">
@@ -207,7 +227,22 @@ function CoverageFolderRowItem({
           depth={row.depth}
           expandable={row.hasChildFolders}
           expanded={expanded}
-          label={<span title={row.path}>{row.name}</span>}
+          label={
+            <span title={row.path} className="inline-flex min-w-0 items-center gap-1.5">
+              <span className="min-w-0 truncate">{row.name}</span>
+              {statusLabel ? (
+                <span
+                  className={`shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide ${
+                    tone === 'active'
+                      ? 'bg-sky-400/30 text-sky-100'
+                      : 'bg-amber-400/30 text-amber-100'
+                  }`}
+                >
+                  {statusLabel}
+                </span>
+              ) : null}
+            </span>
+          }
         />
       </span>
       <span className="w-16 shrink-0 text-right tabular-nums text-gray-400">
@@ -232,18 +267,33 @@ function CoverageFolderRowItem({
       contentClassName={coverageMenuContentClass}
       trigger={rowEl}
     >
-      <AdaptiveMenuItem
-        className={MOBILE_CONTEXT_MENU_ITEM_CLASS}
-        disabled={!canIndex}
-        onSelect={() => {
-          if (!canIndex) return;
-          onIndexFolder(row.path);
-        }}
-      >
-        <Search size={14} />
-        이 폴더 역색인
-        {systemFolder ? ' (시스템 제외)' : ''}
-      </AdaptiveMenuItem>
+      {tone === 'active' ? (
+        <AdaptiveMenuItem className={MOBILE_CONTEXT_MENU_ITEM_CLASS} disabled>
+          <Loader2 size={14} className="animate-spin" />
+          이 폴더 색인 중…
+        </AdaptiveMenuItem>
+      ) : canRemoveQueued ? (
+        <AdaptiveMenuItem
+          className={MOBILE_CONTEXT_MENU_ITEM_CLASS}
+          onSelect={() => onRemoveFromQueue(row.path)}
+        >
+          <X size={14} />
+          대기열에서 제거
+        </AdaptiveMenuItem>
+      ) : (
+        <AdaptiveMenuItem
+          className={MOBILE_CONTEXT_MENU_ITEM_CLASS}
+          disabled={!canEnqueue}
+          onSelect={() => {
+            if (!canEnqueue) return;
+            onEnqueueFolder(row.path);
+          }}
+        >
+          <Search size={14} />
+          이 폴더 역색인
+          {systemFolder ? ' (시스템 제외)' : ''}
+        </AdaptiveMenuItem>
+      )}
     </AdaptiveContextMenu>
   );
 }
@@ -261,16 +311,29 @@ export default function InvertedIndexCoverage({
     () => new Set(),
   );
   const [indexRevision, setIndexRevision] = useState(0);
+  const [folderQueue, setFolderQueue] = useState<string[]>([]);
+  const [activeFolderPath, setActiveFolderPath] = useState<string | null>(null);
   const buildingRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasBuildingRef = useRef(false);
   const loadingRef = useRef(false);
   const onScanTreeRef = useRef(onScanTree);
   const canScanRef = useRef(canScan);
+  const folderQueueRef = useRef<string[]>([]);
+  const activeFolderPathRef = useRef<string | null>(null);
+  const pumpFolderQueueRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     onScanTreeRef.current = onScanTree;
     canScanRef.current = canScan;
   }, [onScanTree, canScan]);
+
+  useEffect(() => {
+    folderQueueRef.current = folderQueue;
+  }, [folderQueue]);
+
+  useEffect(() => {
+    activeFolderPathRef.current = activeFolderPath;
+  }, [activeFolderPath]);
 
   const loadTree = useCallback(async () => {
     const scan = onScanTreeRef.current;
@@ -293,6 +356,38 @@ export default function InvertedIndexCoverage({
     }
   }, []);
 
+  const pumpFolderQueue = useCallback(() => {
+    if (!advancedSearchEngine.isEnabled()) return;
+    if (advancedSearchEngine.getStatus().building) return;
+    if (activeFolderPathRef.current) return;
+    const nextPath = folderQueueRef.current[0];
+    if (!nextPath) return;
+
+    const rest = folderQueueRef.current.slice(1);
+    folderQueueRef.current = rest;
+    setFolderQueue(rest);
+    activeFolderPathRef.current = nextPath;
+    setActiveFolderPath(nextPath);
+
+    void advancedSearchEngine
+      .rebuild({
+        folderPath: nextPath,
+        ignoreExcludedFolders: true,
+      })
+      .finally(() => {
+        // Early-return / finished: unlock so the next queued folder can start.
+        if (advancedSearchEngine.getStatus().building) return;
+        if (activeFolderPathRef.current !== nextPath) return;
+        activeFolderPathRef.current = null;
+        setActiveFolderPath(null);
+        queueMicrotask(() => pumpFolderQueueRef.current());
+      });
+  }, []);
+
+  useEffect(() => {
+    pumpFolderQueueRef.current = pumpFolderQueue;
+  }, [pumpFolderQueue]);
+
   useEffect(() => {
     return advancedSearchEngine.subscribe(() => {
       const status = advancedSearchEngine.getStatus();
@@ -310,12 +405,20 @@ export default function InvertedIndexCoverage({
         }, 500);
         return;
       }
+
+      const wasBuilding = wasBuildingRef.current;
       wasBuildingRef.current = false;
       if (buildingRefreshTimer.current) {
         clearTimeout(buildingRefreshTimer.current);
         buildingRefreshTimer.current = null;
       }
       setIndexRevision((n) => n + 1);
+
+      if (wasBuilding && activeFolderPathRef.current) {
+        activeFolderPathRef.current = null;
+        setActiveFolderPath(null);
+        queueMicrotask(() => pumpFolderQueueRef.current());
+      }
     });
   }, [loadTree]);
 
@@ -339,6 +442,10 @@ export default function InvertedIndexCoverage({
     setTree(null);
     setError(null);
     setExpandedFolderPaths(new Set());
+    setFolderQueue([]);
+    setActiveFolderPath(null);
+    folderQueueRef.current = [];
+    activeFolderPathRef.current = null;
     wasBuildingRef.current = false;
   }, [storageMode]);
 
@@ -366,6 +473,14 @@ export default function InvertedIndexCoverage({
     expandedFolderPaths,
   );
 
+  const folderNameByPath = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of analysis?.folders ?? []) {
+      map.set(normalizeFolderIndexPath(row.path), row.name);
+    }
+    return map;
+  }, [analysis?.folders]);
+
   const toggleFolder = (path: string) => {
     setExpandedFolderPaths((prev) => {
       const next = new Set(prev);
@@ -379,17 +494,33 @@ export default function InvertedIndexCoverage({
     void loadTree();
   };
 
-  const handleIndexFolder = useCallback((folderPath: string) => {
-    void advancedSearchEngine.rebuild({
-      folderPath,
-      ignoreExcludedFolders: true,
-    });
+  const handleEnqueueFolder = useCallback(
+    (folderPath: string) => {
+      const nextQueue = enqueueFolderIndexPath(
+        folderQueueRef.current,
+        folderPath,
+        activeFolderPathRef.current,
+      );
+      folderQueueRef.current = nextQueue;
+      setFolderQueue(nextQueue);
+      pumpFolderQueue();
+    },
+    [pumpFolderQueue],
+  );
+
+  const handleRemoveFromQueue = useCallback((folderPath: string) => {
+    const nextQueue = removeFolderIndexPath(folderQueueRef.current, folderPath);
+    folderQueueRef.current = nextQueue;
+    setFolderQueue(nextQueue);
   }, []);
 
   const summary = analysis?.summary;
   const summaryPercent = summary
     ? formatIndexCoveragePercent(summary.percent, summary.indexableCount)
     : '—';
+
+  const queueVisible =
+    Boolean(activeFolderPath) || folderQueue.length > 0;
 
   return (
     <div
@@ -462,6 +593,53 @@ export default function InvertedIndexCoverage({
         </div>
       ) : null}
 
+      {queueVisible ? (
+        <div
+          className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-100"
+          aria-live="polite"
+          aria-label="폴더 역색인 대기열"
+        >
+          <div className="font-semibold">
+            폴더 역색인 대기열
+            {activeFolderPath ? ' · 진행 중 1' : ''}
+            {folderQueue.length > 0 ? ` · 대기 ${folderQueue.length}` : ''}
+          </div>
+          <ul className="mt-1.5 space-y-1">
+            {activeFolderPath ? (
+              <li className="flex items-center gap-2">
+                <Loader2 size={12} className="shrink-0 animate-spin text-sky-600 dark:text-sky-300" />
+                <span className="min-w-0 flex-1 truncate font-mono">
+                  {folderNameByPath.get(normalizeFolderIndexPath(activeFolderPath)) ??
+                    activeFolderPath}
+                </span>
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">
+                  색인 중
+                </span>
+              </li>
+            ) : null}
+            {folderQueue.map((path, i) => (
+              <li key={`q-${path}`} className="flex items-center gap-2">
+                <span className="w-4 shrink-0 text-right tabular-nums text-sky-700/80 dark:text-sky-300/80">
+                  {i + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-mono">
+                  {folderNameByPath.get(normalizeFolderIndexPath(path)) ?? path}
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex shrink-0 items-center gap-0.5 rounded border border-sky-300/80 bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold text-sky-900 transition hover:bg-white dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-100 dark:hover:bg-sky-900/80"
+                  onClick={() => handleRemoveFromQueue(path)}
+                  aria-label={`${path} 대기열에서 제거`}
+                >
+                  <X size={10} />
+                  제거
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="max-h-96 overflow-auto rounded-md border border-gray-800 bg-[#1a1b26] p-2 font-mono text-[11px] text-gray-100 dark:border-gray-700">
         {folderRows.length === 0 ? (
           <p className="px-2 py-6 text-center text-gray-500">
@@ -481,10 +659,15 @@ export default function InvertedIndexCoverage({
                 row={row}
                 index={idx}
                 expanded={expandedFolderPaths.has(row.path)}
-                building={indexStatus.building}
+                tone={folderIndexRowTone(
+                  row.path,
+                  activeFolderPath,
+                  folderQueue,
+                )}
                 indexEnabled={indexStatus.enabled}
                 onToggle={toggleFolder}
-                onIndexFolder={handleIndexFolder}
+                onEnqueueFolder={handleEnqueueFolder}
+                onRemoveFromQueue={handleRemoveFromQueue}
               />
             ))}
           </ul>
@@ -492,9 +675,11 @@ export default function InvertedIndexCoverage({
       </div>
 
       <p className="text-[10px] text-gray-500 dark:text-odp-muted">
-        폴더를 클릭해 하위 폴더를 펼칩니다. 우클릭(또는 길게 누르기)으로 해당 폴더만
-        역색인할 수 있습니다(제외 폴더 설정을 무시하고 병합 색인). 채팅 day 파일은
-        해당 날짜 메시지가 하나라도 색인되면 완료로 집계합니다.
+        폴더를 클릭해 하위 폴더를 펼칩니다. 우클릭(또는 길게 누르기)으로 폴더를
+        역색인 대기열에 넣습니다(제외 폴더 설정을 무시하고 병합 색인). 여러 폴더를
+        연속으로 추가하면 순차 실행됩니다. 진행 중 행은 하늘색, 대기 행은 호박색으로
+        표시됩니다. 채팅 day 파일은 해당 날짜 메시지가 하나라도 색인되면 완료로
+        집계합니다.
       </p>
     </div>
   );

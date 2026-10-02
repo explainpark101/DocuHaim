@@ -6,21 +6,33 @@
  * - scrolling down → newly appearing content at the bottom
  * - scrolling up   → newly appearing content at the top
  *
- * Image-aware: tall wiki/markdown images sit between sparse data-line
- * markers — we interpolate between neighboring markers, and re-sync when
- * images load / resize (async hydration).
- *
- * Bottom padding overscroll (both panes use ~50vh padding-bottom so the last
- * lines can reach mid-viewport): once the driver scrolls past aligning the
- * last content block, map that remaining progress onto the follower's
- * padding region so both panes enter overscroll together.
- *
- * While a pane has focus (typing), never write its scrollTop — cross-pane
- * content sync + layout echoes must not flicker the active editor.
+ * Perf contract (dual pane):
+ * - Scroll path: rAF-coalesce + warm marker cache only (no full remasure).
+ * - Layout path (RO / images): invalidate cache; defer remasure+resync until
+ *   scrollend / idle when typing or content-sync suppress is active
+ *   (modern-web-guidance: defer-work-until-scroll-ends).
+ * - Never write scrollTop on the focused (typing) pane.
  */
 
 import { useEffect, useRef } from 'react';
 import type { EditorView } from '@codemirror/view';
+import {
+  HAIM_SCROLL_ALIGN_PAD_PX,
+  HAIM_SCROLL_IMAGE_RETRY_MS,
+  HAIM_SCROLL_SYNC_LOCK_RELEASE_MS,
+  bindScrollEnd,
+  detectHaimScrollDir,
+  haimAnchorY,
+  haimComputeBottomOverscrollTarget,
+  haimLerpSpan,
+  haimMarkersContentBottom,
+  haimMaxScrollTop,
+  haimScrollTopForBottomAlign,
+  shouldDeferScrollLayoutResync,
+  type HaimDataLineMarker,
+  type HaimScrollDir,
+  type HaimScrollSyncSource,
+} from '@/components/haimEditor/haimDoubleScrollSyncCore';
 
 type Options = {
   enabled: boolean;
@@ -40,23 +52,9 @@ type Options = {
   suppressScrollSyncUntilRef?: React.MutableRefObject<number>;
 };
 
-const SCROLL_ALIGN_PAD_PX = 32;
-const SYNC_LOCK_RELEASE_MS = 32;
-/**
- * Fewer layout-settle retries than before; RO/image storms are coalesced
- * into one scheduleImageResync window (see below).
- */
-const IMAGE_RETRY_MS = [0, 100, 320] as const;
-
-type ScrollDir = 'up' | 'down';
-type SyncSource = 'none' | 'cm' | 'wysiwyg';
-
-type DataLineMarker = {
-  line0: number;
-  top: number;
-  height: number;
-  el: HTMLElement;
-};
+type SyncSource = HaimScrollSyncSource;
+type ScrollDir = HaimScrollDir;
+type DataLineMarker = HaimDataLineMarker;
 
 function cmScroller(view: EditorView | null): HTMLElement | null {
   if (!view) return null;
@@ -75,12 +73,8 @@ function offsetTopWithinScroller(
   return elRect.top - sRect.top + top;
 }
 
-function maxScrollTop(scroller: HTMLElement): number {
-  return Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-}
-
 function setScrollerTop(scroller: HTMLElement, top: number): void {
-  const max = maxScrollTop(scroller);
+  const max = haimMaxScrollTop(scroller);
   const next = Math.max(0, Math.min(max, top));
   if (Math.abs(scroller.scrollTop - next) < 0.5) return;
   scroller.scrollTop = next;
@@ -89,31 +83,10 @@ function setScrollerTop(scroller: HTMLElement, top: number): void {
   }
 }
 
-function detectScrollDir(prevTop: number, nextTop: number): ScrollDir {
-  return nextTop >= prevTop ? 'down' : 'up';
-}
-
-/** scrollTop that places `contentBottom` on the bottom sync pad. */
-function scrollTopForBottomAlign(
-  scroller: HTMLElement,
-  contentBottom: number,
-): number {
-  return Math.max(
-    0,
-    contentBottom - (scroller.clientHeight - SCROLL_ALIGN_PAD_PX),
-  );
-}
-
 function cmContentBottom(view: EditorView): number {
   const last = view.state.doc.line(view.state.doc.lines);
   const block = view.lineBlockAt(last.from);
   return block.top + block.height;
-}
-
-function markersContentBottom(markers: DataLineMarker[]): number | null {
-  const last = markers[markers.length - 1];
-  if (!last) return null;
-  return last.top + last.height;
 }
 
 /**
@@ -127,31 +100,23 @@ function applyBottomOverscrollFromDriver(
   driverContentBottom: number,
   followerContentBottom: number,
 ): boolean {
-  const driverEnd = scrollTopForBottomAlign(driver, driverContentBottom);
-  const driverMax = maxScrollTop(driver);
-  if (driverMax <= driverEnd + 0.5) return false;
-  if (driver.scrollTop <= driverEnd + 0.5) return false;
-
-  const progress = Math.min(
-    1,
-    (driver.scrollTop - driverEnd) / (driverMax - driverEnd),
+  const driverEnd = haimScrollTopForBottomAlign(driver, driverContentBottom);
+  const driverMax = haimMaxScrollTop(driver);
+  const followerEnd = haimScrollTopForBottomAlign(
+    follower,
+    followerContentBottom,
   );
-  const followerEnd = scrollTopForBottomAlign(follower, followerContentBottom);
-  const followerMax = maxScrollTop(follower);
-  const target =
-    followerMax <= followerEnd
-      ? followerMax
-      : followerEnd + progress * (followerMax - followerEnd);
+  const followerMax = haimMaxScrollTop(follower);
+  const target = haimComputeBottomOverscrollTarget(
+    driver.scrollTop,
+    driverEnd,
+    driverMax,
+    followerEnd,
+    followerMax,
+  );
+  if (target == null) return false;
   setScrollerTop(follower, target);
   return true;
-}
-
-/** Viewport Y (in scroller content coords) used as the sync anchor. */
-function anchorY(scroller: HTMLElement, dir: ScrollDir): number {
-  if (dir === 'down') {
-    return scroller.scrollTop + scroller.clientHeight - SCROLL_ALIGN_PAD_PX;
-  }
-  return scroller.scrollTop + SCROLL_ALIGN_PAD_PX;
 }
 
 /**
@@ -166,11 +131,11 @@ function scrollToAlignContentY(
   if (dir === 'down') {
     setScrollerTop(
       scroller,
-      contentY - (scroller.clientHeight - SCROLL_ALIGN_PAD_PX),
+      contentY - (scroller.clientHeight - HAIM_SCROLL_ALIGN_PAD_PX),
     );
     return;
   }
-  setScrollerTop(scroller, contentY - SCROLL_ALIGN_PAD_PX);
+  setScrollerTop(scroller, contentY - HAIM_SCROLL_ALIGN_PAD_PX);
 }
 
 /**
@@ -246,7 +211,6 @@ function mapCmYToWysiwygContentY(
   const b = markers[lo + 1];
 
   if (!b) {
-    // Past last marker — progress within the last block by CM line fraction.
     const within =
       lineBlock.height > 0
         ? Math.max(0, Math.min(1, (cmY - lineBlock.top) / lineBlock.height))
@@ -254,11 +218,13 @@ function mapCmYToWysiwygContentY(
     return a.top + a.height * within;
   }
 
-  const aCmTop = cmLineTop(view, a.line0);
-  const bCmTop = cmLineTop(view, b.line0);
-  const span = Math.max(1, bCmTop - aCmTop);
-  const t = Math.max(0, Math.min(1, (cmY - aCmTop) / span));
-  return a.top + t * (b.top - a.top);
+  return haimLerpSpan(
+    cmY,
+    cmLineTop(view, a.line0),
+    cmLineTop(view, b.line0),
+    a.top,
+    b.top,
+  );
 }
 
 function mapWysiwygYToCmContentY(
@@ -290,11 +256,13 @@ function mapWysiwygYToCmContentY(
     return block.top + block.height * within;
   }
 
-  const span = Math.max(1, b.top - a.top);
-  const t = Math.max(0, Math.min(1, (wysiwygY - a.top) / span));
-  const aCmTop = cmLineTop(view, a.line0);
-  const bCmTop = cmLineTop(view, b.line0);
-  return aCmTop + t * (bCmTop - aCmTop);
+  return haimLerpSpan(
+    wysiwygY,
+    a.top,
+    b.top,
+    cmLineTop(view, a.line0),
+    cmLineTop(view, b.line0),
+  );
 }
 
 function isImageEventTarget(target: EventTarget | null): boolean {
@@ -346,6 +314,9 @@ export function useHaimDoubleScrollSync({
     /** Cached [data-line] geometry — invalidated on layout/image/content changes. */
     let markerCache: DataLineMarker[] | null = null;
     let imageResyncCoalesceRaf = 0;
+    /** Layout dirty while typing/suppress — flush on scrollend / idle. */
+    let layoutDirty = false;
+    let unbindScrollEnds: (() => void) | null = null;
 
     const invalidateMarkerCache = () => {
       markerCache = null;
@@ -382,17 +353,30 @@ export function useHaimDoubleScrollSync({
       }
     };
 
+    const readDeferFlags = () => {
+      const view = cmViewRef.current;
+      const wysiwyg = wysiwygScrollRef.current;
+      return {
+        suppressed: isScrollSyncSuppressed(suppressScrollSyncUntilRef),
+        tipTapFocused: Boolean(wysiwyg && isWysiwygFocused(wysiwyg)),
+        cmFocused: Boolean(view && isCmFocused(view)),
+      };
+    };
+
+    /**
+     * One rAF then a short timeout — enough for echo scroll events without
+     * nesting a second rAF on every synced frame (was a dual-pane stutter source).
+     */
     const releaseSyncLock = (source: Exclude<SyncSource, 'none'>) => {
       clearLockTimer();
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          lockTimerRef.current = setTimeout(() => {
-            lockTimerRef.current = null;
-            if (syncingFromRef.current === source) {
-              syncingFromRef.current = 'none';
-            }
-          }, SYNC_LOCK_RELEASE_MS);
-        });
+        if (disposed) return;
+        lockTimerRef.current = setTimeout(() => {
+          lockTimerRef.current = null;
+          if (syncingFromRef.current === source) {
+            syncingFromRef.current = 'none';
+          }
+        }, HAIM_SCROLL_SYNC_LOCK_RELEASE_MS);
       });
     };
 
@@ -401,12 +385,11 @@ export function useHaimDoubleScrollSync({
       const view = cmViewRef.current;
       const wysiwyg = wysiwygScrollRef.current;
       if (!view || !wysiwyg) return;
-      // Never move the pane the user is typing in.
       if (isWysiwygFocused(wysiwyg)) return;
 
       const scrollDom = view.scrollDOM;
       const markers = getMarkers(wysiwyg);
-      const wysiwygBottom = markersContentBottom(markers);
+      const wysiwygBottom = haimMarkersContentBottom(markers);
       if (
         wysiwygBottom != null &&
         applyBottomOverscrollFromDriver(
@@ -420,7 +403,7 @@ export function useHaimDoubleScrollSync({
         return;
       }
 
-      const y = anchorY(scrollDom, dir);
+      const y = haimAnchorY(scrollDom, dir);
       const contentY = mapCmYToWysiwygContentY(view, markers, y);
       if (contentY == null) return;
 
@@ -433,12 +416,11 @@ export function useHaimDoubleScrollSync({
       const view = cmViewRef.current;
       const wysiwyg = wysiwygScrollRef.current;
       if (!view || !wysiwyg) return;
-      // Never move the pane the user is typing in.
       if (isCmFocused(view)) return;
 
       const scrollDom = view.scrollDOM;
       const markers = getMarkers(wysiwyg);
-      const wysiwygBottom = markersContentBottom(markers);
+      const wysiwygBottom = haimMarkersContentBottom(markers);
       if (
         wysiwygBottom != null &&
         applyBottomOverscrollFromDriver(
@@ -452,7 +434,7 @@ export function useHaimDoubleScrollSync({
         return;
       }
 
-      const y = anchorY(wysiwyg, dir);
+      const y = haimAnchorY(wysiwyg, dir);
       const contentY = mapWysiwygYToCmContentY(view, markers, y);
       if (contentY == null) return;
 
@@ -460,7 +442,10 @@ export function useHaimDoubleScrollSync({
       lastCmTop = scrollDom.scrollTop;
     };
 
-    const applyDriverSync = (driver: Exclude<SyncSource, 'none'>, dir: ScrollDir) => {
+    const applyDriverSync = (
+      driver: Exclude<SyncSource, 'none'>,
+      dir: ScrollDir,
+    ) => {
       if (disposed) return;
       if (isScrollSyncSuppressed(suppressScrollSyncUntilRef)) return;
       syncingFromRef.current = driver;
@@ -476,23 +461,28 @@ export function useHaimDoubleScrollSync({
     const resyncAfterLayout = () => {
       if (disposed) return;
       if (syncingFromRef.current !== 'none') return;
-      if (isScrollSyncSuppressed(suppressScrollSyncUntilRef)) return;
+      if (shouldDeferScrollLayoutResync(readDeferFlags())) return;
       applyDriverSync(lastDriver, lastDir);
     };
 
     /**
      * Coalesce RO / image-load storms into one rAF, then a short retry chain.
-     * Always invalidate markers so the next sync remeasures.
+     * Call only when not deferred (typing / content-sync suppress).
      */
-    const scheduleImageResync = () => {
+    const runLayoutResyncChain = () => {
       if (disposed) return;
-      invalidateMarkerCache();
+      if (shouldDeferScrollLayoutResync(readDeferFlags())) return;
+      layoutDirty = false;
       if (imageResyncCoalesceRaf) return;
       imageResyncCoalesceRaf = requestAnimationFrame(() => {
         imageResyncCoalesceRaf = 0;
         if (disposed) return;
+        if (shouldDeferScrollLayoutResync(readDeferFlags())) {
+          layoutDirty = true;
+          return;
+        }
         clearImageRetries();
-        for (const ms of IMAGE_RETRY_MS) {
+        for (const ms of HAIM_SCROLL_IMAGE_RETRY_MS) {
           imageRetryTimers.push(
             setTimeout(() => {
               invalidateMarkerCache();
@@ -503,15 +493,33 @@ export function useHaimDoubleScrollSync({
       });
     };
 
+    /**
+     * Always invalidate markers on layout change. While typing/suppress, only
+     * mark dirty — remasure happens on next scroll or scrollend flush.
+     */
+    const scheduleImageResync = () => {
+      if (disposed) return;
+      layoutDirty = true;
+      invalidateMarkerCache();
+      if (shouldDeferScrollLayoutResync(readDeferFlags())) return;
+      runLayoutResyncChain();
+    };
+
+    /** Flush deferred layout work once scrolling rests (or idle fallback). */
+    const flushDeferredLayout = () => {
+      if (disposed || !layoutDirty) return;
+      if (shouldDeferScrollLayoutResync(readDeferFlags())) return;
+      runLayoutResyncChain();
+    };
+
     const onCmScroll = () => {
       if (disposed) return;
       if (syncingFromRef.current === 'wysiwyg') return;
       const view = cmViewRef.current;
       if (!view) return;
       const top = view.scrollDOM.scrollTop;
-      const dir = detectScrollDir(lastCmTop, top);
+      const dir = detectHaimScrollDir(lastCmTop, top);
       lastCmTop = top;
-      // Still track position during suppress / focused-target skips.
       if (isScrollSyncSuppressed(suppressScrollSyncUntilRef)) return;
       lastDir = dir;
       lastDriver = 'cm';
@@ -524,7 +532,7 @@ export function useHaimDoubleScrollSync({
       const wysiwyg = wysiwygScrollRef.current;
       if (!wysiwyg) return;
       const top = wysiwyg.scrollTop;
-      const dir = detectScrollDir(lastWysiwygTop, top);
+      const dir = detectHaimScrollDir(lastWysiwygTop, top);
       lastWysiwygTop = top;
       if (isScrollSyncSuppressed(suppressScrollSyncUntilRef)) return;
       lastDir = dir;
@@ -578,15 +586,20 @@ export function useHaimDoubleScrollSync({
 
       wysiwyg.addEventListener('scroll', onWysiwyg, { passive: true });
       cm.addEventListener('scroll', onCm, { passive: true });
-      // Wiki / markdown images hydrate async — re-align when they settle.
       wysiwyg.addEventListener('load', onImageSettled, true);
       wysiwyg.addEventListener('error', onImageSettled, true);
+
+      const unbindWysiwygEnd = bindScrollEnd(wysiwyg, flushDeferredLayout);
+      const unbindCmEnd = bindScrollEnd(cm, flushDeferredLayout);
+      unbindScrollEnds = () => {
+        unbindWysiwygEnd();
+        unbindCmEnd();
+      };
 
       if (typeof ResizeObserver !== 'undefined') {
         resizeObserver = new ResizeObserver(() => {
           scheduleImageResync();
         });
-        // Observe content (not the scroller box) so image height changes fire.
         const content =
           wysiwyg.querySelector('.ProseMirror') ?? wysiwyg.firstElementChild;
         if (content instanceof Element) {
@@ -608,16 +621,16 @@ export function useHaimDoubleScrollSync({
         cm.removeEventListener('scroll', onCm);
         wysiwyg.removeEventListener('load', onImageSettled, true);
         wysiwyg.removeEventListener('error', onImageSettled, true);
+        unbindScrollEnds?.();
+        unbindScrollEnds = null;
         resizeObserver?.disconnect();
         resizeObserver = null;
         attachedWysiwyg = null;
         attachedCm = null;
       };
 
-      // Align once on bind — treat as upward (top-edge) for a stable initial match.
       applyDriverSync('cm', 'up');
       lastWysiwygTop = wysiwyg.scrollTop;
-      // Images may still be placeholders — retry after hydration.
       scheduleImageResync();
     };
 
@@ -634,6 +647,13 @@ export function useHaimDoubleScrollSync({
       detach?.();
       syncingFromRef.current = 'none';
       markerCache = null;
+      layoutDirty = false;
     };
-  }, [enabled, wysiwygScrollRef, cmViewRef, cmRevision, suppressScrollSyncUntilRef]);
+  }, [
+    enabled,
+    wysiwygScrollRef,
+    cmViewRef,
+    cmRevision,
+    suppressScrollSyncUntilRef,
+  ]);
 }

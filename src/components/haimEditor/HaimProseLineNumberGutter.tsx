@@ -76,7 +76,10 @@ export default function HaimProseLineNumberGutter({
     }
 
     let raf = 0;
-    const sync = () => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const PROSE_GUTTER_DEBOUNCE_MS = 120;
+
+    const syncNow = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         const scrollEl = scrollRef.current;
@@ -93,6 +96,23 @@ export default function HaimProseLineNumberGutter({
       });
     };
 
+    const sync = () => {
+      // While typing, defer expensive coordsAtPos walks (same idea as source-line).
+      if (editor.isFocused) {
+        if (debounceTimer != null) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          debounceTimer = null;
+          syncNow();
+        }, PROSE_GUTTER_DEBOUNCE_MS);
+        return;
+      }
+      if (debounceTimer != null) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
+      syncNow();
+    };
+
     const onEditorUpdate = ({
       transaction,
     }: {
@@ -103,7 +123,7 @@ export default function HaimProseLineNumberGutter({
       sync();
     };
 
-    sync();
+    syncNow();
     editor.on('update', onEditorUpdate);
 
     const scrollEl = scrollRef.current;
@@ -118,6 +138,7 @@ export default function HaimProseLineNumberGutter({
     window.addEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, sync);
     return () => {
       cancelAnimationFrame(raf);
+      if (debounceTimer != null) clearTimeout(debounceTimer);
       editor.off('update', onEditorUpdate);
       ro.disconnect();
       window.removeEventListener('resize', sync);

@@ -20,11 +20,17 @@ import QuizSettingsSection from '@/components/settings/QuizSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
 import SettingsPageTocDock from '@/components/settings/SettingsPageTocDock';
 import {
+  SettingsPagePortraitSearchBar,
+  SettingsPagePortraitTocButton,
+} from '@/components/settings/SettingsPagePortraitChrome';
+import {
   SettingsCollapsibleContainer,
   SettingsCollapsibleContent,
   SettingsCollapsibleHeading,
 } from '@/components/settings/SettingsCollapsible';
+import { useViewportPortrait } from '@/hooks/useViewportPortrait';
 import { X } from 'lucide-react';
+
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import {
   loadWikiImageCacheMode,
@@ -320,6 +326,8 @@ export default function SettingsPage({
   const [imgbbConnOpen, setImgbbConnOpen] = useState(true);
   const [groupOpen, setGroupOpen] = useState(() => createDefaultSettingsGroupOpenState(true));
   const scrollContainerRef = useRef(null);
+  const isPortraitViewport = useViewportPortrait();
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   const desktopApp = isDesktopApp();
@@ -697,13 +705,25 @@ export default function SettingsPage({
             <IconSettings /> 설정 및 암호화
           </h2>
         </div>
-        <button
-          type="button"
-          onClick={() => onRequestClose?.(buildCredsForSave())}
-          className="text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded transition"
-        >
-          <X size={16} />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {isPortraitViewport ? (
+            <SettingsPagePortraitTocButton
+              groups={visibleSettingsGroups}
+              activeSectionId={activeSettingsSectionId}
+              onNavigate={navigateSettingsSection}
+              query={settingsSearchQuery}
+              onQueryChange={setSettingsSearchQuery}
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onRequestClose?.(buildCredsForSave())}
+            aria-label="닫기"
+            className="text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded transition dark:hover:bg-odp-bgSoft dark:hover:text-odp-fg"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1">
@@ -1921,7 +1941,7 @@ export default function SettingsPage({
               <>
                 {advancedSearchStatus.contentSearchMode === 'live'
                   ? '검색 격리(COOP/COEP)가 없어 Lucivy 역색인은 쓸 수 없습니다. Spotlight는 볼트 파일을 직접 읽어 본문을 검색합니다(느릴 수 있음).'
-                  : '웹에서는 검색 엔진 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하거나 SharedArrayBuffer를 지원하는 환경에서 다시 시도하세요. 파일명·바로가기는 계속 검색됩니다. Tauri 앱은 네이티브 역색인을 사용합니다.'}
+                  : '웹에서는 검색 엔진 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하거나 SharedArrayBuffer를 지원하는 환경에서 다시 시도하세요. 파일명·바로가기는 계속 검색됩니다. Tauri 앱(Android 포함)은 네이티브 역색인을 사용합니다.'}
               </>
             ) : advancedSearchStatus.hasIndex ||
               advancedSearchStatus.fileCount > 0 ||
@@ -2590,14 +2610,24 @@ export default function SettingsPage({
           </div>
         </div>
 
-        {!isMobileLayout ? (
+        {!isPortraitViewport ? (
           <SettingsPageTocDock
             groups={visibleSettingsGroups}
             activeSectionId={activeSettingsSectionId}
             onNavigate={navigateSettingsSection}
+            query={settingsSearchQuery}
+            onQueryChange={setSettingsSearchQuery}
           />
         ) : null}
       </div>
+      {isPortraitViewport ? (
+        <SettingsPagePortraitSearchBar
+          groups={visibleSettingsGroups}
+          onNavigate={navigateSettingsSection}
+          query={settingsSearchQuery}
+          onQueryChange={setSettingsSearchQuery}
+        />
+      ) : null}
     </div>
   );
 }

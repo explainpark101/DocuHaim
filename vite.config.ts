@@ -720,6 +720,9 @@ function manualChunks(id: string): string | undefined {
   ) {
     return 'vendor-motion';
   }
+  if (normalizedId.includes('/node_modules/recharts/')) {
+    return 'vendor-recharts';
+  }
   if (normalizedId.includes('/node_modules/lucide-react/')) {
     return 'vendor-lucide';
   }

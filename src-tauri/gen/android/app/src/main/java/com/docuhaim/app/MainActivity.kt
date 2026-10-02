@@ -112,7 +112,10 @@ class MainActivity : TauriActivity() {
 
   fun setSystemStatusBarVisible(visible: Boolean) {
     runOnMainSync {
-      WindowCompat.setDecorFitsSystemWindows(window, false)
+      // Status-bar mode: let the system reserve the inset so WebView content
+      // starts below the clock/battery (empty band — no app UI overlap).
+      // Fullscreen: edge-to-edge immersive under the status bar.
+      WindowCompat.setDecorFitsSystemWindows(window, visible)
       val controller = WindowCompat.getInsetsController(window, window.decorView)
       controller.systemBarsBehavior =
         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
