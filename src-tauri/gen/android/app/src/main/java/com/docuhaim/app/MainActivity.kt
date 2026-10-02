@@ -1,6 +1,8 @@
 package com.docuhaim.app
 
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -139,22 +141,79 @@ class MainActivity : TauriActivity() {
     return if (abis != null && abis.isNotEmpty()) abis[0] else "arm64-v8a"
   }
 
+  /**
+   * Install / update our own APK via PackageInstaller (preferred) with FileProvider fallback.
+   * setAppPackageName(packageName) marks the session as an update of this app so the
+   * system does not treat it as a conflicting foreign package when signatures match.
+   */
   fun installApk(absolutePath: String): Boolean {
     return runOnMainSyncResult {
-      val file = File(absolutePath)
-      if (!file.isFile) return@runOnMainSyncResult false
-      val uri = FileProvider.getUriForFile(
-        this,
-        "${packageName}.fileprovider",
-        file,
-      )
-      val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, "application/vnd.android.package-archive")
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      val apk = File(absolutePath)
+      if (!apk.isFile || apk.length() < 1024L) return@runOnMainSyncResult false
+      try {
+        installApkWithPackageInstaller(apk)
+        true
+      } catch (error: Throwable) {
+        android.util.Log.w("DocuHaim", "PackageInstaller failed, falling back to VIEW intent", error)
+        installApkWithViewIntent(apk)
+      }
+    }
+  }
+
+  private fun installApkWithPackageInstaller(apk: File) {
+    val installer = packageManager.packageInstaller
+    val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+    // Same applicationId → update path (requires matching signing certificate).
+    params.setAppPackageName(packageName)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
+    }
+    val sessionId = installer.createSession(params)
+    val session = installer.openSession(sessionId)
+    try {
+      apk.inputStream().use { input ->
+        session.openWrite("docuhaim-update.apk", 0, apk.length()).use { output ->
+          input.copyTo(output)
+          session.fsync(output)
+        }
+      }
+      val callback = Intent(this, MainActivity::class.java).apply {
+        action = Intent.ACTION_MAIN
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
-      startActivity(intent)
-      true
+      val pendingFlags =
+        PendingIntent.FLAG_UPDATE_CURRENT or
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PendingIntent.FLAG_MUTABLE
+          } else {
+            0
+          }
+      val pending = PendingIntent.getActivity(this, sessionId, callback, pendingFlags)
+      session.commit(pending.intentSender)
+    } catch (error: Throwable) {
+      session.abandon()
+      throw error
+    } finally {
+      session.close()
     }
+  }
+
+  private fun installApkWithViewIntent(apk: File): Boolean {
+    val uri = FileProvider.getUriForFile(
+      this,
+      "${packageName}.fileprovider",
+      apk,
+    )
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+      setDataAndType(uri, "application/vnd.android.package-archive")
+      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+      }
+      putExtra(Intent.EXTRA_RETURN_RESULT, true)
+    }
+    startActivity(intent)
+    return true
   }
 }

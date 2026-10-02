@@ -230,7 +230,8 @@ jobs:
       - name: Generate Tauri icons
         run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
 
-      # Debug-signed APKs for sideload (no release keystore yet).
+      # Debug buildType APKs signed with committed sideload keystore
+      # (src-tauri/gen/android/keystore/) so in-app updates share one cert.
       # split-per-abi → one APK per ABI; second build → universal (all ABIs).
       - name: Build Android APKs (per-ABI + universal, debug)
         run: |

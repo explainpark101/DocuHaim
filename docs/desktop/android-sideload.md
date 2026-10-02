@@ -11,7 +11,7 @@ DocuHaim Android is a **Tauri v2** shell around the same SPA. It is **not** dist
 
 Android APKs ship on the **same** `vX.Y.Z` release as desktop. Do **not** publish separate `android-v*` tags — GitHub `/releases/latest` would point at them and break desktop auto-update (`latest.json` 404).
 
-CI builds **debug-signed** APKs (sideload without a release keystore):
+CI builds **debug buildType** APKs signed with the **shared sideload keystore** (not each runner’s random `debug.keystore`):
 
 1. `tauri android build --debug --apk --split-per-abi` → one APK per ABI  
 2. `tauri android build --debug --apk` → universal APK (all ABIs)
@@ -62,7 +62,7 @@ Match the printed ABI to the table above. If unsure, use **universal**.
 - **Local Haim** — default vault under app data (`LocalHaim`). You can also pick another folder via the system dialog when available.
 - **`.md` / `.markdown` file association** — open markdown from Files / other apps with DocuHaim (vault note if under the Local root, otherwise session workspace).
 - **Advanced Search** — filename / path / commands only; Lucivy inverted index is disabled.
-- **App version + APK auto-update** — Settings → 앱 shows the native package version (`getVersion`). “최신 APK 확인” polls GitHub Releases for `DocuHaim_<ver>_<abi>-debug.apk` (falls back to universal), downloads into app cache, and opens the system installer (`REQUEST_INSTALL_PACKAGES` / unknown-apps allow).
+- **App version + APK auto-update** — Settings → 앱 shows the native package version (`getVersion`). “최신 APK 확인” polls GitHub Releases for `DocuHaim_<ver>_<abi>-debug.apk` (falls back to universal), downloads into app cache, and installs via `PackageInstaller` (same `applicationId` + shared sideload signature). Unknown-apps / install permission may still be required once.
 - **System status bar** — Settings toggle (or Advanced Search) to show/hide the Android status bar over the fullscreen WebView.
 - **share_target** — existing PWA share intake is assumed to keep working; this shell does not reimplement it.
 
@@ -88,7 +88,19 @@ Project files: `src-tauri/gen/android/`. Intent filters come from [`src-tauri/ta
 
 ## Signing
 
-GitHub Release Android APKs are **debug-signed** (same idea as local `tauri:android:build:debug`). Plain `tauri:android:build` (release, no keystore) can produce an unsigned APK that Android rejects (“패키지가 잘못되어…”). For private release signing later, configure Gradle `signingConfig` / CI secrets and switch the workflow off `--debug`.
+GitHub Release Android APKs and local `tauri:android:build:debug` share a **committed sideload keystore** ([`src-tauri/gen/android/keystore/`](../../src-tauri/gen/android/keystore/README.md)):
+
+- Alias `docuhaim` / PKCS12 `docuhaim-sideload.p12`
+- Wired in `app/build.gradle.kts` `signingConfigs.sideload` for **debug and release** until a private Play key exists
+- Optional override via gitignored `src-tauri/gen/android/keystore.properties`
+
+This avoids `INSTALL_FAILED_UPDATE_INCOMPATIBLE` (Korean UI often says the package name conflicts) when the in-app updater downloads a newer APK. Ephemeral `~/.android/debug.keystore` on CI runners previously signed every release differently.
+
+**Migration:** if an older install used a random debug key, uninstall DocuHaim once, then install a build signed with the sideload keystore. Vault data under app-private storage is wiped by uninstall — export notes first if needed.
+
+Plain `tauri:android:build` without this signing config used to produce unsigned APKs Android rejects (“패키지가 잘못되어…”). The sideload signingConfig now covers release buildType as well.
+
+For a private release key later: set `keystore.properties` (or CI secrets) and point `signingConfigs` at that file; see [Tauri Android signing](https://v2.tauri.app/distribute/sign/android/).
 
 ## Out of scope
 

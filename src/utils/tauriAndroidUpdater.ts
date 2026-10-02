@@ -195,10 +195,26 @@ export async function installPendingTauriAndroidUpdate(): Promise<void> {
   }
   const { url, name } = pendingApk;
   pendingApk = null;
-  await invoke<string>('android_download_and_install_apk', {
-    url,
-    fileName: name,
-  });
+  try {
+    await invoke<string>('android_download_and_install_apk', {
+      url,
+      fileName: name,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error ?? '');
+    const lower = message.toLowerCase();
+    if (
+      lower.includes('incompatible') ||
+      lower.includes('signature') ||
+      lower.includes('conflict') ||
+      lower.includes('패키지')
+    ) {
+      throw new Error(
+        '기존 앱과 서명(패키지)이 달라 업데이트할 수 없습니다. DocuHaim을 삭제한 뒤 GitHub Release의 최신 APK를 다시 설치해 주세요. (이후부터는 같은 sideload 서명으로 자동 업데이트가 됩니다.)',
+      );
+    }
+    throw error instanceof Error ? error : new Error(message || 'Android update install failed');
+  }
 }
 
 const ANDROID_UPDATE_POLL_MS = 5 * 60 * 1000;

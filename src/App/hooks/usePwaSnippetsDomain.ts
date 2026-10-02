@@ -282,9 +282,13 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
         setIsApplyingPwaUpdate(true);
         await installPendingTauriAndroidUpdate();
         setIsApplyingPwaUpdate(false);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Tauri Android update apply failed:', error);
         setIsApplyingPwaUpdate(false);
+        setAppUpdateCheckError(
+          error?.message || String(error) || 'Android update install failed',
+        );
+        setShowAppUpdateConfirmModal(true);
       }
       return;
     }
@@ -317,6 +321,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
     setShowAppUpdateConfirmModal,
     setHidePwaUpdateToast,
     setIsApplyingPwaUpdate,
+    setAppUpdateCheckError,
   ]);
 
   const loadSnippetConfigFromS3 = useCallback(

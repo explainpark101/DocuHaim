@@ -2,7 +2,7 @@ Unified release (macOS DMG / Windows NSIS / Android APK) with auto-update manife
 
 - macOS: universal DMG
 - Windows: NSIS installer (`.exe`)
-- Android: debug-signed sideload APKs — **prefer the matching ABI**; `universal` includes all ABIs (larger)
+- Android: sideload APKs signed with the shared DocuHaim sideload keystore — **prefer the matching ABI**; `universal` includes all ABIs (larger)
 - `latest.json` + signatures for the Tauri updater (when `TAURI_SIGNING_PRIVATE_KEY` is configured)
 
 Install / update endpoint: https://github.com/explainpark101/DocuHaim/releases/latest
@@ -42,4 +42,6 @@ Example outputs:
 If unsure, use the **universal** APK.
 
 Sideload: allow “Install unknown apps”, then open the `.apk`.  
+If an older install was signed with a different debug key, uninstall once before installing this build (otherwise Android reports a package conflict).  
+In-app updates require the same sideload certificate — see android-sideload.md.  
 Docs: [android-sideload.md](https://github.com/explainpark101/DocuHaim/blob/main/docs/desktop/android-sideload.md) · [code-signing.md](https://github.com/explainpark101/DocuHaim/blob/main/docs/desktop/code-signing.md)
