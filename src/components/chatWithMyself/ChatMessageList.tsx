@@ -1676,14 +1676,21 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
 
   // Keep stick-to-bottom when content height changes (images / OG).
   // Skip while silent fill is prepending — virtua shift owns scroll then.
+  // Re-check distance to bottom so off-screen OG resizes cannot yank mid-list.
   useEffect(() => {
     if (highlightId || editingMessageId) return undefined;
     const host = listHostRef.current;
     if (!host || typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(() => {
       if (fillingRef.current) return;
-      if (!stickBottomRef.current || !listRef.current) return;
-      listRef.current.scrollToIndex(Math.max(0, rows.length - 1), {
+      const list = listRef.current;
+      if (!list || !stickBottomRef.current) return;
+      const distBottom = list.scrollSize - list.scrollOffset - list.viewportSize;
+      if (distBottom >= STICK_BOTTOM_PX * 2) {
+        stickBottomRef.current = false;
+        return;
+      }
+      list.scrollToIndex(Math.max(0, rows.length - 1), {
         align: 'end',
       });
     });
