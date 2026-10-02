@@ -60,10 +60,20 @@ export async function applyAndroidSystemStatusBarVisible(
   );
   document.documentElement.classList.toggle('android-chrome-fullscreen', !visible);
   document.documentElement.classList.toggle('android-chrome-status-bar', visible);
+  // Prefer native decorFits inset (no CSS pad). If JNI fails, fall back to CSS pad.
+  document.documentElement.style.removeProperty('--android-safe-top');
   try {
     await invoke('android_set_system_status_bar_visible', { visible });
   } catch (error) {
     console.warn('android_set_system_status_bar_visible failed:', error);
+    if (visible) {
+      document.documentElement.style.setProperty(
+        '--android-safe-top',
+        'max(env(safe-area-inset-top, 0px), var(--android-status-bar-fallback, 28px))',
+      );
+    } else {
+      document.documentElement.style.setProperty('--android-safe-top', '0px');
+    }
   }
 }
 

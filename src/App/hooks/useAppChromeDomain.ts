@@ -138,11 +138,19 @@ export function useAppChromeDomain() {
     sessionWorkspaces,
   };
 
-  // Tauri Android: never build/load lucivy inverted index (filename/path search only).
+  // Previous Android builds force-disabled Lucivy and persisted that off.
+  // Native as_index works on Android — restore default ON once, then respect user choice.
   useEffect(() => {
     if (!isTauriAndroid()) return;
-    if (advancedSearchEngine.isEnabled()) {
-      advancedSearchEngine.setEnabled(false);
+    const unlockKey = 's3haim_android_as_index_unlocked_v1';
+    try {
+      if (window.localStorage.getItem(unlockKey) === '1') return;
+      if (!advancedSearchEngine.isEnabled()) {
+        advancedSearchEngine.setEnabled(true);
+      }
+      window.localStorage.setItem(unlockKey, '1');
+    } catch {
+      // ignore
     }
   }, []);
 

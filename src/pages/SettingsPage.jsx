@@ -20,11 +20,17 @@ import QuizSettingsSection from '@/components/settings/QuizSettings';
 import SettingsPageGroup from '@/components/settings/SettingsPageGroup';
 import SettingsPageTocDock from '@/components/settings/SettingsPageTocDock';
 import {
+  SettingsPagePortraitSearchBar,
+  SettingsPagePortraitTocButton,
+} from '@/components/settings/SettingsPagePortraitChrome';
+import {
   SettingsCollapsibleContainer,
   SettingsCollapsibleContent,
   SettingsCollapsibleHeading,
 } from '@/components/settings/SettingsCollapsible';
+import { useViewportPortrait } from '@/hooks/useViewportPortrait';
 import { X } from 'lucide-react';
+
 import { isWebAuthnAvailableForSave } from '@/utils/webauthn';
 import {
   loadWikiImageCacheMode,
@@ -320,6 +326,8 @@ export default function SettingsPage({
   const [imgbbConnOpen, setImgbbConnOpen] = useState(true);
   const [groupOpen, setGroupOpen] = useState(() => createDefaultSettingsGroupOpenState(true));
   const scrollContainerRef = useRef(null);
+  const isPortraitViewport = useViewportPortrait();
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   const desktopApp = isDesktopApp();
@@ -697,13 +705,25 @@ export default function SettingsPage({
             <IconSettings /> 설정 및 암호화
           </h2>
         </div>
-        <button
-          type="button"
-          onClick={() => onRequestClose?.(buildCredsForSave())}
-          className="text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded transition"
-        >
-          <X size={16} />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {isPortraitViewport ? (
+            <SettingsPagePortraitTocButton
+              groups={visibleSettingsGroups}
+              activeSectionId={activeSettingsSectionId}
+              onNavigate={navigateSettingsSection}
+              query={settingsSearchQuery}
+              onQueryChange={setSettingsSearchQuery}
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onRequestClose?.(buildCredsForSave())}
+            aria-label="닫기"
+            className="text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-100 p-2 rounded transition dark:hover:bg-odp-bgSoft dark:hover:text-odp-fg"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1">
@@ -2590,14 +2610,24 @@ export default function SettingsPage({
           </div>
         </div>
 
-        {!isMobileLayout ? (
+        {!isPortraitViewport ? (
           <SettingsPageTocDock
             groups={visibleSettingsGroups}
             activeSectionId={activeSettingsSectionId}
             onNavigate={navigateSettingsSection}
+            query={settingsSearchQuery}
+            onQueryChange={setSettingsSearchQuery}
           />
         ) : null}
       </div>
+      {isPortraitViewport ? (
+        <SettingsPagePortraitSearchBar
+          groups={visibleSettingsGroups}
+          onNavigate={navigateSettingsSection}
+          query={settingsSearchQuery}
+          onQueryChange={setSettingsSearchQuery}
+        />
+      ) : null}
     </div>
   );
 }

@@ -21,6 +21,9 @@ import {
   STORAGE_MODE_IDB,
 } from '@/utils/storageSettings';
 import StorageExtensionFilesModal from '@/components/settings/StorageExtensionFilesModal';
+import StorageUsageChart, {
+  type StorageUsageChartDatum,
+} from '@/components/settings/StorageUsageChart';
 import { advancedSearchEngine } from '@/utils/advancedSearch';
 import AdvancedSearchBuildLog from '@/components/advancedSearch/AdvancedSearchBuildLog';
 import RebuildCheckpointChoiceModal from '@/components/advancedSearch/RebuildCheckpointChoiceModal';
@@ -141,11 +144,45 @@ function storageLabel(mode: string | undefined): string {
   return '저장소';
 }
 
-function GraphPlaceholder() {
+function AnalysisSection({
+  title,
+  open,
+  onToggle,
+  chartData,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  chartData: StorageUsageChartDatum[];
+  children: ReactNode;
+}) {
   return (
-    <div className="flex h-40 min-h-40 w-full items-center justify-center rounded-md border border-dashed border-gray-300 bg-white text-xs text-gray-500 dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:text-odp-muted md:h-full md:min-h-48">
-      그래프 준비중
-    </div>
+    <SettingsCollapsibleContainer
+      contentKey={title}
+      open={open}
+      onOpenChange={(next) => {
+        if (next !== open) onToggle();
+      }}
+      className="rounded-md border border-gray-200 bg-white dark:border-odp-borderStrong dark:bg-odp-bgSoft"
+    >
+      <SettingsCollapsibleHeading
+        titleAs="span"
+        chevronSize={14}
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:text-odp-fgStrong dark:hover:bg-odp-focusBg/40"
+        titleClassName=""
+      >
+        {title}
+      </SettingsCollapsibleHeading>
+      <SettingsCollapsibleContent>
+        <div className="grid grid-cols-1 gap-3 border-t border-gray-200 p-3 dark:border-odp-borderStrong md:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)] md:items-stretch">
+          <div className="min-h-44 min-w-0 md:min-h-52">
+            <StorageUsageChart data={chartData} />
+          </div>
+          <div className="min-w-0">{children}</div>
+        </div>
+      </SettingsCollapsibleContent>
+    </SettingsCollapsibleContainer>
   );
 }
 
@@ -321,46 +358,6 @@ function visibleFolderRows(
   return visible;
 }
 
-function AnalysisSection({
-  title,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <SettingsCollapsibleContainer
-      contentKey={title}
-      open={open}
-      onOpenChange={(next) => {
-        if (next !== open) onToggle();
-      }}
-      className="rounded-md border border-gray-200 bg-white dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-    >
-      <SettingsCollapsibleHeading
-        titleAs="span"
-        chevronSize={14}
-        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:text-odp-fgStrong dark:hover:bg-odp-focusBg/40"
-        titleClassName=""
-      >
-        {title}
-      </SettingsCollapsibleHeading>
-      <SettingsCollapsibleContent>
-        <div className="grid grid-cols-1 gap-3 border-t border-gray-200 p-3 dark:border-odp-borderStrong md:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)] md:items-stretch">
-          <div className="min-w-0">
-            <GraphPlaceholder />
-          </div>
-          <div className="min-w-0">{children}</div>
-        </div>
-      </SettingsCollapsibleContent>
-    </SettingsCollapsibleContainer>
-  );
-}
-
 export default function StorageUsageAnalysis({
   storageMode = STORAGE_MODE_S3,
   onScanTree,
@@ -507,6 +504,29 @@ export default function StorageUsageAnalysis({
 
   const folderRows = visibleFolderRows(analysis?.folders ?? [], expandedFolderPaths);
 
+  const summaryChartData: StorageUsageChartDatum[] = summary
+    ? [
+        {
+          name: '노트·미디어 등',
+          value: Math.max(0, summary.totalSize - summary.indexSize),
+        },
+        {
+          name: '역색인 (.advanced-search)',
+          value: Math.max(0, summary.indexSize),
+        },
+      ].filter((d) => d.value > 0)
+    : [];
+
+  const extensionChartData: StorageUsageChartDatum[] = (analysis?.byExtension ?? [])
+    .filter((row) => row.size > 0)
+    .slice(0, 12)
+    .map((row) => ({ name: row.label, value: row.size }));
+
+  const folderChartData: StorageUsageChartDatum[] = (analysis?.folders ?? [])
+    .filter((row) => row.depth === 0 && row.size > 0)
+    .slice(0, 12)
+    .map((row) => ({ name: row.name, value: row.size }));
+
   return (
     <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-odp-borderStrong dark:bg-odp-surface">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -527,7 +547,7 @@ export default function StorageUsageAnalysis({
               !indexStatus.enabled
                 ? '설정에서 역색인을 켠 뒤 사용할 수 있습니다'
                 : !indexStatus.isolationReady
-                  ? '웹에서는 검색 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하세요'
+                  ? '웹에서는 검색 격리(COOP/COEP)가 필요합니다. 페이지를 새로고침하세요. Tauri(Android 포함)는 네이티브 역색인을 사용합니다.'
                   : '역색인을 백그라운드로 생성합니다'
             }
           >
@@ -620,6 +640,7 @@ export default function StorageUsageAnalysis({
           title="용량 사용량"
           open={openSections.summary}
           onToggle={() => toggleSection('summary')}
+          chartData={summaryChartData}
         >
           <DataTable
             columns={[
@@ -635,6 +656,7 @@ export default function StorageUsageAnalysis({
           title="파일 형식별 용량 사용량"
           open={openSections.extension}
           onToggle={() => toggleSection('extension')}
+          chartData={extensionChartData}
         >
           <DataTable
             columns={[
@@ -660,6 +682,7 @@ export default function StorageUsageAnalysis({
           title="폴더별 용량 (Tree Size)"
           open={openSections.folder}
           onToggle={() => toggleSection('folder')}
+          chartData={folderChartData}
         >
           <DataTable
             maxHeightClass="max-h-80"

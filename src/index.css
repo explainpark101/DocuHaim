@@ -65,11 +65,11 @@
 
   /*
    * Android WebView chrome modes (status-bar vs immersive fullscreen).
-   * - Use dvh-capped shell already from .desktop-app
-   * - Pad with a CSS var so status-bar mode clears the system bar even when
-   *   env(safe-area-inset-top) is 0 in some WebViews (common edge-to-edge quirk)
-   * - Fullscreen zeros the inset so fixed overlays do not leave an empty top gap
-   * - box-sizing:border-box keeps height:100% + padding from overflowing (css-layout)
+   * - Shell is dvh-capped via .desktop-app
+   * - #root is a flex column: padding-top reserves empty space under the
+   *   system status bar; child must use height:100% (not 100dvh) or the
+   *   app status bar is clipped below the viewport (css-layout)
+   * - box-sizing:border-box keeps height:100% + padding from overflowing
    */
   html.android-app {
     --android-status-bar-fallback: 28px;
@@ -79,10 +79,13 @@
 
   html.android-app.android-status-bar-visible,
   html.android-app.android-chrome-status-bar {
-    --android-safe-top: max(
-      env(safe-area-inset-top, 0px),
-      var(--android-status-bar-fallback)
-    );
+    /*
+     * Native MainActivity.setSystemStatusBarVisible(true) uses
+     * setDecorFitsSystemWindows(true) so the WebView is already laid out
+     * below the system status bar. Do not add a second CSS pad (double gap).
+     * --app-safe-top stays 0 for fixed overlays inside the inset WebView.
+     */
+    --android-safe-top: 0px;
   }
 
   html.android-app.android-status-bar-hidden,
@@ -91,10 +94,28 @@
   }
 
   html.android-app #root {
+    display: flex;
+    flex-direction: column;
     box-sizing: border-box;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    /* Empty band under the system status bar — keep clear of app chrome. */
     padding-top: var(--android-safe-top);
-    /* Avoid scroll chaining into the WebView chrome (css-layout). */
+    overflow: hidden;
     overscroll-behavior: none;
+    /* Match shell so the reserved top band stays a blank gap, not content bleed. */
+    background-color: #f9fafb;
+  }
+
+  html.dark.android-app #root {
+    background-color: #0b1220;
+  }
+
+  html.android-app #root > * {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
   }
 
   html.android-app [class*='backdrop-blur'],

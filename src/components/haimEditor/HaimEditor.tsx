@@ -177,6 +177,11 @@ export default function HaimEditor({
   onOpenViewPath,
 }: NoteEditorProps) {
   const metaPrefixRef = useRef('');
+  /**
+   * Gate expensive HaimSourceLine mapping: only dual + scroll sync.
+   * Ref so createHaimExtensions stays stable across mode toggles.
+   */
+  const sourceLineEnabledRef = useRef(false);
   const cmViewRef = useRef<CmEditorView | null>(null);
   const wysiwygScrollRef = useRef<HTMLDivElement | null>(null);
   const valueRef = useRef(value);
@@ -250,6 +255,9 @@ export default function HaimEditor({
     effectiveMode === HAIM_VIEW_MODE_WYSIWYG ||
     effectiveMode === HAIM_VIEW_MODE_DOUBLE;
   const doublePane = showSource && showWysiwyg;
+  sourceLineEnabledRef.current = Boolean(
+    doublePane && scrollSyncEnabled && !previewOnly && isSurfaceLive,
+  );
   /** Narrow / mobile: stack source above WYSIWYG instead of hiding double mode. */
   const stackDouble = Boolean(doublePane && isMobileLayout);
 
@@ -310,6 +318,7 @@ export default function HaimEditor({
         placeholder: previewOnly ? '' : '내용을 입력하세요…',
         profile: 'note',
         getMetaPrefix: () => metaPrefixRef.current,
+        isSourceLineEnabled: () => sourceLineEnabledRef.current,
         typographyRules: resolvedTypography,
       }),
     // Typography updates apply via setHaimTypographyRules (no editor remount).
@@ -368,6 +377,16 @@ export default function HaimEditor({
     if (!editor) return;
     editor.setEditable(!previewOnly && isSurfaceLive);
   }, [editor, previewOnly, isSurfaceLive]);
+
+  // Rebuild / clear [data-line] when dual scroll-sync gate changes.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    try {
+      editor.commands.updateDecorations('haimSourceLine');
+    } catch {
+      // ignore if command unavailable
+    }
+  }, [editor, doublePane, scrollSyncEnabled, previewOnly, isSurfaceLive]);
 
   const emitVault = useCallback((md: string) => {
     lastEmittedMdRef.current = md;

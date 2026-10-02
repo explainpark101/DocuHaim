@@ -68,6 +68,11 @@ export type CreateHaimExtensionsOptions = {
   profile?: HaimExtensionProfile;
   /** Leading vault meta prefix for [data-line] vault line offsets. */
   getMetaPrefix?: () => string;
+  /**
+   * When false, HaimSourceLine skips expensive markdown mapping.
+   * Prefer a ref-backed getter (dual + scroll-sync gated from HaimEditor).
+   */
+  isSourceLineEnabled?: () => boolean;
   /** Typography input-rule enables (live-updatable via setHaimTypographyRules). */
   typographyRules?: HaimTypographyRules;
 };
@@ -84,6 +89,7 @@ export function createHaimExtensions(
   const profile = options?.profile ?? 'note';
   const isNote = profile === 'note';
   const getMetaPrefix = options?.getMetaPrefix ?? (() => '');
+  const isSourceLineEnabled = options?.isSourceLineEnabled ?? (() => true);
   const typographyRules = options?.typographyRules ?? HAIM_TYPOGRAPHY_DEFAULTS;
 
   const starterKit = isNote
@@ -113,7 +119,10 @@ export function createHaimExtensions(
     starterKit,
     HaimParagraph,
     HaimMarkdown,
-    HaimSourceLine.configure({ getMetaPrefix }),
+    HaimSourceLine.configure({
+      getMetaPrefix,
+      isEnabled: isSourceLineEnabled,
+    }),
     HaimLink,
     Image.extend({
       parseHTML() {
