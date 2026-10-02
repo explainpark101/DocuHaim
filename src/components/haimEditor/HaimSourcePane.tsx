@@ -37,6 +37,7 @@ import {
   makeToggleTaskCheckboxHandler,
 } from '@/utils/editorMarkdownStyle';
 import { INSERT_LINE_ABOVE_KEYMAP } from '@/utils/cmInsertLineAbove';
+import { MARKDOWN_FORMAT_KEYMAP } from '@/utils/cmMarkdownFormatKeymap';
 import {
   CODE_FENCE_INDENT_KEYMAP,
   haimCodeFenceIndentUnitExtension,
@@ -127,6 +128,8 @@ export default function HaimSourcePane({
       // Fence-aware Tab first (Prec.high); falls through to indentWithTab outside fences.
       CODE_FENCE_INDENT_KEYMAP,
       INSERT_LINE_ABOVE_KEYMAP,
+      // Bold / italic / underline / headings / lists (parity with MarkdownEditor).
+      MARKDOWN_FORMAT_KEYMAP,
       // Above defaultKeymap so Mod-d wins over macOS Ctrl-d deleteCharForward.
       Prec.high(
         keymap.of([

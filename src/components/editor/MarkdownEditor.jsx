@@ -197,23 +197,11 @@ import {
 } from '@/utils/editorScrollMemory';
 import { usePerFileEditorUndoHistory } from '@/hooks/usePerFileEditorUndoHistory';
 import {
-  toggleBoldForSelection,
-  toggleHeadingForSelection,
-  toggleItalicForSelection,
   toggleListTypeBetweenUlAndOl,
-  toggleOrderedListForSelection,
-  toggleStrikeForSelection,
-  toggleSubForSelection,
-  toggleSupForSelection,
   toggleTaskCheckboxBetweenChecked,
-  toggleUnderlineForSelection,
-  toggleUnorderedListForSelection,
-  wrapSelectionWithInlineCode,
 } from '@/utils/editorMarkdownStyle';
-import {
-  handleMdEditorSelectionWrapKeydown,
-  wrapSelectionWithPairIfTriggerKey,
-} from '@/utils/mdEditorSelectionWrap';
+import { handleMdEditorSelectionWrapKeydown } from '@/utils/mdEditorSelectionWrap';
+import { MARKDOWN_FORMAT_KEYBINDINGS } from '@/utils/cmMarkdownFormatKeymap';
 
 const MD_EDITOR_TOC_WIDTH_KEY = 's3haim_md_editor_toc_width';
 const MD_EDITOR_TOC_DEFAULT_WIDTH = 360;
@@ -417,69 +405,7 @@ config({
           return true;
         },
       },
-      {
-        key: 'Ctrl-b',
-        mac: 'Cmd-b',
-        preventDefault: true,
-        run: toggleBoldForSelection,
-      },
-      {
-        key: 'Ctrl-i',
-        mac: 'Cmd-i',
-        preventDefault: true,
-        run: toggleItalicForSelection,
-      },
-      {
-        key: 'Ctrl-u',
-        mac: 'Cmd-u',
-        preventDefault: true,
-        run: toggleUnderlineForSelection,
-        shift: toggleUnorderedListForSelection,
-      },
-      {
-        key: 'Ctrl-o',
-        mac: 'Cmd-o',
-        preventDefault: true,
-        run: toggleOrderedListForSelection,
-      },
-      {
-        key: 'Shift-Ctrl-s',
-        mac: 'Shift-Cmd-s',
-        preventDefault: true,
-        run: toggleStrikeForSelection,
-      },
-      {
-        key: 'Ctrl-ArrowUp',
-        mac: 'Cmd-ArrowUp',
-        preventDefault: true,
-        run: toggleSupForSelection,
-      },
-      {
-        key: 'Ctrl-ArrowDown',
-        mac: 'Cmd-ArrowDown',
-        preventDefault: true,
-        run: toggleSubForSelection,
-      },
-      ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((level) => ({
-        key: `Ctrl-${level}`,
-        mac: `Cmd-${level}`,
-        preventDefault: true,
-        run: (view) => toggleHeadingForSelection(view, level),
-      })),
-      {
-        key: 'Ctrl-0',
-        mac: 'Cmd-0',
-        preventDefault: true,
-        run: (view) => toggleHeadingForSelection(view, 10),
-      },
-      {
-        any: (view, event) => {
-          if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === 'KeyC') {
-            return wrapSelectionWithInlineCode(view);
-          }
-          return wrapSelectionWithPairIfTriggerKey(view, event);
-        },
-      },
+      ...MARKDOWN_FORMAT_KEYBINDINGS,
       { key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
       { key: 'Mod-Alt-ArrowDown', run: addCursorBelow },
       ...baseKeyBindings,

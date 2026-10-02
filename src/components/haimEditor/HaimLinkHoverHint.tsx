@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/react';
 import { AnimatePresence, motion, type MotionStyle } from 'motion/react';
@@ -20,6 +20,8 @@ type AnchorRect = {
 
 type LinkTip = {
   href: string;
+  /** Anchor target attribute when the tip was shown (fallback `_blank`). */
+  target: string;
   label: string;
   anchor: AnchorRect;
 };
@@ -39,7 +41,41 @@ const PANEL_TRANSITION = {
 };
 
 function readHref(link: HTMLAnchorElement): string {
-  return String(link.getAttribute('href') || '').trim();
+  // Prefer attribute — `link.href` may rewrite custom schemes (e.g. docuhaim://).
+  return String(link.getAttribute('href') || link.href || '').trim();
+}
+
+function readTarget(link: HTMLAnchorElement): string {
+  return String(link.getAttribute('target') || link.target || '_blank').trim() || '_blank';
+}
+
+/**
+ * Prefer TipTap link mark attrs at the DOM node (same idea as Ctrl/Cmd+click),
+ * then fall back to the anchor attribute / property.
+ */
+function resolveLinkHref(editor: Editor, link: HTMLAnchorElement): string {
+  try {
+    const pos = editor.view.posAtDOM(link, 0);
+    if (typeof pos === 'number' && pos >= 0) {
+      const $pos = editor.state.doc.resolve(pos);
+      const mark = $pos
+        .marks()
+        .find((m) => m.type.name === 'link');
+      const fromMark = String(mark?.attrs?.href || '').trim();
+      if (fromMark) return fromMark;
+      // Also check marks that wrap this inline (inclusive link marks).
+      const after = Math.min(pos + 1, editor.state.doc.content.size);
+      const $after = editor.state.doc.resolve(after);
+      const markAfter = $after
+        .marks()
+        .find((m) => m.type.name === 'link');
+      const fromAfter = String(markAfter?.attrs?.href || '').trim();
+      if (fromAfter) return fromAfter;
+    }
+  } catch {
+    // DOM node may be detached; fall through.
+  }
+  return readHref(link);
 }
 
 function formatLinkLabel(href: string): string {
@@ -105,6 +141,8 @@ export default function HaimLinkHoverHint({
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkElRef = useRef<HTMLAnchorElement | null>(null);
+  /** True while pointer is on the floating card — ignore scroll-hide races. */
+  const cardHoveredRef = useRef(false);
 
   const clearOpenTimer = () => {
     if (openTimerRef.current != null) {
@@ -124,6 +162,7 @@ export default function HaimLinkHoverHint({
     clearOpenTimer();
     clearCloseTimer();
     linkElRef.current = null;
+    cardHoveredRef.current = false;
     setTip(null);
   };
 
@@ -134,8 +173,17 @@ export default function HaimLinkHoverHint({
     }, CLOSE_DELAY_MS);
   };
 
+  /** Open current tip (same path as Ctrl/Cmd+click). Prefer pointerdown so blur/scroll cannot unmount before click. */
+  const openCurrentTip = () => {
+    const current = tipRef.current;
+    if (!current?.href) return;
+    openHaimLinkHref(current.href, { target: current.target || '_blank' });
+    hide();
+  };
+
   const showFor = (link: HTMLAnchorElement) => {
-    const href = readHref(link);
+    if (!editor) return;
+    const href = resolveLinkHref(editor, link);
     if (!href) return;
     clearCloseTimer();
     clearOpenTimer();
@@ -144,6 +192,7 @@ export default function HaimLinkHoverHint({
       linkElRef.current = link;
       const next: LinkTip = {
         href,
+        target: readTarget(link),
         label: formatLinkLabel(href),
         anchor: readAnchor(link),
       };
@@ -186,6 +235,8 @@ export default function HaimLinkHoverHint({
 
     const onScroll = () => {
       if (!tipRef.current) return;
+      // Clicking 「열기」 can blur the editor and shift scroll; keep the card while hovered.
+      if (cardHoveredRef.current) return;
       hide();
     };
 
@@ -213,18 +264,20 @@ export default function HaimLinkHoverHint({
   }, [editor, enabled]);
 
   useEffect(() => {
-    if (!tip || !linkElRef.current) return;
+    if (!tip || !linkElRef.current || !editor) return;
 
     const syncRect = () => {
       const link = linkElRef.current;
       if (!link) return;
+      const href = resolveLinkHref(editor, link) || readHref(link);
       setTip((prev) =>
         prev
           ? {
               ...prev,
               anchor: readAnchor(link),
-              href: readHref(link) || prev.href,
-              label: formatLinkLabel(readHref(link) || prev.href),
+              href: href || prev.href,
+              target: readTarget(link) || prev.target,
+              label: formatLinkLabel(href || prev.href),
             }
           : prev,
       );
@@ -232,7 +285,7 @@ export default function HaimLinkHoverHint({
 
     window.addEventListener('resize', syncRect);
     return () => window.removeEventListener('resize', syncRect);
-  }, [tip]);
+  }, [tip, editor]);
 
   if (!enabled || typeof document === 'undefined') return null;
 
@@ -250,9 +303,11 @@ export default function HaimLinkHoverHint({
           className="fixed z-100001 flex max-w-[min(92vw,320px)] flex-col gap-1.5 rounded-md border border-gray-200 bg-white p-2 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface"
           style={panelStyle(tip.anchor)}
           onPointerEnter={() => {
+            cardHoveredRef.current = true;
             clearCloseTimer();
           }}
           onPointerLeave={() => {
+            cardHoveredRef.current = false;
             scheduleClose();
           }}
         >
@@ -265,13 +320,19 @@ export default function HaimLinkHoverHint({
               variant="primary"
               size="sm"
               className="px-2.5! py-1! text-xs"
-              onClick={(event: MouseEvent<HTMLButtonElement>) => {
+              onPointerDown={(event: ReactPointerEvent<HTMLButtonElement>) => {
+                // Open on pointerdown so editor blur/scroll cannot unmount before click.
+                if (event.button !== 0) return;
                 event.preventDefault();
                 event.stopPropagation();
-                const target =
-                  linkElRef.current?.getAttribute('target') || '_blank';
-                openHaimLinkHref(tip.href, { target });
-                hide();
+                openCurrentTip();
+              }}
+              onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                // Keyboard (Enter/Space). Pointer path already opened and cleared tip.
+                event.preventDefault();
+                event.stopPropagation();
+                if (!tipRef.current) return;
+                openCurrentTip();
               }}
             >
               <ExternalLink size={14} aria-hidden />
