@@ -24,6 +24,8 @@
     --workspace-titlebar-tab-h: 2.25rem;
     --app-sidebar-mobile-top: var(--desktop-titlebar-h);
     --traffic-light-box: 0px;
+    /* Overridden on Android chrome modes; elsewhere mirrors env(). */
+    --app-safe-top: env(safe-area-inset-top, 0px);
   }
 
   html.desktop-app:has(.desktop-titlebar__tab-container) {
@@ -62,19 +64,37 @@
   }
 
   /*
-   * Android WebView: backdrop-filter + sticky layers are a common stutter source.
-   * Prefer solid surfaces; keep safe-area padding when the system status bar is shown.
+   * Android WebView chrome modes (status-bar vs immersive fullscreen).
+   * - Use dvh-capped shell already from .desktop-app
+   * - Pad with a CSS var so status-bar mode clears the system bar even when
+   *   env(safe-area-inset-top) is 0 in some WebViews (common edge-to-edge quirk)
+   * - Fullscreen zeros the inset so fixed overlays do not leave an empty top gap
+   * - box-sizing:border-box keeps height:100% + padding from overflowing (css-layout)
    */
   html.android-app {
-    --android-safe-top: env(safe-area-inset-top, 0px);
+    --android-status-bar-fallback: 28px;
+    --android-safe-top: 0px;
+    --app-safe-top: var(--android-safe-top);
   }
 
-  html.android-app.android-status-bar-visible #root {
+  html.android-app.android-status-bar-visible,
+  html.android-app.android-chrome-status-bar {
+    --android-safe-top: max(
+      env(safe-area-inset-top, 0px),
+      var(--android-status-bar-fallback)
+    );
+  }
+
+  html.android-app.android-status-bar-hidden,
+  html.android-app.android-chrome-fullscreen {
+    --android-safe-top: 0px;
+  }
+
+  html.android-app #root {
+    box-sizing: border-box;
     padding-top: var(--android-safe-top);
-  }
-
-  html.android-app.android-status-bar-hidden #root {
-    padding-top: 0;
+    /* Avoid scroll chaining into the WebView chrome (css-layout). */
+    overscroll-behavior: none;
   }
 
   html.android-app [class*='backdrop-blur'],

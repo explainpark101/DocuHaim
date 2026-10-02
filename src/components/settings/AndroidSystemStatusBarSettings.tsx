@@ -40,6 +40,7 @@ function modeFromVisible(visible: boolean): AndroidChromeMode {
 
 /**
  * Android-only: choose fullscreen (cover status bar) vs status-bar-visible chrome.
+ * Touch targets follow modern-web-guidance forms (≥48px).
  */
 export default function AndroidSystemStatusBarSettings() {
   const [mode, setMode] = useState<AndroidChromeMode>(() =>
@@ -78,7 +79,6 @@ export default function AndroidSystemStatusBarSettings() {
         onValueChange={(value) => {
           const next = value === 'fullscreen' ? 'fullscreen' : 'status-bar';
           setMode(next);
-          // Toggle id stores "status bar visible" (true = status-bar mode).
           setSettingsToggle(
             'settings-android-system-status-bar',
             next === 'status-bar',
@@ -93,7 +93,8 @@ export default function AndroidSystemStatusBarSettings() {
               key={opt.value}
               value={opt.value}
               className={[
-                'flex w-full cursor-pointer items-start gap-3 rounded-md border px-3 py-2.5 text-left outline-none transition',
+                // ≥48px tap target (modern-web-guidance / forms)
+                'flex min-h-12 w-full cursor-pointer items-start gap-3 rounded-md border px-3 py-3 text-left outline-none transition',
                 'focus-visible:ring-2 focus-visible:ring-blue-400',
                 selected
                   ? 'border-blue-500 bg-white/90 shadow-sm dark:border-blue-400 dark:bg-odp-bgSoft/80'
@@ -102,7 +103,7 @@ export default function AndroidSystemStatusBarSettings() {
             >
               <span
                 className={[
-                  'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
+                  'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md',
                   selected
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-200 text-gray-600 dark:bg-odp-borderStrong dark:text-odp-muted',
@@ -110,24 +111,24 @@ export default function AndroidSystemStatusBarSettings() {
                 aria-hidden
               >
                 {opt.icon === 'fullscreen' ? (
-                  <IconMaximize size={16} />
+                  <IconMaximize size={18} />
                 ) : (
-                  <IconSmartphone size={16} />
+                  <IconSmartphone size={18} />
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-xs font-semibold text-gray-800 dark:text-odp-fgStrong">
+                <span className="block text-sm font-semibold leading-snug text-gray-800 dark:text-odp-fgStrong">
                   {opt.title}
                 </span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                <span className="mt-1 block text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
                   {opt.description}
                 </span>
               </span>
               <span
                 className={[
-                  'mt-1 h-4 w-4 shrink-0 rounded-full border-2',
+                  'mt-2 h-5 w-5 shrink-0 rounded-full border-2',
                   selected
-                    ? 'border-blue-500 bg-blue-500 shadow-[inset_0_0_0_2px_white]'
+                    ? 'border-blue-500 bg-blue-500 shadow-[inset_0_0_0_3px_white]'
                     : 'border-gray-300 dark:border-odp-borderStrong',
                 ].join(' ')}
                 aria-hidden

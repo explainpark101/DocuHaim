@@ -103,7 +103,7 @@ export default function MobileContextMenuModal({
             animate={{ opacity: 1, y: 0 }}
             transition={PANEL_TRANSITION}
           >
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] dark:border-odp-borderSoft">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 px-4 pb-3 pt-[max(0.75rem,var(--app-safe-top,env(safe-area-inset-top,0px)))] dark:border-odp-borderSoft">
               <div className="min-w-0 flex-1">
                 <Dialog.Title className="break-all text-sm font-semibold leading-snug text-gray-800 dark:text-odp-fgStrong">
                   {title}

@@ -53,6 +53,7 @@ class MainActivity : TauriActivity() {
   }
 
   fun setSystemStatusBarVisible(visible: Boolean) {
+    WindowCompat.setDecorFitsSystemWindows(window, false)
     val controller = WindowCompat.getInsetsController(window, window.decorView)
     controller.systemBarsBehavior =
       WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE

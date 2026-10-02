@@ -175,7 +175,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         className={
           bottomRight
             ? 'pointer-events-none fixed right-0 bottom-0 z-100050 flex justify-end px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]'
-            : 'pointer-events-none fixed inset-x-0 top-0 z-100050 flex justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))]'
+            : 'pointer-events-none fixed inset-x-0 top-0 z-100050 flex justify-center px-3 pt-[max(0.75rem,var(--app-safe-top,env(safe-area-inset-top,0px)))]'
         }
         aria-live="polite"
         aria-atomic="true"

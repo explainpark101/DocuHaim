@@ -2580,6 +2580,7 @@ export default function SettingsPage({
               onOpenChange={(open) => setGroupOpenById('app', open)}
             >
         <TauriDownloadSettings />
+        <AndroidSystemStatusBarSettings />
         <AppUpdateSection
           onCheckAppUpdate={onCheckAppUpdate}
           isCheckingAppUpdate={isCheckingAppUpdate}
@@ -2600,4 +2601,3 @@ export default function SettingsPage({
     </div>
   );
 }
-                                              
