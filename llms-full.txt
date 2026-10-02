@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-09-30T17:51:49.227Z
+Generated: 2026-10-02T07:29:02.295Z
 
 ============================================================
 Advanced Search
@@ -3518,7 +3518,13 @@ Match the printed ABI to the table above. If unsure, use **universal**.
 - **Local Haim** — default vault under app data (`LocalHaim`). You can also pick another folder via the system dialog when available.
 - **`.md` / `.markdown` file association** — open markdown from Files / other apps with DocuHaim (vault note if under the Local root, otherwise session workspace).
 - **Advanced Search** — filename / path / commands only; Lucivy inverted index is disabled.
+- **App version + APK auto-update** — Settings → 앱 shows the native package version (`getVersion`). “최신 APK 확인” polls GitHub Releases for `DocuHaim_<ver>_<abi>-debug.apk` (falls back to universal), downloads into app cache, and opens the system installer (`REQUEST_INSTALL_PACKAGES` / unknown-apps allow).
+- **System status bar** — Settings toggle (or Advanced Search) to show/hide the Android status bar over the fullscreen WebView.
 - **share_target** — existing PWA share intake is assumed to keep working; this shell does not reimplement it.
+
+### Launcher icons
+
+Adaptive icons are regenerated with a safe-zone inset via [`scripts/generate-android-icons.mjs`](../../scripts/generate-android-icons.mjs) (also run automatically by `tauri:android:dev` / `tauri:android:build*`). Do not rely on raw `tauri icon` foregrounds alone — they fill too much of the adaptive canvas and look oversized.
 
 ## Local development
 
