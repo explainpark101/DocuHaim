@@ -12,6 +12,7 @@
 
 import { Decoration, Extension } from '@tiptap/core';
 import type { Editor, JSONContent } from '@tiptap/core';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import {
   remapTopLevelBlocksToSourceLines,
   shouldDeferSourceLineRemap,
