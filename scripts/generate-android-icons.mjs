@@ -123,14 +123,19 @@ function writeBackgroundColorFile(baseResDir) {
   );
 }
 
-function ensureGenColorsHaveBackground() {
+/**
+ * Adaptive background lives only in values/ic_launcher_background.xml.
+ * Do not also define color/ic_launcher_background in colors.xml — Android
+ * merges all values/*.xml by name and fails the build on duplicates.
+ */
+function stripDuplicateBackgroundFromGenColors() {
   const colorsPath = join(genRes, 'values', 'colors.xml');
   if (!existsSync(colorsPath)) return;
   let xml = readFileSync(colorsPath, 'utf8');
-  if (xml.includes('ic_launcher_background')) return;
+  if (!xml.includes('ic_launcher_background')) return;
   xml = xml.replace(
-    '</resources>',
-    `    <color name="ic_launcher_background">${BACKGROUND_HEX}</color>\n</resources>`,
+    /\s*<color\s+name="ic_launcher_background"[^>]*>[^<]*<\/color>\s*/g,
+    '\n',
   );
   writeFileSync(colorsPath, xml);
 }
@@ -153,7 +158,7 @@ console.log(`Wrote adaptive Android icons → ${iconsAndroid}`);
 
 if (existsSync(dirname(genRes))) {
   await writeAllDensities(genRes);
-  ensureGenColorsHaveBackground();
+  stripDuplicateBackgroundFromGenColors();
   // Drop default Android Studio vector placeholders that fight adaptive icons.
   for (const rel of [
     'drawable/ic_launcher_background.xml',
