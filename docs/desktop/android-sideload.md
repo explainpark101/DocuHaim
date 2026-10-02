@@ -84,11 +84,11 @@ bun run tauri:android:build
 ```
 
 APK output: `src-tauri/gen/android/app/build/outputs/apk/`.  
-Project files: `src-tauri/gen/android/`. Intent filters come from [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) `bundle.fileAssociations`.
+Project files: `src-tauri/gen/android/`. Intent filters come from `src-tauri/tauri.conf.json` `bundle.fileAssociations`.
 
 ## Signing
 
-GitHub Release Android APKs and local `tauri:android:build:debug` share a **committed sideload keystore** ([`src-tauri/gen/android/keystore/`](../../src-tauri/gen/android/keystore/README.md)):
+GitHub Release Android APKs and local `tauri:android:build:debug` share a **committed sideload keystore** (`src-tauri/gen/android/keystore/`; see `README.md` in that folder):
 
 - Alias `docuhaim` / PKCS12 `docuhaim-sideload.p12`
 - Wired in `app/build.gradle.kts` `signingConfigs.sideload` for **debug and release** until a private Play key exists
