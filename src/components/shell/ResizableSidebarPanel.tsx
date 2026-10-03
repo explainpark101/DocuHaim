@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from '
 import { createPortal } from 'react-dom';
 import TocResizeHandle from '@/components/TocResizeHandle';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
+import { scheduleBackgroundTask } from '@/utils/advancedSearch/yieldToMain';
 
 const ResizeHandle = TocResizeHandle as any;
 
@@ -11,6 +12,8 @@ const SIDEBAR_DEFAULT_WIDTH = 400;
 const SIDEBAR_COLLAPSE_BELOW_VW = 10;
 const SIDEBAR_MIN_VW = 10;
 const SIDEBAR_MAX_FLOOR_VW = 50;
+/** Cap content-driven max so we can stop scanning rows early. */
+const SIDEBAR_CONTENT_MAX_VW = 95;
 const MOBILE_SLIDE_MS = 300;
 
 type SidebarBounds = {
@@ -85,12 +88,21 @@ function measureBrandExpandWidth(panelEl: HTMLElement | null): number {
 }
 
 /** Content-driven max: longest tree row scroll width (filenames can exceed 50vw). */
-function measureTreeContentWidth(panelEl: HTMLElement | null): number {
+function measureTreeContentWidth(
+  panelEl: HTMLElement | null,
+  earlyExitAt: number,
+): number {
   if (!panelEl) return 0;
   let max = 0;
-  panelEl.querySelectorAll('[data-tree-node-row], [data-tree-root-drop-zone]').forEach((row) => {
-    max = Math.max(max, row.scrollWidth);
-  });
+  const rows = panelEl.querySelectorAll(
+    '[data-tree-node-row], [data-tree-root-drop-zone]',
+  );
+  for (let i = 0; i < rows.length; i++) {
+    const w = rows[i]!.scrollWidth;
+    if (w > max) max = w;
+    // Further rows cannot raise the usable max past the viewport cap.
+    if (max >= earlyExitAt) break;
+  }
   return Math.ceil(max);
 }
 
@@ -98,8 +110,9 @@ function computeSidebarBounds(panelEl: HTMLElement | null): SidebarBounds {
   const min = Math.max(1, vwPx(SIDEBAR_MIN_VW));
   const collapseBelow = Math.max(min, vwPx(SIDEBAR_COLLAPSE_BELOW_VW));
   const floorMax = vwPx(SIDEBAR_MAX_FLOOR_VW);
-  const contentMax = measureTreeContentWidth(panelEl);
-  const max = Math.max(floorMax, contentMax, SIDEBAR_DEFAULT_WIDTH);
+  const contentCap = vwPx(SIDEBAR_CONTENT_MAX_VW);
+  const contentMax = measureTreeContentWidth(panelEl, contentCap);
+  const max = Math.max(floorMax, Math.min(contentMax, contentCap), SIDEBAR_DEFAULT_WIDTH);
   return { min, max, collapseBelow };
 }
 
@@ -128,6 +141,8 @@ export default function ResizableSidebarPanel({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const liveWidthRef = useRef<number | null>(null);
   const collapsedRef = useRef(collapsed);
+  const isResizingRef = useRef(false);
+  const boundsRefreshPendingRef = useRef(false);
   const mobileCloseTimerRef = useRef<number | null>(null);
   const [snapCollapse, setSnapCollapse] = useState(false);
   /** Mobile: panel stays mounted/visible while sliding out. */
@@ -141,8 +156,31 @@ export default function ResizableSidebarPanel({
   }));
 
   const refreshBounds = useCallback(() => {
+    if (collapsedRef.current || isResizingRef.current) return;
     setBounds(computeSidebarBounds(panelRef.current));
   }, []);
+
+  /** Coalesce bursty tree mounts / mutations so measure work does not freeze resize. */
+  const scheduleRefreshBounds = useCallback(
+    (mode: 'urgent' | 'background' = 'background') => {
+      if (collapsedRef.current || isResizingRef.current) return;
+      if (boundsRefreshPendingRef.current) return;
+      boundsRefreshPendingRef.current = true;
+
+      const run = () => {
+        boundsRefreshPendingRef.current = false;
+        refreshBounds();
+      };
+
+      if (mode === 'urgent') {
+        requestAnimationFrame(run);
+        return;
+      }
+      // Tree hydration: defer until idle / background priority (MWG).
+      scheduleBackgroundTask(run);
+    },
+    [refreshBounds],
+  );
 
   useEffect(() => {
     collapsedRef.current = collapsed;
@@ -150,14 +188,17 @@ export default function ResizableSidebarPanel({
   }, [collapsed]);
 
   useEffect(() => {
-    refreshBounds();
-    window.addEventListener('resize', refreshBounds);
+    scheduleRefreshBounds('urgent');
+    const onWindowResize = () => scheduleRefreshBounds('urgent');
+    window.addEventListener('resize', onWindowResize);
     const panel = panelRef.current;
     const observers: Array<() => void> = [];
 
     if (panel && typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => {
-        if (!collapsedRef.current) refreshBounds();
+        // Width changes during drag must not re-scan every tree row.
+        if (isResizingRef.current || collapsedRef.current) return;
+        scheduleRefreshBounds('background');
       });
       ro.observe(panel);
       observers.push(() => ro.disconnect());
@@ -165,17 +206,19 @@ export default function ResizableSidebarPanel({
 
     if (panel && typeof MutationObserver !== 'undefined') {
       const mo = new MutationObserver(() => {
-        if (!collapsedRef.current) refreshBounds();
+        if (isResizingRef.current || collapsedRef.current) return;
+        scheduleRefreshBounds('background');
       });
-      mo.observe(panel, { childList: true, subtree: true, characterData: true });
+      // childList only — characterData on large trees floods the main thread.
+      mo.observe(panel, { childList: true, subtree: true });
       observers.push(() => mo.disconnect());
     }
 
     return () => {
-      window.removeEventListener('resize', refreshBounds);
+      window.removeEventListener('resize', onWindowResize);
       observers.forEach((dispose) => dispose());
     };
-  }, [refreshBounds]);
+  }, [scheduleRefreshBounds]);
 
   const applyLiveWidth = useCallback(
     (nextWidth: number) => {
@@ -214,8 +257,13 @@ export default function ResizableSidebarPanel({
   });
 
   useEffect(() => {
-    if (!isResizing) liveWidthRef.current = null;
-  }, [isResizing]);
+    isResizingRef.current = isResizing;
+    if (!isResizing) {
+      liveWidthRef.current = null;
+      // Remeasure once after drag ends (content max may have changed while paused).
+      scheduleRefreshBounds('urgent');
+    }
+  }, [isResizing, scheduleRefreshBounds]);
 
   // Mobile slide: paint closed transform first, then animate in on the next frame.
   useEffect(() => {
@@ -291,13 +339,13 @@ export default function ResizableSidebarPanel({
     const applyBrandWidth = () => {
       const brandMin = measureBrandExpandWidth(panelRef.current);
       setWidth((prev: number) => Math.max(prev, brandMin));
-      refreshBounds();
+      scheduleRefreshBounds('urgent');
     };
 
     // Wait a frame so header nodes exist at non-zero layout when expanding.
     const id = window.requestAnimationFrame(applyBrandWidth);
     return () => window.cancelAnimationFrame(id);
-  }, [collapsed, isMobile, setWidth, refreshBounds]);
+  }, [collapsed, isMobile, setWidth, scheduleRefreshBounds]);
 
   // Keep committed width inside the current max when viewport shrinks.
   useEffect(() => {

@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { startTransition, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVaultOwned } from '@/App/providers/AppVaultStateProvider';
 import { createS3Client, listObjectsV2 } from '@/utils/s3Client';
-import { buildS3Tree } from '@/utils/s3Tree';
+import { buildS3TreeAsync } from '@/utils/s3Tree';
 import {
   createStorageBackendForType,
   createWebdavBackend,
@@ -174,7 +174,11 @@ export function useVaultDomain(): VaultValue {
       if (!client || !creds.bucket) return;
       try {
         const contents = await listObjectsV2(client, creds.bucket, '');
-        setS3Tree(buildS3Tree(contents));
+        // Yield during tree build so resize/input stay responsive on large vaults.
+        const tree = await buildS3TreeAsync(contents);
+        startTransition(() => {
+          setS3Tree(tree);
+        });
       } catch (err) {
         console.error('S3 Load Error:', err);
       }
@@ -326,7 +330,7 @@ export function useVaultDomain(): VaultValue {
     const client = getS3Client();
     if (!client || !s3Creds.bucket) throw new Error('S3가 연결되지 않았습니다.');
     const contents = await listObjectsV2(client, s3Creds.bucket, '');
-    return buildS3Tree(contents);
+    return buildS3TreeAsync(contents);
   }, [
     storageMode,
     localRootHandle,

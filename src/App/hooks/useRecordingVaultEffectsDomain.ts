@@ -7,7 +7,7 @@ import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider
 import { useRecordingOwned } from '@/App/providers/RecordingProvider';
 import { useChromeOwned } from '@/App/providers/AppChromeStateProvider';
 import {
-  buildS3Tree,
+  buildS3TreeAsync,
   getFileLastModifiedMap,
   findFileNodeByPath,
   getRecordingKeysFromTree,
@@ -151,7 +151,7 @@ export function useRecordingVaultEffectsDomain() {
     const poll = async () => {
       try {
         const contents = await listObjectsV2(client, s3Creds.bucket, '');
-        const newTree = buildS3Tree(contents);
+        const newTree = await buildS3TreeAsync(contents);
         const oldMap = getFileLastModifiedMap(s3TreeRef.current);
         const newMap = getFileLastModifiedMap(newTree);
         const changedKeys = new Set();

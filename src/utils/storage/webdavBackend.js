@@ -11,7 +11,7 @@ import {
   webdavPut,
   webdavPropfindDeep,
 } from '@/utils/webdavClient';
-import { buildS3Tree } from '@/utils/s3Tree';
+import { buildS3TreeAsync } from '@/utils/s3Tree';
 import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
 import { buildWebdavTreeNodesFromPropfind } from '@/utils/webdavTree';
 
@@ -48,7 +48,7 @@ export function createWebdavBackend(config) {
         const folderKey = e.key.endsWith('/') ? e.key : `${e.key}/`;
         contents.push({ Key: folderKey });
       }
-      return buildS3Tree(contents);
+      return buildS3TreeAsync(contents);
     },
 
     async head(path) {

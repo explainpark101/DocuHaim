@@ -9,7 +9,7 @@ import {
   getSignedGetUrl,
   putS3FolderMarkers,
 } from '@/utils/s3Client';
-import { buildS3Tree } from '@/utils/s3Tree';
+import { buildS3TreeAsync } from '@/utils/s3Tree';
 import { STORAGE_CAPABILITIES } from '@/utils/storage/capabilities.js';
 
 /**
@@ -32,7 +32,7 @@ export function createS3Backend(deps) {
       const bucket = getBucket();
       if (!client || !bucket) return [];
       const contents = await listObjectsV2(client, bucket, '');
-      return buildS3Tree(contents);
+      return buildS3TreeAsync(contents);
     },
 
     async listChildren() {
