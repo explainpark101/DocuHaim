@@ -7,21 +7,42 @@ export type S3TreeNode = {
   name: string;
   type: 'folder' | 'file';
   path: string;
-  children?: S3TreeNode[];
-  key?: string;
-  lastModified?: Date | string;
-  size?: number;
+  children?: S3TreeNode[] | undefined;
+  key?: string | undefined;
+  lastModified?: Date | string | undefined;
+  size?: number | undefined;
+};
+
+/**
+ * Duck-typed tree node for walk/find helpers (Sidebar / chat / modals).
+ * Keep fields optional + unknown where callers diverge under EOPT.
+ */
+export type VaultTreeWalkNode = {
+  name?: string | undefined;
+  type?: string | undefined;
+  path?: string | undefined;
+  children?: readonly VaultTreeWalkNode[] | undefined;
+  key?: string | undefined;
+  lastModified?: unknown;
+  size?: number | undefined;
+};
+
+/** Any node that may have a path + nested children (find/walk). */
+type PathWalkNode = {
+  path?: string | undefined;
+  type?: string | undefined;
+  children?: readonly PathWalkNode[] | undefined;
 };
 
 type S3ListItem = {
-  Key?: string;
-  LastModified?: Date | string;
-  Size?: number;
+  Key?: string | undefined;
+  LastModified?: Date | string | undefined;
+  Size?: number | undefined;
 };
 
 type BuildNode = S3TreeNode & {
   /** Temporary name→child index for O(1) lookup while building. */
-  _childIndex?: Map<string, BuildNode>;
+  _childIndex?: Map<string, BuildNode> | undefined;
 };
 
 function folderPathFromParts(parts: string[], index: number): string {
@@ -100,25 +121,39 @@ function insertListItem(root: BuildNode, item: S3ListItem): void {
     const isFolder = i < parts.length - 1 || item.Key.endsWith('/');
     const nodePath = parts.slice(0, i + 1).join('/') + (isFolder ? '/' : '');
 
-    const child = getOrCreateChild(current, part, () => ({
-      name: part,
-      type: isFolder ? 'folder' : 'file',
-      path: nodePath,
-      children: isFolder ? [] : undefined,
-      key: item.Key,
-      ...(isFolder
-        ? {}
-        : {
-            lastModified: item.LastModified,
-            size: item.Size,
-          }),
-    }));
+    const child = getOrCreateChild(current, part, () => {
+      const created: BuildNode = {
+        name: part,
+        type: isFolder ? 'folder' : 'file',
+        path: nodePath,
+        key: item.Key,
+      };
+      if (isFolder) {
+        created.children = [];
+      } else {
+        if (item.LastModified !== undefined) {
+          created.lastModified = item.LastModified;
+        }
+        if (item.Size !== undefined) {
+          created.size = item.Size;
+        }
+      }
+      return created;
+    });
 
     if (isFolder && child.type === 'file') {
       upgradeNodeToFolder(child, nodePath);
     } else if (!isFolder && child.type === 'file') {
-      child.lastModified = item.LastModified;
-      child.size = item.Size;
+      if (item.LastModified !== undefined) {
+        child.lastModified = item.LastModified;
+      } else {
+        delete child.lastModified;
+      }
+      if (item.Size !== undefined) {
+        child.size = item.Size;
+      } else {
+        delete child.size;
+      }
       child.key = item.Key;
     } else if (isFolder && child.type === 'folder' && !child.children) {
       child.children = [];
@@ -259,20 +294,26 @@ export async function buildS3TreeAsync(
 /**
  * Collect path -> lastModified for all file nodes in the tree.
  */
+function toDateOrNull(value: unknown): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'number' || typeof value === 'string') {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
 export const getFileLastModifiedMap = (
-  nodes: S3TreeNode[] | null | undefined,
+  nodes: readonly VaultTreeWalkNode[] | null | undefined,
 ): Map<string, Date> => {
   const map = new Map<string, Date>();
-  const walk = (list: S3TreeNode[] | undefined) => {
+  const walk = (list: readonly VaultTreeWalkNode[] | undefined) => {
     if (!list) return;
     for (const node of list) {
-      if (node.type === 'file' && node.path != null && node.lastModified != null) {
-        map.set(
-          node.path,
-          node.lastModified instanceof Date
-            ? node.lastModified
-            : new Date(node.lastModified),
-        );
+      if (node.type === 'file' && node.path != null) {
+        const d = toDateOrNull(node.lastModified);
+        if (d) map.set(node.path, d);
       }
       if (node.children) walk(node.children);
     }
@@ -282,14 +323,18 @@ export const getFileLastModifiedMap = (
 };
 
 const getAllFileNodes = (
-  nodes: S3TreeNode[] | null | undefined,
-): { path: string; lastModified?: Date | string }[] => {
-  const result: { path: string; lastModified?: Date | string }[] = [];
-  const walk = (list: S3TreeNode[] | undefined) => {
+  nodes: readonly VaultTreeWalkNode[] | null | undefined,
+): { path: string; lastModified?: unknown }[] => {
+  const result: { path: string; lastModified?: unknown }[] = [];
+  const walk = (list: readonly VaultTreeWalkNode[] | undefined) => {
     if (!list) return;
     for (const node of list) {
       if (node.type === 'file' && node.path) {
-        result.push({ path: node.path, lastModified: node.lastModified });
+        const entry: { path: string; lastModified?: unknown } = { path: node.path };
+        if (node.lastModified !== undefined) {
+          entry.lastModified = node.lastModified;
+        }
+        result.push(entry);
       }
       if (node.children) walk(node.children);
     }
@@ -302,9 +347,13 @@ const getAllFileNodes = (
  * Recording keys for a note (`{base}-rec-{timestamp}.m4a|webm`), newest first.
  */
 export const getRecordingKeysFromTree = (
-  nodes: S3TreeNode[] | null | undefined,
+  nodes: readonly VaultTreeWalkNode[] | null | undefined,
   noteKey: string,
-): { key: string; timestamp: number; lastModified?: Date | string }[] => {
+): {
+  key: string;
+  timestamp: number;
+  lastModified?: unknown;
+}[] => {
   const base =
     !noteKey || typeof noteKey !== 'string'
       ? ''
@@ -313,17 +362,27 @@ export const getRecordingKeysFromTree = (
   const prefix = `${base}-rec-`;
   const suffixRegex = /\.(m4a|webm)$/;
   const files = getAllFileNodes(nodes);
-  const results: { key: string; timestamp: number; lastModified?: Date | string }[] =
-    [];
+  const results: {
+    key: string;
+    timestamp: number;
+    lastModified?: unknown;
+  }[] = [];
   for (const { path, lastModified } of files) {
     if (!path.startsWith(prefix) || !suffixRegex.test(path)) continue;
     const match = path.match(/-rec-(\d+)\.(m4a|webm)$/);
     if (match) {
-      results.push({
+      const entry: {
+        key: string;
+        timestamp: number;
+        lastModified?: unknown;
+      } = {
         key: path,
         timestamp: parseInt(match[1]!, 10),
-        lastModified,
-      });
+      };
+      if (lastModified !== undefined) {
+        entry.lastModified = lastModified;
+      }
+      results.push(entry);
     }
   }
   results.sort((a, b) => b.timestamp - a.timestamp);
@@ -339,10 +398,10 @@ export function getFilePathBaseForRecordingLookup(filePath: string): string {
 
 /** Bases that have a companion recording file in the tree. */
 export function buildRecordingBasePathSet(
-  nodes: S3TreeNode[] | null | undefined,
+  nodes: readonly PathWalkNode[] | null | undefined,
 ): Set<string> {
   const set = new Set<string>();
-  const walk = (list: S3TreeNode[] | undefined) => {
+  const walk = (list: readonly PathWalkNode[] | undefined) => {
     if (!list?.length) return;
     for (const node of list) {
       if (node.type === 'file' && node.path) {
@@ -358,8 +417,8 @@ export function buildRecordingBasePathSet(
 
 /** Union of recording bases across S3 + local-shaped trees. */
 export function buildRecordingBasePathSetFromTrees(
-  s3Nodes: S3TreeNode[] | null | undefined,
-  localNodes: S3TreeNode[] | null | undefined,
+  s3Nodes: readonly PathWalkNode[] | null | undefined,
+  localNodes: readonly PathWalkNode[] | null | undefined,
 ): Set<string> {
   const set = buildRecordingBasePathSet(s3Nodes || []);
   for (const base of buildRecordingBasePathSet(localNodes || [])) {
@@ -377,27 +436,29 @@ export function isRecordingCompanionFileKey(path: string): boolean {
   );
 }
 
-export const findFileNodeByPath = (
-  nodes: S3TreeNode[] | null | undefined,
+export function findFileNodeByPath<T extends PathWalkNode>(
+  nodes: readonly T[] | null | undefined,
   path: string,
-): S3TreeNode | null => {
-  const walk = (list: S3TreeNode[] | undefined): S3TreeNode | null => {
+): T | null {
+  const walk = (list: readonly T[] | undefined): T | null => {
     if (!list) return null;
     for (const node of list) {
       if (node.type === 'file' && node.path === path) return node;
-      const found = node.children ? walk(node.children) : null;
+      const found = node.children
+        ? walk(node.children as readonly T[])
+        : null;
       if (found) return found;
     }
     return null;
   };
   return walk(nodes || undefined);
-};
+}
 
-export const flattenTreeToPaths = (
-  nodes: S3TreeNode[] | null | undefined,
-): string[] => {
+export function flattenTreeToPaths(
+  nodes: readonly PathWalkNode[] | null | undefined,
+): string[] {
   const result: string[] = [];
-  const walk = (list: S3TreeNode[] | undefined) => {
+  const walk = (list: readonly PathWalkNode[] | undefined) => {
     if (!list) return;
     for (const node of list) {
       if (node.path) result.push(node.path);
@@ -406,20 +467,22 @@ export const flattenTreeToPaths = (
   };
   walk(nodes || undefined);
   return result;
-};
+}
 
-export const findNodeByPath = (
-  nodes: S3TreeNode[] | null | undefined,
+export function findNodeByPath<T extends PathWalkNode>(
+  nodes: readonly T[] | null | undefined,
   path: string,
-): S3TreeNode | null => {
-  const walk = (list: S3TreeNode[] | undefined): S3TreeNode | null => {
+): T | null {
+  const walk = (list: readonly T[] | undefined): T | null => {
     if (!list) return null;
     for (const node of list) {
       if (node.path === path) return node;
-      const found = node.children ? walk(node.children) : null;
+      const found = node.children
+        ? walk(node.children as readonly T[])
+        : null;
       if (found) return found;
     }
     return null;
   };
   return walk(nodes || undefined);
-};
+}

@@ -9,7 +9,7 @@ export type VaultFileNode = {
   type: 'file';
   path: string;
   name: string;
-  lastModified?: Date | number;
+  lastModified?: Date | number | undefined;
 };
 
 type ResolveVaultFileNodeOptions = {
@@ -29,8 +29,12 @@ export async function resolveVaultFileNode(
   if (!trimmed) return null;
 
   const { storageType, localTree, webdavTree, idbTree, s3Tree, localRootHandle } = options;
-  let node: { type?: string; path?: string; name?: string; lastModified?: Date | number } | null =
-    null;
+  let node: {
+    type?: string | undefined;
+    path?: string | undefined;
+    name?: string | undefined;
+    lastModified?: Date | number | string | undefined;
+  } | null = null;
 
   if (storageType === STORAGE_MODE_LOCAL) {
     node =
@@ -59,10 +63,17 @@ export async function resolveVaultFileNode(
     };
   }
 
-  return {
+  const result: VaultFileNode = {
     type: 'file',
     path: String(node.path || trimmed),
     name: String(node.name || vaultPathBasename(trimmed)),
-    ...(node.lastModified != null ? { lastModified: node.lastModified } : {}),
   };
+  if (node.lastModified instanceof Date) {
+    result.lastModified = node.lastModified;
+  } else if (typeof node.lastModified === 'number') {
+    result.lastModified = node.lastModified;
+  } else if (typeof node.lastModified === 'string' && node.lastModified) {
+    result.lastModified = new Date(node.lastModified);
+  }
+  return result;
 }
