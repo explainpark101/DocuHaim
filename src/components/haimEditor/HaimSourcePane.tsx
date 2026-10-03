@@ -44,8 +44,10 @@ import {
 } from '@/components/haimEditor/cmCodeFenceIndent';
 import { CODE_FENCE_BRACKET_PAIRS_EXTENSION } from '@/components/haimEditor/cmCodeFenceBracketPairs';
 import { CODE_FENCE_ENTER_KEYMAP } from '@/components/haimEditor/cmCodeFenceEnter';
+import { findMarkdownLinkHrefAt } from '@/components/haimEditor/cmMarkdownLinkAt';
 import type { TaskCheckboxKind } from '@/utils/taskCheckboxStatus';
 import { DEFAULT_DOCUMENT_TASK_CHECKBOX } from '@/utils/documentSettingsMeta';
+import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
 
 type Props = {
   initialValue: string;
@@ -162,6 +164,26 @@ export default function HaimSourcePane({
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onDocChangedRef.current();
       }),
+      // Ctrl/Cmd+click markdown links before multi-cursor range add (Win Ctrl).
+      Prec.high(
+        EditorView.domEventHandlers({
+          click(event, view) {
+            if (event.button !== 0) return false;
+            if (!(event.metaKey || event.ctrlKey)) return false;
+            if (event.altKey || event.shiftKey) return false;
+            const pos = view.posAtCoords({
+              x: event.clientX,
+              y: event.clientY,
+            });
+            if (pos == null) return false;
+            const href = findMarkdownLinkHrefAt(view.state, pos);
+            if (!href) return false;
+            event.preventDefault();
+            openHaimLinkHref(href, { target: '_blank' });
+            return true;
+          },
+        }),
+      ),
       EditorView.domEventHandlers({
         paste(event) {
           const handler = onPasteImagesRef.current;

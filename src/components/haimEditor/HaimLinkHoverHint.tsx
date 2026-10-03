@@ -11,6 +11,11 @@ import {
 } from '@/utils/haimLinkOpenSettings';
 import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
 
+type PendingOpen = {
+  href: string;
+  target: string;
+};
+
 type AnchorRect = {
   left: number;
   top: number;
@@ -143,6 +148,12 @@ export default function HaimLinkHoverHint({
   const linkElRef = useRef<HTMLAnchorElement | null>(null);
   /** True while pointer is on the floating card — ignore scroll-hide races. */
   const cardHoveredRef = useRef(false);
+  /**
+   * Stash href on pointerdown so blur/scroll can clear `tip` before click.
+   * Do not open on pointerdown — preventDefault there suppresses click and
+   * window.open / anchor navigation often loses user activation.
+   */
+  const pendingOpenRef = useRef<PendingOpen | null>(null);
 
   const clearOpenTimer = () => {
     if (openTimerRef.current != null) {
@@ -173,9 +184,18 @@ export default function HaimLinkHoverHint({
     }, CLOSE_DELAY_MS);
   };
 
-  /** Open current tip (same path as Ctrl/Cmd+click). Prefer pointerdown so blur/scroll cannot unmount before click. */
-  const openCurrentTip = () => {
-    const current = tipRef.current;
+  /** Open href (same path as Ctrl/Cmd+click). Prefer stashed pending over live tip. */
+  const openPendingOrTip = () => {
+    const pending = pendingOpenRef.current;
+    pendingOpenRef.current = null;
+    const current =
+      pending ??
+      (tipRef.current
+        ? {
+            href: tipRef.current.href,
+            target: tipRef.current.target || '_blank',
+          }
+        : null);
     if (!current?.href) return;
     openHaimLinkHref(current.href, { target: current.target || '_blank' });
     hide();
@@ -321,18 +341,21 @@ export default function HaimLinkHoverHint({
               size="sm"
               className="px-2.5! py-1! text-xs"
               onPointerDown={(event: ReactPointerEvent<HTMLButtonElement>) => {
-                // Open on pointerdown so editor blur/scroll cannot unmount before click.
+                // Stash only — do not preventDefault (that cancels the following click).
                 if (event.button !== 0) return;
-                event.preventDefault();
+                const current = tipRef.current;
+                pendingOpenRef.current = current?.href
+                  ? {
+                      href: current.href,
+                      target: current.target || '_blank',
+                    }
+                  : null;
                 event.stopPropagation();
-                openCurrentTip();
               }}
               onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                // Keyboard (Enter/Space). Pointer path already opened and cleared tip.
                 event.preventDefault();
                 event.stopPropagation();
-                if (!tipRef.current) return;
-                openCurrentTip();
+                openPendingOrTip();
               }}
             >
               <ExternalLink size={14} aria-hidden />
