@@ -288,14 +288,19 @@ export function AppModals() {
             : '다시 로드'
       }
       cancelLabel="취소"
+      confirmDisabled={isApplyingPwaUpdate}
+      cancelDisabled={isApplyingPwaUpdate}
       onConfirm={() => {
         if (isApplyingPwaUpdate) return;
         void handleConfirmAppUpdate();
       }}
-      onCancel={() => {
-        if (isApplyingPwaUpdate) return;
-        setShowAppUpdateConfirmModal(false);
-      }}
+      onCancel={
+        isApplyingPwaUpdate
+          ? undefined
+          : () => {
+              setShowAppUpdateConfirmModal(false);
+            }
+      }
     />
 
     <ConfirmModal

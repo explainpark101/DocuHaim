@@ -3,10 +3,13 @@ package com.docuhaim.app
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -28,6 +31,8 @@ class MainActivity : TauriActivity() {
       private set
 
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    const val ACTION_APK_INSTALL_STATUS = "com.docuhaim.app.APK_INSTALL_STATUS"
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +41,13 @@ class MainActivity : TauriActivity() {
     instance = this
     // Preference is applied from the web UI after boot (see initAndroidSystemStatusBar).
     // Do not force a mode here so the saved fullscreen / status-bar choice sticks.
+    handlePackageInstallerIntent(intent)
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    handlePackageInstallerIntent(intent)
   }
 
   override fun onDestroy() {
@@ -144,21 +156,94 @@ class MainActivity : TauriActivity() {
     return if (abis != null && abis.isNotEmpty()) abis[0] else "arm64-v8a"
   }
 
+  fun ensureInstallPermission(): String {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+      !packageManager.canRequestPackageInstalls()
+    ) {
+      openUnknownSourcesSettings()
+      return "need_unknown_sources"
+    }
+    return "ok"
+  }
+
+  private fun openUnknownSourcesSettings() {
+    runOnMainSync {
+      val settings = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+        data = Uri.parse("package:$packageName")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      startActivity(settings)
+    }
+  }
+
+  /**
+   * PackageInstaller commit callback lands here (singleTask → onNewIntent).
+   * STATUS_PENDING_USER_ACTION carries EXTRA_INTENT — that is the system
+   * install-confirm UI. Ignoring it makes sideload updates look like a no-op.
+   */
+  private fun handlePackageInstallerIntent(intent: Intent?) {
+    if (intent == null) return
+    if (intent.action != ACTION_APK_INSTALL_STATUS) return
+    val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, Int.MIN_VALUE)
+    if (status == Int.MIN_VALUE) return
+    when (status) {
+      PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+        val confirm = extrasIntent(intent) ?: return
+        confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(confirm)
+      }
+      PackageInstaller.STATUS_SUCCESS -> {
+        android.util.Log.i("DocuHaim", "PackageInstaller session succeeded")
+      }
+      else -> {
+        val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+        android.util.Log.w("DocuHaim", "PackageInstaller status=$status message=$message")
+      }
+    }
+  }
+
+  private fun extrasIntent(source: Intent): Intent? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      source.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+    } else {
+      @Suppress("DEPRECATION")
+      source.getParcelableExtra(Intent.EXTRA_INTENT)
+    }
+  }
+
   /**
    * Install / update our own APK via PackageInstaller (preferred) with FileProvider fallback.
-   * setAppPackageName(packageName) marks the session as an update of this app so the
-   * system does not treat it as a conflicting foreign package when signatures match.
+   *
+   * Returns a status token for JNI: ok | need_unknown_sources | missing_apk | failed.
+   *
+   * REQUEST_INSTALL_PACKAGES is not a runtime dialog — Android 8+ requires the
+   * per-app "Install unknown apps" setting (ACTION_MANAGE_UNKNOWN_APP_SOURCES).
+   *
+   * Session write/copy stays on the JNI worker thread (APKs are large; a 2s
+   * main-thread wait would time out).
    */
-  fun installApk(absolutePath: String): Boolean {
-    return runOnMainSyncResult {
-      val apk = File(absolutePath)
-      if (!apk.isFile || apk.length() < 1024L) return@runOnMainSyncResult false
+  fun installApk(absolutePath: String): String {
+    val apk = File(absolutePath)
+    if (!apk.isFile || apk.length() < 1024L) return "missing_apk"
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+      !packageManager.canRequestPackageInstalls()
+    ) {
+      openUnknownSourcesSettings()
+      return "need_unknown_sources"
+    }
+
+    return try {
+      installApkWithPackageInstaller(apk)
+      "ok"
+    } catch (error: Throwable) {
+      android.util.Log.w("DocuHaim", "PackageInstaller failed, falling back to VIEW intent", error)
       try {
-        installApkWithPackageInstaller(apk)
-        true
-      } catch (error: Throwable) {
-        android.util.Log.w("DocuHaim", "PackageInstaller failed, falling back to VIEW intent", error)
-        installApkWithViewIntent(apk)
+        runOnMainSync { installApkWithViewIntent(apk) }
+        "ok"
+      } catch (fallback: Throwable) {
+        android.util.Log.e("DocuHaim", "APK VIEW install fallback failed", fallback)
+        "failed"
       }
     }
   }
@@ -181,7 +266,7 @@ class MainActivity : TauriActivity() {
         }
       }
       val callback = Intent(this, MainActivity::class.java).apply {
-        action = Intent.ACTION_MAIN
+        action = ACTION_APK_INSTALL_STATUS
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
       val pendingFlags =
@@ -201,7 +286,7 @@ class MainActivity : TauriActivity() {
     }
   }
 
-  private fun installApkWithViewIntent(apk: File): Boolean {
+  private fun installApkWithViewIntent(apk: File) {
     val uri = FileProvider.getUriForFile(
       this,
       "${packageName}.fileprovider",
@@ -216,7 +301,14 @@ class MainActivity : TauriActivity() {
       }
       putExtra(Intent.EXTRA_RETURN_RESULT, true)
     }
+    val matches = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+    for (resolve in matches) {
+      grantUriPermission(
+        resolve.activityInfo.packageName,
+        uri,
+        Intent.FLAG_GRANT_READ_URI_PERMISSION,
+      )
+    }
     startActivity(intent)
-    return true
   }
 }

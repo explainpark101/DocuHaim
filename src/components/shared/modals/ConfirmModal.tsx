@@ -31,6 +31,8 @@ export type ConfirmModalProps = {
   onDiscard?: (() => void) | undefined;
   children?: ReactNode | undefined;
   confirmDisabled?: boolean | undefined;
+  /** When true, the cancel button is non-interactive (e.g. in-progress apply). */
+  cancelDisabled?: boolean | undefined;
   resizable?: boolean | undefined;
   /** Root fixed layer (z-index); default `z-100000`. */
   overlayClassName?: string | undefined;
@@ -62,6 +64,7 @@ export function ConfirmModal({
   onDiscard,
   children,
   confirmDisabled = false,
+  cancelDisabled = false,
   resizable = true,
   overlayClassName = 'z-100000',
 }: ConfirmModalProps) {
@@ -78,7 +81,7 @@ export function ConfirmModal({
 
   useModalLayerKeyboard({
     open: isOpen,
-    onCancel,
+    onCancel: cancelDisabled ? undefined : onCancel,
     onConfirm: confirmDisabled ? undefined : onConfirm,
     ignoreEnterInFields: true,
   });
@@ -158,7 +161,13 @@ export function ConfirmModal({
               ) : null}
               {children ? <div className="mb-4">{children}</div> : null}
               <div className="flex flex-wrap justify-end gap-2">
-                <Button type="button" variant="secondary" size="md" onClick={onCancel}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={onCancel}
+                  disabled={cancelDisabled || !onCancel}
+                >
                   <IconBack size={16} />
                   {cancelLabel}
                 </Button>

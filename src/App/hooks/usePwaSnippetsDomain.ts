@@ -265,9 +265,9 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
   ]);
 
   const handleConfirmAppUpdate = useCallback(async () => {
-    setShowAppUpdateConfirmModal(false);
     setHidePwaUpdateToast(true);
     if (isTauriDesktopPlatform()) {
+      setShowAppUpdateConfirmModal(false);
       try {
         setIsApplyingPwaUpdate(true);
         await installPendingTauriDesktopUpdate();
@@ -282,6 +282,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
         setIsApplyingPwaUpdate(true);
         await installPendingTauriAndroidUpdate();
         setIsApplyingPwaUpdate(false);
+        setShowAppUpdateConfirmModal(false);
       } catch (error: any) {
         console.error('Tauri Android update apply failed:', error);
         setIsApplyingPwaUpdate(false);
@@ -292,6 +293,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
       }
       return;
     }
+    setShowAppUpdateConfirmModal(false);
     const buildMismatch = Boolean(
       appBuildLocalId && appBuildRemoteId && appBuildLocalId !== appBuildRemoteId,
     );

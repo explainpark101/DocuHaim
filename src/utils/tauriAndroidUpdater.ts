@@ -189,20 +189,36 @@ export async function checkTauriAndroidUpdate(): Promise<TauriAndroidUpdateCheck
   }
 }
 
+function invokeErrorMessage(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+  return String(error ?? '');
+}
+
 export async function installPendingTauriAndroidUpdate(): Promise<void> {
   if (!pendingApk) {
     throw new Error('No pending Android update');
   }
-  const { url, name } = pendingApk;
+  const snapshot = pendingApk;
   pendingApk = null;
   try {
     await invoke<string>('android_download_and_install_apk', {
-      url,
-      fileName: name,
+      url: snapshot.url,
+      fileName: snapshot.name,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error ?? '');
+    pendingApk = snapshot;
+    const message = invokeErrorMessage(error);
     const lower = message.toLowerCase();
+    if (message.includes('NEED_UNKNOWN_SOURCES') || lower.includes('unknown_sources')) {
+      throw new Error(
+        '이 앱에서 APK를 설치하려면 방금 연 설정에서 「알 수 없는 앱 설치」를 허용한 뒤, 다시 「업데이트」를 눌러 주세요.',
+      );
+    }
     if (
       lower.includes('incompatible') ||
       lower.includes('signature') ||

@@ -62,7 +62,9 @@ Match the printed ABI to the table above. If unsure, use **universal**.
 - **Local Haim** — default vault under app data (`LocalHaim`). You can also pick another folder via the system dialog when available.
 - **`.md` / `.markdown` file association** — open markdown from Files / other apps with DocuHaim (vault note if under the Local root, otherwise session workspace).
 - **Advanced Search** — filename / path / commands only; Lucivy inverted index is disabled.
-- **App version + APK auto-update** — Settings → 앱 shows the native package version (`getVersion`). “최신 APK 확인” polls GitHub Releases for `DocuHaim_<ver>_<abi>-debug.apk` (falls back to universal), downloads into app cache, and installs via `PackageInstaller` (same `applicationId` + shared sideload signature). Unknown-apps / install permission may still be required once.
+- **App version + APK auto-update** — Settings → 앱 shows the native package version (`getVersion`). “최신 APK 확인” polls GitHub Releases for `DocuHaim_<ver>_<abi>-debug.apk` (falls back to universal), downloads into app cache, and installs via `PackageInstaller` (same `applicationId` + shared sideload signature).
+  - Android 8+ does **not** show a normal runtime permission for this. The first update opens **Settings → Install unknown apps** for DocuHaim (`REQUEST_INSTALL_PACKAGES` / `canRequestPackageInstalls`). Allow it, then tap update again.
+  - After that, the **system package-installer confirm** sheet should appear (`STATUS_PENDING_USER_ACTION`). Sideload updates cannot skip that user action.
 - **System status bar** — Settings toggle (or Advanced Search) to show/hide the Android status bar over the fullscreen WebView.
 - **share_target** — existing PWA share intake is assumed to keep working; this shell does not reimplement it.
 

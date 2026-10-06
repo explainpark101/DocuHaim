@@ -52,6 +52,14 @@ fn call_activity_bool(method: &str, sig: &str, args: &[JValue]) -> Result<bool, 
     })
 }
 
+fn map_install_status(status: String, context: &str) -> Result<(), String> {
+    match status.as_str() {
+        "ok" => Ok(()),
+        "need_unknown_sources" => Err("NEED_UNKNOWN_SOURCES".into()),
+        other => Err(format!("{context}: {other}")),
+    }
+}
+
 fn call_activity_string(method: &str, sig: &str, args: &[JValue]) -> Result<String, String> {
     with_main_activity(|env, activity| {
         let obj = env
@@ -90,24 +98,30 @@ pub fn android_primary_abi() -> Result<String, String> {
 
 #[tauri::command]
 pub fn android_install_apk(path: String) -> Result<(), String> {
-    with_main_activity(|env, activity| {
+    let status = with_main_activity(|env, activity| {
         let path_j = env.new_string(&path).map_err(|e| e.to_string())?;
-        let ok = env
+        let obj = env
             .call_method(
                 activity,
                 "installApk",
-                "(Ljava/lang/String;)Z",
+                "(Ljava/lang/String;)Ljava/lang/String;",
                 &[JValue::Object(&path_j)],
             )
             .map_err(|e| e.to_string())?
-            .z()
+            .l()
             .map_err(|e| e.to_string())?;
-        if ok {
-            Ok(())
-        } else {
-            Err(format!("installApk failed for {path}"))
+        if obj.is_null() {
+            return Err("installApk returned null".into());
         }
-    })
+        let jstr = env.get_string((&obj).into()).map_err(|e| e.to_string())?;
+        Ok(jstr.to_string_lossy().into_owned())
+    })?;
+    map_install_status(status, &format!("installApk failed for {path}"))
+}
+
+fn android_ensure_install_permission() -> Result<(), String> {
+    let status = call_activity_string("ensureInstallPermission", "()Ljava/lang/String;", &[])?;
+    map_install_status(status, "ensureInstallPermission failed")
 }
 
 /// Download an APK URL into app cache and launch the system package installer.
@@ -117,6 +131,7 @@ pub async fn android_download_and_install_apk(
     url: String,
     file_name: String,
 ) -> Result<String, String> {
+    android_ensure_install_permission()?;
     if !url.starts_with("https://") {
         return Err("APK download URL must be https".into());
     }
@@ -146,11 +161,15 @@ pub async fn android_download_and_install_apk(
         .redirect(reqwest::redirect::Policy::limited(10))
         .build()
         .map_err(|e| e.to_string())?;
-    let response = client
+    let mut response = client
         .get(&url)
         .header(
             reqwest::header::USER_AGENT,
             "DocuHaim-Android-Updater/1.0",
+        )
+        .header(
+            reqwest::header::ACCEPT,
+            "application/octet-stream,application/vnd.android.package-archive,*/*",
         )
         .send()
         .await
@@ -158,18 +177,24 @@ pub async fn android_download_and_install_apk(
     if !response.status().is_success() {
         return Err(format!("download HTTP {}", response.status()));
     }
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("read body failed: {e}"))?;
-    if bytes.len() < 1024 {
-        return Err("downloaded APK looks too small".into());
-    }
 
-    {
-        let mut file = File::create(&dest).map_err(|e| e.to_string())?;
-        file.write_all(&bytes).map_err(|e| e.to_string())?;
-        file.flush().map_err(|e| e.to_string())?;
+    let mut file = File::create(&dest).map_err(|e| e.to_string())?;
+    let mut written: u64 = 0;
+    loop {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                file.write_all(&chunk).map_err(|e| e.to_string())?;
+                written += chunk.len() as u64;
+            }
+            Ok(None) => break,
+            Err(e) => return Err(format!("read body failed: {e}")),
+        }
+    }
+    file.flush().map_err(|e| e.to_string())?;
+    drop(file);
+    if written < 1024 {
+        let _ = std::fs::remove_file(&dest);
+        return Err("downloaded APK looks too small".into());
     }
 
     let path_str = dest.to_string_lossy().into_owned();
