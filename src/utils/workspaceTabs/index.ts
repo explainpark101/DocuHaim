@@ -151,3 +151,4 @@ export {
   seedTabsRestoreQueueFromSnapshot,
   tabsRestoreQueueLength,
 } from '@/utils/workspaceTabs/lastOpenTabsRestore';
+export { routePaneEditorChange } from '@/utils/workspaceTabs/routePaneEditorChange';

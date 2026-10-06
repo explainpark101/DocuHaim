@@ -1405,7 +1405,11 @@ export default function SettingsPage({
           {editorType === EDITOR_TYPE_HAIM ? (
             <div className="mb-4 rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderStrong dark:bg-odp-bgSoft/40">
               <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
-                Haim Editor 보기 모드
+                Haim Editor 보기 모드 (기본값)
+              </p>
+              <p className="mb-2 text-[11px] text-gray-500 dark:text-odp-muted">
+                파일에서 보기 모드를 바꾼 적 없을 때 사용합니다. 각 파일에서 선택한
+                모드는 다음에 열 때 복원됩니다.
               </p>
               <div className="space-y-2 text-xs text-gray-700 dark:text-odp-fg">
                 {HAIM_VIEW_MODE_OPTIONS.map((opt) => (

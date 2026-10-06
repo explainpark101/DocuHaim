@@ -17,7 +17,7 @@ import {
   toggleUnorderedListForSelection,
   wrapSelectionWithInlineCode,
 } from '@/utils/editorMarkdownStyle';
-import { wrapSelectionWithPairIfTriggerKey } from '@/utils/mdEditorSelectionWrap';
+import { handleMdEditorSelectionWrapKeydown } from '@/utils/mdEditorSelectionWrap';
 
 /** Inline / block markdown format key bindings (Ctrl/Cmd on both platforms). */
 export const MARKDOWN_FORMAT_KEYBINDINGS: KeyBinding[] = [
@@ -81,7 +81,8 @@ export const MARKDOWN_FORMAT_KEYBINDINGS: KeyBinding[] = [
       if ((event.ctrlKey || event.metaKey) && event.altKey && event.code === 'KeyC') {
         return wrapSelectionWithInlineCode(view);
       }
-      return wrapSelectionWithPairIfTriggerKey(view, event);
+      // Backtick / quotes / brackets wrap a non-empty selection (MarkdownEditor parity).
+      return handleMdEditorSelectionWrapKeydown(event, view);
     },
   },
 ];

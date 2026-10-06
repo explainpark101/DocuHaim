@@ -271,7 +271,7 @@ export default function HaimToolbar({
   };
 
   const setMode = (mode: HaimViewMode) => {
-    // Persist as default for new editors; do not broadcast so split panes stay independent.
+    // Global default for files without a saved override. Per-file persist is in HaimEditor.
     saveHaimViewMode(mode, { broadcast: false });
     onViewModeChange(mode);
   };

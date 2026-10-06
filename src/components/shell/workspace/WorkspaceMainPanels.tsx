@@ -25,6 +25,7 @@ import {
   findLeafContainingTab,
   isFileTab,
   isPaneLeaf,
+  routePaneEditorChange,
   tabDisplayTitle,
   type FileWorkspaceTab,
   type PaneNode,
@@ -224,6 +225,9 @@ export default function WorkspaceMainPanels({
   const hasSettingsTab = tabs.some((t) => t.kind === 'settings');
   const hasContentSearchTab = tabs.some((t) => t.kind === 'content-search');
   const hasLlmAssistTab = tabs.some((t) => t.kind === 'llm-assist');
+
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
 
   const leaves = useMemo(() => (layout ? collectLeaves(layout) : []), [layout]);
   const isSplit = layout != null && countLeaves(layout) > 1;
@@ -525,6 +529,19 @@ export default function WorkspaceMainPanels({
     const paneContent = useMirrors ? mirrors!.editorContent : tab.editorContent;
     const paneName = useMirrors ? mirrors!.editedFileName : tab.editedFileName;
     const noteSurface = opts?.noteSurface ?? tab.noteSurface;
+    const onPaneEditorChange = (value: string) => {
+      routePaneEditorChange({
+        paneTabId: tab.id,
+        activeTabId: activeIdRef.current,
+        value,
+        ...(mirrors?.onChangeEditor
+          ? { onActiveChange: mirrors.onChangeEditor }
+          : {}),
+        ...(mirrors?.onInactiveEditorChange
+          ? { onInactiveChange: mirrors.onInactiveEditorChange }
+          : {}),
+      });
+    };
 
     return (
       <EditorPane
@@ -532,16 +549,14 @@ export default function WorkspaceMainPanels({
           currentFile: paneFile,
           editorContent: paneContent,
           editedFileName: paneName,
+          onChangeEditor: onPaneEditorChange,
           ...(useMirrors
             ? {
                 setEditedFileName: mirrors!.setEditedFileName,
-                onChangeEditor: mirrors!.onChangeEditor,
               }
             : {
                 setEditedFileName: (name: string) =>
                   mirrors?.onInactiveEditedFileName?.(tab.id, name),
-                onChangeEditor: (value: string) =>
-                  mirrors?.onInactiveEditorChange?.(tab.id, value),
               }),
           isActiveFile: active,
           ...(noteSurface ? { noteSurface } : {}),

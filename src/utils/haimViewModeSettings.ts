@@ -1,8 +1,10 @@
 /**
- * Haim Editor view mode:
+ * Haim Editor view mode (global default):
  * - wysiwyg: TipTap only
  * - double: TipTap + markdown source side-by-side
  * - source: markdown source only
+ *
+ * Per-file last-used mode lives in `haimViewModeFileStore`.
  */
 
 export const HAIM_VIEW_MODE_WYSIWYG = 'wysiwyg';

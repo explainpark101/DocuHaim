@@ -840,9 +840,16 @@ export function useWorkspaceTabsDomain({
   const collapseWorkspacePane = useCallback(
     (leafId: string) => {
       const prev = workspaceTabsRef.current;
-      const prevActiveId = prev.activeId;
-      const next = collapsePaneLeaf(prev, leafId);
-      if (next === prev) return;
+      // Persist the live focused buffer onto its own tab before the leaf tree
+      // collapses — otherwise unmount flush can land on the remaining first leaf.
+      const flushed = flushEditorIntoActiveFileTab(prev, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const prevActiveId = flushed.activeId;
+      const next = collapsePaneLeaf(flushed, leafId);
+      if (next === prev && flushed === prev) return;
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
       // Extracted tabs open in the background — only navigate when focus moved
@@ -851,7 +858,14 @@ export function useWorkspaceTabsDomain({
         activateWorkspaceTab(next.activeId, { navigateUrl: true });
       }
     },
-    [activateWorkspaceTab, setWorkspaceTabs, workspaceTabsRef],
+    [
+      activateWorkspaceTab,
+      currentFileRef,
+      editedFileNameRef,
+      editorContentRef,
+      setWorkspaceTabs,
+      workspaceTabsRef,
+    ],
   );
 
   const openExportPdfInFocusedPane = useCallback(

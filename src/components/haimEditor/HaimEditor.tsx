@@ -54,9 +54,19 @@ import {
   HAIM_VIEW_MODE_DOUBLE,
   HAIM_VIEW_MODE_SOURCE,
   HAIM_VIEW_MODE_WYSIWYG,
+  isHaimViewMode,
   loadHaimViewMode,
   type HaimViewMode,
 } from '@/utils/haimViewModeSettings';
+import {
+  HAIM_VIEW_MODE_FILE_CHANGED_EVENT,
+  ensureHaimViewModeFileStoreHydrated,
+  getHaimViewModeFileKeyFromFile,
+  loadHaimViewModeForFile,
+  peekHaimViewModeForFile,
+  resolveHaimViewModeForFile,
+  saveHaimViewModeForFile,
+} from '@/utils/haimViewModeFileStore';
 import {
   HAIM_DOUBLE_SCROLL_SYNC_CHANGED_EVENT,
   loadHaimDoubleScrollSyncEnabled,
@@ -266,10 +276,76 @@ export default function HaimEditor({
   const tabsCtx = useWorkspaceTabsCtxOptional();
 
   useEffect(() => {
-    const onEvt = () => setViewMode(loadHaimViewMode());
+    void ensureHaimViewModeFileStoreHydrated();
+  }, []);
+
+  useEffect(() => {
+    if (previewOnly) return;
+    const key = getHaimViewModeFileKeyFromFile(currentFile);
+    let cancelled = false;
+    const peek = peekHaimViewModeForFile(key);
+    if (peek !== undefined) {
+      setViewMode(resolveHaimViewModeForFile(peek));
+      return undefined;
+    }
+    if (!key) {
+      setViewMode(loadHaimViewMode());
+      return undefined;
+    }
+    void loadHaimViewModeForFile(key).then((stored) => {
+      if (cancelled) return;
+      const latest = peekHaimViewModeForFile(key);
+      if (latest) {
+        setViewMode(latest);
+        return;
+      }
+      setViewMode(resolveHaimViewModeForFile(stored));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentFile?.id, currentFile?.type, previewOnly]);
+
+  const handleViewModeChange = useCallback(
+    (mode: HaimViewMode) => {
+      setViewMode(mode);
+      if (previewOnly) return;
+      const key = getHaimViewModeFileKeyFromFile(currentFile);
+      if (key) void saveHaimViewModeForFile(key, mode);
+    },
+    [currentFile, previewOnly],
+  );
+
+  useEffect(() => {
+    const onEvt = () => {
+      const key = getHaimViewModeFileKeyFromFile(currentFile);
+      const stored = peekHaimViewModeForFile(key);
+      if (stored) return;
+      if (stored === undefined) {
+        void loadHaimViewModeForFile(key).then((mode) => {
+          if (mode) return;
+          setViewMode(loadHaimViewMode());
+        });
+        return;
+      }
+      setViewMode(loadHaimViewMode());
+    };
     window.addEventListener(HAIM_VIEW_MODE_CHANGED_EVENT, onEvt);
     return () => window.removeEventListener(HAIM_VIEW_MODE_CHANGED_EVENT, onEvt);
-  }, []);
+  }, [currentFile]);
+
+  useEffect(() => {
+    const onEvt = (event: Event) => {
+      const detail = (event as CustomEvent<{ key?: string; mode?: HaimViewMode }>)
+        .detail;
+      const key = getHaimViewModeFileKeyFromFile(currentFile);
+      if (!key || detail?.key !== key) return;
+      if (isHaimViewMode(detail.mode)) setViewMode(detail.mode);
+    };
+    window.addEventListener(HAIM_VIEW_MODE_FILE_CHANGED_EVENT, onEvt);
+    return () =>
+      window.removeEventListener(HAIM_VIEW_MODE_FILE_CHANGED_EVENT, onEvt);
+  }, [currentFile]);
 
   useEffect(() => {
     const onEvt = () => setScrollSyncEnabled(loadHaimDoubleScrollSyncEnabled());
@@ -1588,7 +1664,7 @@ export default function HaimEditor({
         <HaimToolbar
           editor={editor}
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
           previewOnly={previewOnly}
           onInsertPageBreak={insertPageBreak}
           onFormatCommand={runFormatCommand}
