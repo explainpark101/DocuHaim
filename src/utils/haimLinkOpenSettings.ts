@@ -3,6 +3,8 @@
  * Default: false — require Ctrl/Cmd+click, hover-card 「열기」, or the setting.
  */
 
+import { isCoarsePointer } from '@/utils/hapticFeedback';
+
 const LOCAL_STORAGE_KEY = 's3haim_haim_link_open_on_click';
 
 /** Fired on `window` when the preference changes. */
@@ -56,6 +58,12 @@ export function getHaimLinkOpenModLabel(): string {
 
 /** Secondary hint under the hover-card open button. */
 export function getHaimLinkOpenHintText(): string {
+  if (isCoarsePointer()) {
+    if (loadHaimLinkOpenOnClick()) {
+      return '또는 링크를 탭';
+    }
+    return '열기 버튼을 누르세요';
+  }
   const mod = getHaimLinkOpenModLabel();
   if (loadHaimLinkOpenOnClick()) {
     return `또는 클릭 / ${mod}+클릭`;

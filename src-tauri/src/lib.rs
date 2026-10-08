@@ -113,6 +113,93 @@ impl PendingOpenPaths {
     }
 }
 
+/// Android share-sheet payload (chat share_target intake).
+#[cfg(target_os = "android")]
+#[derive(Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct AndroidSharePayload {
+    title: String,
+    text: String,
+    urls: Vec<String>,
+}
+
+#[cfg(target_os = "android")]
+struct PendingAndroidShare(Mutex<Option<AndroidSharePayload>>);
+
+#[cfg(target_os = "android")]
+impl PendingAndroidShare {
+    fn push(&self, payload: AndroidSharePayload) {
+        if let Ok(mut guard) = self.0.lock() {
+            *guard = Some(payload);
+        }
+    }
+
+    fn take(&self) -> Option<AndroidSharePayload> {
+        self.0.lock().ok().and_then(|mut g| g.take())
+    }
+}
+
+#[cfg(target_os = "android")]
+fn percent_decode_utf8(input: &str) -> Option<String> {
+    let bytes = input.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let h = (bytes[i + 1] as char).to_digit(16)?;
+            let l = (bytes[i + 2] as char).to_digit(16)?;
+            out.push((h * 16 + l) as u8);
+            i += 3;
+            continue;
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8(out).ok()
+}
+
+#[cfg(target_os = "android")]
+fn decode_data_text_plain(url: &str) -> Option<String> {
+    let trimmed = url.trim();
+    let rest = trimmed.strip_prefix("data:text/plain")?;
+    let comma = rest.find(',')?;
+    let meta = &rest[..comma];
+    let data = &rest[comma + 1..];
+    if meta.contains(";base64") {
+        return None;
+    }
+    // tao percent-encodes EXTRA_TEXT into data:text/plain,<encoded>
+    let decoded = percent_decode_utf8(data)?;
+    if decoded.is_empty() {
+        None
+    } else {
+        Some(decoded)
+    }
+}
+
+#[cfg(target_os = "android")]
+fn push_android_share(app: &AppHandle, mut payload: AndroidSharePayload) {
+    if payload.text.is_empty() {
+        for url in &payload.urls {
+            if let Some(text) = decode_data_text_plain(url) {
+                payload.text = text;
+                break;
+            }
+        }
+    }
+    payload.urls.retain(|u| {
+        let t = u.trim();
+        !t.is_empty() && !t.starts_with("data:text/plain")
+    });
+    if payload.title.is_empty() && payload.text.is_empty() && payload.urls.is_empty() {
+        return;
+    }
+    if let Some(state) = app.try_state::<PendingAndroidShare>() {
+        state.push(payload.clone());
+    }
+    let _ = app.emit("android-share-target", payload);
+}
+
 fn path_from_url_or_raw(s: &str) -> Option<String> {
     let trimmed = s.trim();
     if trimmed.is_empty() {
@@ -259,6 +346,14 @@ fn take_pending_open_paths(state: tauri::State<'_, PendingOpenPaths>) -> Vec<Str
     state.take_all()
 }
 
+#[cfg(target_os = "android")]
+#[tauri::command]
+fn take_pending_android_share(
+    state: tauri::State<'_, PendingAndroidShare>,
+) -> Option<AndroidSharePayload> {
+    state.take()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let pending = PendingOpenPaths(Mutex::new(collect_cli_file_args()));
@@ -345,9 +440,11 @@ pub fn run() {
     {
         builder = builder
             .manage(pending)
+            .manage(PendingAndroidShare(Mutex::new(None)))
             .manage(as_index::AsIndexState::new())
             .invoke_handler(tauri::generate_handler![
                 take_pending_open_paths,
+                take_pending_android_share,
                 read_open_uri,
                 gemini_api_fetch,
                 exit_app,
@@ -368,6 +465,7 @@ pub fn run() {
                 android_native::android_set_system_status_bar_visible,
                 android_native::android_is_system_status_bar_visible,
                 android_native::android_primary_abi,
+                android_native::android_open_external_url,
                 android_native::android_install_apk,
                 android_native::android_download_and_install_apk,
             ]);
@@ -410,29 +508,82 @@ pub fn run() {
                     });
                 }
             }
+            #[cfg(target_os = "android")]
+            if let Some(state) = app.try_state::<PendingAndroidShare>() {
+                if let Some(payload) = state.take() {
+                    let handle = app.handle().clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(800));
+                        // Re-queue so take_pending_android_share still works if the
+                        // deferred emit races the frontend listener.
+                        if let Some(pending) = handle.try_state::<PendingAndroidShare>() {
+                            pending.push(payload.clone());
+                        }
+                        let _ = handle.emit("android-share-target", payload);
+                    });
+                }
+            }
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building DocuHaim")
         .run(|app_handle, event| {
             match event {
-                // File associations: macOS / iOS / Android deliver open URLs here.
+                // File associations / Android share: macOS / iOS / Android deliver URLs here.
                 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
                 RunEvent::Opened { urls } => {
-                    let paths: Vec<String> = urls
-                        .iter()
-                        .filter_map(|u| {
-                            if u.scheme() == "file" {
-                                u.to_file_path()
-                                    .ok()
-                                    .map(|p: PathBuf| p.to_string_lossy().into_owned())
-                            } else {
-                                path_from_url_or_raw(u.as_str())
-                            }
-                        })
-                        .filter(|p| looks_like_markdown_path(p) || p.starts_with("content:"))
-                        .collect();
-                    push_paths(app_handle, paths);
+                    #[cfg(target_os = "android")]
+                    {
+                        let was_share = android_native::consume_last_intent_was_share();
+                        if was_share {
+                            let title = android_native::take_pending_share_title();
+                            let text = android_native::take_pending_share_text();
+                            let share_urls: Vec<String> =
+                                urls.iter().map(|u| u.as_str().to_string()).collect();
+                            push_android_share(
+                                app_handle,
+                                AndroidSharePayload {
+                                    title,
+                                    text,
+                                    urls: share_urls,
+                                },
+                            );
+                        } else {
+                            let paths: Vec<String> = urls
+                                .iter()
+                                .filter_map(|u| {
+                                    if u.scheme() == "file" {
+                                        u.to_file_path().ok().map(|p: PathBuf| {
+                                            p.to_string_lossy().into_owned()
+                                        })
+                                    } else {
+                                        path_from_url_or_raw(u.as_str())
+                                    }
+                                })
+                                .filter(|p| {
+                                    looks_like_markdown_path(p) || p.starts_with("content:")
+                                })
+                                .collect();
+                            push_paths(app_handle, paths);
+                        }
+                    }
+                    #[cfg(not(target_os = "android"))]
+                    {
+                        let paths: Vec<String> = urls
+                            .iter()
+                            .filter_map(|u| {
+                                if u.scheme() == "file" {
+                                    u.to_file_path()
+                                        .ok()
+                                        .map(|p: PathBuf| p.to_string_lossy().into_owned())
+                                } else {
+                                    path_from_url_or_raw(u.as_str())
+                                }
+                            })
+                            .filter(|p| looks_like_markdown_path(p) || p.starts_with("content:"))
+                            .collect();
+                        push_paths(app_handle, paths);
+                    }
                 }
                 #[cfg(target_os = "macos")]
                 RunEvent::Reopen {

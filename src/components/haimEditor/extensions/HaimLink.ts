@@ -8,6 +8,8 @@ import { isDocuhaimHref, parseDocuhaimHref } from '@/utils/docuhaimLink';
 import { loadHaimLinkOpenOnClick } from '@/utils/haimLinkOpenSettings';
 import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
 import { openHaimViewPath } from '@/utils/haimOpenViewPath';
+import { isDesktopApp } from '@/utils/isDesktopApp';
+import { shouldOpenDesktopExternalLink } from '@/utils/shared/initDesktopExternalLinks';
 
 /** Applied to the ProseMirror root while Ctrl/Cmd is held (CSS cursor:pointer on links). */
 export const HAIM_MOD_HELD_CLASS = 'haim-mod-held';
@@ -111,10 +113,13 @@ function tryOpenLinkFromEvent(
   const openOnClick = loadHaimLinkOpenOnClick();
   const mod = event.metaKey || event.ctrlKey;
 
-  // Editable: always prevent browser navigation; open via setting, Mod+click, or hover 「열기」.
+  // Editable: always prevent browser navigation; open via setting, Mod+click, or hover/tap 「열기」.
+  // Coarse pointers keep preventDefault so the sticky hover-card can show 「열기」
+  // (plain tap must not navigate away while editing).
   if (view.editable) {
     event.preventDefault();
-    if (!mod && !openOnClick) return true;
+    const allowOpen = mod || openOnClick;
+    if (!allowOpen) return true;
 
     if (docuhaimPath) {
       event.stopPropagation();
@@ -127,12 +132,25 @@ function tryOpenLinkFromEvent(
     return true;
   }
 
-  // Preview / read-only: docuhaim opens in-app; leave http(s) to the host.
+  // Preview / read-only: docuhaim opens in-app.
   if (docuhaimPath) {
     event.preventDefault();
     event.stopPropagation();
     openHaimViewPath(docuhaimPath);
     return true;
+  }
+
+  // Tauri (esp. Android): WebView `_blank` is unreliable — open via shell / Activity.
+  // Document capture (`initDesktopExternalLinks`) usually handles this first;
+  // keep a fallback when the click reaches the editor.
+  if (isDesktopApp()) {
+    const rawTarget = (link.getAttribute('target') || link.target || '_blank').trim();
+    if (shouldOpenDesktopExternalLink(href, { target: rawTarget })) {
+      event.preventDefault();
+      event.stopPropagation();
+      openHaimLinkHref(href, { target: rawTarget });
+      return true;
+    }
   }
 
   return false;

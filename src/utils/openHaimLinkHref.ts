@@ -1,16 +1,10 @@
-import { shouldOpenDesktopExternalLink } from '@/utils/shared/initDesktopExternalLinks';
+import {
+  openDesktopExternalUrl,
+  shouldOpenDesktopExternalLink,
+} from '@/utils/shared/initDesktopExternalLinks';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { isDocuhaimHref, parseDocuhaimHref } from '@/utils/docuhaimLink';
 import { openHaimViewPath } from '@/utils/haimOpenViewPath';
-
-async function openViaDesktopShell(href: string): Promise<void> {
-  try {
-    const { open } = await import('@tauri-apps/plugin-shell');
-    await open(href);
-  } catch (error) {
-    console.warn('Failed to open external URL in system browser:', href, error);
-  }
-}
 
 /**
  * Open via a temporary anchor click — more reliable than window.open(..., features)
@@ -29,7 +23,7 @@ function openViaAnchorClick(href: string, target: string): void {
 }
 
 /**
- * Open a Haim link href: docuhaim:// in-app, desktop http(s) via OS browser,
+ * Open a Haim link href: docuhaim:// in-app, desktop/Android http(s) via OS browser,
  * otherwise a new tab.
  */
 export function openHaimLinkHref(
@@ -54,7 +48,7 @@ export function openHaimLinkHref(
     isDesktopApp() &&
     shouldOpenDesktopExternalLink(raw, { target })
   ) {
-    void openViaDesktopShell(raw);
+    void openDesktopExternalUrl(raw);
     return;
   }
 

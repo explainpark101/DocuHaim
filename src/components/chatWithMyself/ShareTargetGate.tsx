@@ -23,6 +23,7 @@ import {
   filesForShareTargetSession,
   sessionOriginForShareTargetFiles,
 } from '@/utils/chatWithMyself/shareTargetSession';
+import { subscribeAndroidShareTarget } from '@/utils/chatWithMyself/androidShareTarget';
 import {
   SELF_GROUP,
   appendShareChatMessage,
@@ -173,6 +174,19 @@ export default function ShareTargetGate({
       cancelled = true;
     };
   }, [bootstrapDone, prompt]);
+
+  // Tauri Android: ACTION_SEND / SEND_MULTIPLE (PWA share_target equivalent).
+  useEffect(() => {
+    return subscribeAndroidShareTarget((intake) => {
+      const body = String(intake.body || '').trim();
+      const files = normalizeShareFiles(intake.files);
+      if (!body && !files.length) return;
+      setPrompt({ body, files });
+      setBootstrapDone(true);
+      setShareIntakePending(false);
+      ensureChatOpenRef.current();
+    });
+  }, []);
 
   const clearPromptRecord = useCallback(async (current: SharePrompt | null | undefined) => {
     if (current?.id != null) {

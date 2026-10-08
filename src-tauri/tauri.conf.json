@@ -49,7 +49,7 @@
         "mimeType": "text/markdown",
         "role": "Editor",
         "rank": "Default",
-        "androidIntentActionFilters": ["view", "send", "sendMultiple"]
+        "androidIntentActionFilters": ["view"]
       }
     ],
     "macOS": {

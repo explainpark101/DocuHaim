@@ -66,7 +66,7 @@ Match the printed ABI to the table above. If unsure, use **universal**.
   - Android 8+ does **not** show a normal runtime permission for this. The first update opens **Settings → Install unknown apps** for DocuHaim (`REQUEST_INSTALL_PACKAGES` / `canRequestPackageInstalls`). Allow it, then tap update again.
   - After that, the **system package-installer confirm** sheet should appear (`STATUS_PENDING_USER_ACTION`). Sideload updates cannot skip that user action.
 - **System status bar** — Settings toggle (or Advanced Search) to show/hide the Android status bar over the fullscreen WebView.
-- **share_target** — existing PWA share intake is assumed to keep working; this shell does not reimplement it.
+- **share_target** — native `ACTION_SEND` / `SEND_MULTIPLE` intent filters (see `AndroidManifest.xml`) so DocuHaim appears in the Android share sheet; intake opens the same chat chooser as the PWA Web Share Target (`ShareTargetGate`). Markdown **Open with** stays on `VIEW` file association, separate from share.
 
 ### Launcher icons
 

@@ -309,6 +309,18 @@ button {
   min-height: 0 !important;
   overflow: hidden !important;
 }
+/* Scrollport for TipTap body (outer shell stays overflow:hidden). */
+.chat-composer-editor .chat-composer-haim-scroll {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin !important;
+  min-height: 0 !important;
+}
+.chat-composer-editor .chat-composer-haim-scroll::-webkit-scrollbar {
+  display: block !important;
+  width: 6px;
+}
 .chat-composer-editor .chat-composer-haim .tiptap,
 .chat-composer-editor .chat-composer-haim .ProseMirror,
 .chat-composer-editor .haim-editor-content .tiptap,

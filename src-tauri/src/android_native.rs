@@ -77,6 +77,55 @@ fn call_activity_string(method: &str, sig: &str, args: &[JValue]) -> Result<Stri
     })
 }
 
+fn call_main_activity_static_bool(method: &str) -> bool {
+    with_main_activity(|env, _activity| {
+        let class = env
+            .find_class("com/docuhaim/app/MainActivity")
+            .map_err(|e| e.to_string())?;
+        let value = env
+            .call_static_method(class, method, "()Z", &[])
+            .map_err(|e| e.to_string())?
+            .z()
+            .map_err(|e| e.to_string())?;
+        Ok(value)
+    })
+    .unwrap_or(false)
+}
+
+fn call_main_activity_static_string(method: &str) -> String {
+    with_main_activity(|env, _activity| {
+        let class = env
+            .find_class("com/docuhaim/app/MainActivity")
+            .map_err(|e| e.to_string())?;
+        let obj = env
+            .call_static_method(class, method, "()Ljava/lang/String;", &[])
+            .map_err(|e| e.to_string())?
+            .l()
+            .map_err(|e| e.to_string())?;
+        if obj.is_null() {
+            return Ok(String::new());
+        }
+        let jstr = env
+            .get_string((&obj).into())
+            .map_err(|e| e.to_string())?;
+        Ok(jstr.to_string_lossy().into_owned())
+    })
+    .unwrap_or_default()
+}
+
+/// Whether the last activity Intent was ACTION_SEND / SEND_MULTIPLE (consumes the flag).
+pub fn consume_last_intent_was_share() -> bool {
+    call_main_activity_static_bool("consumeLastIntentWasShare")
+}
+
+pub fn take_pending_share_text() -> String {
+    call_main_activity_static_string("takePendingShareText")
+}
+
+pub fn take_pending_share_title() -> String {
+    call_main_activity_static_string("takePendingShareTitle")
+}
+
 #[tauri::command]
 pub fn android_set_system_status_bar_visible(visible: bool) -> Result<(), String> {
     call_activity_void(
@@ -94,6 +143,48 @@ pub fn android_is_system_status_bar_visible() -> Result<bool, String> {
 #[tauri::command]
 pub fn android_primary_abi() -> Result<String, String> {
     call_activity_string("primaryAbi", "()Ljava/lang/String;", &[])
+}
+
+/// Open a URL in the system browser / default handler (Android Activity Intent).
+#[tauri::command]
+pub fn android_open_external_url(url: String) -> Result<(), String> {
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return Err("empty url".into());
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    let allowed = lower.starts_with("https://")
+        || lower.starts_with("http://")
+        || lower.starts_with("mailto:")
+        || lower.starts_with("tel:");
+    if !allowed {
+        return Err(format!("unsupported url scheme: {trimmed}"));
+    }
+
+    let status = with_main_activity(|env, activity| {
+        let url_j = env.new_string(trimmed).map_err(|e| e.to_string())?;
+        let obj = env
+            .call_method(
+                activity,
+                "openExternalUrl",
+                "(Ljava/lang/String;)Ljava/lang/String;",
+                &[JValue::Object(&url_j)],
+            )
+            .map_err(|e| e.to_string())?
+            .l()
+            .map_err(|e| e.to_string())?;
+        if obj.is_null() {
+            return Err("openExternalUrl returned null".into());
+        }
+        let jstr = env.get_string((&obj).into()).map_err(|e| e.to_string())?;
+        Ok(jstr.to_string_lossy().into_owned())
+    })?;
+
+    if status == "ok" {
+        Ok(())
+    } else {
+        Err(status)
+    }
 }
 
 #[tauri::command]

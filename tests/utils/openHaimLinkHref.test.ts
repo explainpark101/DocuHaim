@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const openHaimViewPath = vi.fn();
 const isDesktopApp = vi.fn(() => false);
+const isTauriAndroid = vi.fn(() => false);
+const openDesktopExternalUrl = vi.fn(async () => undefined);
 
 vi.mock('@/utils/haimOpenViewPath', () => ({
   openHaimViewPath: (...args: unknown[]) => openHaimViewPath(...args),
@@ -11,6 +13,19 @@ vi.mock('@/utils/isDesktopApp', () => ({
   isDesktopApp: () => isDesktopApp(),
 }));
 
+vi.mock('@/utils/tauriPlatform', () => ({
+  isTauriAndroid: () => isTauriAndroid(),
+}));
+
+vi.mock('@/utils/shared/initDesktopExternalLinks', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/utils/shared/initDesktopExternalLinks')>();
+  return {
+    ...actual,
+    openDesktopExternalUrl: (...args: unknown[]) => openDesktopExternalUrl(...args),
+  };
+});
+
 describe('openHaimLinkHref', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -18,6 +33,9 @@ describe('openHaimLinkHref', () => {
     openHaimViewPath.mockReset();
     isDesktopApp.mockReset();
     isDesktopApp.mockReturnValue(false);
+    isTauriAndroid.mockReset();
+    isTauriAndroid.mockReturnValue(false);
+    openDesktopExternalUrl.mockReset();
   });
 
   it('opens docuhaim paths in-app', async () => {
@@ -26,7 +44,7 @@ describe('openHaimLinkHref', () => {
     expect(openHaimViewPath).toHaveBeenCalledWith('notes/a.md');
   });
 
-  it('opens http(s) via temporary anchor click', async () => {
+  it('opens http(s) via temporary anchor click on web', async () => {
     const click = vi.fn();
     const remove = vi.fn();
     const anchor = {
@@ -52,5 +70,12 @@ describe('openHaimLinkHref', () => {
     expect(anchor.rel).toBe('noopener noreferrer');
     expect(click).toHaveBeenCalledTimes(1);
     expect(remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens http(s) via desktop external opener in Tauri shells', async () => {
+    isDesktopApp.mockReturnValue(true);
+    const { openHaimLinkHref } = await import('@/utils/openHaimLinkHref');
+    openHaimLinkHref('https://example.com/x', { target: '_blank' });
+    expect(openDesktopExternalUrl).toHaveBeenCalledWith('https://example.com/x');
   });
 });

@@ -27,6 +27,7 @@ import { initMdEditorCodeCopy } from '@/utils/initMdEditorCodeCopy'
 import { initMdEditorToolbarScroll } from '@/utils/initMdEditorToolbarScroll'
 import { isDesktopApp } from '@/utils/isDesktopApp'
 import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
+import { startAndroidShareTargetBridge } from '@/utils/chatWithMyself/androidShareTarget'
 import { initUiFontSettings } from '@/utils/uiFontSettings'
 import { scheduleRevealTauriMainWindow } from '@/utils/revealTauriMainWindow'
 import { getBootSplash, initBootSplash } from '@/boot/bootSplash'
@@ -47,6 +48,7 @@ initMdEditorCodeCopy()
 initMdEditorToolbarScroll()
 initUiFontSettings()
 void startDesktopOpenFilesBridge()
+void startAndroidShareTargetBridge()
 
 const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'
 const isDesktop = isDesktopApp()

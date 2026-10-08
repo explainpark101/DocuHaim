@@ -363,8 +363,9 @@ export default function ChatComposerHaimEditor({
           </div>
         </Tooltip.Provider>
       ) : null}
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <EditorContent editor={editor} className="h-full" />
+      {/* Bounded dock + overflow-auto — same scrollport pattern as note HaimEditor. */}
+      <div className="chat-composer-haim-scroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <EditorContent editor={editor} className="haim-editor-content min-h-full" />
       </div>
     </div>
   );

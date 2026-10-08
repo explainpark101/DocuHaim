@@ -30,13 +30,48 @@ class MainActivity : TauriActivity() {
     var instance: MainActivity? = null
       private set
 
+    /** Set when the activity was launched / resumed via ACTION_SEND(_MULTIPLE). */
+    @JvmStatic
+    @Volatile
+    var lastIntentWasShare: Boolean = false
+
+    @JvmStatic
+    @Volatile
+    private var pendingShareText: String = ""
+
+    @JvmStatic
+    @Volatile
+    private var pendingShareTitle: String = ""
+
     private val mainHandler = Handler(Looper.getMainLooper())
 
     const val ACTION_APK_INSTALL_STATUS = "com.docuhaim.app.APK_INSTALL_STATUS"
+
+    @JvmStatic
+    fun takePendingShareText(): String {
+      val value = pendingShareText
+      pendingShareText = ""
+      return value
+    }
+
+    @JvmStatic
+    fun takePendingShareTitle(): String {
+      val value = pendingShareTitle
+      pendingShareTitle = ""
+      return value
+    }
+
+    @JvmStatic
+    fun consumeLastIntentWasShare(): Boolean {
+      val value = lastIntentWasShare
+      lastIntentWasShare = false
+      return value
+    }
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
+    captureShareIntent(intent)
     super.onCreate(savedInstanceState)
     instance = this
     // Preference is applied from the web UI after boot (see initAndroidSystemStatusBar).
@@ -45,9 +80,28 @@ class MainActivity : TauriActivity() {
   }
 
   override fun onNewIntent(intent: Intent) {
+    captureShareIntent(intent)
     super.onNewIntent(intent)
     setIntent(intent)
     handlePackageInstallerIntent(intent)
+  }
+
+  /**
+   * Mark share-sheet launches before Tauri/tao processes the Intent so Rust can
+   * route Opened URLs to chat share intake instead of markdown file-association.
+   */
+  private fun captureShareIntent(intent: Intent?) {
+    if (intent == null) return
+    val action = intent.action ?: return
+    val isShare =
+      action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE
+    lastIntentWasShare = isShare
+    if (!isShare) return
+    pendingShareText = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+    pendingShareTitle =
+      intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty().ifEmpty {
+        intent.getStringExtra(Intent.EXTRA_TITLE).orEmpty()
+      }
   }
 
   override fun onDestroy() {
@@ -154,6 +208,26 @@ class MainActivity : TauriActivity() {
   fun primaryAbi(): String {
     val abis = Build.SUPPORTED_ABIS
     return if (abis != null && abis.isNotEmpty()) abis[0] else "arm64-v8a"
+  }
+
+  /**
+   * Open http(s)/mailto/tel in the system browser (or default handler).
+   * Prefer Activity.startActivity over applicationContext — more reliable on Android 11+.
+   */
+  fun openExternalUrl(url: String): String {
+    return try {
+      runOnMainSync {
+        val uri = Uri.parse(url)
+        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+          addCategory(Intent.CATEGORY_BROWSABLE)
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
+      }
+      "ok"
+    } catch (t: Throwable) {
+      "error:${t.message ?: t.javaClass.simpleName}"
+    }
   }
 
   fun ensureInstallPermission(): String {

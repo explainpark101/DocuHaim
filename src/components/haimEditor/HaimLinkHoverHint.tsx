@@ -4,6 +4,7 @@ import type { Editor } from '@tiptap/react';
 import { AnimatePresence, motion, type MotionStyle } from 'motion/react';
 import { ExternalLink } from 'lucide-react';
 import Button from '@/components/Button';
+import { isCoarsePointer, isTouchLikePointer } from '@/utils/hapticFeedback';
 import { parseDocuhaimHref } from '@/utils/docuhaimLink';
 import {
   getHaimLinkOpenHintText,
@@ -124,9 +125,14 @@ function panelStyle(anchor: AnchorRect): MotionStyle {
   };
 }
 
+function shouldUseStickyTip(pointerType?: string | null): boolean {
+  return isCoarsePointer() || isTouchLikePointer(pointerType);
+}
+
 /**
- * Hover card over WYSIWYG links: move pointer onto the card and press 「열기」.
- * Custom floating panel (not Radix Tooltip) so the card stays hoverable with a button.
+ * Hover / tap card over WYSIWYG links: 「열기」 opens the href.
+ * Fine pointer: hover. Coarse / touch: sticky tip on tap (hover tip vanishes
+ * before the finger can reach the button).
  */
 export default function HaimLinkHoverHint({
   editor,
@@ -148,6 +154,14 @@ export default function HaimLinkHoverHint({
   const linkElRef = useRef<HTMLAnchorElement | null>(null);
   /** True while pointer is on the floating card — ignore scroll-hide races. */
   const cardHoveredRef = useRef(false);
+  /**
+   * Sticky mode (touch / coarse): tip stays until 「열기」, outside tap, or Escape.
+   * Pointerout must not dismiss — there is no hover bridge to the button.
+   */
+  const stickyRef = useRef(false);
+  const cardElRef = useRef<HTMLDivElement | null>(null);
+  /** Last pointerType on the editor — click events lack pointerType. */
+  const lastPointerTypeRef = useRef<string>('mouse');
   /**
    * Stash href on pointerdown so blur/scroll can clear `tip` before click.
    * Do not open on pointerdown — preventDefault there suppresses click and
@@ -174,10 +188,12 @@ export default function HaimLinkHoverHint({
     clearCloseTimer();
     linkElRef.current = null;
     cardHoveredRef.current = false;
+    stickyRef.current = false;
     setTip(null);
   };
 
   const scheduleClose = () => {
+    if (stickyRef.current) return;
     clearCloseTimer();
     closeTimerRef.current = setTimeout(() => {
       hide();
@@ -201,12 +217,16 @@ export default function HaimLinkHoverHint({
     hide();
   };
 
-  const showFor = (link: HTMLAnchorElement) => {
+  const showFor = (link: HTMLAnchorElement, options?: { immediate?: boolean; sticky?: boolean }) => {
     if (!editor) return;
     const href = resolveLinkHref(editor, link);
     if (!href) return;
     clearCloseTimer();
     clearOpenTimer();
+
+    if (options?.sticky) {
+      stickyRef.current = true;
+    }
 
     const apply = () => {
       linkElRef.current = link;
@@ -219,7 +239,7 @@ export default function HaimLinkHoverHint({
       setTip(next);
     };
 
-    if (tipRef.current) {
+    if (options?.immediate || tipRef.current) {
       apply();
       return;
     }
@@ -235,14 +255,23 @@ export default function HaimLinkHoverHint({
 
     const root = editor.view.dom;
 
+    const onPointerDown = (event: PointerEvent) => {
+      lastPointerTypeRef.current = event.pointerType || 'mouse';
+    };
+
     const onPointerOver = (event: PointerEvent) => {
+      lastPointerTypeRef.current = event.pointerType || lastPointerTypeRef.current;
+      // Touch / coarse: wait for tap — hover tips vanish before 「열기」 is reachable.
+      if (shouldUseStickyTip(event.pointerType)) return;
       const target = event.target as HTMLElement | null;
       const link = target?.closest?.('a[href]') as HTMLAnchorElement | null;
       if (!link || !root.contains(link)) return;
+      stickyRef.current = false;
       showFor(link);
     };
 
     const onPointerOut = (event: PointerEvent) => {
+      if (stickyRef.current) return;
       const related = event.relatedTarget as Node | null;
       const fromLink = (event.target as HTMLElement | null)?.closest?.(
         'a[href]',
@@ -253,10 +282,35 @@ export default function HaimLinkHoverHint({
       scheduleClose();
     };
 
+    const onClick = (event: MouseEvent) => {
+      if (!shouldUseStickyTip(lastPointerTypeRef.current)) return;
+      if (event.button !== 0) return;
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!link || !root.contains(link)) return;
+      // Sticky tip so the finger can reach 「열기」 after lift.
+      showFor(link, { immediate: true, sticky: true });
+    };
+
     const onScroll = () => {
       if (!tipRef.current) return;
-      // Clicking 「열기」 can blur the editor and shift scroll; keep the card while hovered.
-      if (cardHoveredRef.current) return;
+      // Sticky tip survives scroll so 「열기」 remains tappable after a slight shift.
+      if (stickyRef.current || cardHoveredRef.current) return;
+      hide();
+    };
+
+    const onDocPointerDown = (event: PointerEvent) => {
+      if (!stickyRef.current || !tipRef.current) return;
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (cardElRef.current?.contains(target)) return;
+      if (linkElRef.current?.contains(target)) return;
+      hide();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (!tipRef.current) return;
       hide();
     };
 
@@ -265,19 +319,28 @@ export default function HaimLinkHoverHint({
       passive: true,
     };
 
+    root.addEventListener('pointerdown', onPointerDown);
     root.addEventListener('pointerover', onPointerOver);
     root.addEventListener('pointerout', onPointerOut);
+    root.addEventListener('click', onClick);
     root.addEventListener('scroll', onScroll, scrollOpts);
     window.addEventListener('scroll', onScroll, scrollOpts);
+    document.addEventListener('pointerdown', onDocPointerDown, true);
+    window.addEventListener('keydown', onKeyDown, true);
 
     return () => {
+      root.removeEventListener('pointerdown', onPointerDown);
       root.removeEventListener('pointerover', onPointerOver);
       root.removeEventListener('pointerout', onPointerOut);
+      root.removeEventListener('click', onClick);
       root.removeEventListener('scroll', onScroll, scrollOpts);
       window.removeEventListener('scroll', onScroll, scrollOpts);
+      document.removeEventListener('pointerdown', onDocPointerDown, true);
+      window.removeEventListener('keydown', onKeyDown, true);
       clearOpenTimer();
       clearCloseTimer();
       linkElRef.current = null;
+      stickyRef.current = false;
       setTip(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount listeners for editor/enabled only
@@ -314,6 +377,7 @@ export default function HaimLinkHoverHint({
       {tip ? (
         <motion.div
           key="haim-link-hover-card"
+          ref={cardElRef}
           role="dialog"
           aria-label="링크 열기"
           initial={{ opacity: 0, y: 6, scale: 0.96 }}
