@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const openHaimViewPath = vi.fn();
+const openHaimViewPath = vi.fn((..._args: unknown[]) => undefined);
 const isDesktopApp = vi.fn(() => false);
 const isTauriAndroid = vi.fn(() => false);
-const openDesktopExternalUrl = vi.fn(async () => undefined);
+const openDesktopExternalUrl = vi.fn(async (_href: string) => undefined);
 
 vi.mock('@/utils/haimOpenViewPath', () => ({
   openHaimViewPath: (...args: unknown[]) => openHaimViewPath(...args),
@@ -22,7 +22,7 @@ vi.mock('@/utils/shared/initDesktopExternalLinks', async (importOriginal) => {
     await importOriginal<typeof import('@/utils/shared/initDesktopExternalLinks')>();
   return {
     ...actual,
-    openDesktopExternalUrl: (...args: unknown[]) => openDesktopExternalUrl(...args),
+    openDesktopExternalUrl: (href: string) => openDesktopExternalUrl(href),
   };
 });
 
