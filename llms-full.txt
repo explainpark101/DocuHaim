@@ -1,6 +1,6 @@
 # Docu Haim
 
-Generated: 2026-10-06T12:29:13.166Z
+Generated: 2026-10-08T15:58:26.013Z
 
 ============================================================
 Advanced Search
@@ -1086,6 +1086,71 @@ The JSON payload is escaped for HTML comments by replacing `--` with `\u002d\u00
 | Sources list title / visibility | `src/utils/footnoteMarkdownIt.ts` |
 
 ============================================================
+Emoji shortcode (`:name:`)
+============================================================
+
+URL: https://explainpark101.github.io/DocuHaim/docs/custom-markdown/emoji-shortcode/
+
+# Emoji shortcode (`:name:`)
+
+GitHub-style shortcodes that render as native emoji glyphs.
+
+## 문법
+
+```markdown
+Done :cross_mark: :white_check_mark: :smile:
+```
+
+- Form: `:name:` where `name` is `[a-zA-Z0-9_+-]+`
+- Unknown names stay literal (`:not_a_real_emoji:`)
+- Inside inline code / fenced code: **not** converted (`:cross_mark:` stays text)
+
+Vault markdown keeps the shortcode form. Haim WYSIWYG shows an emoji atom; serialize writes `:canonical_name:` (or an alias shortcode that TipTap stored).
+
+## Spec (interop)
+
+### 1. Grammar
+
+```
+shortcode = ":" name ":"
+name      = 1*( ALPHA / DIGIT / "_" / "+" / "-" )
+```
+
+Case-sensitive match against the GitHub emoji shortcode set (same catalog as TipTap `gitHubEmojis`).
+
+### 2. Parse algorithm
+
+1. Scan **prose text** only (not `code_inline`, not fenced `code` / `pre` bodies).
+2. For each `:name:`:
+   - If `name` is a known shortcode or canonical emoji id → replace with the native emoji string (or editor atom).
+   - Else leave the literal `:name:` unchanged.
+3. Prefer the leftmost non-overlapping match; do not nest.
+4. Emoticons like `:-)` are optional editor input helpers, **not** part of this vault shortcode contract.
+
+### 3. Canonical output
+
+| Layer | Output |
+|-------|--------|
+| Vault / source markdown | `:name:` (shortcode text) |
+| Preview / print HTML | Unicode emoji character in a text node (no wrapper required) |
+| Haim TipTap | `emoji` inline atom (`span[data-type="emoji"]`) |
+
+### 4. Non-goals
+
+- Custom vault emoji image packs
+- Skin-tone modifiers in the shortcode grammar (use catalog entries that already include them)
+- Replacing arbitrary Unicode emoji back to shortcodes on save (optional; Haim may keep typed Unicode as-is)
+
+## 구현
+
+| 역할 | 경로 |
+|------|------|
+| Shared resolve | `src/utils/emojiShortcode.ts` |
+| markdown-it preview | `src/utils/emojiShortcodeMarkdownIt.ts` + `appMarkdownItPlugins.ts` |
+| Haim TipTap | `src/components/haimEditor/extensions/HaimEmoji.ts` (`markdownTokenizer` + `parseMarkdown`) |
+| Catalog | `@tiptap/extension-emoji` `gitHubEmojis` |
+
+============================================================
 Encrypted markdown (`.enc.md`)
 ============================================================
 
@@ -1629,6 +1694,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [quiz-md.md](./quiz-md.md) | `.quiz.md` + `<!-- quiz-config … -->` | 퀴즈 모드 / AI 출제·채점 |
 | [kanban-json.md](./kanban-json.md) | `.kanban.json` board JSON (v2) | 칸반 뷰어 / 스윔레인·커버·열 폴더 / 컬럼·카드 DnD |
 | [preview-hard-break.md](./preview-hard-break.md) | `<br/>` (Mirror Edit Enter) | 에디터 / 미리보기 |
+| [emoji-shortcode.md](./emoji-shortcode.md) | `:cross_mark:` / `:smile:` | Haim / 미리보기 / 인쇄 |
 | [mermaid-fence-size.md](./mermaid-fence-size.md) | ` ```mermaid width=… height=…` (legacy) | 에디터 / 미리보기 / 인쇄 |
 | [mermaid-size.md](./mermaid-size.md) | `<!-- mermaid-size … -->` + mermaid fence | 에디터 / 미리보기 / 인쇄 |
 
@@ -1660,7 +1726,7 @@ Feature 문서의 **Spec** 섹션은 파서 중립 계약이다. markdown-it 토
 다음을 새로 문서화하거나 “앱 전용 문법”으로 다루지 않는다.
 
 - CommonMark / GFM (제목 h1–h6, 링크, 목록, 코드펜스, 테이블, task list 등)
-- md-editor-rt 기본 기능 (KaTeX, Mermaid, 이모지 등)
+- md-editor-rt 기본 기능 (KaTeX, Mermaid 등; shortcode 이모지는 [emoji-shortcode.md](./emoji-shortcode.md))
 - 미리보기 외부 링크 `target=_blank` (`previewLinkTargetBlankPlugin`) — **문법 아님**, 렌더러만
 - 녹음 동기화 — `.sync.pb` / `.sync.json` **사이드카**, 인라인 마커 없음
 - Obsidian식 일반 `[[wikilink]]` — **미지원** (`![[]]`, `[[file:]]`, `[[note:]]`, `[[folder:]]`만)
@@ -3522,7 +3588,7 @@ Match the printed ABI to the table above. If unsure, use **universal**.
   - Android 8+ does **not** show a normal runtime permission for this. The first update opens **Settings → Install unknown apps** for DocuHaim (`REQUEST_INSTALL_PACKAGES` / `canRequestPackageInstalls`). Allow it, then tap update again.
   - After that, the **system package-installer confirm** sheet should appear (`STATUS_PENDING_USER_ACTION`). Sideload updates cannot skip that user action.
 - **System status bar** — Settings toggle (or Advanced Search) to show/hide the Android status bar over the fullscreen WebView.
-- **share_target** — existing PWA share intake is assumed to keep working; this shell does not reimplement it.
+- **share_target** — native `ACTION_SEND` / `SEND_MULTIPLE` intent filters (see `AndroidManifest.xml`) so DocuHaim appears in the Android share sheet; intake opens the same chat chooser as the PWA Web Share Target (`ShareTargetGate`). Markdown **Open with** stays on `VIEW` file association, separate from share.
 
 ### Launcher icons
 

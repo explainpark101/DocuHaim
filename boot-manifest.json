@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-06T12:29:53.251Z",
-  "totalBytes": 4210094,
+  "generatedAt": "2026-10-08T15:58:56.825Z",
+  "totalBytes": 4223596,
   "assets": [
     {
       "file": "assets/vendor-react-BLJzfvPB.js",
@@ -14,7 +14,7 @@
       "label": "스토리지 SDK"
     },
     {
-      "file": "assets/vendor-lucide-DPPF2CDs.js",
+      "file": "assets/vendor-lucide--whUmDUa.js",
       "bytes": 824334,
       "label": "아이콘"
     },
@@ -49,8 +49,8 @@
       "label": "UI 컴포넌트"
     },
     {
-      "file": "assets/index-BAGktXsL.css",
-      "bytes": 327661,
+      "file": "assets/index-CjruZFNB.css",
+      "bytes": 327925,
       "label": "스타일시트"
     },
     {
@@ -59,8 +59,8 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-BB3Er7Kj.js",
-      "bytes": 2002443,
+      "file": "assets/index-DGTET6JD.js",
+      "bytes": 2015681,
       "label": "앱 코어"
     }
   ]
