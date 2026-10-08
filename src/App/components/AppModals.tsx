@@ -3,6 +3,7 @@ import { SaveMethodModal } from '@/components/modals/SaveMethodModal';
 import { SetPasswordModal } from '@/components/modals/SetPasswordModal';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import TreeNameConflictModal from '@/components/modals/TreeNameConflictModal';
+import NoteContentConflictHost from '@/components/shared/modals/NoteContentConflictHost';
 import { ExportPasswordModal } from '@/components/modals/ExportPasswordModal';
 import { ImportPasswordModal } from '@/components/modals/ImportPasswordModal';
 import { DownloadMethodModal } from '@/components/modals/DownloadMethodModal';
@@ -332,6 +333,8 @@ export function AppModals() {
       theme={theme === 'dark' ? 'dark' : 'light'}
       onResolve={settleTreeNameConflict}
     />
+
+    <NoteContentConflictHost theme={theme === 'dark' ? 'dark' : 'light'} />
 
     <ConfirmModal
       isOpen={showUnsavedConfirmModal}

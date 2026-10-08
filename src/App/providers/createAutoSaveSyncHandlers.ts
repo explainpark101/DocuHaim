@@ -2,6 +2,7 @@ import { isEncMdPath } from '@/utils/encMd';
 import { getActiveFileTab } from '@/utils/workspaceTabs';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { isVaultPathStorageType } from '@/App/context/VaultContext';
+import { schedulePersistLastViewedNoteContent } from '@/utils/lastViewedNoteDraft';
 
 /** §7–8 Auto save / sync + editor change bridge (factory). */
 export function createAutoSaveSyncHandlers(deps: Record<string, any>) {
@@ -9,7 +10,6 @@ export function createAutoSaveSyncHandlers(deps: Record<string, any>) {
     saveFile,
     setLastAutoSaveAt,
     setLastAutoSyncAt,
-    setCurrentFile,
     setEditorContent,
     editorContentRef,
     prevEditorContentRef,
@@ -49,6 +49,21 @@ export function createAutoSaveSyncHandlers(deps: Record<string, any>) {
       });
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
+      const lm = deps.currentFile?.lastModified;
+      const ts =
+        lm instanceof Date
+          ? lm.getTime()
+          : typeof lm === 'number'
+            ? lm
+            : 0;
+      schedulePersistLastViewedNoteContent({
+        storageType: active.storageType,
+        path: active.path,
+        content: value,
+        originalLastModified: ts,
+        fileName: String(active.currentFile?.name || active.editedFileName || ''),
+        viewer: active.currentFile?.viewer || 'markdown',
+      });
     }
   }
 
@@ -107,14 +122,8 @@ export function createAutoSaveSyncHandlers(deps: Record<string, any>) {
 
       try {
         const { text } = await backend.readText(currentFile.id);
-        setCurrentFile((prev: any) => {
-          if (!prev || prev.type !== currentFile.type || prev.id !== currentFile.id) return prev;
-          return { ...prev, content: text };
-        });
-        setEditorContent((prev: string) => {
-          if (prev !== editorContent) return prev;
-          return text;
-        });
+        // Never silently clobber the open note when remote differs — user picks via refresh.
+        if (text !== editorContent) return;
         setLastAutoSyncAt(Date.now());
       } catch (err) {
         console.error('Auto sync read error:', err);

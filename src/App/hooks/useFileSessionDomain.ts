@@ -44,11 +44,8 @@ import {
 } from '@/utils/encMd';
 import { noteCoverCommentChanged } from '@/utils/noteCover';
 import { getObjectBody, putObject, copyObject, deleteObject } from '@/utils/s3Client';
-import {
-  createWebdavBackend,
-  createLocalBackend,
-} from '@/utils/storage';
-import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend.js';
+import { createWebdavBackend } from '@/utils/storage';
+import { openPathFileFromBackend } from '@/utils/storage/openPathFileFromBackend';
 import { toDisplayableImageObjectUrl } from '@/utils/heicConvert';
 import { VIEWER_IMAGE_EXTENSIONS } from '@/utils/imageExtensions';
 import {
@@ -66,8 +63,10 @@ import {
   getMemoDraft,
   deleteMemoDraft,
 } from '@/utils/memoDraftsDb';
+import { persistFileTabLastViewed } from '@/utils/lastViewedNoteDraft';
+import { askNoteContentConflict } from '@/utils/noteContentConflict';
 import { savePendingUpload } from '@/utils/pendingUploadsDb';
-import { rebaseMergeTexts, buildTimestampedCopyName } from '@/utils/textRebaseMerge';
+import { rebaseMergeTexts } from '@/utils/textRebaseMerge';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { findFileNodeByPath, findNodeByPath } from '@/utils/s3Tree';
 import {
@@ -357,12 +356,31 @@ export function useFileSessionDomain() {
       return true;
     };
 
-    const markAsLoading = () => {
+    const markAsLoading = async () => {
       if (!isCurrentAttempt()) return false;
 
       if (existingBefore) {
         const live = findFileTab(workspaceTabsRef.current, type, node.path);
         if (!live) return true;
+
+        // Persist last-viewed body before viewer flips to "loading"
+        // (loading shells are treated as non-dirty and must not be the only copy).
+        try {
+          const flushed =
+            getActiveFileTab(workspaceTabsRef.current)?.id === live.id
+              ? flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+                  editorContent: editorContentRef.current ?? '',
+                  currentFile: currentFileRef.current,
+                  editedFileName: editedFileNameRef.current ?? '',
+                })
+              : workspaceTabsRef.current;
+          workspaceTabsRef.current = flushed;
+          const toPersist = findFileTab(flushed, type, node.path) || live;
+          await persistFileTabLastViewed(toPersist);
+        } catch (err) {
+          console.warn('[fileSession] failed to persist last-viewed before reload:', err);
+        }
+        if (!isCurrentAttempt()) return false;
 
         const next = patchFileTab(workspaceTabsRef.current, live.id, {
           currentFile: { ...live.currentFile, viewer: 'loading' },
@@ -435,7 +453,7 @@ export function useFileSessionDomain() {
     try {
       if (type === 'idb') {
         try {
-          const ok = markAsLoading();
+          const ok = await markAsLoading();
           if (!ok) return;
 
           const backend = getBackendForType('idb');
@@ -469,7 +487,7 @@ export function useFileSessionDomain() {
       if (type === 'webdav') {
       if (!webdavReady) return;
       try {
-        const ok = markAsLoading();
+        const ok = await markAsLoading();
         if (!ok) return;
 
         const backend = createWebdavBackend(webdavConfig);
@@ -507,7 +525,7 @@ export function useFileSessionDomain() {
       const client = getS3Client();
       if (!client) return;
 
-      const ok = markAsLoading();
+      const ok = await markAsLoading();
       if (!ok) return;
 
       const imageExts = [...VIEWER_IMAGE_EXTENSIONS];
@@ -581,7 +599,9 @@ export function useFileSessionDomain() {
             serverLastModTs,
             existingTab,
             draft,
-            confirmMessage: '서버에 더 최신 버전이 있습니다. 기존 내용을 버리고 서버 버전으로 교체할까요?',
+            fileName: String(node.name || ''),
+            filePath: node.path,
+            serverLabel: '서버 내용',
             deleteDraft: () => deleteMemoDraft(draftKey),
           });
 
@@ -738,7 +758,7 @@ export function useFileSessionDomain() {
         lastModified: node.lastModified,
       }, '');
     } else if (type === 'local') {
-      const ok = markAsLoading();
+      const ok = await markAsLoading();
       if (!ok) return;
 
       // Desktop (Tauri) vault: no FileSystemAccess handles — use path backend.
@@ -900,7 +920,9 @@ export function useFileSessionDomain() {
         serverLastModTs,
         existingTab,
         draft,
-        confirmMessage: '더 최신 버전이 있습니다. 기존 내용을 버리고 최신 버전으로 교체할까요?',
+        fileName: String(node.name || ''),
+        filePath: node.path,
+        serverLabel: '디스크 내용',
         deleteDraft: () => deleteMemoDraft(draftKey),
       });
 
@@ -1441,25 +1463,27 @@ export function useFileSessionDomain() {
       const merge = rebaseMergeTexts(base, ours, diskText);
 
       let nextEditorText = diskText;
-      let backupName = null;
-      if (merge.status === 'conflict') {
-        if (!localRootHandle) throw new Error('로컬 폴더가 열려 있지 않습니다.');
-        const backend = createLocalBackend(localRootHandle);
-        const fileId = String(fileToRefresh.id || '');
-        const lastSlash = fileId.lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? fileId.slice(0, lastSlash + 1) : '';
-        const now = new Date();
-        let disambiguator = 1;
-        let candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
-        while (await backend.head(`${dirPrefix}${candidate}`)) {
-          disambiguator += 1;
-          candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
+      let keptLocal = false;
+      if (ours !== diskText) {
+        if (merge.status === 'clean') {
+          nextEditorText = merge.text;
+        } else {
+          const choice = await askNoteContentConflict({
+            fileName: String(fileToRefresh.name || ''),
+            filePath: String(fileToRefresh.id || ''),
+            localText: ours,
+            serverText: diskText,
+            localLabel: '현재 편집 내용',
+            serverLabel: '디스크 내용',
+            message: '디스크와 현재 문서가 달라 자동 병합할 수 없습니다. 사용할 버전을 선택하세요.',
+          });
+          if (choice === 'local') {
+            nextEditorText = ours;
+            keptLocal = true;
+          } else {
+            nextEditorText = diskText;
+          }
         }
-        await backend.writeText(`${dirPrefix}${candidate}`, ours);
-        backupName = candidate;
-        await refreshLocalTree();
-      } else {
-        nextEditorText = merge.text;
       }
 
       setCurrentFile((prev) => {
@@ -1475,16 +1499,28 @@ export function useFileSessionDomain() {
       });
       setEditorContent(nextEditorText);
       editorContentRef.current = nextEditorText;
-      await deleteMemoDraft(getDraftKey('local', fileToRefresh.id));
+      if (!keptLocal) {
+        await deleteMemoDraft(getDraftKey('local', fileToRefresh.id));
+      }
 
-      if (backupName) {
-        setOperationStatus(`충돌: 현재 문서를 ${backupName}으로 저장하고 디스크 내용으로 교체했습니다`);
-        showAlert({
-          title: '새로고침 충돌',
-          message:
-            '디스크 내용과 현재 문서가 충돌하여, 현재 문서를 새 파일로 저장한 뒤 디스크 내용으로 교체했습니다.',
-          detail: backupName,
+      const active = getActiveFileTab(workspaceTabsRef.current);
+      if (active) {
+        const nextTabs = patchFileTab(workspaceTabsRef.current, active.id, {
+          editorContent: nextEditorText,
+          baselineContent: diskText,
+          currentFile: {
+            ...active.currentFile,
+            content: diskText,
+            size: typeof diskFile.size === 'number' ? diskFile.size : active.currentFile?.size ?? null,
+            lastModified: diskFile.lastModified,
+          },
         });
+        workspaceTabsRef.current = nextTabs;
+        setWorkspaceTabs(nextTabs);
+      }
+
+      if (keptLocal) {
+        setOperationStatus('디스크와 달라 마지막에 본 내용을 유지했습니다. 저장하면 반영됩니다.');
       } else if (nextEditorText === diskText && ours === diskText) {
         setOperationStatus('디스크 내용과 동일합니다');
       } else if (nextEditorText === diskText) {
@@ -1506,9 +1542,9 @@ export function useFileSessionDomain() {
     addIndicator,
     removeIndicator,
     showAlert,
-    localRootHandle,
-    refreshLocalTree,
     setIsRefreshingFromDisk,
+    workspaceTabsRef,
+    setWorkspaceTabs,
     currentFileRef,
     editorContentRef,
     setCurrentFile,
@@ -1550,26 +1586,27 @@ export function useFileSessionDomain() {
       const merge = rebaseMergeTexts(base, ours, remoteText);
 
       let nextEditorText = remoteText;
-      let backupName = null;
-      let backupPath = null;
-      if (merge.status === 'conflict') {
-        const fileId = String(fileToRefresh.id || '');
-        const lastSlash = fileId.lastIndexOf('/');
-        const dirPrefix = lastSlash >= 0 ? fileId.slice(0, lastSlash + 1) : '';
-        const now = new Date();
-        let disambiguator = 1;
-        let candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
-        while (await backend.head(`${dirPrefix}${candidate}`)) {
-          disambiguator += 1;
-          candidate = buildTimestampedCopyName(fileToRefresh.name || 'note', now, disambiguator);
+      let keptLocal = false;
+      if (ours !== remoteText) {
+        if (merge.status === 'clean') {
+          nextEditorText = merge.text;
+        } else {
+          const choice = await askNoteContentConflict({
+            fileName: String(fileToRefresh.name || ''),
+            filePath: String(fileToRefresh.id || ''),
+            localText: ours,
+            serverText: remoteText,
+            localLabel: '현재 편집 내용',
+            serverLabel: '원격 내용',
+            message: '원격과 현재 문서가 달라 자동 병합할 수 없습니다. 사용할 버전을 선택하세요.',
+          });
+          if (choice === 'local') {
+            nextEditorText = ours;
+            keptLocal = true;
+          } else {
+            nextEditorText = remoteText;
+          }
         }
-        backupPath = `${dirPrefix}${candidate}`;
-        await backend.writeText(backupPath, ours);
-        backupName = candidate;
-        if (fileToRefresh.type === 's3') await loadS3Files();
-        else await refreshWebdavTree();
-      } else {
-        nextEditorText = merge.text;
       }
 
       const remoteByteLength = new TextEncoder().encode(remoteText).length;
@@ -1585,55 +1622,29 @@ export function useFileSessionDomain() {
       });
       setEditorContent(nextEditorText);
       editorContentRef.current = nextEditorText;
-      await deleteMemoDraft(getDraftKey(fileToRefresh.type, fileToRefresh.id));
+      if (!keptLocal) {
+        await deleteMemoDraft(getDraftKey(fileToRefresh.type, fileToRefresh.id));
+      }
       markAutoSaveSyncTimestamp();
 
       const active = getActiveFileTab(workspaceTabsRef.current);
       if (active) {
         const tabPatch = {
           editorContent: nextEditorText,
+          baselineContent: remoteText,
           currentFile: {
             ...active.currentFile,
             content: remoteText,
             size: remoteByteLength,
           },
         };
-        if (backupName) {
-          tabPatch.baselineContent = remoteText;
-        }
         const nextTabs = patchFileTab(workspaceTabsRef.current, active.id, tabPatch);
         workspaceTabsRef.current = nextTabs;
         setWorkspaceTabs(nextTabs);
       }
 
-      if (backupName && backupPath && workspaceTabsEnabledRef.current) {
-        const backupByteLength = new TextEncoder().encode(ours).length;
-        const backupFile = {
-          type: fileToRefresh.type,
-          id: backupPath,
-          name: backupName,
-          content: ours,
-          viewer,
-          size: backupByteLength,
-          lastModified: Date.now(),
-        };
-        const opened = commitOpenFile(backupFile, ours, {
-          activate: false,
-          baselineContent: ours,
-        });
-        if (opened) {
-          showToast({ message: `「${backupName}」 백업 탭 열림`, durationMs: 2200 });
-        }
-      }
-
-      if (backupName) {
-        setOperationStatus(`충돌: 현재 문서를 ${backupName}으로 저장하고 원격 내용으로 교체했습니다`);
-        showAlert({
-          title: '가져오기 충돌',
-          message:
-            '원격 내용과 현재 문서가 충돌하여, 현재 문서를 새 파일로 저장한 뒤 원격 내용으로 교체했습니다.',
-          detail: backupName,
-        });
+      if (keptLocal) {
+        setOperationStatus('원격과 달라 마지막에 본 내용을 유지했습니다. 저장하면 반영됩니다.');
       } else if (nextEditorText === remoteText && ours === remoteText) {
         setOperationStatus('원격 내용과 동일합니다');
       } else if (nextEditorText === remoteText) {
@@ -1655,14 +1666,9 @@ export function useFileSessionDomain() {
     addIndicator,
     removeIndicator,
     showAlert,
-    showToast,
     getBackendForType,
-    loadS3Files,
-    refreshWebdavTree,
-    commitOpenFile,
     workspaceTabsRef,
     setWorkspaceTabs,
-    workspaceTabsEnabledRef,
     setIsPullingFromRemote,
     currentFileRef,
     editorContentRef,

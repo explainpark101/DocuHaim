@@ -3,6 +3,7 @@ import {
   collectLeaves,
   countLeaves,
   createSingleLeafLayout,
+  findLeafContainingTab,
   flattenTabIdsFromLayout,
   splitLeaf,
   type SplitLeafResult,
@@ -11,15 +12,19 @@ import {
 } from '@/utils/workspaceTabs/paneLayout';
 import {
   activateTab,
+  clearOrphanExportPdf,
   collapsePaneLeaf,
   emptyWorkspaceTabsState,
   extractTabToOrphan,
   moveTab,
   moveTabIntoLeaf,
+  openExportPdfForTab,
+  openExportPdfInLeaf,
   openOrActivateChat,
   openOrReplaceFileTab,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
 import { CHAT_TAB_ID, type WorkspaceTabsState } from '@/utils/workspaceTabs/types';
+import { isFileTab } from '@/utils/workspaceTabs/helpers';
 
 
 function expectSplitOk(result: SplitLeafResult) {
@@ -168,5 +173,43 @@ describe('workspaceTabsStore orphan join/leave', () => {
     expect(state.focusedPaneId).toBe(other.id);
     expect(state.activeId).toBe(CHAT_TAB_ID);
     expect(countLeaves(state.layout)).toBe(3);
+  });
+
+  it('openExportPdfForTab enables print on an orphan while split (focused leaf alone fails)', () => {
+    let state = threeLeafSplit();
+    state = openOrReplaceFileTab(state, fileInput('d.md'), Date.now(), { activate: true });
+    const orphanId = state.tabs.find((t) => t.id.includes('d.md'))!.id;
+    expect(findOrphan(state, orphanId)).toBe(true);
+
+    const viaFocusedLeaf = openExportPdfInLeaf(state, state.focusedPaneId, orphanId);
+    const focusedLeaf = collectLeaves(viaFocusedLeaf.layout).find(
+      (l) => l.id === viaFocusedLeaf.focusedPaneId,
+    );
+    expect(focusedLeaf?.exportPdfForTabId ?? null).toBeNull();
+    const orphanViaLeaf = viaFocusedLeaf.tabs.find((t) => t.id === orphanId);
+    expect(isFileTab(orphanViaLeaf) && orphanViaLeaf.exportPdfOpen).toBeFalsy();
+
+    state = openExportPdfForTab(state, orphanId);
+    const orphanTab = state.tabs.find((t) => t.id === orphanId);
+    expect(isFileTab(orphanTab) && orphanTab.exportPdfOpen).toBe(true);
+    expect(findOrphan(state, orphanId)).toBe(true);
+    expect(
+      collectLeaves(state.layout).every((l) => (l.exportPdfForTabId ?? null) === null),
+    ).toBe(true);
+
+    state = clearOrphanExportPdf(state, orphanId);
+    const cleared = state.tabs.find((t) => t.id === orphanId);
+    expect(isFileTab(cleared) && cleared.exportPdfOpen).toBeFalsy();
+  });
+
+  it('openExportPdfForTab on an in-layout tab sets leaf exportPdfForTabId', () => {
+    let state = threeLeafSplit();
+    const inGroupId = state.tabs[0]!.id;
+    state = activateTab(state, inGroupId);
+    state = openExportPdfForTab(state, inGroupId);
+    const host = findLeafContainingTab(state.layout, inGroupId);
+    expect(host?.exportPdfForTabId).toBe(inGroupId);
+    const tab = state.tabs.find((t) => t.id === inGroupId);
+    expect(isFileTab(tab) && tab.exportPdfOpen).toBeFalsy();
   });
 });

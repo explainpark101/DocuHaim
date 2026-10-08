@@ -34,6 +34,7 @@ import {
   retargetTabIdInLayout,
   setLeafActive,
   setLeafExportPdf,
+  clearAllExportPdf,
   splitLeaf,
   syncLayoutWithTabs,
   countLeaves,
@@ -80,6 +81,12 @@ function withResolvedActiveId(state: {
   };
 }
 
+function clearFileTabExportPdfOpen(tabs: WorkspaceTab[]): WorkspaceTab[] {
+  return tabs.map((t) =>
+    isFileTab(t) && t.exportPdfOpen ? { ...t, exportPdfOpen: false } : t,
+  );
+}
+
 function ensureLayout(state: {
   tabs: WorkspaceTab[];
   layout: PaneNode;
@@ -93,9 +100,27 @@ function ensureLayout(state: {
     countLeaves(state.layout) > 1
       ? pruneLayoutToTabs(state.layout, tabIds, state.focusedPaneId)
       : syncLayoutWithTabs(state.layout, tabIds, state.focusedPaneId);
+
+  // Orphan print mode lives on the tab; when the tab joins a leaf, move it there.
+  let layout = synced.layout;
+  let tabs = state.tabs;
+  for (const tab of tabs) {
+    if (!isFileTab(tab) || !tab.exportPdfOpen) continue;
+    const host = findLeafContainingTab(layout, tab.id);
+    if (!host) continue;
+    layout = setLeafExportPdf(
+      setLeafActive(layout, host.id, tab.id),
+      host.id,
+      tab.id,
+    );
+    tabs = tabs.map((t) =>
+      t.id === tab.id && isFileTab(t) ? { ...t, exportPdfOpen: false } : t,
+    );
+  }
+
   return withResolvedActiveId({
-    tabs: state.tabs,
-    layout: synced.layout,
+    tabs,
+    layout,
     focusedPaneId: synced.focusedPaneId,
     ...(state.activeId !== undefined ? { activeId: state.activeId } : {}),
   });
@@ -904,11 +929,47 @@ export function openExportPdfInLeaf(
   tabId: string,
 ): WorkspaceTabsState {
   if (!state.tabs.some((t) => t.id === tabId)) return state;
-  const layout = setLeafExportPdf(setLeafActive(state.layout, leafId, tabId), leafId, tabId);
+  const layout = setLeafExportPdf(
+    setLeafActive(clearAllExportPdf(state.layout), leafId, tabId),
+    leafId,
+    tabId,
+  );
   return ensureLayout({
     ...state,
+    tabs: clearFileTabExportPdfOpen(state.tabs),
     layout,
     focusedPaneId: leafId,
+  });
+}
+
+/**
+ * Open Export PDF for a tab: in its leaf when it is in the split group, or as
+ * orphan full-window print when the tab lives outside the layout.
+ */
+export function openExportPdfForTab(
+  state: WorkspaceTabsState,
+  tabId: string,
+): WorkspaceTabsState {
+  if (!state.tabs.some((t) => t.id === tabId)) return state;
+  const host = findLeafContainingTab(state.layout, tabId);
+  if (host) {
+    return openExportPdfInLeaf(state, host.id, tabId);
+  }
+  if (countLeaves(state.layout) <= 1) {
+    return openExportPdfInLeaf(state, state.focusedPaneId, tabId);
+  }
+  // Orphan / full-window tab while split — leaf.exportPdfForTabId cannot apply.
+  const tabs = state.tabs.map((t) => {
+    if (!isFileTab(t)) return t;
+    if (t.id === tabId) return { ...t, exportPdfOpen: true };
+    if (t.exportPdfOpen) return { ...t, exportPdfOpen: false };
+    return t;
+  });
+  return ensureLayout({
+    ...state,
+    tabs,
+    layout: clearAllExportPdf(state.layout),
+    activeId: tabId,
   });
 }
 
@@ -920,6 +981,23 @@ export function clearExportPdfInLeaf(
   return ensureLayout({
     ...state,
     layout,
+  });
+}
+
+/** Clear Export PDF on an orphan (full-window) file tab. */
+export function clearOrphanExportPdf(
+  state: WorkspaceTabsState,
+  tabId?: string | null,
+): WorkspaceTabsState {
+  const id = tabId || state.activeId;
+  if (!id) return state;
+  const tab = state.tabs.find((t) => t.id === id);
+  if (!isFileTab(tab) || !tab.exportPdfOpen) return state;
+  return ensureLayout({
+    ...state,
+    tabs: state.tabs.map((t) =>
+      t.id === id && isFileTab(t) ? { ...t, exportPdfOpen: false } : t,
+    ),
   });
 }
 

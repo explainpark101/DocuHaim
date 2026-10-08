@@ -38,7 +38,9 @@ import {
   CHAT_TAB_ID,
   fileTabId,
   findLeafContainingTab,
+  isFileTab,
 } from '@/utils/workspaceTabs';
+import { schedulePersistLastViewedNoteContent } from '@/utils/lastViewedNoteDraft';
 import type { SidebarPaneDropItem } from '@/utils/workspaceTabs/sidebarPaneDrop';
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import { findNodeByPath } from '@/utils/s3Tree';
@@ -810,6 +812,24 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                       });
                       workspaceTabsRef.current = next;
                       setWorkspaceTabs(next);
+                      const tab = next.tabs.find((t) => t.id === tabId);
+                      if (tab && isFileTab(tab)) {
+                        const lm = tab.currentFile?.lastModified;
+                        const ts =
+                          lm instanceof Date
+                            ? lm.getTime()
+                            : typeof lm === 'number'
+                              ? lm
+                              : 0;
+                        schedulePersistLastViewedNoteContent({
+                          storageType: tab.storageType,
+                          path: tab.path,
+                          content: value,
+                          originalLastModified: ts,
+                          fileName: String(tab.currentFile?.name || tab.editedFileName || ''),
+                          viewer: tab.currentFile?.viewer || 'markdown',
+                        });
+                      }
                     },
                     onInactiveEditedFileName: (tabId: string, name: string) => {
                       const next = patchFileTab(workspaceTabsRef.current, tabId, {

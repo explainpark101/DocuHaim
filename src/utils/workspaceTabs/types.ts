@@ -71,6 +71,11 @@ export type FileWorkspaceTab = {
   lastActivatedAt: number;
   /** For `.quiz.md`: quiz runner vs markdown editor. Default inferred when activating. */
   noteSurface?: FileNoteSurface;
+  /**
+   * Session-only: Export PDF surface while this tab is a full-window orphan
+   * (outside the split layout). In-layout panes use `PaneLeaf.exportPdfForTabId`.
+   */
+  exportPdfOpen?: boolean;
 };
 
 export type WorkspaceTab =

@@ -7,6 +7,7 @@ import { flushEditorIntoActiveFileTab } from '@/utils/workspaceTabs/appBridge';
 import type { WorkspaceTabsState } from '@/utils/workspaceTabs/types';
 import { toPersistedPaneNode } from '@/utils/workspaceTabs/paneLayout';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { persistOpenFileTabsLastViewed } from '@/utils/lastViewedNoteDraft';
 
 type PersistDeps = {
   isUnlocked: boolean;
@@ -97,12 +98,31 @@ export function useWorkspaceTabsPersistence(deps: PersistDeps) {
       if (!workspaceTabsEnabledRef.current) return;
       // Avoid overwriting a saved split layout with the empty/pre-restore shell.
       if (!hasRestoredPersistedWorkspaceTabsRef.current) return;
-      const payload = buildPersistedWorkspaceTabsPayload(workspaceTabsRef.current, {
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
         editorContent: editorContentRef.current ?? '',
         currentFile: currentFileRef.current,
         editedFileName: editedFileNameRef.current ?? '',
       });
+      workspaceTabsRef.current = flushed;
+      const payload = toPersistedWorkspaceTabs(
+        flushed.tabs.map((t) =>
+          t.kind === 'chat'
+            ? { kind: 'chat' as const }
+            : t.kind === 'settings'
+              ? { kind: 'settings' as const }
+              : t.kind === 'content-search'
+                ? { kind: 'content-search' as const }
+                : t.kind === 'llm-assist'
+                  ? { kind: 'llm-assist' as const }
+                  : { kind: 'file' as const, storageType: t.storageType, path: t.path },
+        ),
+        flushed.activeId,
+        toPersistedPaneNode(flushed.layout),
+        flushed.focusedPaneId,
+      );
       persistWorkspaceTabsForRestart(payload);
+      // Always park last-viewed bodies for every open file pane (split restore).
+      void persistOpenFileTabsLastViewed(flushed.tabs);
     };
 
     const onVisibilityHidden = () => {

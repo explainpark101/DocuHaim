@@ -6,30 +6,50 @@ import {
   prepareViewerText,
   resolveTextOpenViewer,
 } from '@/utils/vaultFileViewers';
+import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
+
+type OpenBackend = {
+  readBytes: (path: string) => Promise<{ body: ArrayBuffer | Uint8Array; contentLength?: number }>;
+  getObjectUrl: (path: string) => Promise<string>;
+  readText: (
+    path: string,
+  ) => Promise<{ text: string; contentLength?: number | null; lastModified?: Date | number }>;
+  head?: (path: string) => Promise<{ contentLength?: number | null } | null>;
+};
+
+type OpenNode = {
+  path: string;
+  name: string;
+  lastModified?: Date | number;
+};
+
+export type OpenPathFileResult = {
+  currentFile: Record<string, unknown>;
+  editorContent: string;
+  revokePrev?: (prev: any) => void;
+  needsEncMdPassword?: boolean;
+  encMdCiphertext?: string;
+};
 
 /**
- * Open a path-based file (S3/WebDAV) via StorageBackend into editor state payloads.
- *
- * @param {Object} params
- * @param {{ readBytes: Function, getObjectUrl: Function, readText?: Function }} params.backend
- * @param {'s3'|'webdav'|'local'|'idb'} params.type
- * @param {{ path: string, name: string, lastModified?: Date|number }} params.node
- * @returns {Promise<{
- *   currentFile: object,
- *   editorContent: string,
- *   revokePrev?: Function,
- *   needsEncMdPassword?: boolean,
- *   encMdCiphertext?: string,
- * } | null>}
+ * Open a path-based file (S3/WebDAV/idb/local) via StorageBackend into editor state payloads.
  */
-export async function openPathFileFromBackend({ backend, type, node }) {
+export async function openPathFileFromBackend({
+  backend,
+  type,
+  node,
+}: {
+  backend: OpenBackend;
+  type: 's3' | 'webdav' | 'local' | 'idb';
+  node: OpenNode;
+}): Promise<OpenPathFileResult | null> {
   if (!backend || !node?.path) return null;
   const ext = (node.name.split('.').pop() || '').toLowerCase();
   const imageExts = [...VIEWER_IMAGE_EXTENSIONS];
   const videoExts = ['mp4', 'webm', 'ogv', 'mov', 'mkv'];
   const audioExts = ['m4a', 'mp3', 'wav', 'ogg', 'aac', 'flac', 'weba'];
 
-  const revokePrev = (prev) => {
+  const revokePrev = (prev: any) => {
     if (
       prev &&
       (prev.viewer === 'image' ||
@@ -42,11 +62,14 @@ export async function openPathFileFromBackend({ backend, type, node }) {
     }
   };
 
-  if (imageExts.includes(ext)) {
+  if ((imageExts as string[]).includes(ext)) {
     let url = await backend.getObjectUrl(node.path);
     if (ext === 'heic' || ext === 'heif') {
       const { body } = await backend.readBytes(node.path);
-      url = await toDisplayableImageObjectUrl(new Blob([body]), node.name);
+      url = await toDisplayableImageObjectUrl(
+        new Blob([body as BlobPart]),
+        node.name,
+      );
     }
     const head = await backend.head?.(node.path);
     return {
@@ -66,7 +89,7 @@ export async function openPathFileFromBackend({ backend, type, node }) {
 
   if (ext === 'pdf') {
     const { body, contentLength } = await backend.readBytes(node.path);
-    const blob = new Blob([body], { type: 'application/pdf' });
+    const blob = new Blob([body as BlobPart], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     return {
       currentFile: {
@@ -184,7 +207,6 @@ export async function openPathFileFromBackend({ backend, type, node }) {
     const encNote = isEncMdPath(node.path) || isEncMdPath(node.name);
 
     if (encNote) {
-      // Never merge plaintext drafts; scrub any leftover IndexedDB draft.
       await deleteMemoDraft(draftKey);
       const unlocked = await tryUnlockEncMdContent(node.path, serverText);
       if (unlocked.status === 'need-password') {
@@ -222,37 +244,28 @@ export async function openPathFileFromBackend({ backend, type, node }) {
     }
 
     const draft = await getMemoDraft(draftKey);
-
-    let contentToUse = serverText;
-    if (draft) {
-      if (serverLastModTs > draft.originalLastModified) {
-        const msg =
-          type === 's3'
-            ? '서버에 더 최신 버전이 있습니다. 기존 내용을 버리고 서버 버전으로 교체할까요?'
-            : '더 최신 버전이 있습니다. 기존 내용을 버리고 최신 버전으로 교체할까요?';
-        const useServer = window.confirm(msg);
-        if (useServer) {
-          contentToUse = serverText;
-          await deleteMemoDraft(draftKey);
-        } else {
-          contentToUse = draft.content;
-        }
-      } else {
-        contentToUse = draft.content;
-      }
-    }
+    const resolved = await resolveOpenTextContent({
+      serverText,
+      serverLastModTs,
+      existingTab: null,
+      draft,
+      fileName: String(node.name || ''),
+      filePath: node.path,
+      serverLabel: type === 'local' ? '디스크 내용' : '서버 내용',
+      deleteDraft: () => deleteMemoDraft(draftKey),
+    });
 
     return {
       currentFile: {
         type,
         id: node.path,
         name: node.name,
-        content: contentToUse,
+        content: resolved.baselineContent,
         viewer: 'markdown',
         size: contentLength,
         lastModified: serverLastModified,
       },
-      editorContent: contentToUse,
+      editorContent: resolved.contentToUse,
       revokePrev,
     };
   }

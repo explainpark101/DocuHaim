@@ -127,7 +127,8 @@ export type WorkspaceMainPanelsProps = {
   onSplitTab?: (tabId: string, edge: PaneSplitEdge) => boolean;
   onApplyPaneLayout?: (layout: PaneNode, focusedPaneId?: string | null) => void;
   onCollapsePane?: (leafId: string) => void;
-  onClearExportPdf?: (leafId: string) => void;
+  /** Pass `null` to clear orphan (full-window) Export PDF. */
+  onClearExportPdf?: (leafId: string | null) => void;
 };
 
 function LeafExportPdfBack({
@@ -966,18 +967,64 @@ export default function WorkspaceMainPanels({
                   ? (() => {
                       const orphanTab = tabs.find((t) => t.id === activeId);
                       if (!orphanTab) return null;
+                      const showOrphanExport = Boolean(
+                        isFileTab(orphanTab) && orphanTab.exportPdfOpen,
+                      );
+                      const handleOrphanExportClose = (result?: {
+                        editorContent: string;
+                        currentFile: ExportPdfDocumentFile;
+                      }) => {
+                        if (result && isFileTab(orphanTab)) {
+                          const nextContent =
+                            typeof result.editorContent === 'string'
+                              ? result.editorContent
+                              : '';
+                          if (orphanTab.id === activeId && mirrors?.onChangeEditor) {
+                            mirrors.onChangeEditor(nextContent);
+                          } else {
+                            mirrors?.onInactiveEditorChange?.(orphanTab.id, nextContent);
+                          }
+                        }
+                        onClearExportPdf?.(null);
+                      };
                       return (
                         <div
                           key={orphanTab.id}
                           className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden"
                         >
-                          {renderTabContent(orphanTab, true, {
-                            ...(isFileTab(orphanTab) && orphanTab.noteSurface
-                              ? { noteSurface: orphanTab.noteSurface }
-                              : {}),
-                            contentIsMobileLayout,
-                            isSurfaceLive: true,
-                          })}
+                          {showOrphanExport ? (
+                            <>
+                              <LeafExportPdfBack
+                                leafId={`orphan:${orphanTab.id}`}
+                                open
+                                onClose={() => onClearExportPdf?.(null)}
+                                onApplyPendingReturn={() => {
+                                  applyExportPdfHandoffToTab({
+                                    tab: orphanTab,
+                                    activeId,
+                                    ...(mirrors ? { mirrors } : {}),
+                                  });
+                                }}
+                              />
+                              {renderTabContent(orphanTab, true, {
+                                exportPdf: true,
+                                onExportPdfClose: handleOrphanExportClose,
+                                ...(isFileTab(orphanTab) && orphanTab.noteSurface
+                                  ? { noteSurface: orphanTab.noteSurface }
+                                  : {}),
+                                contentIsMobileLayout,
+                                isSurfaceLive: true,
+                              })}
+                            </>
+                          ) : (
+                            renderTabContent(orphanTab, true, {
+                              ...(isFileTab(orphanTab) && orphanTab.noteSurface
+                                ? { noteSurface: orphanTab.noteSurface }
+                                : {}),
+                              contentIsMobileLayout,
+                              isSurfaceLive: true,
+                            })
+                          )}
                         </div>
                       );
                     })()

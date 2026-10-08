@@ -97,6 +97,7 @@ export {
 export {
   activateTab,
   clearExportPdfInLeaf,
+  clearOrphanExportPdf,
   closeTab,
   collapsePaneLeaf,
   emptyWorkspaceTabsState,
@@ -107,6 +108,7 @@ export {
   getActiveTab,
   moveTab,
   moveTabIntoLeaf,
+  openExportPdfForTab,
   openExportPdfInLeaf,
   openOrActivateChat,
   openOrActivateContentSearch,

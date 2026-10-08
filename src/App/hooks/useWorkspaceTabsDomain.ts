@@ -18,11 +18,12 @@ import {
 import {
   activateTab,
   clearExportPdfInLeaf,
+  clearOrphanExportPdf,
   closeTab,
   flushEditorIntoActiveFileTab,
   moveTab,
   moveTabIntoLeaf,
-  openExportPdfInLeaf,
+  openExportPdfForTab,
   openOrActivateChat,
   openOrActivateContentSearch,
   openOrActivateLlmAssist,
@@ -873,8 +874,13 @@ export function useWorkspaceTabsDomain({
       const state = workspaceTabsRef.current;
       const id = tabId || state.activeId;
       if (!id) return false;
-      const leafId = state.focusedPaneId;
-      const next = openExportPdfInLeaf(state, leafId, id);
+      const next = openExportPdfForTab(state, id);
+      const host = findLeafContainingTab(next.layout, id);
+      const openedInLeaf = Boolean(host && host.exportPdfForTabId === id);
+      const openedOrphan = Boolean(
+        next.tabs.some((t) => t.id === id && isFileTab(t) && t.exportPdfOpen),
+      );
+      if (!openedInLeaf && !openedOrphan) return false;
       workspaceTabsRef.current = next;
       setWorkspaceTabs(next);
       return true;
@@ -885,6 +891,13 @@ export function useWorkspaceTabsDomain({
   const clearExportPdfInFocusedPane = useCallback(
     (leafId?: string | null) => {
       const state = workspaceTabsRef.current;
+      // null leafId = clear orphan full-window Export PDF (see WorkspaceMainPanels).
+      if (leafId === null) {
+        const next = clearOrphanExportPdf(state);
+        workspaceTabsRef.current = next;
+        setWorkspaceTabs(next);
+        return;
+      }
       const id = leafId || state.focusedPaneId;
       const next = clearExportPdfInLeaf(state, id);
       workspaceTabsRef.current = next;

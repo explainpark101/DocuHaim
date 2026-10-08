@@ -37,6 +37,7 @@ import { webdavHead } from '@/utils/webdavClient';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { buildSessionTree, listSessionWorkspaces } from '@/utils/sessionWorkspace';
 import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
+import { loadLastViewedNoteDraft } from '@/utils/lastViewedNoteDraft';
 
 const TAB_RESTORE_FILE_CONCURRENCY = 2;
 
@@ -277,6 +278,14 @@ export function useAdvancedSearchTabsDomain() {
         for (const closed of evicted.closed) {
           pushClosedTab(closedTabEntryFromWorkspaceTab(closed));
         }
+        // Hydrate shell from last-viewed draft so split panes are not blank while fetching.
+        let draftContent = '';
+        try {
+          const draft = await loadLastViewedNoteDraft(tab.type, tab.path);
+          if (draft && typeof draft.content === 'string') draftContent = draft.content;
+        } catch {
+          /* ignore draft hydrate errors */
+        }
         nextState = openOrReplaceFileTab(
           { ...nextState, tabs: evicted.tabs },
           {
@@ -287,8 +296,9 @@ export function useAdvancedSearchTabsDomain() {
               id: tab.path,
               name: fallbackName,
               viewer: 'loading',
+              ...(draftContent ? { content: draftContent } : {}),
             },
-            editorContent: '',
+            editorContent: draftContent,
             editedFileName: fallbackName,
           },
           Date.now(),
