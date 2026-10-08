@@ -1,5 +1,4 @@
 import type { Editor } from '@tiptap/react';
-import { migrateMathStrings } from '@tiptap/extension-mathematics';
 import {
   splitLeadingMetaComments,
   joinMetaPrefix,
@@ -8,6 +7,7 @@ import {
   protectCustomMarkdown,
   restoreCustomMarkdown,
 } from '@/components/haimEditor/protectCustomMarkdown';
+import { migrateMathStringsOutsideCode } from '@/components/haimEditor/migrateMathOutsideCode';
 import { getCachedMarkdown, invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import { trimCodeBlocksInEditor } from '@/components/haimEditor/trimCodeBlockEdges';
 import { noteCoverPlaceholderProtectedHtml } from '@/components/haimEditor/extensions/NoteCover';
@@ -72,9 +72,9 @@ export function setEditorMarkdown(
     emitUpdate: options?.emitUpdate ?? false,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
-  // Convert any leftover $…$ text to inlineMath nodes
+  // Convert leftover $…$ text to inlineMath (skip code marks / codeBlock)
   try {
-    migrateMathStrings(editor);
+    migrateMathStringsOutsideCode(editor);
   } catch {
     // ignore if Mathematics not registered
   }

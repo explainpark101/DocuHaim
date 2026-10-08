@@ -32,6 +32,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 | [quiz-md.md](./quiz-md.md) | `.quiz.md` + `<!-- quiz-config … -->` | 퀴즈 모드 / AI 출제·채점 |
 | [kanban-json.md](./kanban-json.md) | `.kanban.json` board JSON (v2) | 칸반 뷰어 / 스윔레인·커버·열 폴더 / 컬럼·카드 DnD |
 | [preview-hard-break.md](./preview-hard-break.md) | `<br/>` (Mirror Edit Enter) | 에디터 / 미리보기 |
+| [emoji-shortcode.md](./emoji-shortcode.md) | `:cross_mark:` / `:smile:` | Haim / 미리보기 / 인쇄 |
 | [mermaid-fence-size.md](./mermaid-fence-size.md) | ` ```mermaid width=… height=…` (legacy) | 에디터 / 미리보기 / 인쇄 |
 | [mermaid-size.md](./mermaid-size.md) | `<!-- mermaid-size … -->` + mermaid fence | 에디터 / 미리보기 / 인쇄 |
 
@@ -63,7 +64,7 @@ Feature 문서의 **Spec** 섹션은 파서 중립 계약이다. markdown-it 토
 다음을 새로 문서화하거나 “앱 전용 문법”으로 다루지 않는다.
 
 - CommonMark / GFM (제목 h1–h6, 링크, 목록, 코드펜스, 테이블, task list 등)
-- md-editor-rt 기본 기능 (KaTeX, Mermaid, 이모지 등)
+- md-editor-rt 기본 기능 (KaTeX, Mermaid 등; shortcode 이모지는 [emoji-shortcode.md](./emoji-shortcode.md))
 - 미리보기 외부 링크 `target=_blank` (`previewLinkTargetBlankPlugin`) — **문법 아님**, 렌더러만
 - 녹음 동기화 — `.sync.pb` / `.sync.json` **사이드카**, 인라인 마커 없음
 - Obsidian식 일반 `[[wikilink]]` — **미지원** (`![[]]`, `[[file:]]`, `[[note:]]`, `[[folder:]]`만)

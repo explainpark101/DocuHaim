@@ -92,6 +92,7 @@ import {
   insertLineAboveInEditorView,
   isInsertLineAboveKeyEvent,
 } from '@/utils/cmInsertLineAbove';
+import { CODE_FENCE_TOGGLE_COMMENT_KEYMAP } from '@/components/haimEditor/cmCodeFenceToggleComment';
 import { loadAltVimNavigationEnabled } from '@/utils/altVimNavigationSettings';
 import {
   highlightSelectionMatches,
@@ -431,6 +432,10 @@ config({
       {
         type: 'insertLineAbove',
         extension: INSERT_LINE_ABOVE_KEYMAP,
+      },
+      {
+        type: 'codeFenceToggleComment',
+        extension: CODE_FENCE_TOGGLE_COMMENT_KEYMAP,
       },
       {
         type: 'lineNumbers',

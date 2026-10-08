@@ -7,6 +7,7 @@ import {
   tryHandleCodeBlockShiftEnter,
 } from '@/components/haimEditor/codeBlockEnter';
 import { createCodeBlockIndentPlugin } from '@/components/haimEditor/codeBlockIndent';
+import { tryHandleCodeBlockToggleComment } from '@/components/haimEditor/codeBlockToggleComment';
 import HaimCodeBlockView from '@/components/haimEditor/extensions/HaimCodeBlockView';
 import { createTrimCodeBlockEdgesPlugin } from '@/components/haimEditor/trimCodeBlockEdges';
 
@@ -20,6 +21,7 @@ const lowlight = createLowlight(common);
  * - code-editor bracket/quote pairing + Tab indent inside the block
  * - Enter preserves indent; third Enter after two blank lines exits + trims
  * - Shift-Enter inserts a blank line above (does not hard-break out of the block)
+ * - Mod-/ toggles language-aware line/block comments inside the block
  */
 export const HaimCodeBlock = CodeBlockLowlight.extend({
   // Win over HardBreak Shift-Enter while the caret is in a code block.
@@ -34,6 +36,7 @@ export const HaimCodeBlock = CodeBlockLowlight.extend({
       ...parent,
       Enter: ({ editor }) => tryHandleCodeBlockEnter(editor),
       'Shift-Enter': ({ editor }) => tryHandleCodeBlockShiftEnter(editor),
+      'Mod-/': ({ editor }) => tryHandleCodeBlockToggleComment(editor),
     };
   },
   addProseMirrorPlugins() {

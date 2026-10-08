@@ -12,6 +12,7 @@ import { footnoteMarkdownItPlugin } from '@/utils/footnoteMarkdownIt';
 import { betterMdMarkdownItPlugin } from '@/utils/betterMd/markdownItPlugin';
 import { mermaidFenceMarkdownItPlugin } from '@/utils/mermaidFenceMarkdownIt';
 import { markdownItTaskListPlugin } from '@/utils/markdownItTaskListPlugin';
+import { emojiShortcodeMarkdownItPlugin } from '@/utils/emojiShortcodeMarkdownIt';
 
 type MarkdownItPlugin = (md: MarkdownItInstance, options?: Record<string, unknown>) => void;
 
@@ -270,6 +271,11 @@ const APP_MARKDOWN_IT_PLUGIN_DEFS: AppMarkdownItPluginEntry[] = [
     type: 'task_list',
     plugin: markdownItTaskListPlugin as unknown as MarkdownItPlugin,
     options: { enabled: false, label: false },
+  },
+  {
+    type: 'emoji_shortcode',
+    plugin: emojiShortcodeMarkdownItPlugin as unknown as MarkdownItPlugin,
+    options: {},
   },
 ];
 

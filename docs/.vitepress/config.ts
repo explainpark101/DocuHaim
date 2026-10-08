@@ -82,6 +82,7 @@ export default defineConfig({
             { text: 'Quiz markdown (.quiz.md)', link: '/custom-markdown/quiz-md' },
             { text: 'Kanban board (.kanban.json)', link: '/custom-markdown/kanban-json' },
             { text: 'Preview hard break', link: '/custom-markdown/preview-hard-break' },
+            { text: 'Emoji shortcode', link: '/custom-markdown/emoji-shortcode' },
             { text: 'Mermaid fence size', link: '/custom-markdown/mermaid-fence-size' },
             { text: 'Mermaid size comment', link: '/custom-markdown/mermaid-size' },
           ],

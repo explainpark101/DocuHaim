@@ -172,6 +172,34 @@ describe('protectCustomMarkdown', () => {
     expect(protectedMd).not.toContain('data-type="inline-math"');
     expect(protectedMd).toContain('$100$');
   });
+
+  it('does not convert $ inside inline code to math HTML', () => {
+    const src = 'Use `$x$` for vars and $y$ outside.\n';
+    const protectedMd = protectCustomMarkdown(src);
+    expect(protectedMd).toContain('`$x$`');
+    // Math HTML must not appear inside the codespan itself
+    expect(protectedMd).not.toContain('`<span');
+    expect(protectedMd).not.toContain('data-latex="x"');
+    expect(protectedMd).toContain('data-latex="y"');
+    expect(restoreCustomMarkdown(protectedMd)).toContain('`$x$`');
+    expect(restoreCustomMarkdown(protectedMd)).toContain('$y$');
+  });
+
+  it('does not convert $ inside fenced code to math HTML', () => {
+    const src = '```js\nconst s = "$x$";\n```\n\nReal $a$\n';
+    const protectedMd = protectCustomMarkdown(src);
+    expect(protectedMd).toContain('const s = "$x$";');
+    expect(protectedMd).not.toMatch(/```[\s\S]*data-type="inline-math"[\s\S]*```/);
+    expect(protectedMd).toContain('data-latex="a"');
+  });
+
+  it('keeps code intact when $ straddles code and prose', () => {
+    const src = 'code `a $ b` and math $c$\n';
+    const protectedMd = protectCustomMarkdown(src);
+    expect(protectedMd).toContain('`a $ b`');
+    expect(protectedMd).toContain('data-latex="c"');
+    expect(protectedMd).not.toMatch(/data-latex="b`/);
+  });
 });
 
 describe('scrubEmptyParagraphNbsp', () => {

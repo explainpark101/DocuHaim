@@ -27,8 +27,8 @@ import {
   DetailsContent,
   DetailsSummary,
 } from '@tiptap/extension-details';
-import { Emoji, gitHubEmojis } from '@tiptap/extension-emoji';
 import { FindAndReplace } from '@tiptap/extension-find-and-replace';
+import { HaimEmoji } from '@/components/haimEditor/extensions/HaimEmoji';
 import InvisibleCharacters from '@tiptap/extension-invisible-characters';
 import UniqueID from '@tiptap/extension-unique-id';
 import {
@@ -47,6 +47,7 @@ import { HaimSlashCommands } from '@/components/haimEditor/slashCommands/HaimSla
 import { HaimShiftArrowSelect } from '@/components/haimEditor/extensions/HaimShiftArrowSelect';
 import { HaimInsertLineAbove } from '@/components/haimEditor/extensions/HaimInsertLineAbove';
 import { HaimMultiCursor } from '@/components/haimEditor/extensions/HaimMultiCursor';
+import { HaimSelectionInlineCode } from '@/components/haimEditor/extensions/HaimSelectionInlineCode';
 import { MathBlock } from '@/components/haimEditor/extensions/MathBlock';
 import {
   HaimBlockMath,
@@ -180,6 +181,7 @@ export function createHaimExtensions(
     HaimShiftArrowSelect,
     HaimInsertLineAbove,
     HaimMultiCursor,
+    HaimSelectionInlineCode,
     ...(isNote ? [HaimSlashCommands] : []),
   ];
 
@@ -198,10 +200,7 @@ export function createHaimExtensions(
     Details.configure({ persist: true }),
     DetailsSummary,
     DetailsContent,
-    Emoji.configure({
-      emojis: gitHubEmojis,
-      enableEmoticons: true,
-    }),
+    HaimEmoji,
     FindAndReplace,
     InvisibleCharacters.configure({
       injectCSS: true,
