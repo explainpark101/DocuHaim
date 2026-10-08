@@ -282,7 +282,7 @@ export default function HaimLinkHoverHint({
       scheduleClose();
     };
 
-    const onClick = (event: MouseEvent) => {
+    const onClick = (event: globalThis.MouseEvent) => {
       if (!shouldUseStickyTip(lastPointerTypeRef.current)) return;
       if (event.button !== 0) return;
       const target = event.target as HTMLElement | null;
