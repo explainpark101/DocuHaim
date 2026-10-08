@@ -48,6 +48,7 @@ const COVERED_FEATURE_DOCS = [
   'document-settings.md',
   'quiz-md.md',
   'preview-hard-break.md',
+  'emoji-shortcode.md',
   'mermaid-fence-size.md',
   'mermaid-size.md',
   'docuhaim-link.md',
@@ -591,6 +592,30 @@ describe('Haim Editor custom markdown (docs/custom-markdown)', () => {
       const protectedMd = protectCustomMarkdown(src);
       expect(protectedMd).toContain('```mermaid');
       expect(protectedMd).not.toContain('data-kind="mermaid"');
+    });
+  });
+
+  describe('emoji-shortcode.md', () => {
+    it('leaves vault :shortcode: text intact through protect/restore', () => {
+      const src = [
+        'Done :cross_mark: :white_check_mark: :smile:',
+        '',
+        'Literal `:cross_mark:` in code',
+        '',
+        '```text',
+        ':cross_mark:',
+        '```',
+        '',
+      ].join('\n');
+      const restored = protectRestore(src);
+      expectContainsAll(restored, [
+        ':cross_mark:',
+        ':white_check_mark:',
+        ':smile:',
+        '`:cross_mark:`',
+      ]);
+      // protect must not turn shortcodes into TipTap emoji HTML
+      expect(protectCustomMarkdown(src)).not.toContain('data-type="emoji"');
     });
   });
 
