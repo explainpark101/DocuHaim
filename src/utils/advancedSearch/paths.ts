@@ -10,6 +10,7 @@ export const SYSTEM_INDEX_EXCLUDED_FOLDERS = [
   ADVANCED_SEARCH_FOLDER,
   '.advanced_search',
   '.trash',
+  '.versions',
 ] as const;
 
 /** True for `.trash`, `.advanced-search`, `.advanced_search` (root or descendant). */

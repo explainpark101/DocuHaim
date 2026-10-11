@@ -1613,6 +1613,15 @@ export default function Sidebar({
               ? onShareToChatWithMyself
               : undefined
           }
+          onVersionHistory={(storageType, node) => {
+            const path = String(node?.path || '');
+            if (!path) return;
+            void import('@/utils/versionHistory/openRequest').then(
+              ({ openNoteVersionHistory }) => {
+                openNoteVersionHistory({ path, storageType });
+              },
+            );
+          }}
         />
       )}
       <div className="flex flex-col bg-gray-50 dark:bg-odp-surface shrink-0">

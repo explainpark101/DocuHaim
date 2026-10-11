@@ -1,1 +1,1 @@
-export * from '@/utils/vault/s3Client.js';
+export * from '@/utils/vault/s3Client';

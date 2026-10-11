@@ -840,8 +840,21 @@ export default function MarkdownEditor({
       view.focus?.();
     };
 
+    handlers['editor-version-history'] = () => {
+      if (!currentFile?.id || !currentFile?.type) return;
+      void import('@/utils/versionHistory/openRequest').then(
+        ({ openNoteVersionHistory }) => {
+          openNoteVersionHistory({
+            path: currentFile.id,
+            storageType: currentFile.type,
+            currentText: typeof value === 'string' ? value : undefined,
+          });
+        },
+      );
+    };
+
     return registerEditorActions(handlers);
-  }, [previewOnly, isSurfaceLive, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki, llmAssist]);
+  }, [previewOnly, isSurfaceLive, navigateToExportPdf, showAlert, onRequestConvertAllImagesToWiki, llmAssist, currentFile, value]);
 
   // Register active markdown editor with the global LLM Assist host.
   // Keep bridge while this file is active (including frozen settle before demote).

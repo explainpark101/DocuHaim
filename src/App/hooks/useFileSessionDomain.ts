@@ -56,6 +56,12 @@ import {
   viewerUsesPrettyJson,
 } from '@/utils/vaultFileViewers';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch';
+import {
+  createVersionHistoryContext,
+  isNoteVersionExcludedPath,
+  maybeArchiveNoteOnSave,
+  notifyNoteVersionHistoryAfterSave,
+} from '@/utils/versionHistory';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import {
   getDraftKey,
@@ -1393,6 +1399,33 @@ export function useFileSessionDomain() {
           path: fileToSave.id,
           content: isEncMdPath(fileToSave.id) ? '' : textToSave,
         });
+      }
+
+      // App-managed note snapshots when S3 native versioning is unavailable.
+      const previousSaved = String(fileToSave.content ?? '');
+      if (
+        previousSaved !== textToSave &&
+        !isEncMdPath(fileToSave.id) &&
+        !isNoteVersionExcludedPath(fileToSave.id) &&
+        ['s3', 'local', 'webdav', 'idb'].includes(fileToSave.type)
+      ) {
+        try {
+          const vh = createVersionHistoryContext({
+            storageMode: fileToSave.type,
+            getS3Client: () => getS3Client(),
+            bucket: s3Creds.bucket,
+            getVaultBackend: () => getBackendForType(fileToSave.type),
+          });
+          await maybeArchiveNoteOnSave(vh, fileToSave.id, previousSaved);
+        } catch (snapErr) {
+          console.warn('[versionHistory] snapshot after save failed', snapErr);
+        }
+      }
+      if (
+        !isEncMdPath(fileToSave.id) &&
+        !isNoteVersionExcludedPath(fileToSave.id)
+      ) {
+        notifyNoteVersionHistoryAfterSave(fileToSave.id);
       }
     } catch (e) {
       const encNote =

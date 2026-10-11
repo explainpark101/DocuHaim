@@ -2,7 +2,7 @@ import {
   chatAttachmentsToMarkdown,
   uploadChatAttachment,
 } from '@/utils/chatWithMyself/attachments.js';
-import { appendChatMessage } from '@/utils/chatWithMyself/storage.js';
+import { appendChatMessage } from '@/utils/chatWithMyself/storage';
 import { SELF_GROUP } from '@/utils/chatWithMyself/paths.js';
 
 /**

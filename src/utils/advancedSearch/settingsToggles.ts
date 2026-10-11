@@ -7,6 +7,10 @@ import {
   saveAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
+  loadVersionHistoryEnabled,
+  saveVersionHistoryEnabled,
+} from '@/utils/versionHistory/settings';
+import {
   loadWorkspaceTabsAutoSaveMode,
   loadWorkspaceTabsEnabled,
   saveWorkspaceTabsAutoSaveMode,
@@ -189,6 +193,7 @@ export type SettingsToggleId =
   | 'settings-tauri-download-save-dialog'
   | 'settings-android-system-status-bar'
   | 'settings-quiz-dock-width-spring'
+  | 'settings-version-history'
   | 'settings-haim-double'
   | 'settings-haim-double-scroll-sync'
   | 'settings-haim-toc-dock'
@@ -230,6 +235,25 @@ function notify(id: SettingsToggleId, enabled: boolean): void {
 }
 
 export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
+  {
+    id: 'settings-version-history',
+    enableTitle: '버전 기록(앱 스냅샷) 켜기',
+    disableTitle: '버전 기록(앱 스냅샷) 끄기',
+    description:
+      'S3 버저닝이 없을 때 노트·채팅 수정 이력을 vault에 남깁니다. S3 native는 버킷 설정을 따릅니다.',
+    keywords: [
+      'version',
+      'history',
+      '버전',
+      '기록',
+      '히스토리',
+      'snapshot',
+      '스냅샷',
+      's3',
+    ],
+    load: () => loadVersionHistoryEnabled(),
+    save: (enabled) => saveVersionHistoryEnabled(enabled),
+  },
   {
     id: 'settings-haim-double',
     enableTitle: 'Haim double(소스+WYSIWYG) 켜기',

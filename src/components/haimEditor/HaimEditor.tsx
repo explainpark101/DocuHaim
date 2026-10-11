@@ -1469,10 +1469,31 @@ export default function HaimEditor({
         setWhiteboardOpen(true);
       },
       'editor-table-edit': () => openHaimTableFromSelection(),
+      'editor-version-history': () => {
+        const path = currentFile?.id;
+        const storageType = currentFile?.type;
+        if (!path || !storageType) return;
+        void import('@/utils/versionHistory/openRequest').then(
+          ({ openNoteVersionHistory }) => {
+            const text =
+              typeof value === 'string'
+                ? value
+                : editor
+                  ? editorToVaultMarkdown(editor, metaPrefixRef.current)
+                  : '';
+            openNoteVersionHistory({
+              path,
+              storageType,
+              currentText: text,
+            });
+          },
+        );
+      },
     });
     return unregister;
   }, [
     editor,
+    value,
     previewOnly,
     isSurfaceLive,
     flush,
@@ -1490,6 +1511,7 @@ export default function HaimEditor({
     openDocuhaimNoteLinkModal,
     toggleInvisibleChars,
     runFormatCommand,
+    currentFile,
   ]);
 
   useEffect(() => {

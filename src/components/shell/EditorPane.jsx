@@ -15,8 +15,10 @@ import {
   IconSave,
   IconTrash,
   IconEye,
+  IconHistory,
 } from '@/components/icons';
 import { isEncMdPath } from '@/utils/encMd';
+import { isNoteVersionExcludedPath } from '@/utils/versionHistory';
 import AudioLevelIndicator from '@/components/AudioLevelIndicator';
 import RecordingDropdownButton from '@/components/RecordingDropdownButton';
 import RecordingSyncView from '@/components/RecordingSyncView';
@@ -1028,6 +1030,30 @@ export default function EditorPane({
                   <IconFolder size={14} />
                   파일 이동
                 </button>
+                ) : null}
+                {currentFile.type !== 'session' &&
+                viewer === 'markdown' &&
+                currentFile.id &&
+                !isNoteVersionExcludedPath(currentFile.id) ? (
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
+                    onClick={() => {
+                      void import('@/utils/versionHistory/openRequest').then(
+                        ({ openNoteVersionHistory }) => {
+                          openNoteVersionHistory({
+                            path: currentFile.id,
+                            storageType: currentFile.type,
+                            currentText: editorContent,
+                          });
+                        },
+                      );
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <IconHistory size={14} />
+                    버전 관리
+                  </button>
                 ) : null}
                 {onRequestDownload && currentFile.type !== 'session' && (
                   <button

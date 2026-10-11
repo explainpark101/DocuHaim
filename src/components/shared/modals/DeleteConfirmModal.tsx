@@ -24,6 +24,8 @@ export type DeleteTarget =
 
 export type DeleteConfirmOptions = {
   deleteWithRecordings?: boolean | undefined;
+  /** When permanently deleting, also purge object/app version history. Default true. */
+  deleteWithVersions?: boolean | undefined;
 };
 
 /**
@@ -52,6 +54,8 @@ export function normalizeDeleteTargets(target: unknown): DeleteTargetItem[] {
 export type DeleteConfirmModalProps = {
   target: DeleteTarget;
   associatedRecordings?: unknown[] | undefined;
+  /** Show “also delete versions” for permanent deletes of versioned notes. */
+  showDeleteWithVersions?: boolean | undefined;
   onCancel: () => void;
   onConfirm: (options: DeleteConfirmOptions) => void;
   isProcessing?: boolean | undefined;
@@ -60,17 +64,20 @@ export type DeleteConfirmModalProps = {
 export function DeleteConfirmModal({
   target,
   associatedRecordings = [],
+  showDeleteWithVersions = false,
   onCancel,
   onConfirm,
   isProcessing = false,
 }: DeleteConfirmModalProps) {
   const [displayTarget, setDisplayTarget] = useState<DeleteTarget>(null);
   const [deleteWithRecordings, setDeleteWithRecordings] = useState(true);
+  const [deleteWithVersions, setDeleteWithVersions] = useState(true);
 
   useEffect(() => {
     if (target) {
       setDisplayTarget(target);
       setDeleteWithRecordings(true);
+      setDeleteWithVersions(true);
       return undefined;
     }
     if (displayTarget) {
@@ -94,9 +101,14 @@ export function DeleteConfirmModal({
   const isTrashRoot = !isMulti && primary.node.path === '.trash/';
   const hasFolder = targets.some((item) => item.node.type === 'folder');
   const hasRecordings = associatedRecordings.length > 0;
+  const showVersionsOption =
+    showDeleteWithVersions && isInTrash && !isTrashRoot;
 
   const handleConfirm = () => {
-    onConfirm(hasRecordings ? { deleteWithRecordings } : {});
+    const opts: DeleteConfirmOptions = {};
+    if (hasRecordings) opts.deleteWithRecordings = deleteWithRecordings;
+    if (showVersionsOption) opts.deleteWithVersions = deleteWithVersions;
+    onConfirm(opts);
   };
 
   const nameListPreview = () => {
@@ -173,6 +185,22 @@ export function DeleteConfirmModal({
               <span className="text-sm text-amber-800 dark:text-amber-200">
                 선택한 파일과 연관된 녹음 {associatedRecordings.length}개도 함께{' '}
                 {isInTrash ? '영구 삭제' : '쓰레기통으로 이동'}합니다.
+              </span>
+            </label>
+          </div>
+        )}
+        {showVersionsOption && (
+          <div className="mb-4 p-3 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={deleteWithVersions}
+                onChange={(e) => setDeleteWithVersions(e.target.checked)}
+                className="mt-1 rounded border-violet-300"
+              />
+              <span className="text-sm text-violet-900 dark:text-violet-200">
+                이전 버전도 함께 삭제합니다. 끄면 파일만 지우고 S3/앱 버전
+                기록은 남을 수 있습니다.
               </span>
             </label>
           </div>

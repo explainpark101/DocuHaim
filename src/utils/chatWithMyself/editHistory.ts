@@ -35,6 +35,9 @@ export type ChatEditVersion = {
   body: string;
   group: string;
   key?: string;
+  /** VersionHistory entry id (s3:… / legacy:…). */
+  id?: string;
+  source?: 's3-native' | 'app' | 'legacy-app';
 };
 
 /**

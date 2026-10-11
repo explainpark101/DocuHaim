@@ -17,7 +17,9 @@ import { CreateItemModal } from '@/components/modals/CreateItemModal';
 import PromptModal from '@/components/modals/PromptModal';
 import ChangeEncMdPasswordModal from '@/components/modals/ChangeEncMdPasswordModal';
 import FirstNoteWelcomeModal from '@/components/shared/modals/FirstNoteWelcomeModal';
+import NoteVersionHistoryHost from '@/components/shared/modals/NoteVersionHistoryHost';
 import { revertNoteCoverComment } from '@/utils/noteCover';
+import { isNoteVersionExcludedPath } from '@/utils/versionHistory';
 import { getActiveFileTab, isFileTab } from '@/utils/workspaceTabs';
 import { isMarkdownFileName } from '@/utils/markdownImageExport';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
@@ -515,10 +517,34 @@ export function AppModals() {
     <DeleteConfirmModal
       target={deleteTarget}
       associatedRecordings={associatedRecordings}
+      showDeleteWithVersions={Boolean(
+        deleteTarget &&
+          (() => {
+            const targets = Array.isArray((deleteTarget as any)?.targets)
+              ? (deleteTarget as any).targets
+              : deleteTarget?.node
+                ? [deleteTarget]
+                : [];
+            return (
+              targets.length > 0 &&
+              targets.every(
+                (t: any) =>
+                  String(t?.node?.path || '').startsWith('.trash/') &&
+                  t?.node?.path !== '.trash/' &&
+                  (t?.node?.type === 'folder' ||
+                    !isNoteVersionExcludedPath(
+                      String(t?.node?.path || '').replace(/^\.trash\//, ''),
+                    )),
+              )
+            );
+          })(),
+      )}
       onCancel={() => setDeleteTarget(null)}
       onConfirm={confirmDelete}
       isProcessing={isDeleting}
     />
+
+    <NoteVersionHistoryHost theme={theme === 'dark' ? 'dark' : 'light'} />
 
     <EmptyTrashConfirmModal
       isOpen={Boolean(emptyTrashTarget)}

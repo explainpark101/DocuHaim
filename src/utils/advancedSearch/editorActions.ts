@@ -48,7 +48,8 @@ export type EditorActionId =
   | 'editor-find-replace'
   | 'editor-invisible-chars'
   | 'editor-mermaid'
-  | 'editor-katex';
+  | 'editor-katex'
+  | 'editor-version-history';
 
 export type EditorActionHandler = (payload?: unknown) => void | Promise<void>;
 
@@ -494,5 +495,20 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
     title: '수식 삽입',
     description: 'KaTeX / LaTeX 수식 블록 삽입',
     keywords: ['math', 'katex', 'latex', '수식', '공식'],
+  },
+  {
+    id: 'editor-version-history',
+    title: '버전 기록',
+    description: '현재 노트의 S3/앱 버전 기록 보기·복원·삭제',
+    keywords: [
+      'version',
+      'history',
+      '버전',
+      '기록',
+      '히스토리',
+      '복원',
+      'restore',
+      's3 versioning',
+    ],
   },
 ] as const;

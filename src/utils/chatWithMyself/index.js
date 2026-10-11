@@ -135,7 +135,7 @@ export {
   writeDayMessages,
   flushPendingMessages,
   createChatBackend,
-} from '@/utils/chatWithMyself/storage.js';
+} from '@/utils/chatWithMyself/storage';
 export { mergeDayMessages, serializeDayFile, serializeDeletedMarker } from '@/utils/chatWithMyself/format.js';
 export {
   ENCRYPTED_MESSAGE_LABEL,

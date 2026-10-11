@@ -1836,6 +1836,11 @@ export default function ChatWithMyselfPane({
           setError('메시지를 찾지 못했습니다.');
           return;
         }
+        try {
+          await deleteAllMessageEditHistory(ctx, message.id, { dateStr });
+        } catch {
+          /* best-effort purge of edit versions */
+        }
         setMessages((prev: any) => prev.filter((m: any) => m.id !== message.id));
         setPinnedResults((prev: any) => prev.filter((m: any) => m.id !== message.id));
         setNotedResults((prev: any) => prev.filter((m: any) => m.id !== message.id));
@@ -2380,13 +2385,16 @@ export default function ChatWithMyselfPane({
   );
 
   const handleLoadEditHistoryPage = useCallback(
-    async (message: any, { offset = 0, limit = 10 }: { offset?: number; limit?: number } = {}) => {
+    async (
+      message: { id?: string; editHistory?: unknown },
+      opts: { offset: number; limit: number },
+    ) => {
       if (!storageReady || !message?.id) {
         return { entries: [], nextOffset: 0, hasMore: false, total: 0 };
       }
       return loadMessageEditHistoryPage(ctx, message.id, {
-        offset,
-        limit,
+        offset: opts.offset,
+        limit: opts.limit,
         legacyEntries: Array.isArray(message.editHistory)
           ? message.editHistory
           : [],
@@ -2468,6 +2476,35 @@ export default function ChatWithMyselfPane({
       }
     },
     [storageReady, ctx, applyUpdatedHistoryMessage, noteLocalDayWrite],
+  );
+
+  const handleRestoreEditHistoryEntry = useCallback(
+    async (message: any, entry: any) => {
+      if (!storageReady || !message?.id || !entry) return;
+      const dateStr =
+        message.dateStr ||
+        localDateString(new Date(message.at), detectTimeZone());
+      const updated = await updateChatMessage(ctx, dateStr, message.id, {
+        body: String(entry.body ?? ''),
+        group: entry.group || message.group,
+      });
+      if (updated) {
+        applyUpdatedHistoryMessage(message.id, updated, dateStr);
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
+      }
+    },
+    [storageReady, ctx, applyUpdatedHistoryMessage, noteLocalDayWrite],
+  );
+
+  const handleDeleteEditHistoryEntries = useCallback(
+    async (message: any, entries: any[]) => {
+      if (!storageReady || !message?.id || !Array.isArray(entries)) return;
+      for (const entry of entries) {
+        await handleDeleteEditHistoryEntry(message, entry);
+      }
+    },
+    [storageReady, handleDeleteEditHistoryEntry],
   );
 
   const handleTogglePin = useCallback(
@@ -3652,6 +3689,8 @@ export default function ChatWithMyselfPane({
         onLoadHistoryPage={handleLoadEditHistoryPage}
         onDeleteHistoryEntry={handleDeleteEditHistoryEntry}
         onDeleteAllHistory={handleDeleteAllEditHistory}
+        onDeleteHistoryEntries={handleDeleteEditHistoryEntries}
+        onRestoreHistoryEntry={handleRestoreEditHistoryEntry}
       />
       <ConfirmModal
         isOpen={Boolean(deleteTarget)}

@@ -12,10 +12,12 @@ import {
   IconMessage,
   IconTrash,
   IconX,
+  IconHistory,
   IconKey,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine, Copy, SquareArrowOutUpRight } from 'lucide-react';
 import { isEncMdPath } from '@/utils/encMd';
+import { isNoteVersionExcludedPath } from '@/utils/versionHistory';
 
 const VIEWPORT_PADDING = 8;
 
@@ -51,6 +53,7 @@ type MenuItemsProps = {
   onMove?: ((node: TreeMenuNode) => void) | undefined;
   onOpenInNewWindow?: ((storageType: string, node: TreeMenuNode) => void | Promise<void>) | undefined;
   onShareToChatWithMyself?: ((storageType: string, node: TreeMenuNode) => void | Promise<void>) | undefined;
+  onVersionHistory?: ((storageType: string, node: TreeMenuNode) => void) | undefined;
   itemClass: string;
   iconClass: string;
 };
@@ -73,6 +76,7 @@ function SidebarContextMenuItems({
   onMove,
   onOpenInNewWindow,
   onShareToChatWithMyself,
+  onVersionHistory,
   itemClass,
   iconClass,
 }: MenuItemsProps) {
@@ -84,6 +88,14 @@ function SidebarContextMenuItems({
     node.type === 'file' &&
     Boolean(onChangeEncMdPassword) &&
     (isEncMdPath(node.name) || isEncMdPath(node.path));
+  const showVersionHistory =
+    !isFolder &&
+    node.type === 'file' &&
+    Boolean(onVersionHistory) &&
+    !isTrashRoot &&
+    !isNoteVersionExcludedPath(String(node.path || '')) &&
+    !isEncMdPath(node.name) &&
+    !isEncMdPath(node.path);
 
   return (
     <>
@@ -169,6 +181,19 @@ function SidebarContextMenuItems({
         >
           <IconMessage className={iconClass} size={14} />
           나와의 채팅에 공유하기
+        </button>
+      )}
+      {showVersionHistory && onVersionHistory && (
+        <button
+          type="button"
+          className={itemClass}
+          onClick={() => {
+            onVersionHistory(storageType, node);
+            onClose();
+          }}
+        >
+          <IconHistory className={iconClass} size={14} />
+          버전 기록
         </button>
       )}
       {canEdit && onRename && (
@@ -273,6 +298,7 @@ export type SidebarContextMenuProps = {
   onMove?: ((node: TreeMenuNode) => void) | undefined;
   onOpenInNewWindow?: ((storageType: string, node: TreeMenuNode) => void | Promise<void>) | undefined;
   onShareToChatWithMyself?: ((storageType: string, node: TreeMenuNode) => void | Promise<void>) | undefined;
+  onVersionHistory?: ((storageType: string, node: TreeMenuNode) => void) | undefined;
   deleteCount?: number;
 };
 
@@ -300,6 +326,7 @@ export default function SidebarContextMenu({
   onMove,
   onOpenInNewWindow,
   onShareToChatWithMyself,
+  onVersionHistory,
   deleteCount = 1,
 }: SidebarContextMenuProps): ReactNode {
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -333,6 +360,7 @@ export default function SidebarContextMenu({
         onMove,
         onOpenInNewWindow,
         onShareToChatWithMyself,
+        onVersionHistory,
         itemClass,
         iconClass,
       }

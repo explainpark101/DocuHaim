@@ -54,6 +54,18 @@ import { getSyncKeyForRecording } from '@/utils/recordingPipeline';
 import { collectCompanionImageKeysForDelete } from '@/utils/unusedImageCleanup';
 import { loadOrphanImageAutoDeleteEnabled } from '@/utils/orphanImageCleanupSettings';
 import {
+  createVersionHistoryContext,
+  isNoteVersionExcludedPath,
+  purgeAllForTarget,
+} from '@/utils/versionHistory';
+
+function originalPathFromTrashPath(path: string): string {
+  const p = String(path || '').replace(/^\/+/, '');
+  if (p === '.trash' || p === '.trash/') return '';
+  if (p.startsWith('.trash/')) return p.slice('.trash/'.length).replace(/\/+$/, '');
+  return p.replace(/\/+$/, '');
+}
+import {
   deletedNoteScopeFromNode,
   unlinkChatNotesForDeletedPaths,
   postChatSyncEvent,
@@ -3350,7 +3362,7 @@ export function useTreeOpsDomain() {
   const confirmDelete = async (options = {}) => {
     const targets = normalizeDeleteTargets(deleteTarget);
     if (!targets.length) return;
-    const { deleteWithRecordings = false } = options;
+    const { deleteWithRecordings = false, deleteWithVersions = false } = options;
 
     const closeModal = () => setDeleteTarget(null);
     let closeTimer = null;
@@ -3442,12 +3454,45 @@ export function useTreeOpsDomain() {
                 if (keys.length > 0) {
                   await deleteObjects(client, s3Creds.bucket, keys.map((Key) => ({ Key })));
                 }
+                if (deleteWithVersions) {
+                  const vh = createVersionHistoryContext({
+                    storageMode: 's3',
+                    getS3Client: () => getS3Client(),
+                    bucket: s3Creds.bucket,
+                    getVaultBackend: () => getBackendForType('s3'),
+                  });
+                  for (const Key of contents.map((c) => c.Key).filter(Boolean)) {
+                    const orig = originalPathFromTrashPath(Key);
+                    if (!orig || isNoteVersionExcludedPath(orig)) continue;
+                    try {
+                      await purgeAllForTarget(vh, { kind: 'note', path: orig });
+                    } catch (purgeErr) {
+                      console.warn('[versionHistory] purge failed', orig, purgeErr);
+                    }
+                  }
+                }
               } else {
                 const keysToDelete =
                   additionalKeys.length > 0
                     ? [node.path, ...additionalKeys]
                     : [node.path];
                 await deleteObjects(client, s3Creds.bucket, keysToDelete.map((Key) => ({ Key })));
+                if (deleteWithVersions) {
+                  const orig = originalPathFromTrashPath(node.path);
+                  if (orig && !isNoteVersionExcludedPath(orig)) {
+                    try {
+                      const vh = createVersionHistoryContext({
+                        storageMode: 's3',
+                        getS3Client: () => getS3Client(),
+                        bucket: s3Creds.bucket,
+                        getVaultBackend: () => getBackendForType('s3'),
+                      });
+                      await purgeAllForTarget(vh, { kind: 'note', path: orig });
+                    } catch (purgeErr) {
+                      console.warn('[versionHistory] purge failed', orig, purgeErr);
+                    }
+                  }
+                }
               }
             } else {
               await moveS3EntryToTrash(node, additionalKeys);
@@ -3505,6 +3550,20 @@ export function useTreeOpsDomain() {
               }
             }
             storagesTouched.add('local');
+            if (isInTrash && deleteWithVersions && node.type === 'file') {
+              const orig = originalPathFromTrashPath(node.path);
+              if (orig && !isNoteVersionExcludedPath(orig)) {
+                try {
+                  const vh = createVersionHistoryContext({
+                    storageMode: 'local',
+                    getVaultBackend: () => getBackendForType('local'),
+                  });
+                  await purgeAllForTarget(vh, { kind: 'note', path: orig });
+                } catch (purgeErr) {
+                  console.warn('[versionHistory] purge failed', orig, purgeErr);
+                }
+              }
+            }
           } else if (type === 'webdav') {
             const backend = createWebdavBackend(webdavConfig);
             if (isInTrash) {
@@ -3534,6 +3593,20 @@ export function useTreeOpsDomain() {
               await backend.trash(node.path, { additionalKeys });
             }
             storagesTouched.add('webdav');
+            if (isInTrash && deleteWithVersions && node.type === 'file') {
+              const orig = originalPathFromTrashPath(node.path);
+              if (orig && !isNoteVersionExcludedPath(orig)) {
+                try {
+                  const vh = createVersionHistoryContext({
+                    storageMode: 'webdav',
+                    getVaultBackend: () => createWebdavBackend(webdavConfig),
+                  });
+                  await purgeAllForTarget(vh, { kind: 'note', path: orig });
+                } catch (purgeErr) {
+                  console.warn('[versionHistory] purge failed', orig, purgeErr);
+                }
+              }
+            }
           } else if (type === 'idb') {
             const backend = getBackendForType('idb');
             if (isInTrash) {
@@ -3563,6 +3636,20 @@ export function useTreeOpsDomain() {
               await backend.trash(node.path, { additionalKeys });
             }
             storagesTouched.add('idb');
+            if (isInTrash && deleteWithVersions && node.type === 'file') {
+              const orig = originalPathFromTrashPath(node.path);
+              if (orig && !isNoteVersionExcludedPath(orig)) {
+                try {
+                  const vh = createVersionHistoryContext({
+                    storageMode: 'idb',
+                    getVaultBackend: () => getBackendForType('idb'),
+                  });
+                  await purgeAllForTarget(vh, { kind: 'note', path: orig });
+                } catch (purgeErr) {
+                  console.warn('[versionHistory] purge failed', orig, purgeErr);
+                }
+              }
+            }
           }
 
           successCount += 1;

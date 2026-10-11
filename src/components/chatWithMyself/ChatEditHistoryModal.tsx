@@ -1,16 +1,18 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { Dialog } from 'radix-ui';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { motion as Motion } from 'motion/react';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
+import VersionRestoreDiffModal from '@/components/shared/modals/VersionRestoreDiffModal';
 import {
   AdaptiveContextMenu,
   AdaptiveMenuItem,
@@ -79,10 +81,24 @@ export type ChatEditHistoryModalProps = {
   onDeleteAllHistory?:
     | ((message: ChatEditHistoryMessage) => Promise<void> | void)
     | undefined;
+  onDeleteHistoryEntries?:
+    | ((
+        message: ChatEditHistoryMessage,
+        entries: ChatEditVersion[],
+      ) => Promise<void> | void)
+    | undefined;
+  onRestoreHistoryEntry?:
+    | ((
+        message: ChatEditHistoryMessage,
+        entry: ChatEditVersion,
+      ) => Promise<void> | void)
+    | undefined;
+  theme?: 'light' | 'dark';
 };
 
 type ConfirmTarget =
   | { kind: 'one'; entry: ChatEditVersion }
+  | { kind: 'selected'; entries: ChatEditVersion[] }
   | { kind: 'all' }
   | null;
 
@@ -154,10 +170,14 @@ type HistoryEntryCardProps = {
     | ((path: string) => Promise<string | null>)
     | undefined;
   canDelete: boolean;
+  canRestore: boolean;
   deleting: boolean;
+  selected: boolean;
+  onToggleSelect?: ((entry: ChatEditVersion) => void) | undefined;
   onRequestDelete?:
     | ((entry: ChatEditVersion, opts?: { skipConfirm?: boolean }) => void)
     | undefined;
+  onRequestRestore?: ((entry: ChatEditVersion) => void) | undefined;
   shiftHeldRef: MutableRefObject<boolean>;
   coarse: boolean;
   markdown?: boolean;
@@ -173,12 +193,17 @@ function HistoryEntryCard({
   groups,
   getPresignedUrl,
   canDelete,
+  canRestore,
   deleting,
+  selected,
+  onToggleSelect,
   onRequestDelete,
+  onRequestRestore,
   shiftHeldRef,
   coarse,
   markdown = false,
 }: HistoryEntryCardProps) {
+  const menuEnabled = canDelete || canRestore;
   const {
     contextMenuOpen,
     setContextMenuOpen,
@@ -186,7 +211,16 @@ function HistoryEntryCard({
     motionTransition,
     interactiveClass,
     bindPress,
-  } = usePressableCardMenu({ enabled: canDelete, coarse });
+  } = usePressableCardMenu({ enabled: menuEnabled, coarse });
+
+  const sourceLabel =
+    entry.source === 's3-native'
+      ? 'S3'
+      : entry.source === 'legacy-app'
+        ? '앱(레거시)'
+        : entry.source === 'app'
+          ? '앱'
+          : '';
 
   const card = (
     <Motion.div
@@ -194,28 +228,48 @@ function HistoryEntryCard({
       initial={false}
       animate={motionAnimate}
       transition={motionTransition}
-      {...(canDelete ? bindPress : {})}
+      {...(menuEnabled ? bindPress : {})}
     >
-      <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
-        <span className="font-semibold text-gray-700 dark:text-odp-fg">
-          {indexLabel}
-        </span>
-        <span>{formatHistoryWhen(entry.at, timeZone)}</span>
-        <span className="text-gray-400">·</span>
-        <span>{resolveGroupLabel(groups, entry.group || SELF_GROUP)}</span>
+      <div className="mb-1.5 flex items-start gap-2">
+        {canDelete ? (
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={selected}
+            disabled={deleting}
+            onChange={() => onToggleSelect?.(entry)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="버전 선택"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+            <span className="font-semibold text-gray-700 dark:text-odp-fg">
+              {indexLabel}
+            </span>
+            <span>{formatHistoryWhen(entry.at, timeZone)}</span>
+            <span className="text-gray-400">·</span>
+            <span>{resolveGroupLabel(groups, entry.group || SELF_GROUP)}</span>
+            {sourceLabel ? (
+              <span className="rounded bg-slate-200/80 px-1 py-0.5 text-[10px] dark:bg-odp-bg">
+                {sourceLabel}
+              </span>
+            ) : null}
+          </div>
+          <ChatMessageBody
+            markdown={Boolean(markdown)}
+            text={entry.body || ''}
+            className={`${
+              markdown ? '' : 'whitespace-pre-wrap '
+            }wrap-break-word text-sm text-gray-800 dark:text-odp-fgStrong select-text`}
+            getPresignedUrl={getPresignedUrl}
+          />
+        </div>
       </div>
-      <ChatMessageBody
-        markdown={Boolean(markdown)}
-        text={entry.body || ''}
-        className={`${
-          markdown ? '' : 'whitespace-pre-wrap '
-        }wrap-break-word text-sm text-gray-800 dark:text-odp-fgStrong select-text`}
-        getPresignedUrl={getPresignedUrl}
-      />
     </Motion.div>
   );
 
-  if (!canDelete) {
+  if (!menuEnabled) {
     return card;
   }
 
@@ -228,22 +282,34 @@ function HistoryEntryCard({
       contentClassName={chatMenuContentClass}
       trigger={card}
     >
-      <AdaptiveMenuItem
-        className={chatMenuDangerItemClass}
-        danger
-        disabled={deleting}
-        onPointerDown={(e: ReactPointerEvent) => {
-          if (e.shiftKey) shiftHeldRef.current = true;
-        }}
-        onSelect={() => {
-          onRequestDelete?.(entry, {
-            skipConfirm: shiftHeldRef.current,
-          });
-        }}
-      >
-        <Trash2 size={16} className="shrink-0" />
-        이 기록 삭제
-      </AdaptiveMenuItem>
+      {canRestore ? (
+        <AdaptiveMenuItem
+          disabled={deleting}
+          className="text-emerald-700 dark:text-emerald-300"
+          onSelect={() => onRequestRestore?.(entry)}
+        >
+          <RotateCcw size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+          이 버전으로 복원
+        </AdaptiveMenuItem>
+      ) : null}
+      {canDelete ? (
+        <AdaptiveMenuItem
+          className={chatMenuDangerItemClass}
+          danger
+          disabled={deleting}
+          onPointerDown={(e: ReactPointerEvent) => {
+            if (e.shiftKey) shiftHeldRef.current = true;
+          }}
+          onSelect={() => {
+            onRequestDelete?.(entry, {
+              skipConfirm: shiftHeldRef.current,
+            });
+          }}
+        >
+          <Trash2 size={16} className="shrink-0" />
+          이 기록 삭제
+        </AdaptiveMenuItem>
+      ) : null}
     </AdaptiveContextMenu>
   );
 }
@@ -263,6 +329,9 @@ export default function ChatEditHistoryModal({
   onLoadHistoryPage,
   onDeleteHistoryEntry,
   onDeleteAllHistory,
+  onDeleteHistoryEntries,
+  onRestoreHistoryEntry,
+  theme = 'light',
 }: ChatEditHistoryModalProps) {
   const tz = timeZone || detectTimeZone();
   const isOpen = Boolean(open && message);
@@ -275,12 +344,18 @@ export default function ChatEditHistoryModal({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [restoreEntry, setRestoreEntry] = useState<ChatEditVersion | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const shiftHeldRef = useShiftHeldRef();
   const coarse = useIsCoarsePointer();
   const messageId = message?.id || '';
+
+  const entrySelectKey = (entry: ChatEditVersion, index: number) =>
+    entry.id || entry.key || `${entry.at}-${index}`;
 
   const loadPage = useCallback(
     async (nextOffset: number, { append }: { append: boolean }) => {
@@ -340,6 +415,9 @@ export default function ChatEditHistoryModal({
       setLoadingMore(false);
       setDeleting(false);
       setConfirmTarget(null);
+      setSelectedIds(new Set());
+      setRestoreEntry(null);
+      setRestoring(false);
       loadingMoreRef.current = false;
       return undefined;
     }
@@ -389,6 +467,7 @@ export default function ChatEditHistoryModal({
     setError('');
     try {
       await onDeleteAllHistory?.(message);
+      setSelectedIds(new Set());
       await loadPage(0, { append: false });
     } catch (e: unknown) {
       const errMsg =
@@ -398,6 +477,32 @@ export default function ChatEditHistoryModal({
       setDeleting(false);
     }
   }, [message, deleting, onDeleteAllHistory, loadPage]);
+
+  const runDeleteSelected = useCallback(
+    async (list: ChatEditVersion[]) => {
+      if (!message || deleting || !list.length) return;
+      setDeleting(true);
+      setError('');
+      try {
+        if (onDeleteHistoryEntries) {
+          await onDeleteHistoryEntries(message, list);
+        } else {
+          for (const entry of list) {
+            await onDeleteHistoryEntry?.(message, entry);
+          }
+        }
+        setSelectedIds(new Set());
+        await loadPage(0, { append: false });
+      } catch (e: unknown) {
+        const errMsg =
+          e instanceof Error ? e.message : '선택 삭제에 실패했습니다.';
+        setError(errMsg || '선택 삭제에 실패했습니다.');
+      } finally {
+        setDeleting(false);
+      }
+    },
+    [message, deleting, onDeleteHistoryEntries, onDeleteHistoryEntry, loadPage],
+  );
 
   const requestDeleteEntry = useCallback(
     (entry: ChatEditVersion, { skipConfirm = false }: { skipConfirm?: boolean } = {}) => {
@@ -423,6 +528,10 @@ export default function ChatEditHistoryModal({
     [total, deleting, runDeleteAll, shiftHeldRef],
   );
 
+  const selectedEntries = useMemo(() => {
+    return entries.filter((e, i) => selectedIds.has(entrySelectKey(e, i)));
+  }, [entries, selectedIds]);
+
   const confirmDelete = useCallback(() => {
     const target = confirmTarget;
     setConfirmTarget(null);
@@ -431,10 +540,29 @@ export default function ChatEditHistoryModal({
       void runDeleteAll();
       return;
     }
+    if (target.kind === 'selected') {
+      void runDeleteSelected(target.entries);
+      return;
+    }
     if (target.kind === 'one' && target.entry) {
       void runDeleteEntry(target.entry);
     }
-  }, [confirmTarget, runDeleteAll, runDeleteEntry]);
+  }, [confirmTarget, runDeleteAll, runDeleteEntry, runDeleteSelected]);
+
+  const confirmRestore = useCallback(async () => {
+    if (!message || !restoreEntry || restoring) return;
+    setRestoring(true);
+    setError('');
+    try {
+      await onRestoreHistoryEntry?.(message, restoreEntry);
+      setRestoreEntry(null);
+      onOpenChange?.(false);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '복원에 실패했습니다.');
+    } finally {
+      setRestoring(false);
+    }
+  }, [message, restoreEntry, restoring, onRestoreHistoryEntry, onOpenChange]);
 
   const currentGroupLabel = resolveGroupLabel(
     groups,
@@ -444,6 +572,7 @@ export default function ChatEditHistoryModal({
 
   const canDelete = Boolean(onDeleteHistoryEntry) && total > 0;
   const canDeleteAll = Boolean(onDeleteAllHistory) && total > 0;
+  const canRestore = Boolean(onRestoreHistoryEntry);
 
   return (
     <>
@@ -474,30 +603,51 @@ export default function ChatEditHistoryModal({
                         : '저장된 이전 버전이 없습니다'}
                   </p>
                 </div>
-                {canDeleteAll ? (
-                  <button
-                    type="button"
-                    disabled={deleting}
-                    title="Shift+클릭 시 확인 생략"
-                    onPointerDown={(e: ReactPointerEvent) => {
-                      if (e.shiftKey) shiftHeldRef.current = true;
-                    }}
-                    onClick={() => requestDeleteAll()}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-50 disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/40"
-                  >
-                    <Trash2 size={12} />
-                    전부 삭제
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                  {canDelete && selectedEntries.length > 0 ? (
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      onClick={() =>
+                        setConfirmTarget({
+                          kind: 'selected',
+                          entries: selectedEntries,
+                        })
+                      }
+                      className="inline-flex items-center gap-1 rounded-md bg-odp-accentRed px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm hover:bg-red-600 disabled:opacity-40 dark:bg-odp-accentRed dark:hover:bg-red-600"
+                    >
+                      <Trash2 size={12} />
+                      선택 삭제 ({selectedEntries.length})
+                    </button>
+                  ) : null}
+                  {canDeleteAll ? (
+                    <button
+                      type="button"
+                      disabled={deleting}
+                      title="Shift+클릭 시 확인 생략"
+                      onPointerDown={(e: ReactPointerEvent) => {
+                        if (e.shiftKey) shiftHeldRef.current = true;
+                      }}
+                      onClick={() => requestDeleteAll()}
+                      className="inline-flex items-center gap-1 rounded-md bg-red-700 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm hover:bg-red-800 disabled:opacity-40 dark:bg-red-700 dark:hover:bg-red-600"
+                    >
+                      <Trash2 size={12} />
+                      전부 삭제
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
 
             <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
               {message?.editedAt ? (
-                <div className="mb-3 rounded-xl border border-sky-200/80 bg-sky-50/80 p-3 dark:border-sky-800/50 dark:bg-sky-950/40">
+                <div
+                  className="mb-3 rounded-xl border-2 border-sky-400 bg-sky-50 p-3 shadow-sm ring-2 ring-sky-200/70 dark:border-sky-500 dark:bg-sky-950/45 dark:ring-sky-800/60"
+                  aria-current="true"
+                >
                   <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
-                    <span className="font-semibold text-sky-700 dark:text-sky-300">
-                      현재
+                    <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white dark:bg-sky-500">
+                      현재 버전
                     </span>
                     <span>{formatHistoryWhen(message.editedAt, tz)}</span>
                     <span className="text-gray-400">·</span>
@@ -530,7 +680,7 @@ export default function ChatEditHistoryModal({
               ) : (
                 <ul className="flex flex-col gap-2.5">
                   {entries.map((entry, i) => {
-                    const entryKey = entry.key || `${entry.at}-${i}`;
+                    const entryKey = entrySelectKey(entry, i);
                     return (
                       <li key={entryKey}>
                         <HistoryEntryCard
@@ -540,8 +690,19 @@ export default function ChatEditHistoryModal({
                           groups={groups}
                           getPresignedUrl={getPresignedUrl}
                           canDelete={canDelete}
-                          deleting={deleting}
+                          canRestore={canRestore}
+                          deleting={deleting || restoring}
+                          selected={selectedIds.has(entryKey)}
+                          onToggleSelect={() => {
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(entryKey)) next.delete(entryKey);
+                              else next.add(entryKey);
+                              return next;
+                            });
+                          }}
                           onRequestDelete={requestDeleteEntry}
+                          onRequestRestore={(e) => setRestoreEntry(e)}
                           shiftHeldRef={shiftHeldRef}
                           coarse={coarse}
                           markdown={messageMarkdown}
@@ -585,21 +746,45 @@ export default function ChatEditHistoryModal({
       <ConfirmModal
         isOpen={Boolean(confirmTarget)}
         title={
-          confirmTarget?.kind === 'all' ? '수정 기록 전부 삭제' : '수정 기록 삭제'
+          confirmTarget?.kind === 'all'
+            ? '수정 기록 전부 삭제'
+            : confirmTarget?.kind === 'selected'
+              ? '선택한 수정 기록 삭제'
+              : '수정 기록 삭제'
         }
         message={
           confirmTarget?.kind === 'all'
             ? `이전 버전 ${total}개를 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.`
-            : `이 이전 버전을 삭제할까요?\n\n${String(confirmTarget?.entry?.body || '')
-                .replace(/\s+/g, ' ')
-                .trim()
-                .slice(0, 120) || '(빈 버전)'}`
+            : confirmTarget?.kind === 'selected'
+              ? `선택한 ${confirmTarget.entries.length}개 버전을 삭제할까요?`
+              : `이 이전 버전을 삭제할까요?\n\n${String(confirmTarget?.entry?.body || '')
+                  .replace(/\s+/g, ' ')
+                  .trim()
+                  .slice(0, 120) || '(빈 버전)'}`
         }
         variant="danger"
         confirmLabel="삭제"
         cancelLabel="취소"
         onConfirm={confirmDelete}
         onCancel={() => setConfirmTarget(null)}
+      />
+
+      <VersionRestoreDiffModal
+        isOpen={Boolean(restoreEntry)}
+        mode="restore"
+        title="메시지 버전 복원"
+        fileLabel="message.md"
+        currentText={message?.body || ''}
+        versionText={restoreEntry?.body || ''}
+        versionLabel={
+          restoreEntry?.at
+            ? `선택한 버전 (${formatHistoryWhen(restoreEntry.at, tz)})`
+            : '선택한 버전'
+        }
+        theme={theme}
+        confirming={restoring}
+        onCancel={() => setRestoreEntry(null)}
+        onConfirm={() => void confirmRestore()}
       />
     </>
   );

@@ -1,6 +1,7 @@
 import {
   ChatPreconditionFailedError,
   createChatBackend,
+  type ChatStorageCtx,
 } from '@/utils/chatWithMyself/backends';
 import {
   CHAT_FOLDER,
@@ -10,7 +11,6 @@ import {
   metaKey,
   messageEditsFolder,
   messageEditVersionKey,
-  editVersionAtFromFileName,
   SELF_GROUP,
 } from '@/utils/chatWithMyself/paths.js';
 import {
@@ -20,8 +20,8 @@ import {
   serializeDayFile,
 } from '@/utils/chatWithMyself/format.js';
 import {
-  parseEditVersion,
   serializeEditVersion,
+  type ChatEditVersion,
 } from '@/utils/chatWithMyself/editHistory.js';
 import { cacheDay, getCachedDay, savePendingMessage } from '@/utils/chatWithMyself/chatDb.js';
 import {
@@ -30,34 +30,131 @@ import {
 } from '@/utils/chatWithMyself/noteRefs.js';
 import { getStorageScopeId } from '@/utils/storageScope';
 import { notifyAdvancedSearchChange } from '@/utils/advancedSearch/notify';
+import {
+  archiveChatEditVersion,
+  deleteVersions,
+  listVersions,
+  loadVersionHistoryEnabled,
+  purgeAllForTarget,
+  readChatVersionDetails,
+} from '@/utils/versionHistory';
+import { versionHistoryContextFromChat } from '@/utils/versionHistory/fromChatCtx';
+
+export type { ChatStorageCtx };
 
 const MAX_WRITE_RETRIES = 5;
 
-/**
- * @typedef {import('@/utils/chatWithMyself/backends').ChatStorageCtx} ChatStorageCtx
- */
+export type ChatGroup = {
+  id: string;
+  name: string;
+  iconPath?: string;
+  aliases?: string[];
+};
 
-/**
- * @param {ChatStorageCtx} ctx
- */
-function backend(ctx) {
+export type ChatMeta = {
+  timezone: string;
+  groups: ChatGroup[];
+};
+
+export type ChatMessage = {
+  id: string;
+  at: string;
+  body: string;
+  group: string;
+  tz?: string;
+  source?: string;
+  markdown?: boolean | string;
+  encrypted?: boolean | string;
+  replyTo?: string;
+  replySnippet?: string;
+  replyGroup?: string;
+  dateStr?: string;
+  editedAt?: string;
+  pinnedAt?: string;
+  notePath?: string;
+  collapsed?: string;
+  reactions?: unknown[];
+  reactionsAt?: string;
+  editHistory?: Array<{ at: string; body: string; group: string }>;
+};
+
+export type DayParsed = {
+  messages: ChatMessage[];
+  deletedIds: string[];
+  deletedAtById: Record<string, string>;
+};
+
+export type AppendChatItem = {
+  id?: string;
+  body: string;
+  group?: string;
+  source?: string;
+  replyTo?: string;
+  replySnippet?: string;
+  replyGroup?: string;
+  at?: string;
+  tz?: string;
+  markdown?: boolean | string;
+  encrypted?: boolean | string;
+};
+
+export type ChatEditVersionEntry = {
+  at?: string;
+  body?: string;
+  group?: string;
+  key?: string;
+  id?: string;
+};
+
+export type PatchChatMessageMetaFields = {
+  pinnedAt?: string | null;
+  notePath?: string | null;
+  collapsed?: boolean | string | null;
+  reactions?: unknown[] | null;
+  reactionsAt?: string | null;
+};
+
+export type UpdateChatMessagePatch = {
+  body?: string;
+  group?: string;
+  markdown?: boolean | string;
+  encrypted?: boolean | string;
+};
+
+function backend(ctx: ChatStorageCtx) {
   return createChatBackend(ctx);
 }
 
-function scopeOf(ctx) {
-  return getStorageScopeId({
-    mode: ctx?.mode,
-    bucket: ctx?.bucket,
-    localRootHandle: ctx?.localRootHandle,
-    webdavConfig: ctx?.webdavConfig,
-  });
+function scopeOf(ctx: ChatStorageCtx) {
+  const input: Parameters<typeof getStorageScopeId>[0] = { mode: ctx.mode };
+  if (ctx.bucket) input.bucket = ctx.bucket;
+  if (ctx.localRootHandle) input.localRootHandle = ctx.localRootHandle;
+  if (ctx.webdavConfig) input.webdavConfig = ctx.webdavConfig;
+  return getStorageScopeId(input);
 }
 
-async function readText(ctx, key) {
+function asDayParsed(raw: unknown): DayParsed {
+  const p = raw as Partial<DayParsed> | null | undefined;
+  return {
+    messages: Array.isArray(p?.messages) ? (p.messages as ChatMessage[]) : [],
+    deletedIds: Array.isArray(p?.deletedIds) ? p.deletedIds.map(String) : [],
+    deletedAtById:
+      p?.deletedAtById && typeof p.deletedAtById === 'object'
+        ? (p.deletedAtById as Record<string, string>)
+        : {},
+  };
+}
+
+async function readText(ctx: ChatStorageCtx, key: string) {
   return backend(ctx).getText(key);
 }
 
-async function writeTextUnconditional(ctx, key, content, contentType) {
+async function writeTextUnconditional(
+  ctx: ChatStorageCtx,
+  key: string,
+  content: string,
+  contentType: string,
+) {
   const b = backend(ctx);
   await b.ensureChatFolder();
   if (ctx.mode === 'local' || ctx.mode === 'idb') {
@@ -78,24 +175,26 @@ async function writeTextUnconditional(ctx, key, content, contentType) {
   }
 }
 
-/**
- * Conditional day-file write with merge retry.
- * @param {ChatStorageCtx} ctx
- * @param {string} dateStr
- * @param {(parsed: ReturnType<typeof parseDayFile>) => ReturnType<typeof parseDayFile>} mutator
- */
-async function mutateDayFile(ctx, dateStr, mutator) {
+/** Conditional day-file write with merge retry. */
+async function mutateDayFile(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  mutator: (parsed: DayParsed) => DayParsed,
+) {
   const key = dayFileKey(dateStr);
   const b = backend(ctx);
   await b.ensureChatFolder();
-  let lastErr;
+  let lastErr: unknown;
 
   for (let attempt = 0; attempt < MAX_WRITE_RETRIES; attempt++) {
     const meta = await b.headMeta(key);
     const raw = (await b.getText(key)) || '';
-    const parsed = parseDayFile(raw);
+    const parsed = asDayParsed(parseDayFile(raw));
     const next = mutator(parsed);
-    const content = serializeDayFile(next.messages, next.deletedAtById);
+    const content = serializeDayFile(
+      next.messages as never,
+      next.deletedAtById,
+    );
     // Avoid no-op puts (also reduces stale-poll races after conflict retries)
     if (content === raw) {
       await cacheDay(scopeOf(ctx), key, content);
@@ -127,16 +226,15 @@ async function mutateDayFile(ctx, dateStr, mutator) {
   throw lastErr || new ChatPreconditionFailedError('Day file write conflict');
 }
 
-/**
- * Conditional meta write with retry (last-write-wins on groups union).
- * @param {ChatStorageCtx} ctx
- * @param {(meta: { timezone: string, groups: ChatGroup[] }) => { timezone: string, groups: ChatGroup[] }} mutator
- */
-async function mutateMeta(ctx, mutator) {
+/** Conditional meta write with retry (last-write-wins on groups union). */
+async function mutateMeta(
+  ctx: ChatStorageCtx,
+  mutator: (meta: ChatMeta) => ChatMeta,
+) {
   const key = metaKey();
   const b = backend(ctx);
   await b.ensureChatFolder();
-  let lastErr;
+  let lastErr: unknown;
 
   for (let attempt = 0; attempt < MAX_WRITE_RETRIES; attempt++) {
     const fileMeta = await b.headMeta(key);
@@ -171,12 +269,7 @@ async function mutateMeta(ctx, mutator) {
   throw lastErr || new ChatPreconditionFailedError('Meta write conflict');
 }
 
-/**
- * @typedef {{ id: string, name: string, iconPath?: string, aliases?: string[] }} ChatGroup
- */
-
-/** @param {string} name */
-export function stableGroupIdFromName(name) {
+export function stableGroupIdFromName(name: string) {
   let h = 2166136261;
   const s = String(name || '');
   for (let i = 0; i < s.length; i++) {
@@ -195,10 +288,8 @@ export function createGroupId() {
   return `g_${uuid.slice(0, 16)}`;
 }
 
-/** @param {ChatGroup} g */
-function serializeGroup(g) {
-  /** @type {{ id: string, name: string, iconPath?: string, aliases?: string[] }} */
-  const row = { id: g.id, name: g.name };
+function serializeGroup(g: ChatGroup): ChatGroup {
+  const row: ChatGroup = { id: g.id, name: g.name };
   if (g.iconPath) row.iconPath = g.iconPath;
   if (Array.isArray(g.aliases) && g.aliases.length) {
     row.aliases = [...g.aliases];
@@ -206,31 +297,26 @@ function serializeGroup(g) {
   return row;
 }
 
-/**
- * Normalize legacy string[] / nameless objects from meta.json into { id, name, ... }.
- * @param {unknown} raw
- * @returns {ChatGroup[]}
- */
-export function normalizeGroups(raw) {
+/** Normalize legacy string[] / nameless objects from meta.json into { id, name, ... }. */
+export function normalizeGroups(raw: unknown): ChatGroup[] {
   if (!Array.isArray(raw)) return [];
-  const seenIds = new Set();
-  const seenNames = new Set();
-  /** @type {ChatGroup[]} */
-  const out = [];
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  const out: ChatGroup[] = [];
   for (const item of raw) {
     let name = '';
-    /** @type {string|undefined} */
-    let id;
-    /** @type {string|undefined} */
-    let iconPath;
-    /** @type {string[]} */
-    let aliases = [];
+    let id: string | undefined;
+    let iconPath: string | undefined;
+    let aliases: string[] = [];
     if (typeof item === 'string') {
       name = item.trim();
     } else if (item && typeof item === 'object') {
-      const obj = /** @type {{ id?: unknown, name?: unknown, iconPath?: unknown, aliases?: unknown }} */ (
-        item
-      );
+      const obj = item as {
+        id?: unknown;
+        name?: unknown;
+        iconPath?: unknown;
+        aliases?: unknown;
+      };
       name = String(obj.name || '').trim();
       if (typeof obj.id === 'string' && obj.id.trim()) id = obj.id.trim();
       if (typeof obj.iconPath === 'string' && obj.iconPath.trim()) {
@@ -248,8 +334,7 @@ export function normalizeGroups(raw) {
     if (seenIds.has(resolvedId)) continue;
     seenIds.add(resolvedId);
     seenNames.add(name);
-    /** @type {ChatGroup} */
-    const row = { id: resolvedId, name };
+    const row: ChatGroup = { id: resolvedId, name };
     if (iconPath) row.iconPath = iconPath;
     if (aliases.length) row.aliases = [...new Set(aliases)];
     out.push(row);
@@ -257,12 +342,11 @@ export function normalizeGroups(raw) {
   return out;
 }
 
-/**
- * @param {ChatGroup[]|string[]|unknown} groups
- * @param {string} key group id, display name, or legacy alias
- * @returns {ChatGroup|null}
- */
-export function findGroup(groups, key) {
+/** Find group by id, display name, or legacy alias. */
+export function findGroup(
+  groups: ChatGroup[] | string[] | unknown,
+  key: string,
+): ChatGroup | null {
   const raw = String(key || '').trim();
   if (!raw || raw === SELF_GROUP) return null;
   const list = normalizeGroups(groups);
@@ -274,35 +358,38 @@ export function findGroup(groups, key) {
   );
 }
 
-/** @param {ChatGroup[]|string[]|unknown} groups @param {string} key */
-export function resolveGroupLabel(groups, key) {
+export function resolveGroupLabel(
+  groups: ChatGroup[] | string[] | unknown,
+  key: string,
+): string {
   const raw = String(key || '').trim();
   if (!raw || raw === SELF_GROUP) return SELF_GROUP;
   return findGroup(groups, raw)?.name || raw;
 }
 
-/** @param {ChatGroup[]|string[]|unknown} groups @param {string} key */
-export function resolveGroupId(groups, key) {
+export function resolveGroupId(
+  groups: ChatGroup[] | string[] | unknown,
+  key: string,
+): string {
   const raw = String(key || '').trim();
   if (!raw || raw === SELF_GROUP) return SELF_GROUP;
   return findGroup(groups, raw)?.id || raw;
 }
 
-/**
- * @param {ChatGroup[]|string[]|unknown} groups
- * @param {string} messageGroup
- * @param {string} filterKey
- */
-export function groupMatches(groups, messageGroup, filterKey) {
+export function groupMatches(
+  groups: ChatGroup[] | string[] | unknown,
+  messageGroup: string,
+  filterKey: string,
+): boolean {
   return resolveGroupId(groups, messageGroup) === resolveGroupId(groups, filterKey);
 }
 
-function readMetaFromRaw(raw) {
+function readMetaFromRaw(raw: string | null | undefined): ChatMeta {
   if (!raw) {
     return { timezone: detectTimeZone(), groups: [] };
   }
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as { timezone?: unknown; groups?: unknown };
     return {
       timezone:
         typeof parsed.timezone === 'string' ? parsed.timezone : detectTimeZone(),
@@ -313,30 +400,28 @@ function readMetaFromRaw(raw) {
   }
 }
 
-export async function readMeta(ctx) {
+export async function readMeta(ctx: ChatStorageCtx): Promise<ChatMeta> {
   const raw = await readText(ctx, metaKey());
   return readMetaFromRaw(raw);
 }
 
-/**
- * @param {ChatGroup[]|string[]|unknown} groups
- * @returns {ChatGroup[]}
- */
-export function sortGroupsKo(groups) {
+export function sortGroupsKo(
+  groups: ChatGroup[] | string[] | unknown,
+): ChatGroup[] {
   return [...normalizeGroups(groups)].sort((a, b) =>
     a.name.localeCompare(b.name, 'ko'),
   );
 }
 
-/** @param {ChatGroup[]|string[]|unknown} groups */
-export function groupNames(groups) {
+export function groupNames(groups: ChatGroup[] | string[] | unknown): string[] {
   return sortGroupsKo(groups).map((g) => g.name);
 }
 
-/** @param {ChatGroup[]|string[]|unknown} groups @returns {Map<string, string>} id|name|alias → iconPath */
-export function groupIconMap(groups) {
-  /** @type {Map<string, string>} */
-  const map = new Map();
+/** id|name|alias → iconPath */
+export function groupIconMap(
+  groups: ChatGroup[] | string[] | unknown,
+): Map<string, string> {
+  const map = new Map<string, string>();
   for (const g of normalizeGroups(groups)) {
     if (!g.iconPath) continue;
     map.set(g.id, g.iconPath);
@@ -346,10 +431,11 @@ export function groupIconMap(groups) {
   return map;
 }
 
-/** @param {ChatGroup[]|string[]|unknown} groups @returns {Map<string, string>} id|name|alias → display name */
-export function groupLabelMap(groups) {
-  /** @type {Map<string, string>} */
-  const map = new Map();
+/** id|name|alias → display name */
+export function groupLabelMap(
+  groups: ChatGroup[] | string[] | unknown,
+): Map<string, string> {
+  const map = new Map<string, string>();
   map.set(SELF_GROUP, SELF_GROUP);
   for (const g of normalizeGroups(groups)) {
     map.set(g.id, g.name);
@@ -359,7 +445,10 @@ export function groupLabelMap(groups) {
   return map;
 }
 
-export async function writeMeta(ctx, meta) {
+export async function writeMeta(
+  ctx: ChatStorageCtx,
+  meta: { timezone?: string; groups?: unknown },
+): Promise<{ timezone: string; groups: ChatGroup[] }> {
   return mutateMeta(ctx, (current) => ({
     timezone: meta.timezone || current.timezone || detectTimeZone(),
     // Prefer explicit groups from caller; fall back to freshly read groups on retry
@@ -367,7 +456,7 @@ export async function writeMeta(ctx, meta) {
   }));
 }
 
-export async function touchTimezone(ctx) {
+export async function touchTimezone(ctx: ChatStorageCtx) {
   const meta = await readMeta(ctx);
   const tz = detectTimeZone();
   if (meta.timezone === tz) return meta;
@@ -378,13 +467,11 @@ export async function touchTimezone(ctx) {
   }));
 }
 
-/**
- * @param {ChatStorageCtx} ctx
- * @param {string} name
- * @param {{ iconPath?: string }} [options]
- * @returns {Promise<ChatGroup[]>}
- */
-export async function addGroup(ctx, name, options = {}) {
+export async function addGroup(
+  ctx: ChatStorageCtx,
+  name: string,
+  options: { iconPath?: string } = {},
+): Promise<ChatGroup[]> {
   const trimmed = String(name || '').trim();
   if (!trimmed || trimmed === SELF_GROUP) {
     throw new Error('Invalid group name');
@@ -404,8 +491,7 @@ export async function addGroup(ctx, name, options = {}) {
       }
       return { timezone: detectTimeZone(), groups };
     }
-    /** @type {ChatGroup} */
-    const row = { id: createGroupId(), name: trimmed };
+    const row: ChatGroup = { id: createGroupId(), name: trimmed };
     if (iconPath) row.iconPath = iconPath;
     groups.push(row);
     return { timezone: detectTimeZone(), groups };
@@ -419,7 +505,11 @@ export async function addGroup(ctx, name, options = {}) {
  * @param {string} iconPath
  * @returns {Promise<ChatGroup[]>}
  */
-export async function setGroupIcon(ctx, groupId, iconPath) {
+export async function setGroupIcon(
+  ctx: ChatStorageCtx,
+  groupId: string,
+  iconPath: string,
+): Promise<ChatGroup[]> {
   const id = String(groupId || '').trim();
   if (!id || id === SELF_GROUP) {
     throw new Error('Invalid group id');
@@ -436,7 +526,9 @@ export async function setGroupIcon(ctx, groupId, iconPath) {
     if (idx < 0) {
       throw new Error('Group not found');
     }
-    groups[idx] = { ...groups[idx], iconPath: path };
+    const prev = groups[idx];
+    if (!prev) throw new Error('Group not found');
+    groups[idx] = serializeGroup({ ...prev, iconPath: path });
     return { timezone: detectTimeZone(), groups };
   });
   return sortGroupsKo(payload.groups);
@@ -449,7 +541,11 @@ export async function setGroupIcon(ctx, groupId, iconPath) {
  * @param {string} newName
  * @returns {Promise<ChatGroup[]>}
  */
-export async function renameGroup(ctx, groupId, newName) {
+export async function renameGroup(
+  ctx: ChatStorageCtx,
+  groupId: string,
+  newName: string,
+): Promise<ChatGroup[]> {
   const id = String(groupId || '').trim();
   const trimmed = String(newName || '').trim();
   if (!id || id === SELF_GROUP) {
@@ -467,6 +563,7 @@ export async function renameGroup(ctx, groupId, newName) {
       throw new Error('Group not found');
     }
     const prev = groups[idx];
+    if (!prev) throw new Error('Group not found');
     if (prev.name === trimmed) {
       return { timezone: detectTimeZone(), groups };
     }
@@ -482,24 +579,27 @@ export async function renameGroup(ctx, groupId, newName) {
     const aliases = new Set(prev.aliases || []);
     aliases.add(prev.name);
     aliases.delete(trimmed);
-    groups[idx] = {
+    groups[idx] = serializeGroup({
       ...prev,
       name: trimmed,
       aliases: [...aliases],
-    };
+    });
     return { timezone: detectTimeZone(), groups };
   });
   return sortGroupsKo(payload.groups);
 }
 
-export async function listDayKeys(ctx) {
+export async function listDayKeys(ctx: ChatStorageCtx): Promise<string[]> {
   return backend(ctx).listDayKeys();
 }
 
 /**
  * @returns {Promise<import('@/utils/chatWithMyself/format.js').ChatMessage[]>}
  */
-export async function readDayMessages(ctx, dateStr) {
+export async function readDayMessages(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+): Promise<ChatMessage[]> {
   const key = dayFileKey(dateStr);
   const scope = scopeOf(ctx);
   const cached = await getCachedDay(scope, key);
@@ -507,16 +607,19 @@ export async function readDayMessages(ctx, dateStr) {
   if (content == null && cached?.content) content = cached.content;
   if (content == null) return [];
   await cacheDay(scope, key, content);
-  return parseDayFile(content).messages.map((m) => ({ ...m, dateStr }));
+  return asDayParsed(parseDayFile(content)).messages.map((m) => ({ ...m, dateStr }));
 }
 
 /**
  * Full day parse including tombstones (for sync/merge).
  */
-export async function readDayFileParsed(ctx, dateStr) {
+export async function readDayFileParsed(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+): Promise<DayParsed & { content: string }> {
   const key = dayFileKey(dateStr);
   const content = (await readText(ctx, key)) || '';
-  const parsed = parseDayFile(content);
+  const parsed = asDayParsed(parseDayFile(content));
   return {
     ...parsed,
     messages: parsed.messages.map((m) => ({ ...m, dateStr })),
@@ -525,12 +628,25 @@ export async function readDayFileParsed(ctx, dateStr) {
 }
 
 export async function appendChatMessage(
-  ctx,
-  { body, group, source = 'compose', replyTo = '', replySnippet = '', replyGroup = '' },
+  ctx: ChatStorageCtx,
+  {
+    body,
+    group,
+    source = 'compose',
+    replyTo = '',
+    replySnippet = '',
+    replyGroup = '',
+  }: AppendChatItem,
 ) {
-  const result = await appendChatMessages(ctx, [
-    { body, group, source, replyTo, replySnippet, replyGroup },
-  ]);
+  const item: AppendChatItem = {
+    body,
+    source,
+    replyTo,
+    replySnippet,
+    replyGroup,
+  };
+  if (group !== undefined) item.group = group;
+  const result = await appendChatMessages(ctx, [item]);
   return {
     msg: result.msgs[0],
     dateStr: result.dateStr,
@@ -543,7 +659,10 @@ export async function appendChatMessage(
  * @param {ChatStorageCtx} ctx
  * @param {Array<{ id?: string, body: string, group?: string, source?: string, replyTo?: string, replySnippet?: string, replyGroup?: string, at?: string, tz?: string }>} items
  */
-export async function appendChatMessages(ctx, items = []) {
+export async function appendChatMessages(
+  ctx: ChatStorageCtx,
+  items: AppendChatItem[] = [],
+) {
   const list = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!list.length) return { msgs: [], dateStr: null, key: null };
 
@@ -576,7 +695,7 @@ export async function appendChatMessages(ctx, items = []) {
         deletedIds: [],
         deletedAtById: {},
       };
-      return mergeDayMessages(parsed, remoteLike);
+      return asDayParsed(mergeDayMessages(parsed as never, remoteLike as never));
     });
     try {
       await touchTimezone(ctx);
@@ -592,7 +711,7 @@ export async function appendChatMessages(ctx, items = []) {
           dayKey: key,
           dateStr,
           message: msg,
-          error: String(err?.message || err),
+          error: String((err as { message?: string })?.message || err),
         });
       } catch {
         /* ignore */
@@ -606,7 +725,11 @@ export async function appendChatMessages(ctx, items = []) {
  * Remove a message from its day file (adds tombstone).
  * @returns {Promise<boolean>} true if removed or already tombstoned
  */
-export async function deleteChatMessage(ctx, dateStr, messageId) {
+export async function deleteChatMessage(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  messageId: string,
+): Promise<boolean> {
   if (!dateStr || !messageId) return false;
   let removed = false;
   await mutateDayFile(ctx, dateStr, (parsed) => {
@@ -632,16 +755,21 @@ export async function deleteChatMessage(ctx, dateStr, messageId) {
  * Patch message metadata without creating edit history (pin, note link, etc.).
  * @returns {Promise<object | null>}
  */
-export async function patchChatMessageMeta(ctx, dateStr, messageId, fields = {}) {
+export async function patchChatMessageMeta(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  messageId: string,
+  fields: PatchChatMessageMetaFields = {},
+): Promise<ChatMessage | null> {
   if (!dateStr || !messageId) return null;
-  /** @type {object | null} */
-  let updated = null;
+  let updated: ChatMessage | null = null;
   await mutateDayFile(ctx, dateStr, (parsed) => {
     updated = null;
     const idx = parsed.messages.findIndex((m) => m.id === messageId);
     if (idx < 0) return parsed;
     const prev = parsed.messages[idx];
-    const next = { ...prev, dateStr };
+    if (!prev) return parsed;
+    const next: ChatMessage = { ...prev, dateStr };
     if (fields.pinnedAt !== undefined) {
       next.pinnedAt = fields.pinnedAt ? String(fields.pinnedAt) : '';
     }
@@ -687,18 +815,22 @@ export async function patchChatMessageMeta(ctx, dateStr, messageId, fields = {})
  * Previous body/group is archived under `.chat-with-myself/edits/<id>/<editedAt>.md`.
  * @returns {Promise<object | null>} updated message or null
  */
-export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
+export async function updateChatMessage(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  messageId: string,
+  patch: UpdateChatMessagePatch = {},
+): Promise<ChatMessage | null> {
   if (!dateStr || !messageId) return null;
-  /** @type {object | null} */
-  let updated = null;
-  /** @type {{ at: string, body: string, group: string } | null} */
-  let archived = null;
+  let updated: ChatMessage | null = null;
+  let archived: { at: string; body: string; group: string } | null = null;
   await mutateDayFile(ctx, dateStr, (parsed) => {
     updated = null;
     archived = null;
     const idx = parsed.messages.findIndex((m) => m.id === messageId);
     if (idx < 0) return parsed;
     const prev = parsed.messages[idx];
+    if (!prev) return parsed;
     const nextBody =
       patch.body !== undefined ? String(patch.body ?? '') : prev.body;
     const nextGroup =
@@ -748,7 +880,7 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
       // Stop embedding history in the day file; keep empty for serializers.
       editHistory: [],
       dateStr,
-    };
+    } as ChatMessage;
     const messages = parsed.messages.slice();
     messages[idx] = updated;
     return {
@@ -769,16 +901,29 @@ export async function updateChatMessage(ctx, dateStr, messageId, patch = {}) {
 }
 
 /**
- * Archive one previous message version as markdown under the message edits folder.
+ * Archive one previous message version (S3 native current.md or app ISO file).
  * @param {ChatStorageCtx} ctx
  * @param {string} messageId
  * @param {{ at?: string, body?: string, group?: string }} entry
  */
-export async function writeMessageEditVersion(ctx, messageId, entry) {
+export async function writeMessageEditVersion(
+  ctx: ChatStorageCtx,
+  messageId: string,
+  entry: ChatEditVersionEntry,
+): Promise<string | null> {
   const id = String(messageId || '').trim();
   if (!id) throw new Error('Invalid message id');
+  if (!loadVersionHistoryEnabled()) return null;
+  const vh = versionHistoryContextFromChat(ctx);
+  const key = await archiveChatEditVersion(vh, id, {
+    at: entry?.at || new Date().toISOString(),
+    body: entry?.body ?? '',
+    group: entry?.group || SELF_GROUP,
+  });
+  if (key) return key;
+  // Unexpected archive failure: fall back to ISO file write.
   const at = entry?.at || new Date().toISOString();
-  const key = messageEditVersionKey(id, at);
+  const legacyKey = messageEditVersionKey(id, at);
   const content = serializeEditVersion({
     at,
     body: entry?.body ?? '',
@@ -786,8 +931,8 @@ export async function writeMessageEditVersion(ctx, messageId, entry) {
   });
   const b = backend(ctx);
   await b.ensureChatFolder();
-  await b.putTextOverwrite(key, content, 'text/markdown; charset=utf-8');
-  return key;
+  await b.putTextOverwrite(legacyKey, content, 'text/markdown; charset=utf-8');
+  return legacyKey;
 }
 
 /**
@@ -796,7 +941,10 @@ export async function writeMessageEditVersion(ctx, messageId, entry) {
  * @param {string} messageId
  * @returns {Promise<string[]>}
  */
-export async function listMessageEditVersionKeys(ctx, messageId) {
+export async function listMessageEditVersionKeys(
+  ctx: ChatStorageCtx,
+  messageId: string,
+): Promise<string[]> {
   const id = String(messageId || '').trim();
   if (!id) return [];
   const prefix = messageEditsFolder(id);
@@ -824,55 +972,88 @@ export async function listMessageEditVersionKeys(ctx, messageId) {
  * @returns {Promise<{ entries: Array<{ at: string, body: string, group: string, key?: string }>, nextOffset: number, hasMore: boolean, total: number }>}
  */
 export async function loadMessageEditHistoryPage(
-  ctx,
-  messageId,
-  options = {},
-) {
+  ctx: ChatStorageCtx,
+  messageId: string,
+  options: {
+    offset?: number;
+    limit?: number;
+    legacyEntries?: Array<{ at?: string; body?: string; group?: string }>;
+  } = {},
+): Promise<{
+  entries: ChatEditVersion[];
+  nextOffset: number;
+  hasMore: boolean;
+  total: number;
+}> {
   const offset = Math.max(0, Number(options.offset) || 0);
   const limit = Math.min(50, Math.max(1, Number(options.limit) || 10));
-  const keys = await listMessageEditVersionKeys(ctx, messageId);
+  const vh = versionHistoryContextFromChat(ctx);
+  const versionEntries = await listVersions(vh, {
+    kind: 'chatEdit',
+    messageId: String(messageId || '').trim(),
+  });
 
   const legacyRaw = Array.isArray(options.legacyEntries)
     ? options.legacyEntries
     : [];
   const keyAts = new Set(
-    keys.map((k) => editVersionAtFromFileName(k)).filter(Boolean),
+    versionEntries.map((e) => e.at).filter(Boolean),
   );
-  const legacy = legacyRaw
-    .map((e) => ({
-      at: String(e?.at || ''),
-      body: String(e?.body ?? ''),
-      group: String(e?.group || SELF_GROUP),
-    }))
+  const legacy: ChatEditVersion[] = legacyRaw
+    .map((e) => {
+      const row: ChatEditVersion = {
+        at: String(e?.at || ''),
+        body: String(e?.body ?? ''),
+        group: String(e?.group || SELF_GROUP),
+        source: 'legacy-app',
+      };
+      if (e?.at) row.id = `inline:${e.at}`;
+      return row;
+    })
     .filter((e) => e.at && !keyAts.has(e.at))
     .sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
-  const total = keys.length + legacy.length;
+  type CombinedMeta =
+    | { kind: 'file'; entry: (typeof versionEntries)[number] }
+    | { kind: 'inline'; entry: ChatEditVersion };
+  const combinedMeta: CombinedMeta[] = [
+    ...versionEntries.map((e) => ({ kind: 'file' as const, entry: e })),
+    ...legacy.map((e) => ({ kind: 'inline' as const, entry: e })),
+  ];
+  const total = combinedMeta.length;
   if (offset >= total) {
     return { entries: [], nextOffset: offset, hasMore: false, total };
   }
 
-  /** @type {Array<{ at: string, body: string, group: string, key?: string }>} */
-  const entries = [];
+  const entries: ChatEditVersion[] = [];
   let cursor = offset;
 
   while (entries.length < limit && cursor < total) {
-    if (cursor < keys.length) {
-      const key = keys[cursor];
-      cursor += 1;
-      const raw = await readText(ctx, key);
-      if (raw == null) continue;
-      const parsed = parseEditVersion(raw, { key });
-      if (!parsed) continue;
-      if (!parsed.at) {
-        parsed.at = editVersionAtFromFileName(key) || '';
-      }
-      entries.push(parsed);
-    } else {
-      const legacyIdx = cursor - keys.length;
-      cursor += 1;
-      const item = legacy[legacyIdx];
-      if (item) entries.push(item);
+    const row = combinedMeta[cursor];
+    cursor += 1;
+    if (!row) continue;
+    if (row.kind === 'inline') {
+      entries.push(row.entry);
+      continue;
+    }
+    const ve = row.entry;
+    try {
+      const details = await readChatVersionDetails(
+        vh,
+        messageId,
+        String(ve.id || ''),
+      );
+      const out: ChatEditVersion = {
+        at: details.at || ve.at || '',
+        body: details.body,
+        group: details.group || SELF_GROUP,
+        source: ve.source,
+      };
+      if (ve.key) out.key = ve.key;
+      if (ve.id) out.id = ve.id;
+      entries.push(out);
+    } catch {
+      /* skip unreadable */
     }
   }
 
@@ -889,13 +1070,18 @@ export async function loadMessageEditHistoryPage(
  * @param {ChatStorageCtx} ctx
  * @param {string} key
  */
-export async function deleteMessageEditVersion(ctx, key) {
+export async function deleteMessageEditVersion(
+  ctx: ChatStorageCtx,
+  key: string,
+): Promise<void> {
   const path = String(key || '').trim();
   if (!path) return;
   try {
     await backend(ctx).deleteKey(path);
   } catch (e) {
-    const status = e?.status ?? e?.$metadata?.httpStatusCode;
+    const status =
+      (e as { status?: number; $metadata?: { httpStatusCode?: number } })?.status ??
+      (e as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
     if (status === 404) return;
     throw e;
   }
@@ -910,19 +1096,19 @@ export async function deleteMessageEditVersion(ctx, key) {
  * @returns {Promise<object | null>} updated message or null
  */
 export async function removeLegacyEditHistoryEntry(
-  ctx,
-  dateStr,
-  messageId,
-  at,
-) {
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  messageId: string,
+  at: string,
+): Promise<ChatMessage | null> {
   if (!dateStr || !messageId || !at) return null;
-  /** @type {object | null} */
-  let updated = null;
+  let updated: ChatMessage | null = null;
   await mutateDayFile(ctx, dateStr, (parsed) => {
     updated = null;
     const idx = parsed.messages.findIndex((m) => m.id === messageId);
     if (idx < 0) return parsed;
     const prev = parsed.messages[idx];
+    if (!prev) return parsed;
     const prevHist = Array.isArray(prev.editHistory) ? prev.editHistory : [];
     const nextHist = prevHist.filter((e) => String(e?.at || '') !== String(at));
     if (nextHist.length === prevHist.length) return parsed;
@@ -945,15 +1131,19 @@ export async function removeLegacyEditHistoryEntry(
  * @param {string} messageId
  * @returns {Promise<object | null>}
  */
-export async function clearLegacyEditHistory(ctx, dateStr, messageId) {
+export async function clearLegacyEditHistory(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  messageId: string,
+): Promise<ChatMessage | null> {
   if (!dateStr || !messageId) return null;
-  /** @type {object | null} */
-  let updated = null;
+  let updated: ChatMessage | null = null;
   await mutateDayFile(ctx, dateStr, (parsed) => {
     updated = null;
     const idx = parsed.messages.findIndex((m) => m.id === messageId);
     if (idx < 0) return parsed;
     const prev = parsed.messages[idx];
+    if (!prev) return parsed;
     const prevHist = Array.isArray(prev.editHistory) ? prev.editHistory : [];
     if (prevHist.length === 0) return parsed;
     updated = { ...prev, editHistory: [], dateStr };
@@ -977,20 +1167,31 @@ export async function clearLegacyEditHistory(ctx, dateStr, messageId) {
  * @returns {Promise<{ updatedMessage: object | null }>}
  */
 export async function deleteMessageEditHistoryEntry(
-  ctx,
-  messageId,
-  entry,
-  options = {},
-) {
+  ctx: ChatStorageCtx,
+  messageId: string,
+  entry: ChatEditVersionEntry,
+  options: { dateStr?: string } = {},
+): Promise<{ updatedMessage: ChatMessage | null }> {
   const id = String(messageId || '').trim();
   if (!id) return { updatedMessage: null };
 
-  if (entry?.key) {
+  const vh = versionHistoryContextFromChat(ctx);
+  let entryId = entry?.id || null;
+  if (!entryId && entry?.key) {
+    entryId = String(entry.key).endsWith('/current.md')
+      ? null
+      : `legacy:${entry.key}`;
+  }
+
+  if (entryId) {
+    await deleteVersions(vh, { kind: 'chatEdit', messageId: id }, [entryId]);
+  } else if (entry?.key) {
+    // Native current.md without entry id: purge is via delete-all; single delete by key.
     await deleteMessageEditVersion(ctx, entry.key);
   }
 
-  let updatedMessage = null;
-  if (!entry?.key && entry?.at && options.dateStr) {
+  let updatedMessage: ChatMessage | null = null;
+  if (!entry?.key && !entry?.id && entry?.at && options.dateStr) {
     updatedMessage = await removeLegacyEditHistoryEntry(
       ctx,
       options.dateStr,
@@ -1009,25 +1210,21 @@ export async function deleteMessageEditHistoryEntry(
  * @returns {Promise<{ deletedKeys: number, updatedMessage: object | null }>}
  */
 export async function deleteAllMessageEditHistory(
-  ctx,
-  messageId,
-  options = {},
-) {
+  ctx: ChatStorageCtx,
+  messageId: string,
+  options: { dateStr?: string } = {},
+): Promise<{ deletedKeys: number; updatedMessage: ChatMessage | null }> {
   const id = String(messageId || '').trim();
   if (!id) return { deletedKeys: 0, updatedMessage: null };
 
-  const keys = await listMessageEditVersionKeys(ctx, id);
-  let deletedKeys = 0;
-  for (const key of keys) {
-    try {
-      await deleteMessageEditVersion(ctx, key);
-      deletedKeys += 1;
-    } catch {
-      /* continue best-effort */
-    }
-  }
+  const vh = versionHistoryContextFromChat(ctx);
+  const result = await purgeAllForTarget(vh, {
+    kind: 'chatEdit',
+    messageId: id,
+  });
+  const deletedKeys = result.deletedIds?.length || 0;
 
-  let updatedMessage = null;
+  let updatedMessage: ChatMessage | null = null;
   if (options.dateStr) {
     updatedMessage = await clearLegacyEditHistory(ctx, options.dateStr, id);
   }
@@ -1038,12 +1235,17 @@ export async function deleteAllMessageEditHistory(
  * Find a message by id, scanning day files newest-first.
  * @returns {Promise<{ msg: object, dateStr: string } | null>}
  */
-export async function findMessageById(ctx, messageId, { maxDays = 90 } = {}) {
+export async function findMessageById(
+  ctx: ChatStorageCtx,
+  messageId: string,
+  { maxDays = 90 }: { maxDays?: number } = {},
+): Promise<{ msg: ChatMessage; dateStr: string } | null> {
   if (!messageId) return null;
   const keys = await listDayKeys(ctx);
   const limit = Math.min(keys.length, maxDays);
   for (let i = 0; i < limit; i++) {
     const dateStr = keys[i];
+    if (!dateStr) continue;
     const msgs = await readDayMessages(ctx, dateStr);
     const found = msgs.find((m) => m.id === messageId);
     if (found) return { msg: found, dateStr };
@@ -1057,13 +1259,12 @@ export async function findMessageById(ctx, messageId, { maxDays = 90 } = {}) {
  * @returns {Promise<object[]>}
  */
 export async function resolveReplyThreadMessages(
-  ctx,
-  message,
-  { maxDepth = 32 } = {},
-) {
+  ctx: ChatStorageCtx,
+  message: ChatMessage | null | undefined,
+  { maxDepth = 32 }: { maxDepth?: number } = {},
+): Promise<ChatMessage[]> {
   if (!message?.replyTo) return [];
-  /** @type {object[]} */
-  const newestFirst = [];
+  const newestFirst: ChatMessage[] = [];
   let replyToId = String(message.replyTo || '');
   let fallbackSnippet = String(message.replySnippet || '');
   let fallbackGroup = String(message.replyGroup || '');
@@ -1093,7 +1294,10 @@ export async function resolveReplyThreadMessages(
   return newestFirst.reverse();
 }
 
-export async function readOgArchive(ctx, key) {
+export async function readOgArchive(
+  ctx: ChatStorageCtx,
+  key: string,
+): Promise<unknown> {
   const raw = await readText(ctx, key);
   if (!raw) return null;
   try {
@@ -1103,7 +1307,11 @@ export async function readOgArchive(ctx, key) {
   }
 }
 
-export async function writeOgArchive(ctx, key, data) {
+export async function writeOgArchive(
+  ctx: ChatStorageCtx,
+  key: string,
+  data: unknown,
+): Promise<void> {
   await writeTextUnconditional(
     ctx,
     key,
@@ -1112,21 +1320,28 @@ export async function writeOgArchive(ctx, key, data) {
   );
 }
 
-export function createOgStorageAdapters(ctx) {
+export function createOgStorageAdapters(ctx: ChatStorageCtx) {
   return {
-    readArchive: (key) => readOgArchive(ctx, key),
-    writeArchive: (key, data) => writeOgArchive(ctx, key, data),
+    readArchive: (key: string) => readOgArchive(ctx, key),
+    writeArchive: (key: string, data: unknown) => writeOgArchive(ctx, key, data),
   };
 }
 
 /** Rewrite entire day file (e.g. after merges) — preserves tombstones when provided */
-export async function writeDayMessages(ctx, dateStr, messages, deletedAtById = {}) {
+export async function writeDayMessages(
+  ctx: ChatStorageCtx,
+  dateStr: string,
+  messages: ChatMessage[],
+  deletedAtById: Record<string, string> = {},
+): Promise<void> {
   await mutateDayFile(ctx, dateStr, (parsed) =>
-    mergeDayMessages(parsed, {
-      messages: messages || [],
-      deletedIds: Object.keys(deletedAtById || {}),
-      deletedAtById: deletedAtById || {},
-    }),
+    asDayParsed(
+      mergeDayMessages(parsed as never, {
+        messages: messages || [],
+        deletedIds: Object.keys(deletedAtById || {}),
+        deletedAtById: deletedAtById || {},
+      } as never),
+    ),
   );
 }
 
@@ -1137,11 +1352,24 @@ export async function writeDayMessages(ctx, dateStr, messages, deletedAtById = {
  * @param {ChatStorageCtx} ctx
  * @param {{ getPendingMessages: () => Promise<any[]>, deletePendingMessage: (id: number) => Promise<void> }} db
  */
-export async function flushPendingMessages(ctx, db) {
+export async function flushPendingMessages(
+  ctx: ChatStorageCtx,
+  db: {
+    getPendingMessages: () => Promise<
+      Array<{
+        id: number;
+        message?: ChatMessage;
+        dateStr?: string;
+        dayKey?: string;
+      }>
+    >;
+    deletePendingMessage: (id: number) => Promise<void>;
+  },
+) {
   const pending = await db.getPendingMessages();
   if (!pending?.length) return { flushed: 0, dateStrs: [] };
   let flushed = 0;
-  const dateStrs = new Set();
+  const dateStrs = new Set<string>();
   for (const row of pending) {
     const msg = row.message;
     if (!msg?.id) {
@@ -1152,18 +1380,20 @@ export async function flushPendingMessages(ctx, db) {
     let dateStr = row.dateStr || msg.dateStr || '';
     if (!dateStr && typeof row.dayKey === 'string') {
       const m = row.dayKey.match(/(\d{4}-\d{2}-\d{2})/);
-      if (m) dateStr = m[1];
+      if (m?.[1]) dateStr = m[1];
     }
     if (!dateStr) {
       dateStr = localDateString(new Date(msg.at || Date.now()), tz);
     }
     try {
       await mutateDayFile(ctx, dateStr, (parsed) =>
-        mergeDayMessages(parsed, {
-          messages: [{ ...msg, dateStr }],
-          deletedIds: [],
-          deletedAtById: {},
-        }),
+        asDayParsed(
+          mergeDayMessages(parsed as never, {
+            messages: [{ ...msg, dateStr }],
+            deletedIds: [],
+            deletedAtById: {},
+          } as never),
+        ),
       );
       await db.deletePendingMessage(row.id);
       flushed += 1;
@@ -1185,7 +1415,10 @@ export async function flushPendingMessages(ctx, db) {
  * @param {{ exact?: string[], prefixes?: string[] }} scope
  * @returns {Promise<{ dateStrs: string[], updatedCount: number }>}
  */
-export async function unlinkChatNotesForDeletedPaths(ctx, scope) {
+export async function unlinkChatNotesForDeletedPaths(
+  ctx: ChatStorageCtx,
+  scope: { exact?: string[]; prefixes?: string[] },
+): Promise<{ dateStrs: string[]; updatedCount: number }> {
   const deleted = {
     exact: Array.isArray(scope?.exact) ? scope.exact : [],
     prefixes: Array.isArray(scope?.prefixes) ? scope.prefixes : [],
@@ -1195,8 +1428,7 @@ export async function unlinkChatNotesForDeletedPaths(ctx, scope) {
   }
 
   const keys = await listDayKeys(ctx);
-  /** @type {string[]} */
-  const dateStrs = [];
+  const dateStrs: string[] = [];
   let updatedCount = 0;
 
   for (const dateStr of keys) {

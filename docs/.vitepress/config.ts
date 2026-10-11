@@ -71,6 +71,7 @@ export default defineConfig({
             { text: 'Chat note', link: '/custom-markdown/chat-note' },
             { text: 'Chat folder', link: '/custom-markdown/chat-folder' },
             { text: 'Chat day-file comments', link: '/custom-markdown/chat-day-file-comments' },
+            { text: 'Version history', link: '/custom-markdown/version-history' },
             { text: 'Encrypted markdown (.enc.md)', link: '/custom-markdown/enc-md' },
             { text: 'Chat saved note', link: '/custom-markdown/chat-saved-note' },
             { text: 'Note cover', link: '/custom-markdown/note-cover' },

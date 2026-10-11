@@ -4,7 +4,7 @@ import {
   listDayKeys,
   readMeta,
   readDayFileParsed,
-} from '@/utils/chatWithMyself/storage.js';
+} from '@/utils/chatWithMyself/storage';
 import { dayFileKey, metaKey } from '@/utils/chatWithMyself/paths.js';
 import { mergeDayMessages } from '@/utils/chatWithMyself/format.js';
 import { cacheDay } from '@/utils/chatWithMyself/chatDb.js';
@@ -23,7 +23,7 @@ const POLL_MS = 10_000;
  * @param {{
  *   enabled: boolean,
  *   storageReady: boolean,
- *   ctx: import('@/utils/chatWithMyself/storage.js').ChatStorageCtx | null,
+ *   ctx: import('@/utils/chatWithMyself/storage').ChatStorageCtx | null,
  *   remotePoll: boolean,
  *   getWatchedDateStrs: () => string[],
  *   onDayMerged: (dateStr: string, messages: object[], remoteParsed?: object) => void,
