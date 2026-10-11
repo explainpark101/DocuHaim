@@ -65,8 +65,9 @@ export async function resolveOpenTextContent(params: {
       ? existingTab.currentFile.viewer
       : null;
 
-  // Loading shells must not win (may hold poisoned bodies from another file).
-  // Prefer dirty in-memory tab, else last-viewed draft.
+  // Prefer dirty in-memory tab, else last-viewed draft, else hydrated loading
+  // shell body (split restore parks draft on the tab before fetch). Skip empty
+  // loading shells — those may be placeholders, not a real last-viewed body.
   let localContent: string | null = null;
   let localLastMod = 0;
   let fromDirtyTab = false;
@@ -78,6 +79,14 @@ export async function resolveOpenTextContent(params: {
   } else if (draft && typeof draft.content === 'string') {
     localContent = draft.content;
     localLastMod = draft.originalLastModified ?? 0;
+  } else if (
+    existingTab &&
+    existingViewer === 'loading' &&
+    typeof existingTab.editorContent === 'string' &&
+    existingTab.editorContent.length > 0
+  ) {
+    localContent = existingTab.editorContent;
+    localLastMod = lastModToTs(existingTab.currentFile?.lastModified);
   }
 
   if (localContent == null) {

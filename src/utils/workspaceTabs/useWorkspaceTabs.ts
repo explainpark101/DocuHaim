@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState, type SetStateAction } from 'react';
 import type { FileWorkspaceTab, WorkspaceTabsState } from '@/utils/workspaceTabs/types';
 import {
   activateTab,
@@ -14,18 +14,38 @@ import {
   type OpenFileTabInput,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
 
+/**
+ * Workspace tab state with a mutable ref that stays ahead of React renders.
+ *
+ * Async open/conflict flows update tabs across await points (e.g. note-content
+ * conflict modal). Functional updaters must apply against this ref — not a
+ * stale React `prev` — and render must NOT clobber the ref from an older
+ * committed state (that wiped non-focused split-pane bodies after diff).
+ */
 export function useWorkspaceTabs(initial?: WorkspaceTabsState) {
-  const [state, setState] = useState<WorkspaceTabsState>(
+  const [state, setStateRaw] = useState<WorkspaceTabsState>(
     () => initial ?? emptyWorkspaceTabsState(),
   );
+  const stateRef = useRef(state);
+
+  const setState = useCallback((update: SetStateAction<WorkspaceTabsState>) => {
+    setStateRaw(() => {
+      const next =
+        typeof update === 'function'
+          ? (update as (prev: WorkspaceTabsState) => WorkspaceTabsState)(stateRef.current)
+          : update;
+      stateRef.current = next;
+      return next;
+    });
+  }, []);
 
   const activate = useCallback((id: string) => {
     setState((prev) => activateTab(prev, id));
-  }, []);
+  }, [setState]);
 
   const openChat = useCallback(() => {
     setState((prev) => openOrActivateChat(prev));
-  }, []);
+  }, [setState]);
 
   const openFile = useCallback(
     (
@@ -49,7 +69,7 @@ export function useWorkspaceTabs(initial?: WorkspaceTabsState) {
       });
       return ok;
     },
-    [],
+    [setState],
   );
 
   const patchFile = useCallback(
@@ -59,19 +79,20 @@ export function useWorkspaceTabs(initial?: WorkspaceTabsState) {
     ) => {
       setState((prev) => patchFileTab(prev, id, patch));
     },
-    [],
+    [setState],
   );
 
   const close = useCallback((id: string) => {
     setState((prev) => closeTab(prev, id));
-  }, []);
+  }, [setState]);
 
   const replaceState = useCallback((next: WorkspaceTabsState) => {
     setState(next);
-  }, []);
+  }, [setState]);
 
   return {
     state,
+    stateRef,
     tabs: state.tabs,
     activeId: state.activeId,
     activeTab: getActiveTab(state),

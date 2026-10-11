@@ -115,11 +115,12 @@ export default function NoteContentConflictModal({
     <Modal
       isOpen={isOpen}
       onClose={() => onResolve('local')}
-      contentClassName="max-w-5xl w-[min(96vw,56rem)] max-h-[min(92vh,720px)]"
+      contentClassName="max-w-5xl h-[80vh] max-h-[80vh] w-[min(96vw,56rem)]"
       ignoreEnterInFields
+      resizeHeight
       layoutKey="note-content-conflict"
     >
-      <div className="flex min-h-0 max-h-[min(88vh,680px)] flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <header className="shrink-0 border-b border-gray-200 px-5 py-4 dark:border-odp-borderSoft">
           <h3 className="text-base font-bold text-gray-900 dark:text-odp-fgStrong">
             노트 내용이 달라졌습니다

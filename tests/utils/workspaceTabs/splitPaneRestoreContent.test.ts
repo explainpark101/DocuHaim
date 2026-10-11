@@ -19,24 +19,19 @@ describe('split-pane restore content isolation', () => {
     expect(isFileTabDirty(drifted)).toBe(false);
   });
 
-  it('resolveOpenText ignores poisoned loading shells and uses server when no draft', async () => {
+  it('resolveOpenText ignores empty loading shells and uses server when no draft', async () => {
     const existingTab = createFileTab({
       storageType: 's3',
       path: 'a.md',
       currentFile: { name: 'a.md', viewer: 'loading' },
       editorContent: '',
     });
-    const poisoned = {
-      ...existingTab,
-      editorContent: '# other file body',
-      baselineContent: '',
-    };
     const deleteDraft = vi.fn(async () => {});
     const askConflict = vi.fn(async () => 'server' as const);
     const result = await resolveOpenTextContent({
       serverText: '# correct a.md',
       serverLastModTs: Date.now(),
-      existingTab: poisoned,
+      existingTab,
       draft: null,
       fileName: 'a.md',
       filePath: 'a.md',
@@ -47,6 +42,30 @@ describe('split-pane restore content isolation', () => {
     expect(result.baselineContent).toBe('# correct a.md');
     expect(deleteDraft).not.toHaveBeenCalled();
     expect(askConflict).not.toHaveBeenCalled();
+  });
+
+  it('resolveOpenText uses hydrated loading-shell body when draft is missing', async () => {
+    const existingTab = createFileTab({
+      storageType: 's3',
+      path: 'b.md',
+      currentFile: { name: 'b.md', viewer: 'loading' },
+      editorContent: '# parked last viewed',
+    });
+    const deleteDraft = vi.fn(async () => {});
+    const askConflict = vi.fn(async () => 'local' as const);
+    const result = await resolveOpenTextContent({
+      serverText: '# from server',
+      serverLastModTs: Date.now(),
+      existingTab,
+      draft: null,
+      fileName: 'b.md',
+      filePath: 'b.md',
+      deleteDraft,
+      askConflict,
+    });
+    expect(askConflict).toHaveBeenCalledOnce();
+    expect(result.contentToUse).toBe('# parked last viewed');
+    expect(result.baselineContent).toBe('# from server');
   });
 
   it('asks which version when last-viewed draft differs from server', async () => {

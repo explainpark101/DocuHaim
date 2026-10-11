@@ -7,6 +7,7 @@ import {
   resolveTextOpenViewer,
 } from '@/utils/vaultFileViewers';
 import { resolveOpenTextContent } from '@/utils/workspaceTabs/resolveOpenText';
+import type { FileWorkspaceTab } from '@/utils/workspaceTabs/types';
 
 type OpenBackend = {
   readBytes: (path: string) => Promise<{ body: ArrayBuffer | Uint8Array; contentLength?: number }>;
@@ -38,10 +39,13 @@ export async function openPathFileFromBackend({
   backend,
   type,
   node,
+  existingTab = null,
 }: {
   backend: OpenBackend;
   type: 's3' | 'webdav' | 'local' | 'idb';
   node: OpenNode;
+  /** Open tab shell (may be viewer=loading with parked last-viewed body). */
+  existingTab?: FileWorkspaceTab | null;
 }): Promise<OpenPathFileResult | null> {
   if (!backend || !node?.path) return null;
   const ext = (node.name.split('.').pop() || '').toLowerCase();
@@ -247,7 +251,7 @@ export async function openPathFileFromBackend({
     const resolved = await resolveOpenTextContent({
       serverText,
       serverLastModTs,
-      existingTab: null,
+      existingTab,
       draft,
       fileName: String(node.name || ''),
       filePath: node.path,

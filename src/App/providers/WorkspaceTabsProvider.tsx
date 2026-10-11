@@ -17,8 +17,9 @@ export function WorkspaceTabsProvider({ children }: Props) {
   );
   const workspaceTabsEnabledRef = useRef(workspaceTabsEnabled);
   workspaceTabsEnabledRef.current = workspaceTabsEnabled;
-  const workspaceTabsRef = useRef(tabsApi.state);
-  workspaceTabsRef.current = tabsApi.state;
+  // Prefer the hook's stateRef — do not assign from React state on every render
+  // (async conflict/diff awaits would clobber newer tab bodies on older paints).
+  const workspaceTabsRef = tabsApi.stateRef;
   const hasRestoredPersistedWorkspaceTabsRef = useRef(false);
 
   const domain = useWorkspaceTabsDomain({

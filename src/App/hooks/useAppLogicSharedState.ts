@@ -65,7 +65,8 @@ export function useAppLogicSharedState(): Record<string, any> {
   const setWorkspaceTabs = workspaceTabsApi.setState;
   const { workspaceTabsRef, workspaceTabsEnabled, setWorkspaceTabsEnabled, workspaceTabsEnabledRef } =
     workspaceTabsApi;
-  workspaceTabsRef.current = workspaceTabs;
+  // Do not sync workspaceTabsRef from React state here — setState keeps stateRef
+  // ahead across await points (split restore + note conflict modal).
   workspaceTabsEnabledRef.current = workspaceTabsEnabled;
   const activeWorkspaceTab = getActiveTab(workspaceTabs);
   const chatTabActive = isChatTab(activeWorkspaceTab);

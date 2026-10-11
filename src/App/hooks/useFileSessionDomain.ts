@@ -249,42 +249,54 @@ export function useFileSessionDomain() {
     if (!file?.type || !file?.id) return false;
     const activate = options.activate !== false;
     const tabId = `${file.type}:${file.id}`;
-    // Background opens (split-pane restore, inactive tabs) must not flush the
-    // live editor mirrors into the active tab — concurrent finishes can copy
-    // one file's body onto another tab's slot.
-    let baseState = workspaceTabsRef.current;
-    if (activate) {
-      baseState = flushEditorIntoActiveFileTab(baseState, {
-        editorContent: editorContentRef.current ?? '',
-        currentFile: currentFileRef.current,
-        editedFileName: editedFileNameRef.current ?? '',
+    // Apply via functional setState against stateRef so concurrent split-pane
+    // finishes (after serialized conflict modals) do not drop sibling tab bodies.
+    let applied = false;
+    let nextState = workspaceTabsRef.current;
+    setWorkspaceTabs((prev) => {
+      // Background opens (split-pane restore, inactive tabs) must not flush the
+      // live editor mirrors into the active tab — concurrent finishes can copy
+      // one file's body onto another tab's slot.
+      let baseState = prev;
+      if (activate) {
+        baseState = flushEditorIntoActiveFileTab(baseState, {
+          editorContent: editorContentRef.current ?? '',
+          currentFile: currentFileRef.current,
+          editedFileName: editedFileNameRef.current ?? '',
+        });
+      }
+      const existing = findFileTab(baseState, file.type, file.id);
+      // Background finish after close: do not reopen the tab.
+      if (!existing && !activate) {
+        applied = false;
+        return prev;
+      }
+      let next = applyOpenedFileReducer(baseState, file, content, {
+        promptCloseDirty: softCapPrompt,
+        activate,
       });
-    }
-    const existing = findFileTab(baseState, file.type, file.id);
-    // Background finish after close: do not reopen the tab.
-    if (!existing && !activate) return false;
-    let next = applyOpenedFileReducer(baseState, file, content, {
-      promptCloseDirty: softCapPrompt,
-      activate,
+      if (next === baseState && !findFileTab(baseState, file.type, file.id)) {
+        applied = false;
+        return prev;
+      }
+      if (options.baselineContent != null && typeof options.baselineContent === 'string') {
+        next = patchFileTab(next, tabId, {
+          baselineContent: options.baselineContent,
+          currentFile: { ...file, content: options.baselineContent },
+          editorContent: content,
+        });
+      }
+      // Legacy mode: one file slot only (drop other file tabs + chat tab).
+      if (!workspaceTabsEnabledRef.current) {
+        next = retainOnlyFileTab(next, tabId);
+      }
+      applied = true;
+      nextState = next;
+      return next;
     });
-    if (next === baseState && !findFileTab(baseState, file.type, file.id)) {
-      return false;
-    }
-    if (options.baselineContent != null && typeof options.baselineContent === 'string') {
-      next = patchFileTab(next, tabId, {
-        baselineContent: options.baselineContent,
-        currentFile: { ...file, content: options.baselineContent },
-        editorContent: content,
-      });
-    }
-    // Legacy mode: one file slot only (drop other file tabs + chat tab).
-    if (!workspaceTabsEnabledRef.current) {
-      next = retainOnlyFileTab(next, tabId);
-    }
-    workspaceTabsRef.current = next;
-    setWorkspaceTabs(next);
+    if (!applied) return false;
     // Only sync editor mirrors when this tab is (or became) active.
-    if (next.activeId === tabId) {
+    if (nextState.activeId === tabId) {
       setCurrentFile(file);
       currentFileRef.current = file;
       setEditorContent(content);
@@ -457,7 +469,12 @@ export function useFileSessionDomain() {
           if (!ok) return;
 
           const backend = getBackendForType('idb');
-          const opened = await openPathFileFromBackend({ backend, type: 'idb', node });
+          const opened = await openPathFileFromBackend({
+            backend,
+            type: 'idb',
+            node,
+            existingTab: findFileTab(workspaceTabsRef.current, 'idb', node.path),
+          });
           if (!opened) return;
           let { currentFile: openedFile, editorContent: content } = opened;
           if (opened.needsEncMdPassword) {
@@ -491,7 +508,12 @@ export function useFileSessionDomain() {
         if (!ok) return;
 
         const backend = createWebdavBackend(webdavConfig);
-        const opened = await openPathFileFromBackend({ backend, type: 'webdav', node });
+        const opened = await openPathFileFromBackend({
+          backend,
+          type: 'webdav',
+          node,
+          existingTab: findFileTab(workspaceTabsRef.current, 'webdav', node.path),
+        });
         if (!opened) return;
         let { currentFile: openedFile, editorContent: content } = opened;
         if (opened.needsEncMdPassword) {
@@ -768,7 +790,12 @@ export function useFileSessionDomain() {
           alert('로컬 폴더를 먼저 열어주세요.');
           return;
         }
-        const opened = await openPathFileFromBackend({ backend, type: 'local', node });
+        const opened = await openPathFileFromBackend({
+          backend,
+          type: 'local',
+          node,
+          existingTab: findFileTab(workspaceTabsRef.current, 'local', node.path),
+        });
         if (!opened) return;
         let { currentFile: openedFile, editorContent: content } = opened;
         if (opened.needsEncMdPassword) {
@@ -976,15 +1003,20 @@ export function useFileSessionDomain() {
         if (isCurrentAttempt()) {
           const live = findFileTab(workspaceTabsRef.current, type, node.path);
           if (live && live.currentFile?.viewer === 'loading') {
+            // Keep parked last-viewed body (split restore shells) — do not wipe
+            // sibling panes to empty when open fails after conflict/diff waits.
+            const kept =
+              typeof live.editorContent === 'string' ? live.editorContent : '';
             commitOpenFile(
               {
                 type,
                 id: node.path,
                 name: node.name,
-                viewer: 'unsupported',
+                content: kept,
+                viewer: kept ? 'markdown' : 'unsupported',
                 lastModified: node.lastModified,
               },
-              '',
+              kept,
               { activate: false },
             );
           }
