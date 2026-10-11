@@ -28,6 +28,7 @@ https://explainpark101.github.io/DocuHaim/docs/custom-markdown/print-chrome/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/quiz-md/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/remote-image/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/task-list/
+https://explainpark101.github.io/DocuHaim/docs/custom-markdown/version-history/
 https://explainpark101.github.io/DocuHaim/docs/custom-markdown/wiki-image/
 https://explainpark101.github.io/DocuHaim/docs/desktop/android-sideload/
 https://explainpark101.github.io/DocuHaim/docs/desktop/code-signing/
