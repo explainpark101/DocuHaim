@@ -54,6 +54,7 @@ const COVERED_FEATURE_DOCS = [
   'docuhaim-link.md',
   'kanban-json.md',
   'task-list.md',
+  'version-history.md',
 ] as const;
 
 /** protect → restore on body only (no leading-meta split). */
@@ -669,6 +670,24 @@ describe('Haim Editor custom markdown (docs/custom-markdown)', () => {
       ]);
       // Uppercase X may normalize to lowercase on restore; either is acceptable.
       expect(restored).toMatch(/\[[xX]\] 완료 대문자/);
+    });
+  });
+
+  describe('version-history.md', () => {
+    it('keeps chat-edit-version sidecar markup as plain text through protect/restore', () => {
+      // Storage/policy doc; body format is shared with chat edit archives.
+      const src = [
+        '<!-- chat-edit-version at="2026-01-01T00:00:00.000Z" group="나" -->',
+        '이전 본문',
+        '',
+      ].join('\n');
+      const restored = protectRestore(src);
+      expectContainsAll(restored, [
+        '<!-- chat-edit-version',
+        'at="2026-01-01T00:00:00.000Z"',
+        'group="나"',
+        '이전 본문',
+      ]);
     });
   });
 
