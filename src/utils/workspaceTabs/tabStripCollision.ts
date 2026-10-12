@@ -18,16 +18,16 @@ function isTabStripZoneId(id: UniqueIdentifier): boolean {
 
 export type WorkspaceTabStripRole = 'group' | 'orphan' | 'flat';
 
-type StripTabData = {
-  stripRole?: WorkspaceTabStripRole;
-};
-
 function stripRoleOf(container: {
   id: UniqueIdentifier;
-  data: { current?: StripTabData | null };
+  data: { current?: unknown };
 }): WorkspaceTabStripRole | null {
   if (isTabStripZoneId(container.id)) return null;
-  const role = container.data.current?.stripRole;
+  const raw = container.data.current;
+  const role =
+    raw && typeof raw === 'object' && 'stripRole' in raw
+      ? (raw as { stripRole?: unknown }).stripRole
+      : undefined;
   return role === 'group' || role === 'orphan' || role === 'flat' ? role : 'flat';
 }
 
