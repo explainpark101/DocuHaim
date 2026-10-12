@@ -11,8 +11,12 @@ import { getSignedGetUrl } from '@/utils/s3Client';
 import { createChatBackend } from '@/utils/chatWithMyself';
 import { getPendingUploads } from '@/utils/pendingUploadsDb';
 import { syncPendingUploads } from '@/utils/syncPendingUploads';
-import { isFileProbablyImage, uploadEditorImage, buildEditorImagePathPrefix, normalizeEditorImagePathPrefix, sniffImageMimeFromFile, getExtensionFromMime } from '@/utils/editorImageUpload';
+import { isFileProbablyImage, uploadEditorImage, buildEditorImagePathPrefix } from '@/utils/editorImageUpload';
 import { uploadLocalEditorImage, getLocalWikiImageObjectUrl } from '@/utils/localEditorImage';
+import {
+  allocateEditorImagePath,
+  uploadEditorImageViaWriteBytes,
+} from '@/utils/vaultEditorImageUpload';
 import { dbgClipboard, fileSummaries } from '@/utils/clipboardImageDebug';
 import { readLocalDirectoryTree } from '@/utils/localTree';
 import { isLocalVaultReady } from '@/utils/localVaultReady';
@@ -39,6 +43,7 @@ export function useEditorImageDownloadDomain() {
     loadS3Files,
     localRootHandle,
     localVaultFsPath,
+    refreshIdbTree,
     refreshWebdavTree,
     setIsLocalTreeLoading,
     setLocalTree,
@@ -87,18 +92,27 @@ export function useEditorImageDownloadDomain() {
         currentFile?.type === 'local' &&
         isLocalVaultReady(localRootHandle, localVaultFsPath);
       const isWebdavUpload = currentFile?.type === 'webdav' && webdavReady;
+      const isIdbUpload = currentFile?.type === 'idb';
       const isSessionUpload = currentFile?.type === SESSION_STORAGE_TYPE;
       const client = getS3Client();
-      if (!isLocalUpload && !isWebdavUpload && !isSessionUpload && (!client || !s3Creds.bucket)) {
+      if (
+        !isLocalUpload &&
+        !isWebdavUpload &&
+        !isIdbUpload &&
+        !isSessionUpload &&
+        (!client || !s3Creds.bucket)
+      ) {
         dbgClipboard('app:upload:abort', { reason: 'no storage backend ready' });
         setOperationStatus(
           currentFile?.type === 'webdav'
             ? '이미지 업로드는 WebDAV 연결 후 사용할 수 있습니다.'
             : currentFile?.type === 'local'
               ? '이미지 업로드는 로컬 폴더를 연 뒤 사용할 수 있습니다.'
-              : currentFile?.type === SESSION_STORAGE_TYPE
-                ? '이미지 업로드는 열린 세션에서만 사용할 수 있습니다.'
-                : '이미지 업로드는 S3 연결 후 사용할 수 있습니다.',
+              : currentFile?.type === 'idb'
+                ? '이미지 업로드는 IDB 볼트에서 사용할 수 있습니다.'
+                : currentFile?.type === SESSION_STORAGE_TYPE
+                  ? '이미지 업로드는 열린 세션에서만 사용할 수 있습니다.'
+                  : '이미지 업로드는 S3 연결 후 사용할 수 있습니다.',
         );
         return [];
       }
@@ -143,6 +157,7 @@ export function useEditorImageDownloadDomain() {
         (currentFile?.type === 's3' ||
           currentFile?.type === 'local' ||
           currentFile?.type === 'webdav' ||
+          currentFile?.type === 'idb' ||
           currentFile?.type === SESSION_STORAGE_TYPE) &&
         currentFile?.id
           ? buildEditorImagePathPrefix(currentFile.id)
@@ -170,24 +185,11 @@ export function useEditorImageDownloadDomain() {
           if (isLocalUpload) {
             if (localVaultFsPath && !localRootHandle) {
               const backend = getBackendForType('local');
-              const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
-              const uuid =
-                typeof crypto !== 'undefined' && crypto.randomUUID
-                  ? crypto.randomUUID()
-                  : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-              let mime = file.type;
-              if (!mime || mime === 'application/octet-stream') {
-                mime = (await sniffImageMimeFromFile(file)) || mime;
-              }
-              const ext = getExtensionFromMime(mime);
-              path = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
-              reportProgress(file, 0);
-              const body = new Uint8Array(await file.arrayBuffer());
-              if (uploadController.signal.aborted) {
-                throw new DOMException('Aborted', 'AbortError');
-              }
-              await backend.writeBytes(path, body, mime || 'application/octet-stream');
-              reportProgress(file, 100);
+              path = await uploadEditorImageViaWriteBytes(backend, file, {
+                imagePathPrefix,
+                signal: uploadController.signal,
+                onProgress: (percent) => reportProgress(file, percent),
+              });
             } else {
               path = await uploadLocalEditorImage(localRootHandle, file, {
                 imagePathPrefix,
@@ -197,36 +199,24 @@ export function useEditorImageDownloadDomain() {
             }
           } else if (isWebdavUpload) {
             const backend = getBackendForType('webdav');
-            const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
-            const uuid =
-              typeof crypto !== 'undefined' && crypto.randomUUID
-                ? crypto.randomUUID()
-                : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-            let mime = file.type;
-            if (!mime || mime === 'application/octet-stream') {
-              mime = (await sniffImageMimeFromFile(file)) || mime;
-            }
-            const ext = getExtensionFromMime(mime);
-            path = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
-            reportProgress(file, 0);
-            const body = new Uint8Array(await file.arrayBuffer());
-            if (uploadController.signal.aborted) {
-              throw new DOMException('Aborted', 'AbortError');
-            }
-            await backend.writeBytes(path, body, mime || 'application/octet-stream');
-            reportProgress(file, 100);
+            path = await uploadEditorImageViaWriteBytes(backend, file, {
+              imagePathPrefix,
+              signal: uploadController.signal,
+              onProgress: (percent) => reportProgress(file, percent),
+            });
+          } else if (isIdbUpload) {
+            const backend = getBackendForType('idb');
+            path = await uploadEditorImageViaWriteBytes(backend, file, {
+              imagePathPrefix,
+              signal: uploadController.signal,
+              onProgress: (percent) => reportProgress(file, percent),
+            });
           } else if (isSessionUpload) {
-            const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
-            const uuid =
-              typeof crypto !== 'undefined' && crypto.randomUUID
-                ? crypto.randomUUID()
-                : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-            let mime = file.type;
-            if (!mime || mime === 'application/octet-stream') {
-              mime = (await sniffImageMimeFromFile(file)) || mime;
-            }
-            const ext = getExtensionFromMime(mime);
-            path = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
+            const { path: nextPath } = await allocateEditorImagePath(
+              file,
+              imagePathPrefix,
+            );
+            path = nextPath;
             reportProgress(file, 0);
             const body = new Uint8Array(await file.arrayBuffer());
             if (uploadController.signal.aborted) {
@@ -285,6 +275,9 @@ export function useEditorImageDownloadDomain() {
         if (isWebdavUpload && paths.length > 0) {
           await refreshWebdavTree();
         }
+        if (isIdbUpload && paths.length > 0) {
+          await refreshIdbTree();
+        }
       } catch (err: any) {
         if (err?.name === 'AbortError') {
           dbgClipboard('app:upload:cancelled', { message: err?.message ?? 'aborted' });
@@ -304,10 +297,30 @@ export function useEditorImageDownloadDomain() {
       dbgClipboard('app:upload:return', { paths, pathCount: paths.length });
       return paths;
     },
-    [getS3Client, s3Creds, currentFile, localRootHandle, localVaultFsPath, webdavReady, getBackendForType, refreshWebdavTree, addIndicator, removeIndicator, updateIndicator, flushSessionEditorToWorkspaceRef]
+    [
+      getS3Client,
+      s3Creds,
+      currentFile,
+      localRootHandle,
+      localVaultFsPath,
+      webdavReady,
+      getBackendForType,
+      refreshIdbTree,
+      refreshWebdavTree,
+      addIndicator,
+      removeIndicator,
+      updateIndicator,
+      flushSessionEditorToWorkspaceRef,
+      setOperationStatus,
+      setIsLocalTreeLoading,
+      setLocalTree,
+      upsertSessionWorkspace,
+      sessionObjectUrlsRef,
+      sessionWorkspacesRef,
+    ],
   );
 
-  /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬/WebDAV: blob URL) */
+  /** Preview용 ![[path]] 이미지 URL 반환 (S3: Pre-signed, 로컬/WebDAV/IDB: blob URL) */
   const getPresignedUrlForPath = useCallback(
     async (path: any) => {
       const trimmed = String(path || '').trim();
@@ -367,6 +380,15 @@ export function useEditorImageDownloadDomain() {
           return null;
         }
       }
+      if (currentFile?.type === 'idb') {
+        try {
+          const backend = getBackendForType('idb');
+          return await backend.getObjectUrl(trimmed);
+        } catch (err) {
+          console.warn('[wiki-image] getPresignedUrlForPath: idb failed', { path: trimmed, err });
+          return null;
+        }
+      }
       const client = getS3Client();
       if (!client || !s3Creds.bucket) {
         console.log('[wiki-image] getPresignedUrlForPath: no client or bucket', { path: trimmed });
@@ -404,6 +426,14 @@ export function useEditorImageDownloadDomain() {
             mode: 'webdav',
             webdavConfig,
           });
+          return await backend.getBinaryBlobUrl(path);
+        } catch {
+          return null;
+        }
+      }
+      if (storageMode === 'idb') {
+        try {
+          const backend = createChatBackend({ mode: 'idb' });
           return await backend.getBinaryBlobUrl(path);
         } catch {
           return null;

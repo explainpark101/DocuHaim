@@ -1,13 +1,12 @@
 import {
   buildEditorImagePathPrefix,
-  getExtensionFromMime,
-  normalizeEditorImagePathPrefix,
-  sniffImageMimeFromFile,
   uploadEditorImage,
 } from '@/utils/editorImageUpload';
 import { uploadLocalEditorImage } from '@/utils/localEditorImage';
 import { getPrintSettingsStoreSnapshot } from '@/utils/printSettingsStore';
+import { createIdbBackend } from '@/utils/storage/idbBackend';
 import { createWebdavBackend } from '@/utils/storage/webdavBackend.js';
+import { uploadEditorImageViaWriteBytes } from '@/utils/vaultEditorImageUpload';
 
 type PrintImageFile = {
   type?: string | null;
@@ -52,17 +51,12 @@ export async function uploadPrintEditorImage(
       throw new Error('WebDAV가 연결되지 않았습니다.');
     }
     const backend = createWebdavBackend(cfg as Parameters<typeof createWebdavBackend>[0]);
-    const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
-    const uuid = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    let mime = file.type;
-    if (!mime || mime === 'application/octet-stream') {
-      mime = (await sniffImageMimeFromFile(file)) || mime;
-    }
-    const ext = getExtensionFromMime(mime);
-    const path = `${prefix}${uuid}${ext}`.replace(/\/+/g, '/').replace(/^\//, '');
-    const body = new Uint8Array(await file.arrayBuffer());
-    await backend.writeBytes(path, body, mime || 'application/octet-stream');
-    return path;
+    return uploadEditorImageViaWriteBytes(backend, file, { imagePathPrefix });
+  }
+
+  if (type === 'idb') {
+    const backend = createIdbBackend();
+    return uploadEditorImageViaWriteBytes(backend, file, { imagePathPrefix });
   }
 
   const client = typeof snapshot.getS3Client === 'function' ? snapshot.getS3Client() : null;
