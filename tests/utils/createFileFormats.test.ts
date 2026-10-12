@@ -82,4 +82,19 @@ describe('createFileFormats composite suffixes', () => {
     });
     expect(encAgain.ok && encAgain.baseName).toBe('secret.enc.md');
   });
+
+  it('applies and detects .excalidraw format from badge selection', () => {
+    expect(applyCreateFileFormat('sketch', 'excalidraw')).toBe(
+      'sketch.excalidraw',
+    );
+    expect(applyCreateFileFormat('note.md', 'excalidraw')).toBe(
+      'note.excalidraw',
+    );
+    expect(detectCreateFileFormat('sketch.excalidraw').id).toBe('excalidraw');
+
+    const resolved = resolveCreateItemPath('', 'sketch', 'file', {
+      fileFormat: 'excalidraw',
+    });
+    expect(resolved.ok && resolved.baseName).toBe('sketch.excalidraw');
+  });
 });
