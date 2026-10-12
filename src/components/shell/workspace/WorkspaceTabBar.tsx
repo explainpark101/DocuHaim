@@ -2,7 +2,6 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
-  closestCenter,
   useDroppable,
   useSensor,
   useSensors,
@@ -83,6 +82,12 @@ import {
   setWorkspaceTabDrag,
   updateWorkspaceTabDragPoint,
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
+import {
+  WORKSPACE_TAB_STRIP_ATTR,
+  isPointOnWorkspaceTabStrip,
+  workspaceTabStripCollision,
+  type WorkspaceTabStripRole,
+} from '@/utils/workspaceTabs/tabStripCollision';
 import {
   WORKSPACE_TAB_GROUP_ZONE_ID,
   WORKSPACE_TAB_ORPHAN_ZONE_ID,
@@ -409,6 +414,8 @@ type SortableTabProps = {
   onOpenTabMenu?: (point: { clientX: number; clientY: number }) => void;
   mobileContextMenu: boolean;
   variant: 'inline' | 'titlebar';
+  /** Membership for collision: orphan reorder must not closestCenter into group tabs. */
+  stripRole?: WorkspaceTabStripRole;
 };
 
 function SortableWorkspaceTab({
@@ -420,10 +427,12 @@ function SortableWorkspaceTab({
   onOpenTabMenu,
   mobileContextMenu,
   variant,
+  stripRole = 'flat',
 }: SortableTabProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id,
     animateLayoutChanges: () => false,
+    data: { stripRole },
   });
 
   const lockedTransform = horizontalSortableTransform(transform);
@@ -465,6 +474,7 @@ type TabMenuProps = {
   mobileContextMenu: boolean;
   isMobileLayout: boolean;
   variant: 'inline' | 'titlebar';
+  stripRole?: WorkspaceTabStripRole;
 };
 
 function WorkspaceTabWithMenu({
@@ -479,6 +489,7 @@ function WorkspaceTabWithMenu({
   mobileContextMenu,
   isMobileLayout,
   variant,
+  stripRole = 'flat',
 }: TabMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuPointRef = useRef<{ clientX: number; clientY: number }>({ clientX: 0, clientY: 0 });
@@ -519,6 +530,7 @@ function WorkspaceTabWithMenu({
             onOpenTabMenu={openMenu}
             mobileContextMenu={mobileContextMenu}
             variant={variant}
+            stripRole={stripRole}
           />
         </div>
       }
@@ -873,6 +885,11 @@ export default function WorkspaceTabBar({
     };
   }, [showGroups, tabGroups, paneLayout, byId]);
 
+  const orphanIdSet = useMemo(() => {
+    if (!showGroups || !paneLayout) return null;
+    return new Set(listOrphanTabIds(tabs.map((t) => t.id), paneLayout));
+  }, [showGroups, paneLayout, tabs]);
+
   useHorizontalOverflowScroll(tabListEl, orderedTabs.length > 0);
 
   if (orderedTabs.length === 0) return null;
@@ -915,11 +932,14 @@ export default function WorkspaceTabBar({
     const snap = getWorkspaceTabDrag();
     const cx = snap?.clientX ?? (translated ? translated.left + translated.width / 2 : 0);
     const cy = snap?.clientY ?? (translated ? translated.top + translated.height / 2 : 0);
-    // Commit the zone the overlay last showed — before tear-down resets hysteresis.
+    // Prefer overlay when pointer is still over panes; ignore stale overlay on the strip.
     const hit = resolvePaneDropForCommit(cx, cy);
+    const onTabStrip = isPointOnWorkspaceTabStrip(cx, cy);
     clearActiveDrag();
 
-    if (splitDragEnabled && onPaneDrop && hit) {
+    // Pane drops only when geography says so. Tab-strip reorders must not be
+    // overridden by a leftover center/edge highlight from a brief pane hover.
+    if (splitDragEnabled && onPaneDrop && hit && !onTabStrip) {
       if (
         hit.zone === 'left' ||
         hit.zone === 'right' ||
@@ -940,6 +960,9 @@ export default function WorkspaceTabBar({
       }
     }
 
+    // Off-strip closestCenter can report a distant group tab and falsely join an
+    // orphan into the split — only apply strip moves when the pointer is on it.
+    if (!onTabStrip) return;
     if (!over) return;
     const to = String(over.id);
     if (from === to) return;
@@ -982,22 +1005,30 @@ export default function WorkspaceTabBar({
     if (splitGroupSummary.expandId) onActivate(splitGroupSummary.expandId);
   };
 
-  const renderTab = (tab: WorkspaceTab) => (
-    <WorkspaceTabWithMenu
-      key={tab.id}
-      tab={tab}
-      active={tab.id === activeId}
-      saving={savingSet.has(tab.id)}
-      onActivate={onActivate}
-      onClose={onClose}
-      {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
-      {...(onSplitTab ? { onSplitTab } : {})}
-      canSplitThisTab={canSplitTab(tab.id)}
-      mobileContextMenu={mobileContextMenu}
-      isMobileLayout={isMobileLayout}
-      variant={variant}
-    />
-  );
+  const renderTab = (tab: WorkspaceTab) => {
+    const stripRole: WorkspaceTabStripRole = !orphanIdSet
+      ? 'flat'
+      : orphanIdSet.has(tab.id)
+        ? 'orphan'
+        : 'group';
+    return (
+      <WorkspaceTabWithMenu
+        key={tab.id}
+        tab={tab}
+        active={tab.id === activeId}
+        saving={savingSet.has(tab.id)}
+        onActivate={onActivate}
+        onClose={onClose}
+        {...(onFileTabContextMenu ? { onFileTabContextMenu } : {})}
+        {...(onSplitTab ? { onSplitTab } : {})}
+        canSplitThisTab={canSplitTab(tab.id)}
+        mobileContextMenu={mobileContextMenu}
+        isMobileLayout={isMobileLayout}
+        variant={variant}
+        stripRole={stripRole}
+      />
+    );
+  };
 
   const tabListBody = showGroups && tabGroups ? (
     <>
@@ -1089,7 +1120,7 @@ export default function WorkspaceTabBar({
   const tabStrip = (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={workspaceTabStripCollision}
       modifiers={splitDragEnabled ? [] : [restrictToHorizontalAxis]}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
@@ -1101,6 +1132,7 @@ export default function WorkspaceTabBar({
           ref={setTabListEl}
           role="tablist"
           aria-label="워크스페이스 탭"
+          {...{ [WORKSPACE_TAB_STRIP_ATTR]: '' }}
           className={listClass}
         >
           {tabListBody}

@@ -281,7 +281,9 @@ export function zoneFromPanePoint(
 
 /**
  * Map a point near the workspace root frame to a full-span edge, or null.
- * Pointer may sit slightly outside the root (tab drag overshoot).
+ * Pointer may sit slightly outside the root on left/right/bottom (drag overshoot).
+ * Top overshoot is NOT accepted — the tab strip sits above the split root, and
+ * treating y < top as a top-edge hit falsely splits tabs during strip reorder.
  */
 export function workspaceOuterEdgeFromPoint(
   clientX: number,
@@ -294,7 +296,8 @@ export function workspaceOuterEdgeFromPoint(
   if (
     clientX < rootRect.left - slack ||
     clientX > rootRect.right + slack ||
-    clientY < rootRect.top - slack ||
+    // No upward slack: tab bar lives above the root.
+    clientY < rootRect.top ||
     clientY > rootRect.bottom + slack
   ) {
     return null;
@@ -307,9 +310,10 @@ export function workspaceOuterEdgeFromPoint(
 
   type Cand = { edge: PaneSplitEdge; dist: number };
   const cands: Cand[] = [];
+  // Negative distance = outside that side; only left/right/bottom may overshoot.
   if (dLeft <= bandPx) cands.push({ edge: 'left', dist: Math.max(0, dLeft) });
   if (dRight <= bandPx) cands.push({ edge: 'right', dist: Math.max(0, dRight) });
-  if (dTop <= bandPx) cands.push({ edge: 'top', dist: Math.max(0, dTop) });
+  if (dTop >= 0 && dTop <= bandPx) cands.push({ edge: 'top', dist: dTop });
   if (dBottom <= bandPx) cands.push({ edge: 'bottom', dist: Math.max(0, dBottom) });
   if (cands.length === 0) return null;
 

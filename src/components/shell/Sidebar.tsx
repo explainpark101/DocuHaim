@@ -18,7 +18,6 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragMoveEvent,
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
@@ -54,13 +53,13 @@ import {
   CHAT_WITH_MYSELF_DRAG_ID,
   isChatWithMyselfDragId,
   isPointInsideSidebarRoot,
+  primarySidebarPaneDropItem,
   type SidebarPaneDropHandler,
 } from '@/utils/workspaceTabs/sidebarPaneDrop';
 import {
   getWorkspaceTabDrag,
   hitTestPaneDropAt,
   setWorkspaceTabDrag,
-  updateWorkspaceTabDragPoint,
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import { findApplicableTransferBusy } from '@/utils/treeTransferBusy';
@@ -736,25 +735,30 @@ export default function Sidebar({
         (item) => item.nodeType === 'file' || item.nodeType === 'chat',
       );
       if (canOpenInPane) {
+        // Use the activator pointer — not the wide row's center — so pane hit-tests
+        // follow the cursor (row center used to sit deep in the editor while still
+        // dragging inside the sidebar).
+        const ae = event.activatorEvent as { clientX?: number; clientY?: number } | null;
         const rect = event.active.rect.current.initial;
         setWorkspaceTabDrag({
           tabId: activeId,
-          clientX: rect ? rect.left + rect.width / 2 : 0,
-          clientY: rect ? rect.top + rect.height / 2 : 0,
+          clientX:
+            typeof ae?.clientX === 'number'
+              ? ae.clientX
+              : rect
+                ? rect.left + Math.min(24, rect.width / 2)
+                : 0,
+          clientY:
+            typeof ae?.clientY === 'number'
+              ? ae.clientY
+              : rect
+                ? rect.top + rect.height / 2
+                : 0,
         });
       }
     },
     [selectedIds, findTreeNode, handleDragStartNode, syncCopyModifierFromEvent],
   );
-
-  const handleDndDragMove = useCallback((event: DragMoveEvent) => {
-    const translated = event.active.rect.current.translated;
-    if (!translated) return;
-    updateWorkspaceTabDragPoint(
-      translated.left + translated.width / 2,
-      translated.top + translated.height / 2,
-    );
-  }, []);
 
   const handleDndDragOver = useCallback(
     (event: DragOverEvent) => {
@@ -857,32 +861,39 @@ export default function Sidebar({
         return;
       }
 
+      // Folder move / sidebar targets win when the pointer is still in the sidebar.
+      // (Wide tree-row drag rects used to report a pane hit while the cursor stayed left.)
+      const pointerInSidebar = isPointInsideSidebarRoot(cx, cy);
+
       // Drop onto a workspace pane → open as split/join tab (never move files).
-      const paneHit = hitTestPaneDropAt(cx, cy);
-      if (paneHit && onDropToWorkspacePane) {
-        const zone = paneHit.zone as PaneSplitEdge | 'center';
-        if (
-          zone === 'left' ||
-          zone === 'right' ||
-          zone === 'top' ||
-          zone === 'bottom' ||
-          zone === 'center'
-        ) {
-          const openable = items.filter(
-            (item) => item.nodeType === 'file' || item.nodeType === 'chat',
-          );
-          if (openable.length > 0) {
-            onDropOnFolder?.(null, null, 'dragLeave');
-            void onDropToWorkspacePane(openable, paneHit.leafId, zone, {
-              ...(paneHit.workspaceEdge ? { workspaceEdge: true } : {}),
-            });
-            return;
+      // Only the primary dragged row opens in the pane — not the whole multi-selection.
+      // Multi-select join was pulling every selected (often orphan) tab into the split group.
+      if (!pointerInSidebar && onDropToWorkspacePane) {
+        const paneHit = hitTestPaneDropAt(cx, cy);
+        if (paneHit) {
+          const zone = paneHit.zone as PaneSplitEdge | 'center';
+          if (
+            zone === 'left' ||
+            zone === 'right' ||
+            zone === 'top' ||
+            zone === 'bottom' ||
+            zone === 'center'
+          ) {
+            const activeId = String(event.active.id);
+            const primary = primarySidebarPaneDropItem(activeId, items);
+            if (primary) {
+              onDropOnFolder?.(null, null, 'dragLeave');
+              void onDropToWorkspacePane([primary], paneHit.leafId, zone, {
+                ...(paneHit.workspaceEdge ? { workspaceEdge: true } : {}),
+              });
+              return;
+            }
           }
         }
       }
 
       // File move only when the pointer is released over the left sidebar.
-      if (!isPointInsideSidebarRoot(cx, cy)) {
+      if (!pointerInSidebar) {
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
       }
@@ -1828,7 +1839,6 @@ export default function Sidebar({
         sensors={sensors}
         collisionDetection={treeCollisionDetection}
         onDragStart={handleDndDragStart}
-        onDragMove={handleDndDragMove}
         onDragOver={handleDndDragOver}
         onDragEnd={handleDndDragEnd}
         onDragCancel={handleDndDragCancel}
