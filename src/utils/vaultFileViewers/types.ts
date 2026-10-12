@@ -8,7 +8,7 @@
 
 export type VaultViewerFamily = 'json' | 'markdown';
 
-export type VaultTreeIconId = 'kanban' | 'quiz' | 'default';
+export type VaultTreeIconId = 'kanban' | 'quiz' | 'excalidraw' | 'default';
 
 export type SpecialVaultFormat = {
   /** Stable id (often matches CREATE_FILE_FORMATS id). */

@@ -15,6 +15,7 @@ describe('createFileFormats composite suffixes', () => {
     expect(stripCreateFileExtension('note.quiz')).toBe('note');
     expect(stripCreateFileExtension('board.kanban.json')).toBe('board');
     expect(stripCreateFileExtension('board.kanban')).toBe('board');
+    expect(stripCreateFileExtension('draw.excalidraw')).toBe('draw');
     expect(stripCreateFileExtension('note.md')).toBe('note');
     expect(stripCreateFileExtension('note')).toBe('note');
   });

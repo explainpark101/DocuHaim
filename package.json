@@ -57,6 +57,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
+    "@excalidraw/excalidraw": "^0.18.1",
     "@floating-ui/dom": "^1.8.0",
     "@git-diff-view/file": "0.1.7",
     "@git-diff-view/react": "^0.1.7",

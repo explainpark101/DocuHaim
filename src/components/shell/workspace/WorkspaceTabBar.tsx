@@ -27,7 +27,17 @@ import {
   IconSettings,
   IconVideo,
 } from '@/components/icons';
-import { MessageSquare, Search, X, Loader2, ClipboardList, Kanban, Columns2, Sparkles } from 'lucide-react';
+import {
+  MessageSquare,
+  Search,
+  X,
+  Loader2,
+  ClipboardList,
+  Kanban,
+  PencilRuler,
+  Columns2,
+  Sparkles,
+} from 'lucide-react';
 import { treeIconForVaultPath } from '@/utils/vaultFileViewers';
 import { Tooltip } from 'radix-ui';
 import { useHorizontalOverflowScroll } from '@/hooks/useHorizontalOverflowScroll';
@@ -149,6 +159,7 @@ function fileTabIcon(tab: FileWorkspaceTab): IconComp {
 
   if (treeIconForVaultPath(name) === 'quiz') return ClipboardList as IconComp;
   if (treeIconForVaultPath(name) === 'kanban') return Kanban as IconComp;
+  if (treeIconForVaultPath(name) === 'excalidraw') return PencilRuler as IconComp;
   if (imageExts.includes(ext)) return IconImage;
   if (videoExts.includes(ext)) return IconVideo;
   if (audioExts.includes(ext)) return IconMusic;

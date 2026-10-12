@@ -77,7 +77,9 @@ export function createAutoSaveSyncHandlers(deps: Record<string, any>) {
     lastInputAt: number | null;
   }) {
     if (!currentFile || !isVaultPathStorageType(currentFile.type)) return undefined;
-    if (currentFile.viewer !== 'markdown') return undefined;
+    const autoSaveViewer =
+      currentFile.viewer === 'markdown' || currentFile.viewer === 'excalidraw';
+    if (!autoSaveViewer) return undefined;
     if (isEncMdPath(currentFile.id) || isEncMdPath(currentFile.name)) return undefined;
     if (!lastInputAt) return undefined;
 

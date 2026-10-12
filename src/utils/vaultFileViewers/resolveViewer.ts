@@ -71,6 +71,7 @@ export function viewerForCreatePath(path: string | null | undefined): string {
   const fmt = matchSpecialVaultFormat(path);
   if (fmt) return fmt.viewer;
   const p = normalizePath(path);
+  if (p.endsWith('.excalidraw')) return 'excalidraw';
   if (p.endsWith('.json')) return 'json';
   if (p.endsWith('.html') || p.endsWith('.htm')) return 'html';
   if (p.endsWith('.svg')) return 'svg';
@@ -84,7 +85,7 @@ export function contentTypeForCreatePath(
   const fmt = matchSpecialVaultFormat(path);
   if (fmt) return fmt.contentType;
   const p = normalizePath(path);
-  if (p.endsWith('.json')) return 'application/json';
+  if (p.endsWith('.excalidraw') || p.endsWith('.json')) return 'application/json';
   if (p.endsWith('.html') || p.endsWith('.htm')) return 'text/html';
   if (p.endsWith('.svg')) return 'image/svg+xml';
   return 'text/markdown';
@@ -98,7 +99,7 @@ export function contentTypeForViewer(viewer: string | null | undefined): string 
   const byViewer = matchSpecialVaultFormatByViewer(v);
   if (byViewer) return byViewer.contentType;
 
-  if (v === 'json') return 'application/json';
+  if (v === 'json' || v === 'excalidraw') return 'application/json';
   if (v === 'raw') return 'text/plain';
   if (v === 'html') return 'text/html';
   if (v === 'svg') return 'image/svg+xml';

@@ -15,6 +15,7 @@ import {
   isSettingsTab,
   pushClosedTab,
 } from '@/utils/workspaceTabs';
+import { isEditableViewerId } from '@/utils/vaultFileViewers';
 import {
   activateTab,
   clearExportPdfInLeaf,
@@ -160,7 +161,7 @@ export function useWorkspaceTabsDomain({
     if (file.type === SESSION_STORAGE_TYPE) return;
     if (isEncMdPath(file.id) || isEncMdPath(file.name)) return;
     const viewer = file.viewer || 'markdown';
-    if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
+    if (!isEditableViewerId(viewer)) return;
 
     const text = typeof content === 'string' ? content : '';
     const tab = findFileTab(workspaceTabsRef.current, file.type, file.id);

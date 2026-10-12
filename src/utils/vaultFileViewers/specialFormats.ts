@@ -1,3 +1,4 @@
+import { createEmptyExcalidrawDocument } from '@/utils/excalidrawDocument';
 import {
   createEmptyKanbanDocument,
   serializeKanbanDocument,
@@ -25,6 +26,18 @@ export const SPECIAL_VAULT_FORMATS: readonly SpecialVaultFormat[] = [
     prettyJsonOnOpen: true,
     treeIcon: 'kanban',
     createSeed: () => serializeKanbanDocument(createEmptyKanbanDocument()),
+  },
+  {
+    id: 'excalidraw',
+    extension: '.excalidraw',
+    family: 'json',
+    viewer: 'excalidraw',
+    contentType: 'application/json',
+    editable: true,
+    // Keep Excalidraw's own JSON layout; do not pretty-print on open.
+    prettyJsonOnOpen: false,
+    treeIcon: 'excalidraw',
+    createSeed: () => createEmptyExcalidrawDocument(),
   },
   {
     id: 'quiz.md',

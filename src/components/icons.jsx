@@ -42,6 +42,7 @@ import {
   History,
   ClipboardList,
   Kanban,
+  PencilRuler,
   Smartphone,
   Maximize2,
 } from 'lucide-react';
@@ -76,6 +77,9 @@ export const IconFileCode = ({ size = 14, ...props }) => <FileCode size={size} {
 export const IconQuiz = ({ size = 14, ...props }) => <ClipboardList size={size} {...props} />;
 /** Kanban board (`.kanban.json`) — sidebar tree and tabs. */
 export const IconKanban = ({ size = 14, ...props }) => <Kanban size={size} {...props} />;
+export const IconExcalidraw = ({ size = 14, ...props }) => (
+  <PencilRuler size={size} {...props} />
+);
 export const IconFileJson = ({ size = 14, ...props }) => <FileJson size={size} {...props} />;
 export const IconRefresh = ({ size = 14, ...props }) => <RotateCw size={size} {...props} />;
 export const IconMusic = ({ size = 14, ...props }) => <Music2 size={size} {...props} />;
