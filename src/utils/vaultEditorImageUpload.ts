@@ -26,7 +26,7 @@ export async function allocateEditorImagePath(
   file: File,
   imagePathPrefix?: string,
 ): Promise<{ path: string; mime: string; contentType: string }> {
-  const prefix = normalizeEditorImagePathPrefix(imagePathPrefix);
+  const prefix = normalizeEditorImagePathPrefix(imagePathPrefix ?? '');
   const uuid =
     typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
