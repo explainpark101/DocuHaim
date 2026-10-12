@@ -64,6 +64,7 @@ export function guessMimeTypeFromFileName(fileName: string): string {
     markdown: 'text/markdown',
     txt: 'text/plain',
     json: 'application/json',
+    excalidraw: 'application/json',
     html: 'text/html',
     htm: 'text/html',
     css: 'text/css',

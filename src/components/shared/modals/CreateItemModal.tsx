@@ -99,14 +99,12 @@ export function CreateItemModal({
   );
 
   // Sync badge when the user types an explicit registered extension.
-  // Clearing the name resets to the default `.md` format.
+  // Do not reset on empty name — that would undo a just-clicked format badge
+  // (e.g. `.excalidraw`) before the user types a file name. Modal open already
+  // resets to the default format.
   useEffect(() => {
     if (itemType !== 'file') return;
-    if (!name.trim()) {
-      const def = defaultCreateFileFormat().id;
-      if (fileFormatId !== def) setFileFormatId(def);
-      return;
-    }
+    if (!name.trim()) return;
     if (!resolved?.ok) return;
     const detected = detectCreateFileFormat(resolved.baseName);
     if (detected.id !== fileFormatId) {

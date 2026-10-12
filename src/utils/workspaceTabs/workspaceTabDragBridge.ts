@@ -88,13 +88,18 @@ export function hitTestPaneDropAt(clientX: number, clientY: number): PaneDropHit
 }
 
 /**
- * Prefer the overlay hit (what the user saw). Fall back to geometry at (x,y).
+ * Prefer the overlay hit (what the user saw) when it still matches geometry at
+ * the pointer. If the pointer left the pane area (tab strip / outside), ignore a
+ * stale overlay so tab reorder does not commit as a split/join.
  * Call before clearing the drag session.
  */
 export function resolvePaneDropForCommit(
   clientX: number,
   clientY: number,
 ): PaneDropOverlayHit | null {
-  if (overlayHit) return overlayHit;
-  return toOverlayHit(resolvePaneDropAt(clientX, clientY));
+  const geo = toOverlayHit(resolvePaneDropAt(clientX, clientY));
+  if (!overlayHit) return geo;
+  // Stale overlay after returning to the tab strip / outside panes.
+  if (!geo) return null;
+  return overlayHit;
 }

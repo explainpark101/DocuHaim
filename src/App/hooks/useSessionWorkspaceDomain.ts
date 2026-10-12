@@ -37,6 +37,7 @@ import {
   workspaceFromOsPaths,
   type SessionWorkspacesMap,
 } from '@/utils/sessionWorkspace';
+import { isEditableViewerId } from '@/utils/vaultFileViewers';
 
 /**
  * useSessionWorkspaceDomain: context-owned domain handlers.
@@ -152,8 +153,7 @@ export function useSessionWorkspaceDomain() {
     if (!record) return map;
 
     const viewer = cur.viewer || sessionViewerForName(record.name);
-    const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer);
-    if (!editable) return map;
+    if (!isEditableViewerId(viewer)) return map;
 
     let textToStore = editorContentRef.current ?? '';
     if (isEncMdPath(record.name)) {
@@ -410,7 +410,7 @@ export function useSessionWorkspaceDomain() {
         if (!prev || prev.type !== SESSION_STORAGE_TYPE || prev.id !== cur.id) return prev;
         const next = {
           ...prev,
-          content: ['markdown', 'json', 'raw', 'html', 'svg'].includes(prev.viewer || '')
+          content: isEditableViewerId(prev.viewer || '')
             ? text
             : prev.content,
           size: record?.bytes.byteLength ?? prev.size,

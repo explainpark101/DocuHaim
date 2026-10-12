@@ -762,8 +762,11 @@ export function moveTab(
 
   if (!overIsTab) return state;
 
-  // Orphan → join leaf at over position.
+  // Orphan → join leaf at over position (explicit drop onto an in-group tab).
   if (!fromLeaf && toLeaf) {
+    if (countLeaves(state.layout) <= 1) {
+      return activateTab(state, activeId);
+    }
     const moved = moveTabToLeaf(state.layout, activeId, toLeaf.id, {
       activate: true,
       beforeTabId: overId,

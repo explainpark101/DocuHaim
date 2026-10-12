@@ -28,6 +28,7 @@ import {
   IconSettings,
   IconQuiz,
   IconKanban,
+  IconExcalidraw,
 } from '@/components/icons';
 import { PencilIcon, ArrowRightToLine, AlertCircle, Loader2 } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
@@ -488,6 +489,7 @@ export default function TreeNode({
     const specialIcon = treeIconForVaultPath(node.path || node.name);
     if (specialIcon === 'quiz') return IconQuiz;
     if (specialIcon === 'kanban') return IconKanban;
+    if (specialIcon === 'excalidraw') return IconExcalidraw;
     if (isEncMdPath(node.name) || isEncMdPath(node.path)) return IconLock;
     const lower = node.name.toLowerCase();
     const lastDot = lower.lastIndexOf('.');
@@ -535,6 +537,9 @@ export default function TreeNode({
     }
     if (specialIcon === 'kanban') {
       return 'text-indigo-600 dark:text-indigo-400';
+    }
+    if (specialIcon === 'excalidraw') {
+      return 'text-violet-600 dark:text-violet-400';
     }
     if (isEncMdPath(node.name) || isEncMdPath(node.path)) {
       return 'text-violet-600 dark:text-violet-400';

@@ -687,6 +687,11 @@ function manualChunks(id: string): string | undefined {
     return 'vendor-monaco';
   }
   if (
+    normalizedId.includes('/node_modules/@excalidraw/')
+  ) {
+    return 'vendor-excalidraw';
+  }
+  if (
     normalizedId.includes('/node_modules/@git-diff-view/core/') ||
     normalizedId.includes('/node_modules/@git-diff-view/file/') ||
     normalizedId.includes('/node_modules/@git-diff-view/react/')

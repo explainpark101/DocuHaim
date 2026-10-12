@@ -28,6 +28,7 @@ import {
 } from '@/utils/storageSettings';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { useUnsavedNavigationGuard } from '@/hooks/useUnsavedNavigationGuard';
+import { isEditableViewerId } from '@/utils/vaultFileViewers';
 import {
   hasDesktopStoredCredsMarker,
   getDesktopAppEntryLockModeSync,
@@ -539,7 +540,7 @@ export function useBootstrapDomain() {
     if (anyFileTabDirty(flushed.tabs)) return true;
     const file = currentFileRef.current;
     if (!file) return false;
-    const editable = ['markdown', 'json', 'raw', 'html', 'svg'].includes(file.viewer || 'markdown');
+    const editable = isEditableViewerId(file.viewer || 'markdown');
     return editable && file.content !== editorContentRef.current;
   }, []);
 

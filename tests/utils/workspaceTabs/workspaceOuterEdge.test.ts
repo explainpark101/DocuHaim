@@ -30,6 +30,23 @@ describe('workspaceOuterEdgeFromPoint', () => {
   it('returns null away from edges', () => {
     expect(workspaceOuterEdgeFromPoint(300, 250, root as DOMRect, 28)).toBeNull();
   });
+
+  it('does not treat tab-strip Y above the root as a top-edge hit', () => {
+    // Pointer sits in the tab bar (above split root). Old slack + dTop<=band
+    // falsely returned 'top' and split the dragged tab.
+    expect(workspaceOuterEdgeFromPoint(300, 48, root as DOMRect, 28)).toBeNull();
+    expect(workspaceOuterEdgeFromPoint(300, 46, root as DOMRect, 28)).toBeNull();
+  });
+
+  it('still detects a top edge when the pointer is inside the root', () => {
+    expect(workspaceOuterEdgeFromPoint(300, 60, root as DOMRect, 28)).toBe('top');
+  });
+
+  it('allows slight left/right/bottom overshoot outside the root', () => {
+    expect(workspaceOuterEdgeFromPoint(98, 200, root as DOMRect, 28)).toBe('left');
+    expect(workspaceOuterEdgeFromPoint(502, 200, root as DOMRect, 28)).toBe('right');
+    expect(workspaceOuterEdgeFromPoint(300, 452, root as DOMRect, 28)).toBe('bottom');
+  });
 });
 
 describe('splitAtWorkspaceEdge', () => {

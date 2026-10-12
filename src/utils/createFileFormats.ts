@@ -42,6 +42,12 @@ export const CREATE_FILE_FORMATS: CreateFileFormat[] = [
     label: '.kanban.json',
     description: '칸반 보드',
   },
+  {
+    id: 'excalidraw',
+    extension: '.excalidraw',
+    label: '.excalidraw',
+    description: 'Excalidraw 다이어그램',
+  },
 ];
 
 /** Formats sorted by extension length descending (`.enc.md` before `.md`). */

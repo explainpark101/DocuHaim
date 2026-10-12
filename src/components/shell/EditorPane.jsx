@@ -80,6 +80,7 @@ const NoteEditorSurface = lazy(
 );
 const MonacoTextEditor = lazy(() => import('@/components/MonacoTextEditor'));
 const HtmlSvgPreviewEditor = lazy(() => import('@/components/HtmlSvgPreviewEditor'));
+const ExcalidrawEditor = lazy(() => import('@/components/ExcalidrawEditor'));
 const QuizPane = lazy(() => import('@/components/quiz/QuizPane'));
 const KanbanPane = lazy(() => import('@/components/kanban/KanbanPane'));
 
@@ -1409,6 +1410,19 @@ export default function EditorPane({
               onResolveWikiImageUrl={onResolveWikiImageUrl}
             />
           </Suspense>
+        ) : viewer === 'excalidraw' ? (
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <Suspense fallback={<EditorPaneSuspenseFallback message="Excalidraw 로딩 중…" />}>
+              <ExcalidrawEditor
+                key={currentFile?.id ?? 'excalidraw'}
+                value={editorContent}
+                theme={theme}
+                readOnly={previewOnly}
+                onChange={onChangeEditor}
+                onSave={onSave}
+              />
+            </Suspense>
+          </div>
         ) : viewer === 'json' ? (
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 p-4">
             <Suspense fallback={<EditorPaneSuspenseFallback />}>

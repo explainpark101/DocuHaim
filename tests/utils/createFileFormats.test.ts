@@ -15,6 +15,7 @@ describe('createFileFormats composite suffixes', () => {
     expect(stripCreateFileExtension('note.quiz')).toBe('note');
     expect(stripCreateFileExtension('board.kanban.json')).toBe('board');
     expect(stripCreateFileExtension('board.kanban')).toBe('board');
+    expect(stripCreateFileExtension('draw.excalidraw')).toBe('draw');
     expect(stripCreateFileExtension('note.md')).toBe('note');
     expect(stripCreateFileExtension('note')).toBe('note');
   });
@@ -80,5 +81,20 @@ describe('createFileFormats composite suffixes', () => {
       fileFormat: 'enc.md',
     });
     expect(encAgain.ok && encAgain.baseName).toBe('secret.enc.md');
+  });
+
+  it('applies and detects .excalidraw format from badge selection', () => {
+    expect(applyCreateFileFormat('sketch', 'excalidraw')).toBe(
+      'sketch.excalidraw',
+    );
+    expect(applyCreateFileFormat('note.md', 'excalidraw')).toBe(
+      'note.excalidraw',
+    );
+    expect(detectCreateFileFormat('sketch.excalidraw').id).toBe('excalidraw');
+
+    const resolved = resolveCreateItemPath('', 'sketch', 'file', {
+      fileFormat: 'excalidraw',
+    });
+    expect(resolved.ok && resolved.baseName).toBe('sketch.excalidraw');
   });
 });

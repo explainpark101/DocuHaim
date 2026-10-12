@@ -49,6 +49,7 @@ import {
   type WorkspaceTabsAutoSaveMode,
 } from '@/utils/workspaceTabsSettings';
 import { isEncMdPath } from '@/utils/encMd';
+import { isEditableViewerId } from '@/utils/vaultFileViewers';
 import { getDraftKey, saveMemoDraft } from '@/utils/memoDraftsDb';
 import { subscribeSettingsToggles } from '@/utils/advancedSearch/settingsToggles';
 import {
@@ -266,7 +267,7 @@ export function useAppLogicSetupDomain() {
     // Encrypted notes: never auto-save or write plaintext drafts.
     if (isEncMdPath(fileId) || isEncMdPath(file.name)) return;
     const viewer = file.viewer || 'markdown';
-    if (!['markdown', 'json', 'raw', 'html', 'svg'].includes(viewer)) return;
+    if (!isEditableViewerId(viewer)) return;
 
     const text = typeof content === 'string' ? content : '';
     const tab = findFileTab(workspaceTabsRef.current, fileType, fileId);

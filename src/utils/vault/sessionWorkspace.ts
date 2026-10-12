@@ -111,6 +111,7 @@ const TEXT_EXTS = new Set([
   'markdown',
   'txt',
   'json',
+  'excalidraw',
   'html',
   'htm',
   'svg',
@@ -135,6 +136,7 @@ const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogv', 'mov', 'mkv']);
 export type SessionViewer =
   | 'markdown'
   | 'json'
+  | 'excalidraw'
   | 'html'
   | 'svg'
   | 'raw'
@@ -182,6 +184,7 @@ export function isTextEditableFileName(name: string): boolean {
 export function sessionViewerForName(name: string): SessionViewer {
   const ext = extOf(name);
   if (ext === 'md' || ext === 'markdown' || ext === '') return 'markdown';
+  if (ext === 'excalidraw') return 'excalidraw';
   if (ext === 'json') return 'json';
   if (ext === 'html' || ext === 'htm') return 'html';
   if (ext === 'svg') return 'svg';
@@ -205,7 +208,7 @@ export function mimeForSessionFileName(name: string): string {
   if (ext === 'svg') return 'image/svg+xml';
   if (ext === 'pdf') return 'application/pdf';
   if (ext === 'md' || ext === 'markdown') return 'text/markdown';
-  if (ext === 'json') return 'application/json';
+  if (ext === 'json' || ext === 'excalidraw') return 'application/json';
   if (ext === 'html' || ext === 'htm') return 'text/html';
   if (ext === 'mp3') return 'audio/mpeg';
   if (ext === 'm4a') return 'audio/mp4';

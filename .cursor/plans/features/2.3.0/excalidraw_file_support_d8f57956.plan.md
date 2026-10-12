@@ -4,25 +4,25 @@ overview: 공식 `.excalidraw` JSON 형식을 vault에 저장·열기하고, `@e
 todos:
   - id: deps-chunk
     content: "@excalidraw/excalidraw 추가 + vite vendor-excalidraw manualChunks"
-    status: pending
+    status: completed
   - id: excalidraw-utils
     content: excalidrawDocument.ts + 단위 테스트 (empty/parse/serialize)
-    status: pending
+    status: completed
   - id: excalidraw-editor
     content: ExcalidrawEditor.tsx (lazy, debounced onChange, theme)
-    status: pending
+    status: completed
   - id: viewer-routing
     content: openPathFileFromBackend, useFileSessionDomain, sessionWorkspace, fileViewerRouting(선택)에 excalidraw viewer 추가
-    status: pending
+    status: completed
   - id: editor-pane-save
     content: EditorPane 분기 + EDITABLE_VIEWERS + saveFile contentType + 5s auto-save
-    status: pending
+    status: completed
   - id: create-file
     content: CREATE_FILE_FORMATS + createItem initial body/viewer/contentType
-    status: pending
+    status: completed
   - id: ui-icons
     content: TreeNode / WorkspaceTabBar .excalidraw 아이콘
-    status: pending
+    status: completed
 isProject: false
 ---
 
