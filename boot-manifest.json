@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-12T09:40:22.166Z",
-  "totalBytes": 4296620,
+  "generatedAt": "2026-10-12T17:42:38.224Z",
+  "totalBytes": 4297096,
   "assets": [
     {
       "file": "assets/vendor-react-ChQ1w2We.js",
@@ -59,8 +59,8 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-DDamAWQk.js",
-      "bytes": 2069789,
+      "file": "assets/index-CK4QjE3r.js",
+      "bytes": 2070265,
       "label": "앱 코어"
     }
   ]
