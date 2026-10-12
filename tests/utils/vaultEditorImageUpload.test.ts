@@ -21,7 +21,11 @@ describe('vaultEditorImageUpload', () => {
     const writes: Array<{ path: string; size: number; contentType?: string }> = [];
     const backend = {
       writeBytes: vi.fn(async (path: string, body: Uint8Array, contentType?: string) => {
-        writes.push({ path, size: body.byteLength, contentType });
+        writes.push(
+          contentType === undefined
+            ? { path, size: body.byteLength }
+            : { path, size: body.byteLength, contentType },
+        );
       }),
     };
     const file = new File([new Uint8Array([1, 2, 3, 4])], 'a.jpg', {
