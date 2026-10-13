@@ -15,6 +15,12 @@ import {
   type LlmAssistPresentation,
 } from '@/utils/llm/llmAssistPresentation';
 
+export type LlmAssistSelectionSnapshot = {
+  text: string;
+  from: number;
+  to: number;
+};
+
 export type LlmAssistEditorBridge = {
   editorRef: RefObject<unknown>;
   /** Prefer over reading editorRef.current (md-editor-rt ref shape varies). */
@@ -22,6 +28,23 @@ export type LlmAssistEditorBridge = {
     getEditorView?: () => import('@codemirror/view').EditorView | null | undefined;
     getSelectedText?: () => string | undefined;
   } | null;
+  /**
+   * Non-CM editors (Haim TipTap / source). When set, LLM Assist reads
+   * selection from here instead of md-editor-rt CodeMirror helpers.
+   */
+  getSelection?: () => LlmAssistSelectionSnapshot;
+  /**
+   * Replace last selection (or append) for editors that are not md-editor CM.
+   * When set, apply/append skip `applyLlmResultToEditor`.
+   */
+  applyResult?: (
+    result: string,
+    options?: { forceAppendAtEnd?: boolean },
+  ) => boolean;
+  /** Optional live selection subscription (TipTap / CM). */
+  subscribeSelection?: (
+    onChange: (snapshot: LlmAssistSelectionSnapshot) => void,
+  ) => () => void;
   onChange?: (markdown: string) => void;
   getMarkdown?: () => string;
   /** Durable source-focus key (`storageType:path`) for demoted panes. */

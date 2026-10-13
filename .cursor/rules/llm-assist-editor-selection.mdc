@@ -15,11 +15,12 @@ The **「선택된 텍스트」** field in `LlmAssistPanel` must stay in sync wi
 | Layer | Module | Responsibility |
 |-------|--------|----------------|
 | Read / replace | `src/utils/editorSelection.ts` | `getEditorSelectionFromRef`, `subscribeEditorSelectionFromRef`, `applyLlmResultToEditor` |
+| Haim read / replace | `src/utils/haimLlmAssistSelection.ts` | TipTap + source CM selection / apply (via bridge hooks) |
 | Focus memory | `src/utils/mdEditorSourceFocus.ts` | Last source-Editor caret/selection (view WeakMap + durable `storageType:path`) |
 | Host state | `src/components/llm/LlmAssistModal.tsx` | `selectedText`, `refreshSelection`, subscription lifecycle |
-| Bridge | `MarkdownEditor.jsx` / demoted `EditorPane` + `LlmAssistSessionContext` | `registerEditorBridge({ editorRef, onChange, getMarkdown, documentKey })` |
+| Bridge | `MarkdownEditor.jsx` / `HaimEditor.tsx` / demoted `EditorPane` + `LlmAssistSessionContext` | `registerEditorBridge({ editorRef, onChange, getMarkdown, documentKey, getSelection?, applyResult?, subscribeSelection? })` |
 
-Do **not** read CodeMirror selection inline in panel/modal code. Always go through `editorSelection.ts`.
+Do **not** read CodeMirror / TipTap selection inline in panel/modal code. Prefer `editorSelection.ts` (md-editor) or bridge `getSelection` / `applyResult` (Haim).
 
 ## Read / apply order
 
@@ -31,12 +32,12 @@ Do **not** read CodeMirror selection inline in panel/modal code. Always go throu
 
 ## Host wiring checklist
 
-1. Active `MarkdownEditor` registers `registerEditorBridge` when `isActiveFile && !previewOnly` (including frozen settle before demote).
+1. Active `MarkdownEditor` / `HaimEditor` registers `registerEditorBridge` when `isActiveFile && !previewOnly` (including frozen settle before demote).
 2. Demoted `EditorPane` registers a content-only bridge with `documentKey` + `getMarkdown`/`onChange`.
 3. `AppLayout` must pass `isActiveFile` into `editorPaneProps` (keep-alive tabs).
-4. Bridge includes `getEditorApi()` and `documentKey` when available.
-5. `LlmAssistModal` resolves `editorRef` from `session.editorBridge` and passes `documentKey` into apply/read.
-6. On open / bridge change → `refreshSelection()`; while open → `subscribeEditorSelectionFromRef` + polling fallback.
+4. Bridge includes `getEditorApi()` and `documentKey` when available; Haim also provides `getSelection` / `applyResult` / `subscribeSelection`.
+5. `LlmAssistModal` resolves `editorRef` from `session.editorBridge` and passes `documentKey` into apply/read; prefers bridge `getSelection`/`applyResult` when set.
+6. On open / bridge change → `refreshSelection()`; while open → bridge `subscribeSelection` or `subscribeEditorSelectionFromRef` + polling fallback.
 7. Docked mode must not leave `hidden=true` from floating minimize (blocks selection sync).
 8. `refreshSelection` must **not** clear `selectedText` when `editorRef` is temporarily missing.
 9. Popout sync includes `selectedText` + `selectionRange` from the same helpers.

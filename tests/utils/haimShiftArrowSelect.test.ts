@@ -101,7 +101,7 @@ describe('HaimShiftArrowSelect', () => {
 });
 
 describe('HaimNodeRange', () => {
-  it('drops Shift-ArrowUp / Shift-ArrowDown from stock NodeRange', () => {
+  it('drops Shift-ArrowUp / Shift-ArrowDown and overrides Mod-a', () => {
     const stockFns = NodeRange.config.addKeyboardShortcuts as
       | ((this: unknown) => Record<string, unknown>)
       | undefined;
@@ -131,5 +131,7 @@ describe('HaimNodeRange', () => {
     expect(bound?.['Shift-ArrowDown']).toBeUndefined();
     expect(bound?.['Shift-ArrowUp']).toBeUndefined();
     expect(bound?.['Mod-a']).toBeTypeOf('function');
+    // Custom Mod-a (not the stock invisible NodeRangeSelection binder).
+    expect(bound?.['Mod-a']).not.toBe(stock?.['Mod-a']);
   });
 });

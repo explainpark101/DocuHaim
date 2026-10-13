@@ -48,6 +48,13 @@ import {
   type HaimInsertPlacement,
   type HaimInsertRange,
 } from '@/utils/haimEditorInsertRange';
+import {
+  applyHaimLlmAssistResult,
+  cmFocusMemory,
+  readHaimLlmAssistSelection,
+  tipTapFocusMemory,
+  type HaimLlmAssistFocusMemory,
+} from '@/utils/haimLlmAssistSelection';
 import { buildDocuhaimHref } from '@/utils/docuhaimLink';
 import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
@@ -233,6 +240,8 @@ export default function HaimEditor({
   const [docuhaimLinkInitialText, setDocuhaimLinkInitialText] = useState('');
   const lastFocusedRangeRef = useRef<HaimInsertRange | null>(null);
   const everFocusedRef = useRef(false);
+  /** Last TipTap or source-CM focus range for LLM Assist after panel steals focus. */
+  const llmFocusMemoryRef = useRef<HaimLlmAssistFocusMemory | null>(null);
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
   const [qrCodeInitialText, setQrCodeInitialText] = useState('');
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
@@ -707,10 +716,35 @@ export default function HaimEditor({
       currentFile?.type && currentFile?.id
         ? `${currentFile.type}:${currentFile.id}`
         : undefined;
+
+    const preferSourceNow = () =>
+      preferHaimSourceSurface({
+        cm: cmViewRef.current,
+        tipTapFocused: Boolean(editor.isFocused),
+        lastAuthor: lastAuthorRef.current,
+        effectiveMode,
+        showSource,
+        showWysiwyg,
+      });
+
+    const readSelection = () => {
+      const snap = readHaimLlmAssistSelection(editor, {
+        cm: cmViewRef.current,
+        preferSource: preferSourceNow(),
+        sourceVisible: showSource,
+        focusMemory: llmFocusMemoryRef.current,
+      });
+      return { text: snap.text, from: snap.from, to: snap.to };
+    };
+
     return registerBridge({
       editorRef: {
         current: {
           focus: () => {
+            if (preferSourceNow() && cmViewRef.current) {
+              cmViewRef.current.focus();
+              return;
+            }
             editor.commands.focus();
           },
           insert: (payload: unknown) => {
@@ -720,7 +754,62 @@ export default function HaimEditor({
               } as never);
             }
           },
+          getSelectedText: () => readSelection().text,
         },
+      },
+      getEditorApi: () => {
+        const cm = cmViewRef.current;
+        return {
+          getEditorView: () => (preferSourceNow() ? cm : null),
+          getSelectedText: () => readSelection().text,
+        };
+      },
+      getSelection: readSelection,
+      applyResult: (result, options) =>
+        applyHaimLlmAssistResult({
+          editor,
+          cm: cmViewRef.current,
+          result,
+          forceAppendAtEnd: Boolean(options?.forceAppendAtEnd),
+          preferSource: preferSourceNow(),
+          sourceVisible: showSource,
+          focusMemory: llmFocusMemoryRef.current,
+        }),
+      subscribeSelection: (onChange) => {
+        const emit = () => onChange(readSelection());
+        const onTipTap = () => {
+          if (editor.isFocused) {
+            llmFocusMemoryRef.current = tipTapFocusMemory(editor);
+          }
+          emit();
+        };
+        editor.on('selectionUpdate', onTipTap);
+        editor.on('focus', onTipTap);
+        emit();
+
+        // Source CM: poll while subscribed (view remounts in dual mode).
+        // LlmAssistModal also polls; this keeps memory fresh while CM is focused.
+        const cmInterval = window.setInterval(() => {
+          const cm = cmViewRef.current;
+          if (!cm?.hasFocus) return;
+          const next = cmFocusMemory(cm);
+          const prev = llmFocusMemoryRef.current;
+          if (
+            !prev
+            || prev.surface !== 'cm'
+            || prev.from !== next.from
+            || prev.to !== next.to
+          ) {
+            llmFocusMemoryRef.current = next;
+            emit();
+          }
+        }, 200);
+
+        return () => {
+          editor.off('selectionUpdate', onTipTap);
+          editor.off('focus', onTipTap);
+          window.clearInterval(cmInterval);
+        };
       },
       onChange: (next: string) => {
         originRef.current = 'external';
@@ -740,6 +829,10 @@ export default function HaimEditor({
     currentFile?.type,
     emitVault,
     originRef,
+    effectiveMode,
+    showSource,
+    showWysiwyg,
+    lastAuthorRef,
   ]);
 
   const navigateToExportPdf = useCallback(
@@ -1162,6 +1255,7 @@ export default function HaimEditor({
       everFocusedRef.current = true;
       const { from, to } = editor.state.selection;
       lastFocusedRangeRef.current = { from, to };
+      llmFocusMemoryRef.current = tipTapFocusMemory(editor);
     };
     const onFocus = () => {
       remember();
@@ -1181,6 +1275,7 @@ export default function HaimEditor({
   useEffect(() => {
     everFocusedRef.current = false;
     lastFocusedRangeRef.current = null;
+    llmFocusMemoryRef.current = null;
   }, [currentFile?.id]);
 
   const openUrlLinkModal = useCallback(() => {

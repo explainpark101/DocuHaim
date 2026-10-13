@@ -303,7 +303,23 @@ export default function LlmAssistModal({
   }, []);
 
   const refreshSelection = useCallback(() => {
-    if (!editorRef && !editorBridge?.getEditorApi && !editorBridge?.getMarkdown) return '';
+    if (
+      !editorRef
+      && !editorBridge?.getEditorApi
+      && !editorBridge?.getSelection
+      && !editorBridge?.getMarkdown
+    ) {
+      return '';
+    }
+    // Haim (and other non-CM bridges) expose getSelection directly.
+    if (typeof editorBridge?.getSelection === 'function') {
+      const { text, from, to } = editorBridge.getSelection();
+      setSelectedText((prev) => (prev === text ? prev : text));
+      setSelectionRange((prev) =>
+        prev.from === from && prev.to === to ? prev : { from, to },
+      );
+      return text;
+    }
     const { text, from, to } = getEditorSelectionFromRef(editorRef, {
       ...(editorBridge?.getEditorApi ? { getEditorApi: editorBridge.getEditorApi } : {}),
       ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
@@ -367,22 +383,44 @@ export default function LlmAssistModal({
   }, [open, editorBridge, refreshSelection]);
 
   useEffect(() => {
-    if (!open || popoutActive || !editorRef) return undefined;
+    if (!open || popoutActive) return undefined;
     if (presentation === 'floating' && hidden) return undefined;
+
+    const applySnap = ({ text, from, to }: { text: string; from: number; to: number }) => {
+      setSelectedText((prev) => (prev === text ? prev : text));
+      setSelectionRange((prev) =>
+        prev.from === from && prev.to === to ? prev : { from, to },
+      );
+    };
+
+    if (typeof editorBridge?.subscribeSelection === 'function') {
+      return editorBridge.subscribeSelection(applySnap);
+    }
+    if (!editorRef) return undefined;
     return subscribeEditorSelectionFromRef(
       editorRef,
-      ({ text, from, to }) => {
-        setSelectedText((prev) => (prev === text ? prev : text));
-        setSelectionRange((prev) =>
-          prev.from === from && prev.to === to ? prev : { from, to },
-        );
-      },
+      applySnap,
       editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : undefined,
     );
-  }, [open, hidden, popoutActive, editorRef, presentation, editorBridge?.documentKey]);
+  }, [
+    open,
+    hidden,
+    popoutActive,
+    editorRef,
+    presentation,
+    editorBridge,
+    editorBridge?.documentKey,
+    editorBridge?.subscribeSelection,
+  ]);
 
   useEffect(() => {
-    if (!open || popoutActive || (!editorRef && !editorBridge?.getEditorApi)) return undefined;
+    if (
+      !open
+      || popoutActive
+      || (!editorRef && !editorBridge?.getEditorApi && !editorBridge?.getSelection)
+    ) {
+      return undefined;
+    }
     if (presentation === 'floating' && hidden) return undefined;
     const interval = window.setInterval(() => {
       refreshSelection();
@@ -599,17 +637,20 @@ export default function LlmAssistModal({
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
-    if (!canInsertIntoDocument || (!editorRef && !getMarkdown)) {
+    if (!canInsertIntoDocument || (!editorRef && !getMarkdown && !editorBridge?.applyResult)) {
       setError('삽입할 문서 에디터가 열려 있지 않습니다.');
       return;
     }
-    const ok = applyLlmResultToEditor({
-      editorRef: editorRef ?? { current: null },
-      result,
-      ...(onChange ? { onChange } : {}),
-      ...(getMarkdown ? { getMarkdown } : {}),
-      ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
-    });
+    const ok =
+      typeof editorBridge?.applyResult === 'function'
+        ? editorBridge.applyResult(result)
+        : applyLlmResultToEditor({
+            editorRef: editorRef ?? { current: null },
+            result,
+            ...(onChange ? { onChange } : {}),
+            ...(getMarkdown ? { getMarkdown } : {}),
+            ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
+          });
     if (!ok) {
       setError('에디터에 결과를 적용할 수 없습니다. 선택 영역을 다시 확인하세요.');
       return;
@@ -622,23 +663,26 @@ export default function LlmAssistModal({
     onChange,
     getMarkdown,
     refreshSelection,
-    editorBridge?.documentKey,
+    editorBridge,
   ]);
 
   const handleAppendResult = useCallback(() => {
     if (!result) return;
-    if (!canInsertIntoDocument || (!editorRef && !getMarkdown)) {
+    if (!canInsertIntoDocument || (!editorRef && !getMarkdown && !editorBridge?.applyResult)) {
       setError('삽입할 문서 에디터가 열려 있지 않습니다.');
       return;
     }
-    const ok = applyLlmResultToEditor({
-      editorRef: editorRef ?? { current: null },
-      result,
-      ...(onChange ? { onChange } : {}),
-      ...(getMarkdown ? { getMarkdown } : {}),
-      forceAppendAtEnd: true,
-      ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
-    });
+    const ok =
+      typeof editorBridge?.applyResult === 'function'
+        ? editorBridge.applyResult(result, { forceAppendAtEnd: true })
+        : applyLlmResultToEditor({
+            editorRef: editorRef ?? { current: null },
+            result,
+            ...(onChange ? { onChange } : {}),
+            ...(getMarkdown ? { getMarkdown } : {}),
+            forceAppendAtEnd: true,
+            ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
+          });
     if (!ok) {
       setError('에디터에 결과를 삽입할 수 없습니다.');
       return;
@@ -651,7 +695,7 @@ export default function LlmAssistModal({
     onChange,
     getMarkdown,
     refreshSelection,
-    editorBridge?.documentKey,
+    editorBridge,
   ]);
 
   const handleCopyResult = useCallback(async () => {
