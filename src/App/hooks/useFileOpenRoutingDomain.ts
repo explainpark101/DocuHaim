@@ -485,7 +485,8 @@ export function useFileOpenRoutingDomain() {
     if (!type || !path) return;
 
     if (type === 'local') {
-      if (!localRootHandle) {
+      // Tauri / desktop vault uses absolute fs path — no FileSystemAccess handle.
+      if (!localRootHandle && !localVaultFsPath) {
         if (localFolderRestoreSettled) {
           hasProcessedOpenFromUrlRef.current = true;
           hasRestoredLastFileRef.current = true;
@@ -504,10 +505,13 @@ export function useFileOpenRoutingDomain() {
     (async () => {
       let node = null;
       if (type === 'local') {
+        const fallbackName = path.split('/').filter(Boolean).pop() || 'file';
         node =
           findFileNodeByPath(localTree, path) ||
           findNodeByPath(localTree, path) ||
-          (await resolveLocalFileNode(localRootHandle, path));
+          (localVaultFsPath && !localRootHandle
+            ? { type: 'file', path, name: fallbackName }
+            : await resolveLocalFileNode(localRootHandle, path));
       } else if (type === 'webdav') {
         node = findFileNodeByPath(webdavTree, path) || findNodeByPath(webdavTree, path);
       } else if (type === 'idb') {
@@ -564,6 +568,7 @@ export function useFileOpenRoutingDomain() {
     navigate,
     openChatWorkspaceTab,
     openSettingsWorkspaceTab,
+    localVaultFsPath,
   ]);
 
   selectFileRawRef.current = selectFileRaw;
@@ -659,6 +664,10 @@ export function useFileOpenRoutingDomain() {
   // Keep the open note in sync with browser history (back/forward, history.back, …).
   useEffect(() => {
     if (!isUnlocked || !hasProcessedOpenFromUrlRef.current) return;
+    // Do not race split-pane cold restore — a second selectFileRaw for the
+    // active note supersedes the restore attempt and can leave sibling panes
+    // stuck on viewer:"loading" or unsupported.
+    if (restoringWorkspaceTabsRef.current) return;
     if (
       isChatAppPathname(location.pathname) ||
       isSettingsAppPathname(location.pathname) ||
@@ -707,7 +716,7 @@ export function useFileOpenRoutingDomain() {
           : 's3';
 
     if (type === 'local') {
-      if (!localRootHandle) return;
+      if (!localRootHandle && !localVaultFsPath) return;
     } else if (type === 'webdav') {
       if (!webdavReady || !webdavTree?.length) return;
     } else if (type === 'idb') {
@@ -720,10 +729,14 @@ export function useFileOpenRoutingDomain() {
     (async () => {
       let node = null;
       if (type === 'local') {
+        const fallbackName =
+          routeNotePath.split('/').filter(Boolean).pop() || 'file';
         node =
           findFileNodeByPath(localTree, routeNotePath) ||
           findNodeByPath(localTree, routeNotePath) ||
-          (await resolveLocalFileNode(localRootHandle, routeNotePath));
+          (localVaultFsPath && !localRootHandle
+            ? { type: 'file', path: routeNotePath, name: fallbackName }
+            : await resolveLocalFileNode(localRootHandle, routeNotePath));
       } else if (type === 'webdav') {
         node = findFileNodeByPath(webdavTree, routeNotePath) || findNodeByPath(webdavTree, routeNotePath);
       } else if (type === 'idb') {
@@ -749,6 +762,7 @@ export function useFileOpenRoutingDomain() {
     location.pathname,
     storageMode,
     localRootHandle,
+    localVaultFsPath,
     localTree,
     webdavReady,
     webdavTree,

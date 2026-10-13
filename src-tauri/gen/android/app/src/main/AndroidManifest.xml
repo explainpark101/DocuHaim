@@ -92,6 +92,9 @@
             android:icon="@mipmap/ic_launcher"
             android:exported="true"
             android:enabled="true">
+            <meta-data
+                android:name="docuhaim.share_mode"
+                android:value="sendSelf" />
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -123,6 +126,9 @@
             android:icon="@mipmap/ic_launcher"
             android:exported="true"
             android:enabled="true">
+            <meta-data
+                android:name="docuhaim.share_mode"
+                android:value="chooseGroup" />
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

@@ -8,6 +8,9 @@ import { readOpenPathBytes } from '@/utils/shared/desktopOpenFiles';
 
 export const ANDROID_SHARE_TARGET_EVENT = 'android-share-target';
 
+/** Dispatched from MainActivity when a share Intent is captured (warm onNewIntent). */
+export const ANDROID_SHARE_PENDING_DOM_EVENT = 'tauri-android-share-pending';
+
 /** From Android activity-alias share targets. */
 export type AndroidShareMode = 'sendSelf' | 'chooseGroup' | 'choose';
 
@@ -38,7 +41,11 @@ type Listener = (intake: AndroidShareIntake) => void;
 const listeners = new Set<Listener>();
 let started = false;
 let unlisten: (() => void) | null = null;
+let removeDomHooks: (() => void) | null = null;
 const recentKeys = new Set<string>();
+/** Held when publish runs before ShareTargetGate (or any listener) subscribes. */
+let bufferedIntake: AndroidShareIntake | null = null;
+let pollInFlight: Promise<void> | null = null;
 
 function basenameFromUri(uri: string): string {
   const raw = String(uri || '').trim();
@@ -82,8 +89,7 @@ function intakeKey(intake: AndroidShareIntake): string {
   return `${intake.mode}\0${intake.body}\0${names}`;
 }
 
-function publish(intake: AndroidShareIntake): void {
-  if (!intake.body && !intake.files.length) return;
+function deliverToListeners(intake: AndroidShareIntake): void {
   const key = intakeKey(intake);
   if (recentKeys.has(key)) return;
   recentKeys.add(key);
@@ -95,6 +101,28 @@ function publish(intake: AndroidShareIntake): void {
       // ignore
     }
   }
+}
+
+function publish(intake: AndroidShareIntake): void {
+  if (!intake.body && !intake.files.length) return;
+  // Cold start: bridge take/emit often wins the race before ShareTargetGate mounts.
+  // Buffer instead of marking recentKeys, or the late Opened/deferred emit is dropped.
+  if (listeners.size === 0) {
+    bufferedIntake = intake;
+    return;
+  }
+  // Flush any prior buffer first so a later publish cannot wipe it unread.
+  const pending = bufferedIntake;
+  bufferedIntake = null;
+  if (pending) deliverToListeners(pending);
+  deliverToListeners(intake);
+}
+
+function flushBufferedToListeners(): void {
+  const pending = bufferedIntake;
+  if (!pending || listeners.size === 0) return;
+  bufferedIntake = null;
+  deliverToListeners(pending);
 }
 
 async function filesFromShareUrls(urls: string[]): Promise<File[]> {
@@ -131,8 +159,31 @@ async function intakeFromPayload(
   return { body, files, mode: normalizeShareMode(payload.mode) };
 }
 
+async function pollPendingAndroidShare(): Promise<void> {
+  if (pollInFlight) return pollInFlight;
+  pollInFlight = (async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const pending = await invoke<AndroidSharePayload | null>(
+        'take_pending_android_share',
+      );
+      const intake = await intakeFromPayload(pending);
+      if (intake) publish(intake);
+    } catch {
+      // command unavailable outside Android / before IPC ready
+    } finally {
+      pollInFlight = null;
+    }
+  })();
+  return pollInFlight;
+}
+
 export function subscribeAndroidShareTarget(listener: Listener): () => void {
   listeners.add(listener);
+  // Deliver any share that arrived before the gate subscribed.
+  queueMicrotask(() => {
+    flushBufferedToListeners();
+  });
   return () => {
     listeners.delete(listener);
   };
@@ -159,20 +210,29 @@ export async function startAndroidShareTargetBridge(): Promise<void> {
     // ignore
   }
 
-  try {
-    const { invoke } = await import('@tauri-apps/api/core');
-    const pending = await invoke<AndroidSharePayload | null>(
-      'take_pending_android_share',
-    );
-    const intake = await intakeFromPayload(pending);
-    if (intake) publish(intake);
-  } catch {
-    // command unavailable outside Android / before IPC ready
-  }
+  const onDomSharePending = (): void => {
+    void pollPendingAndroidShare();
+  };
+  const onVisibility = (): void => {
+    if (document.visibilityState === 'visible') {
+      void pollPendingAndroidShare();
+    }
+  };
+  window.addEventListener(ANDROID_SHARE_PENDING_DOM_EVENT, onDomSharePending);
+  document.addEventListener('visibilitychange', onVisibility);
+  removeDomHooks = () => {
+    window.removeEventListener(ANDROID_SHARE_PENDING_DOM_EVENT, onDomSharePending);
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
+
+  await pollPendingAndroidShare();
 }
 
 export function stopAndroidShareTargetBridge(): void {
   unlisten?.();
   unlisten = null;
+  removeDomHooks?.();
+  removeDomHooks = null;
   started = false;
+  bufferedIntake = null;
 }

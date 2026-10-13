@@ -71,6 +71,7 @@ import {
 } from '@/utils/memoDraftsDb';
 import { persistFileTabLastViewed } from '@/utils/lastViewedNoteDraft';
 import { askNoteContentConflict } from '@/utils/noteContentConflict';
+import { viewerAfterLoadingSettle } from '@/utils/workspaceTabs/settleLoadingViewer';
 import { savePendingUpload } from '@/utils/pendingUploadsDb';
 import { rebaseMergeTexts } from '@/utils/textRebaseMerge';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
@@ -1013,13 +1014,18 @@ export function useFileSessionDomain() {
             // sibling panes to empty when open fails after conflict/diff waits.
             const kept =
               typeof live.editorContent === 'string' ? live.editorContent : '';
+            const name = String(node.name || '');
             commitOpenFile(
               {
                 type,
                 id: node.path,
-                name: node.name,
+                name,
                 content: kept,
-                viewer: kept ? 'markdown' : 'unsupported',
+                viewer: viewerAfterLoadingSettle({
+                  path: node.path,
+                  name,
+                  keptContent: kept,
+                }),
                 lastModified: node.lastModified,
               },
               kept,

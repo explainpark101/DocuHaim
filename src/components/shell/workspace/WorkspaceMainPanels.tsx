@@ -876,8 +876,10 @@ export default function WorkspaceMainPanels({
                     // Freeze mode: off | hover-or-focus | focus (see WorkspacePaneFreezeLeafHost).
                     const fileKey =
                       isFileTab(tab) ? `${tab.storageType}:${tab.path}` : tab.id;
+                    // Include viewer so loading→markdown/unsupported always
+                    // invalidates frozen-pane memo (same parked body length).
                     const contentRevision = isFileTab(tab)
-                      ? `${fileKey}:${tab.editorContent?.length ?? 0}:${tab.noteSurface ?? ''}`
+                      ? `${fileKey}:${tab.currentFile?.viewer ?? ''}:${tab.editorContent?.length ?? 0}:${tab.noteSurface ?? ''}`
                       : `${tab.id}:${tab.kind}`;
                     return (
                       <WorkspacePaneLeafSlot

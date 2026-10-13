@@ -61,6 +61,9 @@ class MainActivity : TauriActivity() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    /** JS listens for this to re-poll take_pending_android_share (warm share). */
+    private const val SHARE_PENDING_DOM_EVENT = "tauri-android-share-pending"
+
     const val ACTION_APK_INSTALL_STATUS = "com.docuhaim.app.APK_INSTALL_STATUS"
 
     @JvmStatic
@@ -99,6 +102,9 @@ class MainActivity : TauriActivity() {
     }
   }
 
+  /** Populated in onWebViewCreate so warm shares can poke the JS bridge. */
+  private var appWebView: WebView? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     captureShareIntent(intent)
@@ -114,6 +120,10 @@ class MainActivity : TauriActivity() {
     super.onNewIntent(intent)
     setIntent(intent)
     handlePackageInstallerIntent(intent)
+    // Tao may skip RunEvent::Opened for text-only SEND; notify JS to poll pending.
+    if (lastIntentWasShare) {
+      notifyWebSharePending()
+    }
   }
 
   /**
@@ -132,8 +142,39 @@ class MainActivity : TauriActivity() {
       intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty().ifEmpty {
         intent.getStringExtra(Intent.EXTRA_TITLE).orEmpty()
       }
-    pendingShareMode = shareModeFromComponent(intent.component?.className)
+    pendingShareMode = shareModeFromIntent(intent)
     pendingShareUris = collectShareStreamUris(intent).joinToString("\n")
+  }
+
+  /**
+   * Prefer the activity-alias ComponentName; fall back to Intent.selector when
+   * an OEM rewrites component to the target MainActivity.
+   */
+  private fun shareModeFromIntent(intent: Intent): String {
+    val fromComponent = shareModeFromComponent(intent.component?.className)
+    if (fromComponent != "choose") return fromComponent
+    val selector = intent.selector
+    if (selector != null) {
+      val fromSelector = shareModeFromComponent(selector.component?.className)
+      if (fromSelector != "choose") return fromSelector
+    }
+    // Alias meta-data survives when the ComponentName is still the alias.
+    return shareModeFromAliasMeta(intent.component) ?: "choose"
+  }
+
+  private fun shareModeFromAliasMeta(component: android.content.ComponentName?): String? {
+    if (component == null) return null
+    return try {
+      val info =
+        packageManager.getActivityInfo(component, PackageManager.GET_META_DATA)
+      val mode = info.metaData?.getString("docuhaim.share_mode").orEmpty().trim()
+      when (mode) {
+        "sendSelf", "chooseGroup", "choose" -> mode
+        else -> null
+      }
+    } catch (_: Throwable) {
+      null
+    }
   }
 
   /** Map activity-alias class name → frontend share mode. */
@@ -145,6 +186,21 @@ class MainActivity : TauriActivity() {
       name.endsWith(".ShareToGroupAlias") || name.endsWith("ShareToGroupAlias") ->
         "chooseGroup"
       else -> "choose"
+    }
+  }
+
+  /** Ask the WebView bridge to invoke take_pending_android_share. */
+  private fun notifyWebSharePending() {
+    val webView = appWebView ?: return
+    mainHandler.post {
+      try {
+        webView.evaluateJavascript(
+          "window.dispatchEvent(new CustomEvent('$SHARE_PENDING_DOM_EVENT'));",
+          null,
+        )
+      } catch (_: Throwable) {
+        // WebView may not be ready yet; JS visibility poll / Opened path remain.
+      }
     }
   }
 
@@ -189,6 +245,7 @@ class MainActivity : TauriActivity() {
     if (instance === this) {
       instance = null
     }
+    appWebView = null
     super.onDestroy()
   }
 
@@ -197,10 +254,15 @@ class MainActivity : TauriActivity() {
    * LAYER_TYPE_HARDWARE has crashed some GPUs during boot-splash compositing.
    */
   override fun onWebViewCreate(webView: WebView) {
+    appWebView = webView
     webView.overScrollMode = View.OVER_SCROLL_NEVER
     webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
       webView.settings.offscreenPreRaster = true
+    }
+    // Cold-start share: WebView may appear after Intent capture; poke JS once ready.
+    if (lastIntentWasShare) {
+      notifyWebSharePending()
     }
   }
 

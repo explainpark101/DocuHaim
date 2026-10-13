@@ -39,6 +39,7 @@ import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { buildSessionTree, listSessionWorkspaces } from '@/utils/sessionWorkspace';
 import { yieldToMain } from '@/utils/advancedSearch/yieldToMain';
 import { loadLastViewedNoteDraft } from '@/utils/lastViewedNoteDraft';
+import { viewerAfterLoadingSettle } from '@/utils/workspaceTabs/settleLoadingViewer';
 
 const TAB_RESTORE_FILE_CONCURRENCY = 2;
 
@@ -254,12 +255,13 @@ export function useAdvancedSearchTabsDomain() {
         typeof live.editorContent === 'string' ? live.editorContent : '';
       const name =
         String(live.editedFileName || live.currentFile?.name || fallbackName || 'file');
+      const viewer = viewerAfterLoadingSettle({ path, name, keptContent: kept });
       const settledFile = {
         type: storageType,
         id: path,
         name,
         content: kept,
-        viewer: kept ? 'markdown' : 'unsupported',
+        viewer,
       };
       const next = patchFileTab(workspaceTabsRef.current, live.id, {
         currentFile: settledFile,
@@ -415,6 +417,13 @@ export function useAdvancedSearchTabsDomain() {
           settleRestoreLoadingShell(tab.type, tab.path, fallbackName);
         }
       });
+
+      // Superseded opens (e.g. history sync racing activate) can skip selectFileRaw's
+      // finally settle — clear any remaining loading shells so split leaves are usable.
+      for (const tab of fileTabs) {
+        const fallbackName = tab.path.split('/').filter(Boolean).pop() || 'file';
+        settleRestoreLoadingShell(tab.type, tab.path, fallbackName);
+      }
 
       // Re-apply split membership after content loads (open paths may rehome tabs).
       const repaired = applyPersistedLayoutToState(

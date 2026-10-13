@@ -52,6 +52,25 @@ export function flushEditorIntoActiveFileTab(
   ) {
     return state;
   }
+  // Split-pane restore parks last-viewed bodies on loading shells. Cold activate
+  // often still has empty editor mirrors — do not wipe parked content.
+  const activeViewer =
+    typeof active.currentFile?.viewer === 'string' ? active.currentFile.viewer : null;
+  const incomingHasBody =
+    Boolean(incoming && typeof incoming.content === 'string' && incoming.content.length > 0);
+  const mirrorHasBody =
+    typeof payload.editorContent === 'string' && payload.editorContent.length > 0;
+  if (activeViewer === 'loading' && !mirrorHasBody && !incomingHasBody) {
+    if (
+      payload.editedFileName
+      && payload.editedFileName !== active.editedFileName
+    ) {
+      return patchFileTab(state, active.id, {
+        editedFileName: payload.editedFileName,
+      });
+    }
+    return state;
+  }
   const nextFile: FileWorkspaceTab['currentFile'] = incoming
     ? {
         ...active.currentFile,
