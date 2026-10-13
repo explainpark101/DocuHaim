@@ -147,58 +147,68 @@ describe('protectCustomMarkdown', () => {
     expect(restoreCustomMarkdown(legacy)).toContain('```mermaid');
   });
 
-  it('maps $$ display math to TipTap block-math HTML', () => {
+  it('leaves $$ display math as dollars for TipTap tokenizers', () => {
     const src = 'Before\n\n$$\nE = mc^2\n$$\n\nAfter\n';
     const protectedMd = protectCustomMarkdown(src);
-    expect(protectedMd).toContain('data-type="block-math"');
-    expect(protectedMd).toContain('data-latex="E = mc^2"');
-    expect(protectedMd).not.toContain('data-kind="math-display"');
-    const restored = restoreCustomMarkdown(protectedMd);
-    expect(restored).toContain('$$');
-    expect(restored).toContain('E = mc^2');
+    expect(protectedMd).toContain('$$\nE = mc^2\n$$');
+    expect(protectedMd).not.toContain('data-type="block-math"');
+    expect(restoreCustomMarkdown(protectedMd)).toContain('E = mc^2');
   });
 
-  it('maps $ inline math to TipTap inline-math HTML', () => {
+  it('leaves $ inline math as dollars for TipTap tokenizers', () => {
     const src = 'Energy $E=mc^2$ is famous.\n';
     const protectedMd = protectCustomMarkdown(src);
-    expect(protectedMd).toContain('data-type="inline-math"');
-    expect(protectedMd).toContain('data-latex="E=mc^2"');
+    expect(protectedMd).toContain('$E=mc^2$');
+    expect(protectedMd).not.toContain('data-type="inline-math"');
     expect(restoreCustomMarkdown(protectedMd)).toContain('$E=mc^2$');
   });
 
-  it('does not treat currency-like $100$ as inline math', () => {
+  it('does not rewrite currency-like $100$ during protect', () => {
     const src = 'Price $100$ only.\n';
     const protectedMd = protectCustomMarkdown(src);
     expect(protectedMd).not.toContain('data-type="inline-math"');
     expect(protectedMd).toContain('$100$');
   });
 
-  it('does not convert $ inside inline code to math HTML', () => {
-    const src = 'Use `$x$` for vars and $y$ outside.\n';
-    const protectedMd = protectCustomMarkdown(src);
-    expect(protectedMd).toContain('`$x$`');
-    // Math HTML must not appear inside the codespan itself
-    expect(protectedMd).not.toContain('`<span');
-    expect(protectedMd).not.toContain('data-latex="x"');
-    expect(protectedMd).toContain('data-latex="y"');
-    expect(restoreCustomMarkdown(protectedMd)).toContain('`$x$`');
-    expect(restoreCustomMarkdown(protectedMd)).toContain('$y$');
+  it('does not rewrite $ inside inline or fenced code during protect', () => {
+    const inlineSrc = 'Use `$x$` for vars and $y$ outside.\n';
+    const inlineProtected = protectCustomMarkdown(inlineSrc);
+    expect(inlineProtected).toContain('`$x$`');
+    expect(inlineProtected).toContain('$y$');
+    expect(inlineProtected).not.toContain('data-type="inline-math"');
+
+    const fenceSrc = '```js\nconst s = "$x$";\n```\n\nReal $a$\n';
+    const fenceProtected = protectCustomMarkdown(fenceSrc);
+    expect(fenceProtected).toContain('const s = "$x$";');
+    expect(fenceProtected).toContain('$a$');
+    expect(fenceProtected).not.toContain('data-type="inline-math"');
   });
 
-  it('does not convert $ inside fenced code to math HTML', () => {
-    const src = '```js\nconst s = "$x$";\n```\n\nReal $a$\n';
+  it('does not swallow blockquote markers into math when protecting', () => {
+    const src = '> $$\n> E=mc^2\n> $$\n';
     const protectedMd = protectCustomMarkdown(src);
-    expect(protectedMd).toContain('const s = "$x$";');
-    expect(protectedMd).not.toMatch(/```[\s\S]*data-type="inline-math"[\s\S]*```/);
-    expect(protectedMd).toContain('data-latex="a"');
+    expect(protectedMd).toContain('> $$');
+    expect(protectedMd).toContain('> E=mc^2');
+    expect(protectedMd).not.toContain('data-type="block-math"');
+    expect(protectedMd).not.toMatch(/data-latex=">/);
   });
 
-  it('keeps code intact when $ straddles code and prose', () => {
-    const src = 'code `a $ b` and math $c$\n';
-    const protectedMd = protectCustomMarkdown(src);
-    expect(protectedMd).toContain('`a $ b`');
-    expect(protectedMd).toContain('data-latex="c"');
-    expect(protectedMd).not.toMatch(/data-latex="b`/);
+  it('restores legacy math HTML from insertContent / older protects', () => {
+    const legacy =
+      'Energy <span data-type="inline-math" data-latex="E=mc^2"></span>\n';
+    expect(restoreCustomMarkdown(legacy)).toContain('$E=mc^2$');
+    const legacyBlock =
+      '<div data-type="block-math" data-latex="E = mc^2"></div>\n';
+    expect(restoreCustomMarkdown(legacyBlock)).toContain('$$\nE = mc^2\n$$');
+  });
+
+  it('restores math HTML attrs that escape > and newlines', () => {
+    const legacy =
+      '<span data-type="inline-math" data-latex="a &gt; b"></span>\n';
+    expect(restoreCustomMarkdown(legacy)).toContain('$a > b$');
+    const legacyBlock =
+      '<div data-type="block-math" data-latex="x &gt; 0&#10;y &lt; 1"></div>\n';
+    expect(restoreCustomMarkdown(legacyBlock)).toContain('x > 0\ny < 1');
   });
 });
 

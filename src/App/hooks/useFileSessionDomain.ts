@@ -1189,6 +1189,84 @@ export function useFileSessionDomain() {
       return;
     }
 
+    const previousSavedContent = String(fileToSave.content ?? '');
+    const contentUnchanged = previousSavedContent === String(textToSave ?? '');
+
+    const touchesActiveEditor =
+      !background &&
+      currentFileRef.current?.id === fileToSave.id &&
+      currentFileRef.current?.type === fileToSave.type;
+
+    const tabId =
+      fileToSave.type && fileToSave.id ? `${fileToSave.type}:${fileToSave.id}` : null;
+    const savingIdsRef = resolveSavingTabIdsRef();
+    const manageSavingBadge = Boolean(tabId) && !savingIdsRef.current.has(tabId);
+
+    const beginSaveChrome = () => {
+      if (touchesActiveEditor) setIsSaving(true);
+      if (tabId && manageSavingBadge) {
+        savingIdsRef.current.add(tabId);
+        setSavingTabIds([...savingIdsRef.current]);
+      }
+      return addIndicator({
+        id: background ? `note-save-bg:${fileToSave.type}:${fileToSave.id}` : 'note-save',
+        type: ActivityTypes.NOTE_PROCESSING,
+        label: '필기 저장 중',
+        detail: fileToSave.name,
+      });
+    };
+
+    const endSaveChrome = (indicatorId) => {
+      removeIndicator(indicatorId);
+      if (touchesActiveEditor) setIsSaving(false);
+      if (tabId && manageSavingBadge) {
+        savingIdsRef.current.delete(tabId);
+        setSavingTabIds([...savingIdsRef.current]);
+      }
+    };
+
+    const applySavedContentToTab = (extraFileFields = {}) => {
+      const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
+      if (!existing) return;
+      const patchTabId = `${fileToSave.type}:${fileToSave.id}`;
+      const patch = {
+        currentFile: {
+          ...existing.currentFile,
+          content: textToSave,
+          ...extraFileFields,
+        },
+        baselineContent: textToSave,
+      };
+      // Keep newer in-tab edits if the user typed while this save was in flight.
+      if (existing.editorContent === textToSave) {
+        patch.editorContent = textToSave;
+      }
+      const patched = patchFileTab(workspaceTabsRef.current, patchTabId, patch);
+      workspaceTabsRef.current = patched;
+      setWorkspaceTabs(patched);
+    };
+
+    // Identical to last loaded/saved body: skip vault write (no server/version history)
+    // but still clear dirty + flash save chrome so UX matches a real save.
+    if (contentUnchanged) {
+      const indicatorId = beginSaveChrome();
+      try {
+        if (['s3', 'local', 'idb', 'webdav'].includes(fileToSave.type)) {
+          await deleteMemoDraft(getDraftKey(fileToSave.type, fileToSave.id));
+        }
+        setCurrentFile((prev) => {
+          if (prev?.id !== fileToSave.id || prev?.type !== fileToSave.type) return prev;
+          const next = { ...prev, content: textToSave };
+          currentFileRef.current = next;
+          return next;
+        });
+        applySavedContentToTab();
+      } finally {
+        endSaveChrome(indicatorId);
+      }
+      return;
+    }
+
     if (fileToSave.type === SESSION_STORAGE_TYPE) {
       const binding = sessionVaultBindingsRef.current?.[fileToSave.id];
       const sessionRef = resolveSessionFileRef(sessionWorkspacesRef.current, fileToSave.id);
@@ -1209,27 +1287,7 @@ export function useFileSessionDomain() {
       }
     }
 
-    const touchesActiveEditor =
-      !background &&
-      currentFileRef.current?.id === fileToSave.id &&
-      currentFileRef.current?.type === fileToSave.type;
-    if (touchesActiveEditor) setIsSaving(true);
-
-    const tabId =
-      fileToSave.type && fileToSave.id ? `${fileToSave.type}:${fileToSave.id}` : null;
-    const savingIdsRef = resolveSavingTabIdsRef();
-    const manageSavingBadge = Boolean(tabId) && !savingIdsRef.current.has(tabId);
-    if (tabId && manageSavingBadge) {
-      savingIdsRef.current.add(tabId);
-      setSavingTabIds([...savingIdsRef.current]);
-    }
-
-    const indicatorId = addIndicator({
-      id: background ? `note-save-bg:${fileToSave.type}:${fileToSave.id}` : 'note-save',
-      type: ActivityTypes.NOTE_PROCESSING,
-      label: '필기 저장 중',
-      detail: fileToSave.name,
-    });
+    const indicatorId = beginSaveChrome();
     const saveContentType = contentTypeForViewer(viewer);
 
     let vaultBody = textToSave;
@@ -1250,39 +1308,13 @@ export function useFileSessionDomain() {
         }
         vaultBody = await prepareEncMdVaultBody(fileToSave.id, textToSave, pw);
       } catch (e) {
-        removeIndicator(indicatorId);
-        if (touchesActiveEditor) setIsSaving(false);
-        if (tabId && manageSavingBadge) {
-          savingIdsRef.current.delete(tabId);
-          setSavingTabIds([...savingIdsRef.current]);
-        }
+        endSaveChrome(indicatorId);
         if (e?.message !== 'cancelled') {
           alert(e?.message || '암호화 저장 실패');
         }
         return;
       }
     }
-
-    const applySavedContentToTab = (extraFileFields = {}) => {
-      const existing = findFileTab(workspaceTabsRef.current, fileToSave.type, fileToSave.id);
-      if (!existing) return;
-      const tabId = `${fileToSave.type}:${fileToSave.id}`;
-      const patch = {
-        currentFile: {
-          ...existing.currentFile,
-          content: textToSave,
-          ...extraFileFields,
-        },
-        baselineContent: textToSave,
-      };
-      // Keep newer in-tab edits if the user typed while this save was in flight.
-      if (existing.editorContent === textToSave) {
-        patch.editorContent = textToSave;
-      }
-      const patched = patchFileTab(workspaceTabsRef.current, tabId, patch);
-      workspaceTabsRef.current = patched;
-      setWorkspaceTabs(patched);
-    };
 
     try {
       if (fileToSave.type === 's3') {
@@ -1480,12 +1512,7 @@ export function useFileSessionDomain() {
         alert('저장 실패: ' + e.message);
       }
     } finally {
-      removeIndicator(indicatorId);
-      if (touchesActiveEditor) setIsSaving(false);
-      if (tabId && manageSavingBadge) {
-        savingIdsRef.current.delete(tabId);
-        setSavingTabIds([...savingIdsRef.current]);
-      }
+      endSaveChrome(indicatorId);
     }
   }, [
     currentFile,

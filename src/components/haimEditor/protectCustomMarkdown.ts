@@ -93,64 +93,11 @@ export function protectCustomMarkdown(src: string): string {
     return `<h6 data-heading-level="${level}">${escapeHtml(title)}</h6>`;
   });
 
-  // Dollar math must not touch fenced / inline code (or already-protected raw pre).
-  // Otherwise `$` inside `` `$x$` `` becomes inline-math HTML glued into the codespan.
-  out = withMarkdownCodeMasked(out, (chunk) => {
-    // Display math $$…$$ → TipTap BlockMath (must run before single-$ inline)
-    let next = chunk.replace(/\$\$([\s\S]+?)\$\$/g, (_m, latex) => {
-      const body = String(latex || '').trim();
-      if (!body) return _m;
-      return `<div data-type="block-math" data-latex="${escapeAttr(body)}"></div>\n\n`;
-    });
-
-    // Inline math $…$ → TipTap InlineMath (skip currency-like $100$)
-    next = next.replace(/\$(?!\d+\$)([^$\n]+?)\$(?!\d)/g, (_m, latex) => {
-      const body = String(latex || '').trim();
-      if (!body) return _m;
-      return `<span data-type="inline-math" data-latex="${escapeAttr(body)}"></span>`;
-    });
-    return next;
-  });
-
-  return out;
-}
-
-/**
- * Mask fenced code, inline code spans, and haim raw `<pre>` so a transform
- * (e.g. dollar → math HTML) cannot rewrite `$` inside those regions.
- */
-function withMarkdownCodeMasked(
-  src: string,
-  transform: (unmasked: string) => string,
-): string {
-  const slots: string[] = [];
-  const token = (i: number) => `\uE000HAIMCODE${i}\uE001`;
-  const stash = (match: string) => {
-    const i = slots.length;
-    slots.push(match);
-    return token(i);
-  };
-
-  let out = src;
-
-  // Already-protected raw blocks (mermaid+size, tables, …)
-  out = out.replace(
-    /<pre\b[^>]*\bdata-haim-raw-md\b[^>]*>[\s\S]*?<\/pre>/gi,
-    stash,
-  );
-
-  // Fenced code blocks (``` / ~~~)
-  out = out.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, stash);
-
-  // Inline code spans: equal-length backtick runs (CommonMark-ish)
-  out = out.replace(/(`+)((?:(?!\1).|\n)+?)\1/g, stash);
-
-  out = transform(out);
-
-  out = out.replace(/\uE000HAIMCODE(\d+)\uE001/g, (_m, n: string) => {
-    const i = Number(n);
-    return Number.isFinite(i) && slots[i] != null ? slots[i]! : _m;
-  });
+  // Leave `$…$` / `$$…$$` as dollars for TipTap Mathematics markdownTokenizers.
+  // Do NOT rewrite them to <span/div data-type="*-math"> HTML here:
+  // TipTap serializes blockMath inside blockquotes as `> $$\n> latex\n> $$`, and
+  // a naive $$…$$ → data-latex capture would swallow those `>` prefixes, break the
+  // attribute across lines, and corrupt vault source into forms like `> ">`.
 
   return out;
 }
@@ -417,12 +364,17 @@ function escapeAttr(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;');
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '&#10;');
 }
 
 function unescapeAttr(s: string): string {
   return s
+    .replace(/&#10;/g, '\n')
+    .replace(/&#x0*a;/gi, '\n')
     .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&amp;/g, '&');
 }
