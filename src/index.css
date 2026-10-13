@@ -66,26 +66,26 @@
   /*
    * Android WebView chrome modes (status-bar vs immersive fullscreen).
    * - Shell is dvh-capped via .desktop-app
-   * - #root is a flex column: padding-top reserves empty space under the
-   *   system status bar; child must use height:100% (not 100dvh) or the
-   *   app status bar is clipped below the viewport (css-layout)
+   * - Stay edge-to-edge (decorFits false); pad #root so status-bar mode
+   *   clears the system clock/battery even when env(safe-area-inset-top)
+   *   is 0 in some WebViews
+   * - Child must use height:100% (not 100dvh) or the app status bar is
+   *   clipped below the viewport (css-layout)
    * - box-sizing:border-box keeps height:100% + padding from overflowing
    */
   html.android-app {
-    --android-status-bar-fallback: 28px;
+    /* Boot fallback before JNI reports exact statusBars inset (~24dp+). */
+    --android-status-bar-fallback: 48px;
     --android-safe-top: 0px;
     --app-safe-top: var(--android-safe-top);
   }
 
   html.android-app.android-status-bar-visible,
   html.android-app.android-chrome-status-bar {
-    /*
-     * Native MainActivity.setSystemStatusBarVisible(true) uses
-     * setDecorFitsSystemWindows(true) so the WebView is already laid out
-     * below the system status bar. Do not add a second CSS pad (double gap).
-     * --app-safe-top stays 0 for fixed overlays inside the inset WebView.
-     */
-    --android-safe-top: 0px;
+    --android-safe-top: max(
+      env(safe-area-inset-top, 0px),
+      var(--android-status-bar-fallback)
+    );
   }
 
   html.android-app.android-status-bar-hidden,

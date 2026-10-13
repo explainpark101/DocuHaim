@@ -590,6 +590,14 @@ export function useFileOpenRoutingDomain() {
     if (needsWebdav && !webdavReady) return;
     const needsIdb = persisted.tabs.some((tab) => tab.kind === 'file' && tab.type === 'idb');
     if (needsIdb && !idbTree?.length) return;
+    // Wait for S3 client like webdav/idb. Cold restore used to run as soon as
+    // hasProcessedOpenFromUrlRef flipped (before createS3Client had keys), which
+    // left viewer:"loading" shells that never called selectFileRaw.
+    const needsS3 = persisted.tabs.some((tab) => tab.kind === 'file' && tab.type === 's3');
+    if (needsS3) {
+      const client = getS3Client();
+      if (!client || !s3Creds?.bucket) return;
+    }
 
     const routeNotePath = parseOpenNotePathFromAppPathname(location.pathname);
     const routeStorageType = routeNotePath
@@ -627,6 +635,9 @@ export function useFileOpenRoutingDomain() {
     localVaultFsPath,
     localFolderRestoreSettled,
     webdavReady,
+    idbTree,
+    getS3Client,
+    s3Creds?.bucket,
     location.pathname,
     storageMode,
     restorePersistedWorkspaceTabsRef,

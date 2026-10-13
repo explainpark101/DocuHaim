@@ -19,6 +19,8 @@ import {
 } from '@/utils/tauriDesktopUpdater';
 import {
   checkTauriAndroidUpdate,
+  downloadPendingTauriAndroidUpdate,
+  getAndroidUpdateUiState,
   initTauriAndroidUpdaterPolling,
   installPendingTauriAndroidUpdate,
   setTauriAndroidUpdateListener,
@@ -124,7 +126,22 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
         setAppBuildRemoteId(result.remoteVersion ?? '');
         setAppUpdateCheckError('');
         setAppUpdateAvailable(true);
-        setShowAppUpdateConfirmModal(true);
+        const phase = getAndroidUpdateUiState().phase;
+        // Avoid re-opening the modal on every poll once download is done / in flight.
+        if (phase === 'ready' || phase === 'installing' || phase === 'downloading') {
+          return;
+        }
+        // Download in background; open confirm modal when the APK is ready.
+        void downloadPendingTauriAndroidUpdate()
+          .then(() => {
+            setShowAppUpdateConfirmModal(true);
+          })
+          .catch((error: unknown) => {
+            const message =
+              error instanceof Error ? error.message : String(error ?? '');
+            setAppUpdateCheckError(message || 'Android update download failed');
+            setShowAppUpdateConfirmModal(true);
+          });
       });
       initTauriAndroidUpdaterPolling();
       return () => {
@@ -215,6 +232,21 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
         if (androidCheck.ok) {
           setAppUpdateCheckError('');
           setAppUpdateAvailable(androidCheck.updateAvailable);
+          if (androidCheck.updateAvailable) {
+            setIsCheckingAppUpdate(false);
+            // Keep using the app while the APK downloads; modal opens when ready.
+            void downloadPendingTauriAndroidUpdate()
+              .then(() => {
+                setShowAppUpdateConfirmModal(true);
+              })
+              .catch((error: unknown) => {
+                const message =
+                  error instanceof Error ? error.message : String(error ?? '');
+                setAppUpdateCheckError(message || 'Android update download failed');
+                setShowAppUpdateConfirmModal(true);
+              });
+            return;
+          }
         } else {
           setAppUpdateCheckError(androidCheck.error || 'unknown');
           setAppUpdateAvailable(Boolean(androidCheck.updateAvailable));
@@ -282,6 +314,7 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
         setIsApplyingPwaUpdate(true);
         await installPendingTauriAndroidUpdate();
         setIsApplyingPwaUpdate(false);
+        // Keep pending/ready so Cancel or status-bar Update can retry install.
         setShowAppUpdateConfirmModal(false);
       } catch (error: any) {
         console.error('Tauri Android update apply failed:', error);
@@ -544,11 +577,37 @@ export function usePwaSnippetsDomain(owned: PwaSnippetsOwnedForDomain) {
     ],
   );
 
+  /** Status-bar Update / retry: reopen confirm modal, or re-download on error. */
+  const handleAndroidUpdateStatusBarAction = useCallback(() => {
+    if (!isTauriAndroid()) return;
+    const phase = getAndroidUpdateUiState().phase;
+    if (phase === 'error' || phase === 'idle') {
+      setAppUpdateAvailable(true);
+      void downloadPendingTauriAndroidUpdate()
+        .then(() => {
+          setAppUpdateCheckError('');
+          setShowAppUpdateConfirmModal(true);
+        })
+        .catch((error: unknown) => {
+          const message =
+            error instanceof Error ? error.message : String(error ?? '');
+          setAppUpdateCheckError(message || 'Android update download failed');
+          setShowAppUpdateConfirmModal(true);
+        });
+      return;
+    }
+    if (phase === 'ready' || phase === 'installing') {
+      setAppUpdateAvailable(true);
+      setShowAppUpdateConfirmModal(true);
+    }
+  }, [setAppUpdateAvailable, setAppUpdateCheckError, setShowAppUpdateConfirmModal]);
+
   return {
     needRefresh,
     handleApplyPwaUpdate,
     handleCheckAppUpdate,
     handleConfirmAppUpdate,
+    handleAndroidUpdateStatusBarAction,
     handleChangeSnippetConfig,
     handleSaveSnippetConfig,
     isSavingSnippets,

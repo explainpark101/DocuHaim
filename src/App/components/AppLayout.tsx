@@ -16,8 +16,9 @@ import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
 import FileUploadQueueStatusBar from '@/components/FileUploadQueueStatusBar';
 import FileUploadQueueFloatingPanel from '@/components/FileUploadQueueFloatingPanel';
 import HaimProseWidthFloatingPanel from '@/components/settings/HaimProseWidthFloatingPanel';
+import AndroidUpdateStatusBar from '@/components/shell/AndroidUpdateStatusBar';
 import StatusBarClock from '@/components/shell/StatusBarClock';
-import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { isTauriAndroid, isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { isStoredWithWebAuthn, getStoredWebAuthn } from '@/utils/webauthn';
 import { refreshDesktopPasswordEntryLockSecrets } from '@/utils/desktopAppEntryLock';
 import { setSettingsToggle } from '@/utils/advancedSearch/settingsToggles';
@@ -45,7 +46,6 @@ import type { SidebarPaneDropItem } from '@/utils/workspaceTabs/sidebarPaneDrop'
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import { findNodeByPath } from '@/utils/s3Tree';
 import { isDesktopApp } from '@/utils/isDesktopApp';
-import { isTauriAndroid } from '@/utils/tauriPlatform';
 import { useAppChrome } from '@/App/hooks/useAppChrome';
 import { useAppModals } from '@/App/hooks/useAppModals';
 import { useSessionWorkspace } from '@/App/hooks/useSessionWorkspace';
@@ -405,6 +405,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     needRefresh,
     handleApplyPwaUpdate,
     handleCheckAppUpdate,
+    handleAndroidUpdateStatusBarAction,
     handleChangeSnippetConfig,
     handleSaveSnippetConfig,
     isSavingSnippets,
@@ -1131,6 +1132,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         >
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1 overflow-hidden">
             <FileUploadQueueStatusBar />
+            <AndroidUpdateStatusBar onRequestUpdate={handleAndroidUpdateStatusBarAction} />
             <ActivityIndicatorBar />
             {!hideRecordingCompanions &&
               (recordingQueueStats.pending > 0 ||

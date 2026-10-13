@@ -29,6 +29,7 @@ import {
   openOrActivateContentSearch,
   openOrActivateSettings,
   openOrReplaceFileTab,
+  patchFileTab,
   replaceWorkspaceLayout,
 } from '@/utils/workspaceTabs/workspaceTabsStore';
 import { readMeta, sortGroupsKo } from '@/utils/chatWithMyself';
@@ -90,7 +91,16 @@ function applyPersistedLayoutToState<T extends { tabs: { id: string }[]; focused
 export function useAdvancedSearchTabsDomain() {
   const { s3Creds } = useAuth();
   const { getS3Client, localRootHandle, localTree, localVaultFsPath, s3Tree, sessionWorkspaces, storageMode, webdavConfig, webdavReady, webdavTree, idbTree } = useVault();
-  const { restorePersistedWorkspaceTabsRef, selectFileRawRef } = useFileSessionOwned();
+  const {
+    currentFileRef,
+    editedFileNameRef,
+    editorContentRef,
+    restorePersistedWorkspaceTabsRef,
+    selectFileRawRef,
+    setCurrentFile,
+    setEditedFileName,
+    setEditorContent,
+  } = useFileSessionOwned();
   const { activateWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab, openChatWorkspaceTab, openContentSearchWorkspaceTab, openLlmAssistWorkspaceTab, openSettingsWorkspaceTab, setState: setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
   const llmAssistSession = useLlmAssistSessionOptional();
   const advancedSearchTreesRef = useRef({
@@ -235,6 +245,49 @@ export function useAdvancedSearchTabsDomain() {
     }
   }, [llmAssistSession, openChatWorkspaceTab, openContentSearchWorkspaceTab, openLlmAssistWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode]);
 
+  /** Clear a stuck restore shell so EditorPane does not spin forever. */
+  const settleRestoreLoadingShell = useCallback(
+    (storageType: string, path: string, fallbackName: string) => {
+      const live = findFileTab(workspaceTabsRef.current, storageType, path);
+      if (!live || live.currentFile?.viewer !== 'loading') return;
+      const kept =
+        typeof live.editorContent === 'string' ? live.editorContent : '';
+      const name =
+        String(live.editedFileName || live.currentFile?.name || fallbackName || 'file');
+      const settledFile = {
+        type: storageType,
+        id: path,
+        name,
+        content: kept,
+        viewer: kept ? 'markdown' : 'unsupported',
+      };
+      const next = patchFileTab(workspaceTabsRef.current, live.id, {
+        currentFile: settledFile,
+        editorContent: kept,
+      });
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      if (next.activeId === live.id) {
+        setCurrentFile(settledFile);
+        currentFileRef.current = settledFile;
+        setEditorContent(kept);
+        editorContentRef.current = kept;
+        setEditedFileName(name);
+        editedFileNameRef.current = name;
+      }
+    },
+    [
+      currentFileRef,
+      editedFileNameRef,
+      editorContentRef,
+      setCurrentFile,
+      setEditedFileName,
+      setEditorContent,
+      setWorkspaceTabs,
+      workspaceTabsRef,
+    ],
+  );
+
   const restorePersistedWorkspaceTabs = useCallback(
     async (persisted: any, options: any = {}) => {
       const { activeId: explicitActiveId = null, navigateActiveUrl = false } = options as {
@@ -336,19 +389,30 @@ export function useAdvancedSearchTabsDomain() {
 
       // Load file contents in the background without stealing focus.
       await forEachWithConcurrency(fileTabs, TAB_RESTORE_FILE_CONCURRENCY, async (tab: any) => {
+        const fallbackName = tab.path.split('/').filter(Boolean).pop() || 'file';
         try {
           const node = await resolveClosedFileNode({
             kind: 'file',
             storageType: tab.type,
             path: tab.path,
           });
-          if ((node as any)?.type !== 'file') return;
-          await selectFileRawRef.current?.(tab.type, node, {
+          if ((node as any)?.type !== 'file') {
+            // Missing file — do not leave viewer:"loading" forever.
+            settleRestoreLoadingShell(tab.type, tab.path, fallbackName);
+            return;
+          }
+          const openFile = selectFileRawRef.current;
+          if (!openFile) {
+            settleRestoreLoadingShell(tab.type, tab.path, fallbackName);
+            return;
+          }
+          await openFile(tab.type, node, {
             skipNavigate: true,
             background: true,
           });
         } catch (err) {
           console.warn('Failed to restore workspace tab:', tab.path, err);
+          settleRestoreLoadingShell(tab.type, tab.path, fallbackName);
         }
       });
 
@@ -364,7 +428,14 @@ export function useAdvancedSearchTabsDomain() {
 
       return restoredAny;
     },
-    [activateWorkspaceTab, resolveClosedFileNode, setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef],
+    [
+      activateWorkspaceTab,
+      resolveClosedFileNode,
+      settleRestoreLoadingShell,
+      setWorkspaceTabs,
+      workspaceTabsEnabledRef,
+      workspaceTabsRef,
+    ],
   );
 
   useEffect(() => {

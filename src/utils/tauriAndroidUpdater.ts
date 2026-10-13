@@ -5,6 +5,8 @@ import { isTauriAndroid } from '@/utils/tauriPlatform';
 const GITHUB_LATEST_API =
   'https://api.github.com/repos/explainpark101/DocuHaim/releases/latest';
 
+const ANDROID_APK_DOWNLOAD_PROGRESS_EVENT = 'android-apk-download-progress';
+
 export type TauriAndroidUpdateCheckResult =
   | {
       ok: true;
@@ -22,6 +24,21 @@ export type TauriAndroidUpdateCheckResult =
       updateAvailable?: boolean;
     };
 
+export type AndroidUpdateUiPhase =
+  | 'idle'
+  | 'downloading'
+  | 'ready'
+  | 'installing'
+  | 'error';
+
+export type AndroidUpdateUiState = {
+  phase: AndroidUpdateUiPhase;
+  /** 0–100 when Content-Length known; null while indeterminate. */
+  percent: number | null;
+  version: string;
+  error: string;
+};
+
 type GithubReleaseAsset = {
   name?: string;
   browser_download_url?: string;
@@ -32,14 +49,67 @@ type GithubLatestRelease = {
   assets?: GithubReleaseAsset[];
 };
 
-let pendingApk: { url: string; name: string; version: string } | null = null;
+type PendingApk = {
+  url: string;
+  name: string;
+  version: string;
+  localPath?: string;
+};
+
+type ProgressPayload = {
+  downloaded?: number;
+  total?: number | null;
+  percent?: number | null;
+};
+
+let pendingApk: PendingApk | null = null;
+let downloadPromise: Promise<string> | null = null;
+let progressUnlisten: (() => void) | null = null;
+
+const uiListeners = new Set<() => void>();
+
+let uiState: AndroidUpdateUiState = {
+  phase: 'idle',
+  percent: null,
+  version: '',
+  error: '',
+};
+
+function setUiState(patch: Partial<AndroidUpdateUiState>): void {
+  uiState = { ...uiState, ...patch };
+  uiListeners.forEach((cb) => {
+    try {
+      cb();
+    } catch {
+      // ignore subscriber errors
+    }
+  });
+}
+
+export function getAndroidUpdateUiState(): AndroidUpdateUiState {
+  return uiState;
+}
+
+export function subscribeAndroidUpdateUi(listener: () => void): () => void {
+  uiListeners.add(listener);
+  return () => {
+    uiListeners.delete(listener);
+  };
+}
 
 export function clearPendingTauriAndroidUpdate(): void {
   pendingApk = null;
+  downloadPromise = null;
+  void detachProgressListener();
+  setUiState({ phase: 'idle', percent: null, version: '', error: '' });
 }
 
 export function hasPendingTauriAndroidUpdate(): boolean {
   return pendingApk !== null;
+}
+
+export function hasDownloadedTauriAndroidUpdate(): boolean {
+  return Boolean(pendingApk?.localPath);
 }
 
 function normalizeSemver(tag: string): string {
@@ -143,7 +213,7 @@ export async function checkTauriAndroidUpdate(): Promise<TauriAndroidUpdateCheck
 
     const updateAvailable = compareSemver(localVersion, remoteVersion) < 0;
     if (!updateAvailable) {
-      pendingApk = null;
+      clearPendingTauriAndroidUpdate();
       return {
         ok: true,
         localVersion,
@@ -164,11 +234,36 @@ export async function checkTauriAndroidUpdate(): Promise<TauriAndroidUpdateCheck
       };
     }
 
-    pendingApk = {
-      url: asset.browser_download_url,
-      name: asset.name,
-      version: remoteVersion,
-    };
+    const samePending =
+      pendingApk &&
+      pendingApk.url === asset.browser_download_url &&
+      pendingApk.name === asset.name &&
+      pendingApk.version === remoteVersion;
+
+    if (!samePending) {
+      pendingApk = {
+        url: asset.browser_download_url,
+        name: asset.name,
+        version: remoteVersion,
+      };
+      downloadPromise = null;
+      if (uiState.phase !== 'downloading' && uiState.phase !== 'installing') {
+        setUiState({
+          phase: 'idle',
+          percent: null,
+          version: remoteVersion,
+          error: '',
+        });
+      }
+    } else if (pendingApk) {
+      pendingApk = {
+        ...pendingApk,
+        url: asset.browser_download_url,
+        name: asset.name,
+        version: remoteVersion,
+      };
+    }
+
     return {
       ok: true,
       localVersion,
@@ -199,37 +294,165 @@ function invokeErrorMessage(error: unknown): string {
   return String(error ?? '');
 }
 
+function mapInstallError(error: unknown): Error {
+  const message = invokeErrorMessage(error);
+  const lower = message.toLowerCase();
+  if (message.includes('NEED_UNKNOWN_SOURCES') || lower.includes('unknown_sources')) {
+    return new Error(
+      '이 앱에서 APK를 설치하려면 방금 연 설정에서 「알 수 없는 앱 설치」를 허용한 뒤, 다시 「업데이트」를 눌러 주세요.',
+    );
+  }
+  if (
+    lower.includes('incompatible') ||
+    lower.includes('signature') ||
+    lower.includes('conflict') ||
+    lower.includes('패키지')
+  ) {
+    return new Error(
+      '기존 앱과 서명(패키지)이 달라 업데이트할 수 없습니다. DocuHaim을 삭제한 뒤 GitHub Release의 최신 APK를 다시 설치해 주세요. (이후부터는 같은 sideload 서명으로 자동 업데이트가 됩니다.)',
+    );
+  }
+  return error instanceof Error ? error : new Error(message || 'Android update install failed');
+}
+
+async function detachProgressListener(): Promise<void> {
+  if (!progressUnlisten) return;
+  try {
+    progressUnlisten();
+  } catch {
+    // ignore
+  }
+  progressUnlisten = null;
+}
+
+async function attachProgressListener(): Promise<void> {
+  await detachProgressListener();
+  try {
+    const { listen } = await import('@tauri-apps/api/event');
+    progressUnlisten = await listen<ProgressPayload>(
+      ANDROID_APK_DOWNLOAD_PROGRESS_EVENT,
+      (event) => {
+        const payload = event.payload || {};
+        const raw = payload.percent;
+        const percent =
+          typeof raw === 'number' && Number.isFinite(raw)
+            ? Math.max(0, Math.min(100, Math.floor(raw)))
+            : null;
+        if (uiState.phase === 'downloading') {
+          setUiState({ percent });
+        }
+      },
+    );
+  } catch (error) {
+    console.warn('Android APK progress listener failed:', error);
+  }
+}
+
+/**
+ * Download the pending APK in the background. Safe to call repeatedly (deduped).
+ * App remains usable; progress is published via subscribeAndroidUpdateUi.
+ */
+export async function downloadPendingTauriAndroidUpdate(): Promise<string> {
+  if (!pendingApk) {
+    throw new Error('No pending Android update');
+  }
+  if (pendingApk.localPath) {
+    setUiState({
+      phase: 'ready',
+      percent: 100,
+      version: pendingApk.version,
+      error: '',
+    });
+    return pendingApk.localPath;
+  }
+  if (downloadPromise) {
+    return downloadPromise;
+  }
+
+  const snapshot = pendingApk;
+  setUiState({
+    phase: 'downloading',
+    percent: 0,
+    version: snapshot.version,
+    error: '',
+  });
+
+  downloadPromise = (async () => {
+    await attachProgressListener();
+    try {
+      const path = await invoke<string>('android_download_apk', {
+        url: snapshot.url,
+        fileName: snapshot.name,
+      });
+      if (pendingApk && pendingApk.url === snapshot.url && pendingApk.name === snapshot.name) {
+        pendingApk = { ...pendingApk, localPath: path };
+      } else {
+        pendingApk = { ...snapshot, localPath: path };
+      }
+      setUiState({
+        phase: 'ready',
+        percent: 100,
+        version: snapshot.version,
+        error: '',
+      });
+      return path;
+    } catch (error: unknown) {
+      const message = invokeErrorMessage(error);
+      setUiState({
+        phase: 'error',
+        percent: null,
+        version: snapshot.version,
+        error: message || 'Android update download failed',
+      });
+      throw error instanceof Error ? error : new Error(message || 'Android update download failed');
+    } finally {
+      await detachProgressListener();
+      downloadPromise = null;
+    }
+  })();
+
+  return downloadPromise;
+}
+
+/**
+ * Install a previously downloaded APK. Keeps pending metadata on failure so the
+ * status-bar Update button can retry after the user cancels the system/install flow.
+ */
 export async function installPendingTauriAndroidUpdate(): Promise<void> {
   if (!pendingApk) {
     throw new Error('No pending Android update');
   }
+
+  let localPath = pendingApk.localPath;
+  if (!localPath) {
+    localPath = await downloadPendingTauriAndroidUpdate();
+  }
+
   const snapshot = pendingApk;
-  pendingApk = null;
+  setUiState({
+    phase: 'installing',
+    percent: 100,
+    version: snapshot.version,
+    error: '',
+  });
+
   try {
-    await invoke<string>('android_download_and_install_apk', {
-      url: snapshot.url,
-      fileName: snapshot.name,
+    await invoke('android_install_apk', { path: localPath });
+    // Installer UI takes over; leave ready so Cancel / retry still works if user backs out.
+    setUiState({
+      phase: 'ready',
+      percent: 100,
+      version: snapshot.version,
+      error: '',
     });
   } catch (error: unknown) {
-    pendingApk = snapshot;
-    const message = invokeErrorMessage(error);
-    const lower = message.toLowerCase();
-    if (message.includes('NEED_UNKNOWN_SOURCES') || lower.includes('unknown_sources')) {
-      throw new Error(
-        '이 앱에서 APK를 설치하려면 방금 연 설정에서 「알 수 없는 앱 설치」를 허용한 뒤, 다시 「업데이트」를 눌러 주세요.',
-      );
-    }
-    if (
-      lower.includes('incompatible') ||
-      lower.includes('signature') ||
-      lower.includes('conflict') ||
-      lower.includes('패키지')
-    ) {
-      throw new Error(
-        '기존 앱과 서명(패키지)이 달라 업데이트할 수 없습니다. DocuHaim을 삭제한 뒤 GitHub Release의 최신 APK를 다시 설치해 주세요. (이후부터는 같은 sideload 서명으로 자동 업데이트가 됩니다.)',
-      );
-    }
-    throw error instanceof Error ? error : new Error(message || 'Android update install failed');
+    setUiState({
+      phase: 'ready',
+      percent: 100,
+      version: snapshot.version,
+      error: '',
+    });
+    throw mapInstallError(error);
   }
 }
 

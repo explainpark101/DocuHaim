@@ -32,6 +32,7 @@ export type PwaSnippetsValue = PwaSnippetsOwnedApi & {
   handleApplyPwaUpdate: (...args: any[]) => any;
   handleCheckAppUpdate: (...args: any[]) => any;
   handleConfirmAppUpdate: (...args: any[]) => any;
+  handleAndroidUpdateStatusBarAction: () => void;
   handleChangeSnippetConfig: (...args: any[]) => any;
   handleSaveSnippetConfig: (...args: any[]) => any;
   isSavingSnippets: boolean;

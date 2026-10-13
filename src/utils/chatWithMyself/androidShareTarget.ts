@@ -8,16 +8,30 @@ import { readOpenPathBytes } from '@/utils/shared/desktopOpenFiles';
 
 export const ANDROID_SHARE_TARGET_EVENT = 'android-share-target';
 
+/** From Android activity-alias share targets. */
+export type AndroidShareMode = 'sendSelf' | 'chooseGroup' | 'choose';
+
 export type AndroidSharePayload = {
   title?: string;
   text?: string;
   urls?: string[];
+  /** `sendSelf` | `chooseGroup` | `choose` */
+  mode?: string;
 };
 
 export type AndroidShareIntake = {
   body: string;
   files: File[];
+  mode: AndroidShareMode;
 };
+
+function normalizeShareMode(mode: string | null | undefined): AndroidShareMode {
+  const value = String(mode || '').trim();
+  if (value === 'sendSelf' || value === 'chooseGroup' || value === 'choose') {
+    return value;
+  }
+  return 'choose';
+}
 
 type Listener = (intake: AndroidShareIntake) => void;
 
@@ -65,7 +79,7 @@ function buildShareBody(payload: AndroidSharePayload): string {
 
 function intakeKey(intake: AndroidShareIntake): string {
   const names = intake.files.map((f) => `${f.name}:${f.size}`).join('|');
-  return `${intake.body}\0${names}`;
+  return `${intake.mode}\0${intake.body}\0${names}`;
 }
 
 function publish(intake: AndroidShareIntake): void {
@@ -114,7 +128,7 @@ async function intakeFromPayload(
     Array.isArray(payload.urls) ? payload.urls : [],
   );
   if (!body && !files.length) return null;
-  return { body, files };
+  return { body, files, mode: normalizeShareMode(payload.mode) };
 }
 
 export function subscribeAndroidShareTarget(listener: Listener): () => void {

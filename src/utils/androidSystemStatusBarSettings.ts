@@ -1,9 +1,10 @@
 /**
  * Android system status bar (clock / battery) visibility preference.
- * Applies via Tauri JNI command on MainActivity.
+ * Applies via Tauri JNI command on MainActivity + CSS --android-safe-top.
  *
  * Modes:
- * - `status-bar` — keep system status bar visible (content padded below)
+ * - `status-bar` — keep system status bar visible; web pads below it
+ *   (edge-to-edge WebView; do not rely on setDecorFitsSystemWindows)
  * - `fullscreen` — immersive hide / cover the status bar
  */
 
@@ -60,20 +61,23 @@ export async function applyAndroidSystemStatusBarVisible(
   );
   document.documentElement.classList.toggle('android-chrome-fullscreen', !visible);
   document.documentElement.classList.toggle('android-chrome-status-bar', visible);
-  // Prefer native decorFits inset (no CSS pad). If JNI fails, fall back to CSS pad.
-  document.documentElement.style.removeProperty('--android-safe-top');
   try {
-    await invoke('android_set_system_status_bar_visible', { visible });
-  } catch (error) {
-    console.warn('android_set_system_status_bar_visible failed:', error);
-    if (visible) {
+    const insetPx = await invoke<number>('android_set_system_status_bar_visible', {
+      visible,
+    });
+    if (visible && Number.isFinite(insetPx) && insetPx > 0) {
+      // Exact native inset — avoids overlap when env(safe-area-inset-top) is 0.
       document.documentElement.style.setProperty(
         '--android-safe-top',
-        'max(env(safe-area-inset-top, 0px), var(--android-status-bar-fallback, 28px))',
+        `${Math.round(insetPx)}px`,
       );
     } else {
       document.documentElement.style.setProperty('--android-safe-top', '0px');
     }
+  } catch (error) {
+    console.warn('android_set_system_status_bar_visible failed:', error);
+    // Classes still apply CSS max(env, fallback) when inline is cleared.
+    document.documentElement.style.removeProperty('--android-safe-top');
   }
 }
 

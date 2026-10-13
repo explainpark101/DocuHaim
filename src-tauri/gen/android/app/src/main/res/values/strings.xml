@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">"DocuHaim"</string>
     <string name="main_activity_title">"DocuHaim"</string>
+    <!-- Android share-sheet target labels (activity-alias) -->
+    <string name="share_to_chat_self">나와의 채팅으로 공유</string>
+    <string name="share_to_my_group">나의 그룹에 공유</string>
 </resources>

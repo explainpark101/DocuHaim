@@ -121,6 +121,9 @@ struct AndroidSharePayload {
     title: String,
     text: String,
     urls: Vec<String>,
+    /// `sendSelf` | `chooseGroup` | `choose` (from activity-alias).
+    #[serde(default)]
+    mode: String,
 }
 
 #[cfg(target_os = "android")]
@@ -178,6 +181,14 @@ fn decode_data_text_plain(url: &str) -> Option<String> {
 }
 
 #[cfg(target_os = "android")]
+fn normalize_android_share_mode(mode: &str) -> String {
+    match mode.trim() {
+        "sendSelf" | "chooseGroup" | "choose" => mode.trim().to_string(),
+        _ => "choose".to_string(),
+    }
+}
+
+#[cfg(target_os = "android")]
 fn push_android_share(app: &AppHandle, mut payload: AndroidSharePayload) {
     if payload.text.is_empty() {
         for url in &payload.urls {
@@ -191,6 +202,7 @@ fn push_android_share(app: &AppHandle, mut payload: AndroidSharePayload) {
         let t = u.trim();
         !t.is_empty() && !t.starts_with("data:text/plain")
     });
+    payload.mode = normalize_android_share_mode(&payload.mode);
     if payload.title.is_empty() && payload.text.is_empty() && payload.urls.is_empty() {
         return;
     }
@@ -198,6 +210,35 @@ fn push_android_share(app: &AppHandle, mut payload: AndroidSharePayload) {
         state.push(payload.clone());
     }
     let _ = app.emit("android-share-target", payload);
+}
+
+/// Build a share payload from MainActivity pending extras (+ optional Opened URLs).
+#[cfg(target_os = "android")]
+fn android_share_from_activity_extras(opened_urls: Vec<String>) -> Option<AndroidSharePayload> {
+    let title = android_native::take_pending_share_title();
+    let text = android_native::take_pending_share_text();
+    let mode = android_native::take_pending_share_mode();
+    let mut urls: Vec<String> = android_native::take_pending_share_uris()
+        .split('\n')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect();
+    for url in opened_urls {
+        let trimmed = url.trim().to_string();
+        if !trimmed.is_empty() && !urls.iter().any(|u| u == &trimmed) {
+            urls.push(trimmed);
+        }
+    }
+    if title.is_empty() && text.is_empty() && urls.is_empty() {
+        return None;
+    }
+    Some(AndroidSharePayload {
+        title,
+        text,
+        urls,
+        mode: normalize_android_share_mode(&mode),
+    })
 }
 
 fn path_from_url_or_raw(s: &str) -> Option<String> {
@@ -351,7 +392,17 @@ fn take_pending_open_paths(state: tauri::State<'_, PendingOpenPaths>) -> Vec<Str
 fn take_pending_android_share(
     state: tauri::State<'_, PendingAndroidShare>,
 ) -> Option<AndroidSharePayload> {
-    state.take()
+    if let Some(payload) = state.take() {
+        return Some(payload);
+    }
+    // Recover when Opened has not pushed yet (text-only or race). Consuming the
+    // share flag prevents a later Opened from treating stream URIs as file opens.
+    if android_native::consume_last_intent_was_share() {
+        if let Some(payload) = android_share_from_activity_extras(Vec::new()) {
+            return Some(payload);
+        }
+    }
+    None
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -467,6 +518,7 @@ pub fn run() {
                 android_native::android_primary_abi,
                 android_native::android_open_external_url,
                 android_native::android_install_apk,
+                android_native::android_download_apk,
                 android_native::android_download_and_install_apk,
             ]);
     }
@@ -536,19 +588,16 @@ pub fn run() {
                     {
                         let was_share = android_native::consume_last_intent_was_share();
                         if was_share {
-                            let title = android_native::take_pending_share_title();
-                            let text = android_native::take_pending_share_text();
                             let share_urls: Vec<String> =
                                 urls.iter().map(|u| u.as_str().to_string()).collect();
-                            push_android_share(
-                                app_handle,
-                                AndroidSharePayload {
-                                    title,
-                                    text,
-                                    urls: share_urls,
-                                },
-                            );
+                            if let Some(payload) = android_share_from_activity_extras(share_urls)
+                            {
+                                push_android_share(app_handle, payload);
+                            }
                         } else {
+                            // Markdown file association only. Do not treat leftover
+                            // share EXTRA_STREAM content:// URIs as open-file (race
+                            // after take_pending_android_share already consumed share).
                             let paths: Vec<String> = urls
                                 .iter()
                                 .filter_map(|u| {
@@ -560,9 +609,7 @@ pub fn run() {
                                         path_from_url_or_raw(u.as_str())
                                     }
                                 })
-                                .filter(|p| {
-                                    looks_like_markdown_path(p) || p.starts_with("content:")
-                                })
+                                .filter(|p| looks_like_markdown_path(p))
                                 .collect();
                             push_paths(app_handle, paths);
                         }

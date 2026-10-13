@@ -7,11 +7,13 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 use jni::objects::{JObject, JValue};
 use jni::JavaVM;
+use serde::Serialize;
 use tauri::tao::platform::android::prelude::main_android_context;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// Borrow the process-wide Android activity jobject without deleting it on Drop.
 ///
@@ -31,14 +33,6 @@ where
     // Do not DeleteLocalRef the shared activity jobject.
     std::mem::forget(activity);
     result
-}
-
-fn call_activity_void(method: &str, sig: &str, args: &[JValue]) -> Result<(), String> {
-    with_main_activity(|env, activity| {
-        env.call_method(activity, method, sig, args)
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    })
 }
 
 fn call_activity_bool(method: &str, sig: &str, args: &[JValue]) -> Result<bool, String> {
@@ -126,13 +120,33 @@ pub fn take_pending_share_title() -> String {
     call_main_activity_static_string("takePendingShareTitle")
 }
 
+/// Share target mode from activity-alias (`sendSelf` | `chooseGroup` | `choose`).
+pub fn take_pending_share_mode() -> String {
+    call_main_activity_static_string("takePendingShareMode")
+}
+
+/// EXTRA_STREAM URIs joined by newline.
+pub fn take_pending_share_uris() -> String {
+    call_main_activity_static_string("takePendingShareUris")
+}
+
+/// Show/hide the system status bar. Returns status-bar inset top in px
+/// (0 when hidden) for CSS `--android-safe-top` padding.
 #[tauri::command]
-pub fn android_set_system_status_bar_visible(visible: bool) -> Result<(), String> {
-    call_activity_void(
-        "setSystemStatusBarVisible",
-        "(Z)V",
-        &[JValue::Bool(u8::from(visible))],
-    )
+pub fn android_set_system_status_bar_visible(visible: bool) -> Result<i32, String> {
+    with_main_activity(|env, activity| {
+        let value = env
+            .call_method(
+                activity,
+                "setSystemStatusBarVisible",
+                "(Z)I",
+                &[JValue::Bool(u8::from(visible))],
+            )
+            .map_err(|e| e.to_string())?
+            .i()
+            .map_err(|e| e.to_string())?;
+        Ok(value)
+    })
 }
 
 #[tauri::command]
@@ -189,6 +203,7 @@ pub fn android_open_external_url(url: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn android_install_apk(path: String) -> Result<(), String> {
+    android_ensure_install_permission()?;
     let status = with_main_activity(|env, activity| {
         let path_j = env.new_string(&path).map_err(|e| e.to_string())?;
         let obj = env
@@ -215,17 +230,15 @@ fn android_ensure_install_permission() -> Result<(), String> {
     map_install_status(status, "ensureInstallPermission failed")
 }
 
-/// Download an APK URL into app cache and launch the system package installer.
-#[tauri::command]
-pub async fn android_download_and_install_apk(
-    app: AppHandle,
-    url: String,
-    file_name: String,
-) -> Result<String, String> {
-    android_ensure_install_permission()?;
-    if !url.starts_with("https://") {
-        return Err("APK download URL must be https".into());
-    }
+#[derive(Debug, Serialize, Clone)]
+struct AndroidApkDownloadProgress {
+    downloaded: u64,
+    total: Option<u64>,
+    /// 0–100 when Content-Length is known; omitted when unknown.
+    percent: Option<u8>,
+}
+
+fn sanitize_apk_file_name(file_name: &str) -> Result<String, String> {
     let safe_name = file_name
         .chars()
         .map(|c| {
@@ -239,6 +252,41 @@ pub async fn android_download_and_install_apk(
     if safe_name.is_empty() || !safe_name.ends_with(".apk") {
         return Err("invalid APK file name".into());
     }
+    Ok(safe_name)
+}
+
+fn emit_apk_download_progress(
+    app: &AppHandle,
+    downloaded: u64,
+    total: Option<u64>,
+) {
+    let percent = total.and_then(|t| {
+        if t == 0 {
+            None
+        } else {
+            Some(((downloaded as f64 / t as f64) * 100.0).floor().min(100.0) as u8)
+        }
+    });
+    let _ = app.emit(
+        "android-apk-download-progress",
+        AndroidApkDownloadProgress {
+            downloaded,
+            total,
+            percent,
+        },
+    );
+}
+
+/// Download an APK URL into app cache. Emits `android-apk-download-progress` while reading.
+async fn download_apk_to_cache(
+    app: &AppHandle,
+    url: &str,
+    file_name: &str,
+) -> Result<String, String> {
+    if !url.starts_with("https://") {
+        return Err("APK download URL must be https".into());
+    }
+    let safe_name = sanitize_apk_file_name(file_name)?;
 
     let cache_dir: PathBuf = app
         .path()
@@ -253,7 +301,7 @@ pub async fn android_download_and_install_apk(
         .build()
         .map_err(|e| e.to_string())?;
     let mut response = client
-        .get(&url)
+        .get(url)
         .header(
             reqwest::header::USER_AGENT,
             "DocuHaim-Android-Updater/1.0",
@@ -269,13 +317,32 @@ pub async fn android_download_and_install_apk(
         return Err(format!("download HTTP {}", response.status()));
     }
 
+    let total = response.content_length();
+    emit_apk_download_progress(app, 0, total);
+
     let mut file = File::create(&dest).map_err(|e| e.to_string())?;
     let mut written: u64 = 0;
+    let mut last_emit = Instant::now() - Duration::from_millis(200);
+    let mut last_percent: Option<u8> = None;
     loop {
         match response.chunk().await {
             Ok(Some(chunk)) => {
                 file.write_all(&chunk).map_err(|e| e.to_string())?;
                 written += chunk.len() as u64;
+                let percent = total.and_then(|t| {
+                    if t == 0 {
+                        None
+                    } else {
+                        Some(((written as f64 / t as f64) * 100.0).floor().min(100.0) as u8)
+                    }
+                });
+                let percent_changed = percent != last_percent;
+                let due = last_emit.elapsed() >= Duration::from_millis(150);
+                if percent_changed || due {
+                    emit_apk_download_progress(app, written, total);
+                    last_emit = Instant::now();
+                    last_percent = percent;
+                }
             }
             Ok(None) => break,
             Err(e) => return Err(format!("read body failed: {e}")),
@@ -288,7 +355,28 @@ pub async fn android_download_and_install_apk(
         return Err("downloaded APK looks too small".into());
     }
 
-    let path_str = dest.to_string_lossy().into_owned();
+    emit_apk_download_progress(app, written, total.or(Some(written)));
+    Ok(dest.to_string_lossy().into_owned())
+}
+
+/// Download an APK into cache only (app stays usable; install separately).
+#[tauri::command]
+pub async fn android_download_apk(
+    app: AppHandle,
+    url: String,
+    file_name: String,
+) -> Result<String, String> {
+    download_apk_to_cache(&app, &url, &file_name).await
+}
+
+/// Download an APK URL into app cache and launch the system package installer.
+#[tauri::command]
+pub async fn android_download_and_install_apk(
+    app: AppHandle,
+    url: String,
+    file_name: String,
+) -> Result<String, String> {
+    let path_str = download_apk_to_cache(&app, &url, &file_name).await?;
     android_install_apk(path_str.clone())?;
     Ok(path_str)
 }

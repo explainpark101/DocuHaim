@@ -29,6 +29,8 @@ import { useFileSession } from '@/App/hooks/useFileSession';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import { useVault } from '@/App/hooks/useVault';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
+import { getAndroidUpdateUiState } from '@/utils/tauriAndroidUpdater';
+import { isTauriAndroid } from '@/utils/tauriPlatform';
 
 /** App-level modals — domain hooks + modal slice (no AppShell mega-bag). */
 export function AppModals() {
@@ -259,14 +261,36 @@ export function AppModals() {
       message={(() => {
         const localLabel = appBuildLocalId || '알 수 없음';
         const remoteLabel = appBuildRemoteId;
+        const androidUi = isTauriAndroid() ? getAndroidUpdateUiState() : null;
         if (appUpdateCheckError && !appUpdateAvailable) {
           return [
             '최신 버전을 확인할 수 없습니다.',
             `현재 버전: ${localLabel}`,
             `사유: ${appUpdateCheckError}`,
             '',
-            '그래도 앱을 다시 로드해 최신 상태를 적용할 수 있습니다.',
+            isTauriAndroid()
+              ? '하단 상태 표시줄의 업데이트 버튼으로 다시 시도할 수 있습니다.'
+              : '그래도 앱을 다시 로드해 최신 상태를 적용할 수 있습니다.',
           ].join('\n');
+        }
+        if (isTauriAndroid() && appUpdateAvailable) {
+          if (androidUi?.phase === 'error' || appUpdateCheckError) {
+            return [
+              '업데이트 파일을 받지 못했습니다.',
+              `현재 버전: ${localLabel}`,
+              remoteLabel ? `최신 버전: ${remoteLabel}` : null,
+              `사유: ${appUpdateCheckError || androidUi?.error || 'unknown'}`,
+              '',
+              '취소를 눌러도 하단 상태 표시줄에서 다시 시도할 수 있습니다.',
+            ].filter(Boolean).join('\n');
+          }
+          return [
+            '업데이트 파일이 준비되었습니다. 저장 중인 작업을 확인한 뒤 설치를 진행하세요.',
+            `현재 버전: ${localLabel}`,
+            remoteLabel ? `최신 버전: ${remoteLabel}` : null,
+            '',
+            '취소를 눌러도 하단 상태 표시줄의 「업데이트」 버튼으로 다시 설치할 수 있습니다.',
+          ].filter(Boolean).join('\n');
         }
         if (appUpdateAvailable) {
           return [
@@ -285,20 +309,23 @@ export function AppModals() {
       })()}
       confirmLabel={
         isApplyingPwaUpdate
-          ? '업데이트 중...'
+          ? isTauriAndroid()
+            ? '설치 중...'
+            : '업데이트 중...'
           : appUpdateAvailable
             ? '최신 버전으로 업데이트'
             : '다시 로드'
       }
       cancelLabel="취소"
       confirmDisabled={isApplyingPwaUpdate}
-      cancelDisabled={isApplyingPwaUpdate}
+      // Android: allow dismiss during install so status-bar Update can retry later.
+      cancelDisabled={isApplyingPwaUpdate && !isTauriAndroid()}
       onConfirm={() => {
         if (isApplyingPwaUpdate) return;
         void handleConfirmAppUpdate();
       }}
       onCancel={
-        isApplyingPwaUpdate
+        isApplyingPwaUpdate && !isTauriAndroid()
           ? undefined
           : () => {
               setShowAppUpdateConfirmModal(false);

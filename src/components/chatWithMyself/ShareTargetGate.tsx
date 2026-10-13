@@ -101,6 +101,9 @@ export default function ShareTargetGate({
   const actionLockRef = useRef(false);
   const ensureChatOpenRef = useRef<() => void>(() => {});
   const onComposeClaimedRef = useRef(onComposeClaimed);
+  const isUnlockedRef = useRef(isUnlocked);
+  const storageReadyRef = useRef(storageReady);
+  const chatCtxRef = useRef(chatCtx);
 
   const blocking =
     sharePromptHasContent(prompt) || !bootstrapDone || shareIntakePending;
@@ -112,6 +115,12 @@ export default function ShareTargetGate({
   useEffect(() => {
     onComposeClaimedRef.current = onComposeClaimed;
   }, [onComposeClaimed]);
+
+  useEffect(() => {
+    isUnlockedRef.current = isUnlocked;
+    storageReadyRef.current = storageReady;
+    chatCtxRef.current = chatCtx;
+  }, [isUnlocked, storageReady, chatCtx]);
 
   // Allow a new chooser action when a fresh prompt arrives.
   useEffect(() => {
@@ -175,16 +184,68 @@ export default function ShareTargetGate({
     };
   }, [bootstrapDone, prompt]);
 
-  // Tauri Android: ACTION_SEND / SEND_MULTIPLE (PWA share_target equivalent).
+  // Tauri Android: ACTION_SEND / SEND_MULTIPLE via activity-alias targets.
+  // sendSelf / chooseGroup skip the in-app chooser and route immediately.
   useEffect(() => {
     return subscribeAndroidShareTarget((intake) => {
       const body = String(intake.body || '').trim();
       const files = normalizeShareFiles(intake.files);
       if (!body && !files.length) return;
-      setPrompt({ body, files });
       setBootstrapDone(true);
       setShareIntakePending(false);
       ensureChatOpenRef.current();
+      const mode = intake.mode || 'choose';
+      if (mode === 'sendSelf') {
+        void (async () => {
+          let appended = false;
+          const ctx = chatCtxRef.current;
+          try {
+            if (isUnlockedRef.current && storageReadyRef.current && ctx) {
+              const { dateStr } = await appendShareChatMessage(ctx, {
+                body,
+                files,
+                group: SELF_GROUP,
+              });
+              appended = true;
+              if (dateStr) {
+                postChatSyncEvent('day', { dateStr });
+                postChatLocalSyncEvent('day', { dateStr });
+              }
+            } else {
+              await enqueuePendingShare({ body, files, intent: 'sendSelf' });
+            }
+          } catch {
+            if (!appended) {
+              try {
+                await enqueuePendingShare({ body, files, intent: 'sendSelf' });
+              } catch {
+                /* ignore */
+              }
+            }
+          }
+        })();
+        return;
+      }
+      if (mode === 'chooseGroup') {
+        void (async () => {
+          const payload: ShareComposeClaimPayload = {
+            id: `share-group-send-${Date.now()}`,
+            body,
+            files,
+          };
+          if (isUnlockedRef.current) {
+            onComposeClaimedRef.current?.(payload);
+          } else {
+            try {
+              await enqueuePendingShare({ body, files, intent: 'compose' });
+            } catch {
+              /* ignore */
+            }
+          }
+        })();
+        return;
+      }
+      setPrompt({ body, files });
     });
   }, []);
 

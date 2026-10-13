@@ -15,6 +15,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -43,6 +44,21 @@ class MainActivity : TauriActivity() {
     @Volatile
     private var pendingShareTitle: String = ""
 
+    /**
+     * Share-sheet target mode from activity-alias component:
+     * - sendSelf — ShareToSelfAlias
+     * - chooseGroup — ShareToGroupAlias
+     * - choose — legacy / unknown (in-app chooser)
+     */
+    @JvmStatic
+    @Volatile
+    private var pendingShareMode: String = ""
+
+    /** EXTRA_STREAM URI list joined by newline (URIs do not contain newlines). */
+    @JvmStatic
+    @Volatile
+    private var pendingShareUris: String = ""
+
     private val mainHandler = Handler(Looper.getMainLooper())
 
     const val ACTION_APK_INSTALL_STATUS = "com.docuhaim.app.APK_INSTALL_STATUS"
@@ -58,6 +74,20 @@ class MainActivity : TauriActivity() {
     fun takePendingShareTitle(): String {
       val value = pendingShareTitle
       pendingShareTitle = ""
+      return value
+    }
+
+    @JvmStatic
+    fun takePendingShareMode(): String {
+      val value = pendingShareMode
+      pendingShareMode = ""
+      return value
+    }
+
+    @JvmStatic
+    fun takePendingShareUris(): String {
+      val value = pendingShareUris
+      pendingShareUris = ""
       return value
     }
 
@@ -102,6 +132,57 @@ class MainActivity : TauriActivity() {
       intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty().ifEmpty {
         intent.getStringExtra(Intent.EXTRA_TITLE).orEmpty()
       }
+    pendingShareMode = shareModeFromComponent(intent.component?.className)
+    pendingShareUris = collectShareStreamUris(intent).joinToString("\n")
+  }
+
+  /** Map activity-alias class name → frontend share mode. */
+  private fun shareModeFromComponent(className: String?): String {
+    val name = className.orEmpty()
+    return when {
+      name.endsWith(".ShareToSelfAlias") || name.endsWith("ShareToSelfAlias") ->
+        "sendSelf"
+      name.endsWith(".ShareToGroupAlias") || name.endsWith("ShareToGroupAlias") ->
+        "chooseGroup"
+      else -> "choose"
+    }
+  }
+
+  private fun collectShareStreamUris(intent: Intent): List<String> {
+    val out = ArrayList<String>()
+    when (intent.action) {
+      Intent.ACTION_SEND -> {
+        val uri = streamUriExtra(intent)
+        if (uri != null) out.add(uri.toString())
+      }
+      Intent.ACTION_SEND_MULTIPLE -> {
+        val list = streamUriListExtra(intent)
+        if (list != null) {
+          for (uri in list) {
+            if (uri != null) out.add(uri.toString())
+          }
+        }
+      }
+    }
+    return out
+  }
+
+  private fun streamUriExtra(intent: Intent): Uri? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+    } else {
+      @Suppress("DEPRECATION")
+      intent.getParcelableExtra(Intent.EXTRA_STREAM)
+    }
+  }
+
+  private fun streamUriListExtra(intent: Intent): ArrayList<Uri>? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+    } else {
+      @Suppress("DEPRECATION")
+      intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+    }
   }
 
   override fun onDestroy() {
@@ -176,12 +257,14 @@ class MainActivity : TauriActivity() {
     return result.get() as T
   }
 
-  fun setSystemStatusBarVisible(visible: Boolean) {
-    runOnMainSync {
-      // Status-bar mode: let the system reserve the inset so WebView content
-      // starts below the clock/battery (empty band — no app UI overlap).
-      // Fullscreen: edge-to-edge immersive under the status bar.
-      WindowCompat.setDecorFitsSystemWindows(window, visible)
+  /**
+   * Show/hide the system status bar while staying edge-to-edge.
+   * Returns the status-bar inset top in px so the WebView can pad via CSS
+   * (--android-safe-top); setDecorFitsSystemWindows(true) is unreliable here.
+   */
+  fun setSystemStatusBarVisible(visible: Boolean): Int {
+    return runOnMainSyncResult {
+      WindowCompat.setDecorFitsSystemWindows(window, false)
       val controller = WindowCompat.getInsetsController(window, window.decorView)
       controller.systemBarsBehavior =
         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -190,7 +273,24 @@ class MainActivity : TauriActivity() {
       } else {
         controller.hide(WindowInsetsCompat.Type.statusBars())
       }
+      if (visible) statusBarInsetTopPx() else 0
     }
+  }
+
+  private fun statusBarInsetTopPx(): Int {
+    val insets = ViewCompat.getRootWindowInsets(window.decorView)
+    // Ignoring visibility: height is stable right after show()/hide() races.
+    val top =
+      insets?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.statusBars())?.top
+        ?: 0
+    if (top > 0) return top
+    val resId = resources.getIdentifier("status_bar_height", "dimen", "android")
+    if (resId > 0) {
+      val fromRes = resources.getDimensionPixelSize(resId)
+      if (fromRes > 0) return fromRes
+    }
+    // ~24dp fallback when insets / resource are unavailable
+    return (24f * resources.displayMetrics.density).toInt().coerceAtLeast(24)
   }
 
   fun isSystemStatusBarVisible(): Boolean {
