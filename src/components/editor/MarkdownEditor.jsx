@@ -531,6 +531,13 @@ export default function MarkdownEditor({
   );
   const editorRef = useRef(null);
   const containerRef = useRef(null);
+  const userInputAtRef = useRef(0);
+  const userInputFileKeyRef = useRef('');
+  const userInputFileKey = `${currentFile?.type || ''}:${currentFile?.id || ''}`;
+  if (userInputFileKeyRef.current !== userInputFileKey) {
+    userInputFileKeyRef.current = userInputFileKey;
+    userInputAtRef.current = 0;
+  }
   const previewScrollFollowRef = useRef(null);
   const mirrorEditRemirrorRef = useRef(null);
   const snippetConfigRef = useRef(snippetConfig);
@@ -544,6 +551,16 @@ export default function MarkdownEditor({
     currentFileRef.current = currentFile;
     themeRef.current = theme;
   }, [value, currentFile, theme]);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return undefined;
+    const markUserEdit = () => {
+      userInputAtRef.current = Date.now();
+    };
+    root.addEventListener('beforeinput', markUserEdit, true);
+    return () => root.removeEventListener('beforeinput', markUserEdit, true);
+  }, []);
 
   useEffect(() => {
     if (!isSurfaceLive) return undefined;
@@ -581,6 +598,7 @@ export default function MarkdownEditor({
     onChange,
     editorRef,
     enabled: !previewOnly,
+    isUserEdit: () => Date.now() - userInputAtRef.current < 1000,
   });
 
   const haimTableEdit = useHaimTableEdit({

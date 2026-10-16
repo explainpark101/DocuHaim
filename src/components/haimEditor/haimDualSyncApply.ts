@@ -40,6 +40,18 @@ export function shouldRewriteFollowerPane(followerFocused: boolean): boolean {
 }
 
 /**
+ * Only a pane that actually has keyboard focus may push markdown into the
+ * vault. `lastAuthor` fallback is for follower sync, not for unfocused
+ * split panes (those were writing "" over a loaded note on mount).
+ */
+export function canDriveVaultSync(options: {
+  paneFocused: boolean;
+  vaultReady: boolean;
+}): boolean {
+  return options.paneFocused && options.vaultReady;
+}
+
+/**
  * True while local typing is still inside the dual-sync debounce window.
  * Parent `value` must not replace the live doc in that window (except file switch).
  */

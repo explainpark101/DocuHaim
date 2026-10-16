@@ -3,11 +3,15 @@ import {
   HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
   clampCmOffset,
   clampPmSelection,
+  canDriveVaultSync,
   isLocalInputDebounceActive,
   resolveHaimDualSyncAuthor,
   shouldRewriteFollowerPane,
 } from '@/components/haimEditor/haimDualSyncApply';
-import { isVaultValueEcho } from '@/components/haimEditor/haimExternalValueSync';
+import {
+  isVaultValueEcho,
+  shouldEmitVaultMarkdown,
+} from '@/components/haimEditor/haimExternalValueSync';
 
 describe('HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS', () => {
   it('defaults to 150ms while local input is ongoing', () => {
@@ -124,5 +128,45 @@ describe('clampCmOffset', () => {
 
   it('does not place caret before 0', () => {
     expect(clampCmOffset(-3, 20)).toBe(0);
+  });
+});
+
+describe('canDriveVaultSync', () => {
+  it('allows sync only when the pane is focused and the loaded body is applied', () => {
+    expect(canDriveVaultSync({ paneFocused: true, vaultReady: true })).toBe(true);
+    expect(canDriveVaultSync({ paneFocused: false, vaultReady: true })).toBe(false);
+    expect(canDriveVaultSync({ paneFocused: true, vaultReady: false })).toBe(false);
+  });
+});
+
+describe('shouldEmitVaultMarkdown', () => {
+  it('drops an empty emission that would wipe a loaded note before the user edits', () => {
+    expect(
+      shouldEmitVaultMarkdown({
+        markdown: '',
+        parentMarkdown: '# note',
+        userEdited: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('keeps a real clear after the user has edited', () => {
+    expect(
+      shouldEmitVaultMarkdown({
+        markdown: '',
+        parentMarkdown: '# note',
+        userEdited: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('does not emit when markdown already matches the parent', () => {
+    expect(
+      shouldEmitVaultMarkdown({
+        markdown: '# note',
+        parentMarkdown: '# note',
+        userEdited: false,
+      }),
+    ).toBe(false);
   });
 });

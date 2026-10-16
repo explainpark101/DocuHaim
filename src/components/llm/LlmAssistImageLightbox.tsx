@@ -1,6 +1,7 @@
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { Dialog } from 'radix-ui';
 import { X } from 'lucide-react';
+import ImageLightboxCopyButton from '@/components/shell/ImageLightboxCopyButton';
 
 const LIGHTBOX_EASE = [0.22, 1, 0.36, 1] as const;
 const OVERLAY_TRANSITION = { duration: 0.2, ease: LIGHTBOX_EASE };
@@ -70,7 +71,7 @@ export default function LlmAssistImageLightbox({
               >
                 <Dialog.Title className="sr-only">이미지 크게 보기</Dialog.Title>
                 <Dialog.Description className="sr-only">
-                  입력 이미지를 확대해 보는 화면입니다. Esc 또는 닫기로 종료할 수 있습니다.
+                  입력 이미지를 확대해 보는 화면입니다. 복사 버튼 또는 Ctrl/Cmd+C로 이미지를 복사하고, Esc 또는 닫기로 종료할 수 있습니다.
                 </Dialog.Description>
                 <button
                   type="button"
@@ -94,6 +95,7 @@ export default function LlmAssistImageLightbox({
                     </div>
                   ) : null}
                 </div>
+                {src ? <ImageLightboxCopyButton src={src} /> : null}
                 <Dialog.Close asChild>
                   <button
                     type="button"

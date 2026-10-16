@@ -19,6 +19,7 @@ import {
   getResetHistoryFn,
   rebuildCmHistoryFromStack,
 } from '@/utils/rebuildCmHistoryFromStack';
+import { shouldEmitVaultMarkdown } from '@/components/haimEditor/haimExternalValueSync';
 
 type EditorRefLike = MutableRefObject<{ value?: unknown } | null | undefined> | MutableRefObject<unknown>;
 
@@ -45,6 +46,8 @@ type Options = {
   onChange?: ((v: string) => void) | undefined;
   editorRef: EditorRefLike;
   enabled?: boolean;
+  /** True when a user beforeinput just happened (real clear vs mount echo). */
+  isUserEdit?: () => boolean;
 };
 
 export function usePerFileEditorUndoHistory({
@@ -53,6 +56,7 @@ export function usePerFileEditorUndoHistory({
   onChange,
   editorRef,
   enabled = true,
+  isUserEdit,
 }: Options) {
   const fileKey = enabled ? getEditorUndoHistoryKeyFromFile(currentFile) : null;
 
@@ -70,6 +74,8 @@ export function usePerFileEditorUndoHistory({
   const initDoneForKeyRef = useRef<string | null>(null);
   const rebuildGenRef = useRef(0);
   const lastEmittedRef = useRef(value);
+  const isUserEditRef = useRef(isUserEdit);
+  isUserEditRef.current = isUserEdit;
 
   valueRef.current = value;
 
@@ -305,6 +311,35 @@ export function usePerFileEditorUndoHistory({
         return;
       }
       if (initDoneForKeyRef.current !== fileKeyRef.current) {
+        return;
+      }
+
+      const parent = valueRef.current ?? '';
+      const userEdited =
+        hasLocalEditsRef.current || Boolean(isUserEditRef.current?.());
+      if (
+        !shouldEmitVaultMarkdown({
+          markdown: nextValue,
+          parentMarkdown: parent,
+          userEdited,
+        })
+      ) {
+        // Mount/teardown echoed "". Put the loaded body back if CM was cleared.
+        if (nextValue === '' && parent !== '') {
+          const view = getEditorViewFromApi(getEditorApi(editorRef));
+          if (view && view.state.doc.toString() !== parent) {
+            suppressChangeRef.current = true;
+            try {
+              view.dispatch({
+                changes: { from: 0, to: view.state.doc.length, insert: parent },
+              });
+            } finally {
+              queueMicrotask(() => {
+                suppressChangeRef.current = false;
+              });
+            }
+          }
+        }
         return;
       }
 

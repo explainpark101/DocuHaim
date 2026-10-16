@@ -12,6 +12,7 @@ import {
   HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
   replaceCmDocPreservingView,
   replaceTipTapPreservingView,
+  canDriveVaultSync,
   resolveHaimDualSyncAuthor,
   shouldRewriteFollowerPane,
   type HaimDualSyncAuthor,
@@ -47,6 +48,11 @@ type Options = {
    * Parent value sync uses this to avoid stomping mid-keystroke.
    */
   localInputAtRef?: React.MutableRefObject<number>;
+  /**
+   * False until the parent note body has been applied to the editor.
+   * Blocks mount-time updates from publishing "" over a file that just opened.
+   */
+  vaultReadyRef?: React.MutableRefObject<boolean>;
 };
 
 function bumpScrollSuppress(
@@ -93,6 +99,7 @@ export function useHaimDualSync({
   suppressScrollSyncUntilRef,
   blockDragActiveRef,
   localInputAtRef,
+  vaultReadyRef,
 }: Options): {
   originRef: React.MutableRefObject<SyncOrigin>;
   lastAuthorRef: React.MutableRefObject<HaimDualSyncAuthor>;
@@ -105,6 +112,18 @@ export function useHaimDualSync({
   const originRef = useRef<SyncOrigin>(null);
   const onVaultChangeRef = useRef(onVaultChange);
   onVaultChangeRef.current = onVaultChange;
+
+  const vaultIsReady = () => (vaultReadyRef ? vaultReadyRef.current : true);
+  const tipTapDrivesVault = () =>
+    canDriveVaultSync({
+      paneFocused: Boolean(editor?.isFocused),
+      vaultReady: vaultIsReady(),
+    });
+  const cmDrivesVault = () =>
+    canDriveVaultSync({
+      paneFocused: Boolean(cmViewRef.current?.hasFocus),
+      vaultReady: vaultIsReady(),
+    });
   const tipTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const composingRef = useRef(false);
@@ -328,6 +347,8 @@ export function useHaimDualSync({
       if (originRef.current === 'cm' || originRef.current === 'external') return;
       if (composingRef.current) return;
       if (isBlockDragActive()) return;
+      // Unfocused split panes must not publish (mount updates often serialize as "").
+      if (!tipTapDrivesVault()) return;
       const author = resolveAuthor();
       if (author !== 'tiptap') return;
       lastAuthorRef.current = 'tiptap';
@@ -337,7 +358,7 @@ export function useHaimDualSync({
       clearTipTapTimer();
       const delay = debounceMsRef.current;
       if (delay <= 0) {
-        if (resolveAuthor() !== 'tiptap') return;
+        if (!tipTapDrivesVault()) return;
         applyTipTapToOther();
         return;
       }
@@ -346,8 +367,8 @@ export function useHaimDualSync({
         if (!editor) return;
         if (originRef.current === 'cm' || originRef.current === 'external') return;
         if (isBlockDragActive()) return;
-        // Focus may have moved during debounce — only TipTap author may apply.
-        if (resolveAuthor() !== 'tiptap') return;
+        // Focus may have moved during debounce — only the focused pane may apply.
+        if (!tipTapDrivesVault()) return;
         applyTipTapToOther();
       }, delay);
     };
@@ -379,14 +400,16 @@ export function useHaimDualSync({
     applyTipTapToOther,
     blockDragActiveRef,
     localInputAtRef,
+    vaultReadyRef,
   ]);
 
   const notifyCmDocChanged = () => {
     if (!enabled || !editor) return;
     if (originRef.current === 'tiptap' || originRef.current === 'external') return;
     if (isBlockDragActive()) return;
+    // Ignore programmatic CM replaces and unfocused panes.
+    if (!cmDrivesVault()) return;
     const author = resolveAuthor();
-    // Only the focused source pane drives sync (ignore programmatic CM replaces).
     if (author !== 'cm') return;
     lastAuthorRef.current = 'cm';
     bumpLocalInput(localInputAtRef);
@@ -395,7 +418,7 @@ export function useHaimDualSync({
     clearCmTimer();
     const delay = debounceMsRef.current;
     if (delay <= 0) {
-      if (resolveAuthor() !== 'cm') return;
+      if (!cmDrivesVault()) return;
       applyCmToOther();
       return;
     }
@@ -404,7 +427,7 @@ export function useHaimDualSync({
       if (!editor) return;
       if (originRef.current === 'tiptap' || originRef.current === 'external') return;
       if (isBlockDragActive()) return;
-      if (resolveAuthor() !== 'cm') return;
+      if (!cmDrivesVault()) return;
       applyCmToOther();
     }, delay);
   };

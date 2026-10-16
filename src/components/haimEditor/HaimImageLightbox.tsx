@@ -26,6 +26,7 @@ import {
   ZoomOut,
   RotateCcw,
   Save,
+  Copy,
   CopyPlus,
   Circle,
   Square,
@@ -40,6 +41,11 @@ import {
   requestInkPresenter,
   type DelegatedInkTrailPresenter,
 } from '@/components/haimEditor/haimImageInk';
+import {
+  copyPngBlobToClipboard,
+  imageSrcToPngBlob,
+  isLightboxImageCopyShortcut,
+} from '@/utils/copyImageToClipboard';
 import {
   FONT_WEIGHT_OPTIONS,
   HIGHLIGHT_BLEND_OPTIONS,
@@ -435,6 +441,8 @@ export default function HaimImageLightbox({
   );
   const [inkReady, setInkReady] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'done' | 'error'>('idle');
+  const copyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [paletteExpanded, setPaletteExpanded] = useState(false);
@@ -1426,6 +1434,51 @@ export default function HaimImageLightbox({
     ],
   );
 
+  const copyVisibleImage = useCallback(() => {
+    if (!src) return;
+    const hasText = textObjects.some((t) => t.text.trim().length > 0);
+    const blobPromise =
+      inkStrokes.length === 0 && highlightStrokes.length === 0 && !hasText
+        ? imageSrcToPngBlob(src)
+        : (async () => {
+            const inkCanvas = rasterizeInkLayer(bufSize.w, bufSize.h, inkStrokes);
+            const inkCtx = inkCanvas.getContext('2d');
+            if (inkCtx) {
+              drawAnnotateTextsOnCanvas(
+                inkCtx,
+                textObjects,
+                bufferScaleRef.current,
+              );
+            }
+            const highlightCanvas = rasterizeHighlightLayer(
+              bufSize.w,
+              bufSize.h,
+              highlightStrokes,
+            );
+            return compositeAnnotatedImageBlob({
+              src,
+              inkCanvas,
+              highlightCanvas,
+            });
+          })();
+    if (copyStatusTimerRef.current) clearTimeout(copyStatusTimerRef.current);
+    void copyPngBlobToClipboard(blobPromise)
+      .then(() => {
+        setCopyStatus('done');
+        copyStatusTimerRef.current = setTimeout(() => setCopyStatus('idle'), 1600);
+      })
+      .catch(() => {
+        setCopyStatus('error');
+        copyStatusTimerRef.current = setTimeout(() => setCopyStatus('idle'), 2000);
+      });
+  }, [src, inkStrokes, highlightStrokes, textObjects, bufSize.w, bufSize.h]);
+
+  useEffect(() => {
+    return () => {
+      if (copyStatusTimerRef.current) clearTimeout(copyStatusTimerRef.current);
+    };
+  }, []);
+
   const permanentCount =
     inkStrokes.length + highlightStrokes.length + textObjects.length;
   const hasDiscardableDrawings =
@@ -1460,6 +1513,15 @@ export default function HaimImageLightbox({
       const mod = IS_APPLE ? event.metaKey : event.ctrlKey;
       const key = event.key.toLowerCase();
       const code = event.code;
+
+      if (isLightboxImageCopyShortcut(event)) {
+        if (typing) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        copyVisibleImage();
+        return;
+      }
 
       if (mod && key === 's') {
         event.preventDefault();
@@ -1566,6 +1628,7 @@ export default function HaimImageLightbox({
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [
     visible,
+    copyVisibleImage,
     runSave,
     undoStrokeClean,
     redoStroke,
@@ -1662,7 +1725,7 @@ export default function HaimImageLightbox({
               >
                 <Dialog.Title className="sr-only">이미지 크게 보기</Dialog.Title>
                 <Dialog.Description className="sr-only">
-                  벡터 펜으로 그리고 확대/축소·저장할 수 있습니다.
+                  벡터 펜으로 그리고 확대/축소·저장할 수 있습니다. 복사 버튼 또는 Ctrl/Cmd+C로 보이는 이미지를 복사합니다.
                 </Dialog.Description>
 
                 <div
@@ -2640,6 +2703,18 @@ export default function HaimImageLightbox({
                       <ToolTipBtn label="보기 초기화" onClick={resetView}>
                         <RotateCcw size={16} />
                       </ToolTipBtn>
+                      <ToolTipBtn
+                        label={
+                          copyStatus === 'done'
+                            ? '복사됨'
+                            : copyStatus === 'error'
+                              ? '복사 실패'
+                              : `이미지 복사 (${MOD_LABEL}+C)`
+                        }
+                        onClick={copyVisibleImage}
+                      >
+                        <Copy size={16} />
+                      </ToolTipBtn>
 
                       <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
 
@@ -2662,7 +2737,7 @@ export default function HaimImageLightbox({
                     </div>
                     <p className="max-w-xl text-center text-[10px] text-white/55">
                       휠 줌 · [ ] 펜 크기 · {MOD_LABEL}+[ ] / {MOD_LABEL}+Shift+&lt;&gt;
-                      글자 크기 · {MOD_LABEL}+Z / {REDO_SHORTCUT}
+                      글자 크기 · {MOD_LABEL}+C 이미지 복사 · {MOD_LABEL}+Z / {REDO_SHORTCUT}
                       {inkReady ? ' · Ink API' : ''}
                       {saving ? ' · 저장 중…' : ''}
                     </p>

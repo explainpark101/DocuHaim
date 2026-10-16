@@ -16,3 +16,20 @@ export function isVaultValueEcho(
 ): boolean {
   return externalValue === lastEmittedMd;
 }
+
+/**
+ * Mount, unmount flush, and unfocused split panes can emit "" before the
+ * document is ready. That must not replace a loaded note body.
+ * A real clear is allowed only after the user has edited this document.
+ */
+export function shouldEmitVaultMarkdown(options: {
+  markdown: string;
+  parentMarkdown: string;
+  userEdited: boolean;
+}): boolean {
+  const markdown = options.markdown ?? '';
+  const parent = options.parentMarkdown ?? '';
+  if (markdown === parent) return false;
+  if (markdown === '' && parent !== '' && !options.userEdited) return false;
+  return true;
+}

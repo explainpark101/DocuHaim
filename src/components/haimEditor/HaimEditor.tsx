@@ -33,7 +33,10 @@ import {
   replaceCmDocPreservingView,
   replaceTipTapPreservingView,
 } from '@/components/haimEditor/haimDualSyncApply';
-import { isVaultValueEcho } from '@/components/haimEditor/haimExternalValueSync';
+import {
+  isVaultValueEcho,
+  shouldEmitVaultMarkdown,
+} from '@/components/haimEditor/haimExternalValueSync';
 import { useHaimDoubleScrollSync } from '@/components/haimEditor/useHaimDoubleScrollSync';
 import {
   registerHaimAnnotateUpload,
@@ -205,6 +208,10 @@ export default function HaimEditor({
   const onChangeRef = useRef(onChange);
   /** Last markdown we pushed via onChange — ignore parent echo (typing race). */
   const lastEmittedMdRef = useRef(value || '');
+  /** True after the user edits this file (so a real clear may emit ""). */
+  const userEditedRef = useRef(false);
+  /** False until the open note body has been applied — blocks mount-time "". */
+  const vaultReadyRef = useRef(false);
   const prevFileIdRef = useRef(currentFile?.id);
   /** Date.now of last TipTap/CM local edit schedule (dual-sync). */
   const localInputAtRef = useRef(0);
@@ -257,6 +264,7 @@ export default function HaimEditor({
   const imageUploadingRef = useRef(false);
   const [tableEdit, setTableEdit] = useState<HaimTableEditSession | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+
   const showImageUploadOverlay =
     Boolean(isUploadingEditorImage) || localImageUploading;
   const uploadPercentLabel = Math.max(
@@ -442,6 +450,18 @@ export default function HaimEditor({
     },
     [extensions],
   );
+  const editorInstanceRef = useRef(editor);
+  editorInstanceRef.current = editor;
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+    const markUserEdit = () => {
+      userEditedRef.current = true;
+    };
+    root.addEventListener('beforeinput', markUserEdit, true);
+    return () => root.removeEventListener('beforeinput', markUserEdit, true);
+  }, [editor]);
 
   useEffect(() => {
     if (!editor) return;
@@ -493,11 +513,27 @@ export default function HaimEditor({
   }, [editor, doublePane, scrollSyncEnabled, previewOnly, isSurfaceLive]);
 
   const emitVault = useCallback((md: string) => {
-    lastEmittedMdRef.current = md;
-    if (md !== valueRef.current) {
-      valueRef.current = md;
-      onChangeRef.current(md);
+    const parent = valueRef.current ?? '';
+    const live = editorInstanceRef.current;
+    const docStillHasText = Boolean(
+      live && !live.isDestroyed && live.state.doc.textContent.length > 0,
+    );
+    // Serializer sometimes returns "" while the doc still has the note.
+    if (md === '' && parent !== '' && docStillHasText) return;
+    if (
+      !shouldEmitVaultMarkdown({
+        markdown: md,
+        parentMarkdown: parent,
+        userEdited: userEditedRef.current,
+      })
+    ) {
+      // Equal echo: remember it. Empty clobber: keep the loaded body.
+      if (md === parent) lastEmittedMdRef.current = md;
+      return;
     }
+    lastEmittedMdRef.current = md;
+    valueRef.current = md;
+    onChangeRef.current(md);
   }, []);
 
   const suppressScrollSyncUntilRef = useRef(0);
@@ -522,6 +558,7 @@ export default function HaimEditor({
     suppressScrollSyncUntilRef,
     blockDragActiveRef,
     localInputAtRef,
+    vaultReadyRef,
   });
 
   // Apply parent `value` only for true external changes (file switch, LLM, etc.).
@@ -533,8 +570,16 @@ export default function HaimEditor({
     const next = value || '';
     const fileChanged = prevFileIdRef.current !== currentFile?.id;
     prevFileIdRef.current = currentFile?.id;
+    if (fileChanged) {
+      userEditedRef.current = false;
+      vaultReadyRef.current = false;
+    }
+    const markVaultReady = () => {
+      vaultReadyRef.current = true;
+    };
 
     if (!fileChanged && isVaultValueEcho(next, lastEmittedMdRef.current)) {
+      markVaultReady();
       return;
     }
 
@@ -548,16 +593,19 @@ export default function HaimEditor({
         dualSyncDebounceMsRef.current,
       )
     ) {
+      markVaultReady();
       return;
     }
 
     const current = editorToVaultMarkdown(editor, metaPrefixRef.current);
     if (current === next) {
       lastEmittedMdRef.current = next;
+      markVaultReady();
       return;
     }
 
     cancelPending();
+    userEditedRef.current = false;
     lastEmittedMdRef.current = next;
 
     originRef.current = 'external';
@@ -578,6 +626,7 @@ export default function HaimEditor({
         replaceCmDocPreservingView(cm, next);
       }
     } finally {
+      markVaultReady();
       // Clear after microtask so nested TipTap txs still see external origin.
       void Promise.resolve().then(() => {
         if (originRef.current === 'external') originRef.current = null;
