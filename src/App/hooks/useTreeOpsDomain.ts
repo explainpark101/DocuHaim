@@ -743,6 +743,7 @@ export function useTreeOpsDomain() {
   const handleTreeNodeSelect = useCallback(
     async (storageType, node, modifiers = {}) => {
       const { ctrlKey = false, metaKey = false, shiftKey = false } = modifiers;
+      const shouldOpenFile = modifiers.open !== false;
       const isRange = shiftKey;
 
       const tree =
@@ -779,7 +780,7 @@ export function useTreeOpsDomain() {
               return next;
             });
             lastSelectedIdRef.current = key;
-            if (node.type === 'file') {
+            if (node.type === 'file' && shouldOpenFile) {
               if (!confirmAndCancelEditorImageUploadRef.current?.()) return;
               if (isMobile) setSidebarOpen(false);
               saveCurrentMarkdownBeforeSwitch(storageType, node);
@@ -803,7 +804,7 @@ export function useTreeOpsDomain() {
         lastSelectedIdRef.current = key;
       }
 
-      if (node.type === 'file') {
+      if (node.type === 'file' && shouldOpenFile) {
         if (!confirmAndCancelEditorImageUploadRef.current?.()) return;
         if (isMobile) setSidebarOpen(false);
         saveCurrentMarkdownBeforeSwitch(storageType, node);

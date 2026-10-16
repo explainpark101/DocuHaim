@@ -33,6 +33,7 @@ const TOGGLE_TO_SECTION: Partial<Record<SettingsToggleId, string>> = {
   'settings-haim-code-line-numbers': 'settings-editor',
   'settings-haim-raw-line-numbers': 'settings-editor',
   'settings-haim-code-wrap': 'settings-editor',
+  'settings-haim-toc-hide-quotes': 'settings-editor',
   'settings-base64-image-fold': 'settings-editor',
   'settings-alt-vim': 'settings-navigation',
   'settings-workspace-tabs': 'settings-navigation',

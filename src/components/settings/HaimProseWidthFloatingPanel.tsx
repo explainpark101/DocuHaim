@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import { GripHorizontal, PanelRightOpen, X } from 'lucide-react';
 import HaimProseWidthControls from '@/components/settings/HaimProseWidthControls';
 import HaimCodeWrapControls from '@/components/settings/HaimCodeWrapControls';
+import HaimTocQuoteControls from '@/components/settings/HaimTocQuoteControls';
 import HaimProseLineNumbersControls from '@/components/settings/HaimProseLineNumbersControls';
 import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
 import { subscribeSettingsToggles } from '@/utils/advancedSearch/settingsToggles';
@@ -34,6 +35,10 @@ import {
   loadHaimCodeWrapEnabled,
 } from '@/utils/haimCodeWrapSettings';
 import {
+  HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT,
+  loadHaimTocHideQuoteHeadings,
+} from '@/utils/haimTocQuoteSettings';
+import {
   HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT,
   loadHaimProseLineNumbersEnabled,
 } from '@/utils/haimWysiwygLineNumberSettings';
@@ -50,6 +55,9 @@ export default function HaimProseWidthFloatingPanel() {
     loadHaimProseWidthSettings(),
   );
   const [codeWrap, setCodeWrap] = useState(() => loadHaimCodeWrapEnabled());
+  const [hideQuoteHeadings, setHideQuoteHeadings] = useState(() =>
+    loadHaimTocHideQuoteHeadings(),
+  );
   const [proseLineNumbers, setProseLineNumbers] = useState(() =>
     loadHaimProseLineNumbersEnabled(),
   );
@@ -70,22 +78,27 @@ export default function HaimProseWidthFloatingPanel() {
     if (!open) return;
     const syncWidth = () => setSettings(loadHaimProseWidthSettings());
     const syncWrap = () => setCodeWrap(loadHaimCodeWrapEnabled());
+    const syncQuoteToc = () => setHideQuoteHeadings(loadHaimTocHideQuoteHeadings());
     const syncLineNumbers = () =>
       setProseLineNumbers(loadHaimProseLineNumbersEnabled());
     syncWidth();
     syncWrap();
+    syncQuoteToc();
     syncLineNumbers();
     window.addEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, syncWidth);
     window.addEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, syncWrap);
+    window.addEventListener(HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT, syncQuoteToc);
     window.addEventListener(HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT, syncLineNumbers);
     const unsub = subscribeSettingsToggles((id) => {
       if (id === 'settings-haim-prose-width-clamp') syncWidth();
       if (id === 'settings-haim-code-wrap') syncWrap();
+      if (id === 'settings-haim-toc-hide-quotes') syncQuoteToc();
       if (id === 'settings-haim-prose-line-numbers') syncLineNumbers();
     });
     return () => {
       window.removeEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, syncWidth);
       window.removeEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, syncWrap);
+      window.removeEventListener(HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT, syncQuoteToc);
       window.removeEventListener(
         HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT,
         syncLineNumbers,
@@ -200,6 +213,12 @@ export default function HaimProseWidthFloatingPanel() {
           aria-label="코드 줄 바꿈"
         >
           <HaimCodeWrapControls enabled={codeWrap} compact />
+        </section>
+        <section
+          className={settingsSectionCardClass('emerald', { compact: true })}
+          aria-label="인용 제목 목차"
+        >
+          <HaimTocQuoteControls enabled={hideQuoteHeadings} compact />
         </section>
       </div>
     </div>,

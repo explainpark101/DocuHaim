@@ -1,9 +1,10 @@
+import { useEffect, useState } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { ListTree, X } from 'lucide-react';
 import type { ComponentType, RefObject } from 'react';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
-import { extractHaimTocItems } from '@/components/haimEditor/extractHaimTocItems';
+import { extractHaimTocItems, visibleHaimTocItems } from '@/components/haimEditor/extractHaimTocItems';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { scrollWithinContainer } from '@/utils/settingsPageScroll';
 import type { EditorView as CmEditorView } from '@codemirror/view';
@@ -12,6 +13,11 @@ import {
   HAIM_TOC_LAYOUT_OVERLAY,
   type HaimTocLayout,
 } from '@/utils/haimTocLayoutSettings';
+import { subscribeSettingsToggles } from '@/utils/advancedSearch/settingsToggles';
+import {
+  HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT,
+  loadHaimTocHideQuoteHeadings,
+} from '@/utils/haimTocQuoteSettings';
 
 const TocResizeHandle = TocResizeHandleJs as unknown as ComponentType<{
   edge?: 'left' | 'right';
@@ -115,10 +121,27 @@ export default function HaimTocPanel({
   cmViewRef,
   layout = HAIM_TOC_LAYOUT_OVERLAY,
 }: Props) {
-  const items = useEditorState({
+  const rawItems = useEditorState({
     editor,
     selector: ({ editor: ed }) => extractHaimTocItems(ed),
   });
+  const [hideQuoteHeadings, setHideQuoteHeadings] = useState(() =>
+    loadHaimTocHideQuoteHeadings(),
+  );
+
+  useEffect(() => {
+    const sync = () => setHideQuoteHeadings(loadHaimTocHideQuoteHeadings());
+    window.addEventListener(HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT, sync);
+    const unsub = subscribeSettingsToggles((id) => {
+      if (id === 'settings-haim-toc-hide-quotes') sync();
+    });
+    return () => {
+      window.removeEventListener(HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT, sync);
+      unsub();
+    };
+  }, []);
+
+  const items = visibleHaimTocItems(rawItems ?? [], hideQuoteHeadings);
 
   const {
     width,

@@ -1,5 +1,10 @@
 import { peekResolvedWikiImageUrl, resolveWikiImageUrl } from '@/utils/wikiImageResolver';
 import {
+  adoptRetainedChatImage,
+  retainExternalChatImages,
+  retargetRetainedChatImage,
+} from '@/utils/chatWithMyself/retainedChatImage';
+import {
   decodeMarkdownImageSrc,
   isStorageImageSrc,
   resolveStorageImagePath,
@@ -26,11 +31,76 @@ function applySrc(img: HTMLImageElement, path: string, url: string) {
   delete img.dataset.storageHydrating;
 }
 
+function isChatMessageImage(img: HTMLImageElement): boolean {
+  return Boolean(img.closest('.chat-message-markdown'));
+}
+
+function bindRetainedChatStorageImage(
+  img: HTMLImageElement,
+  path: string,
+  getPresignedUrl: (path: string) => Promise<string | null>,
+) {
+  if (!img.isConnected && img.dataset.chatRetain !== '1') return;
+
+  const mem = peekResolvedWikiImageUrl(path);
+  if (
+    img.dataset.chatRetain === '1' &&
+    img.dataset.storageHydrated === path &&
+    mem &&
+    img.dataset.chatRetainSrc === mem
+  ) {
+    return;
+  }
+
+  const mount = (url: string) => {
+    const live = adoptRetainedChatImage(img, url, {
+      path,
+      className: img.className,
+      alt: img.alt,
+      styleAttr: img.getAttribute('style'),
+      wikiPath: img.getAttribute('data-wiki-path'),
+      mdSrc: img.getAttribute('data-md-src'),
+    });
+    live.onerror = () => {
+      const tries = Number(live.dataset.storageHydrateTries || '0');
+      if (tries >= MAX_RETRIES) return;
+      live.dataset.storageHydrateTries = String(tries + 1);
+      delete live.dataset.storageHydrated;
+      void resolveWikiImageUrl(path, getPresignedUrl, { skipCache: true }).then(
+        (next: string | null) => {
+          if (!next) return;
+          retargetRetainedChatImage(live, next, true);
+          live.dataset.storageHydrated = path;
+        },
+      );
+    };
+  };
+
+  if (mem) {
+    mount(mem);
+    return;
+  }
+
+  if (img.dataset.storageHydrating === path) return;
+  img.dataset.storageHydrating = path;
+  delete img.dataset.storageHydrated;
+
+  void resolveWikiImageUrl(path, getPresignedUrl).then((url: string | null) => {
+    delete img.dataset.storageHydrating;
+    if (url) mount(url);
+  });
+}
+
 function bindResolvedSrc(
   img: HTMLImageElement,
   path: string,
   getPresignedUrl: (path: string) => Promise<string | null>,
 ) {
+  if (isChatMessageImage(img)) {
+    bindRetainedChatStorageImage(img, path, getPresignedUrl);
+    return;
+  }
+
   const mem = peekResolvedWikiImageUrl(path);
   const attrSrc = img.getAttribute('src') || '';
   const hasRealSrc = Boolean(attrSrc) && !attrSrc.startsWith(PLACEHOLDER_SRC_PREFIX);
@@ -119,6 +189,8 @@ export function hydrateStorageImagesInRoot(
     bindResolvedSrc(node, path, getPresignedUrl);
     count += 1;
   });
+
+  retainExternalChatImages(root);
 
   return count;
 }

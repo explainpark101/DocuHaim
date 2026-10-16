@@ -136,6 +136,8 @@ type SelectModifiers = {
   ctrlKey?: boolean;
   metaKey?: boolean;
   shiftKey?: boolean;
+  /** When false, highlight the row without opening a file tab. */
+  open?: boolean;
 };
 
 type FocusedLocalFolder = {

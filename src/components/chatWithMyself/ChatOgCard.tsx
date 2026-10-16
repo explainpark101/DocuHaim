@@ -7,7 +7,8 @@ import {
   type OgPayload,
 } from '@/utils/chatWithMyself/og';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
-import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
+import RetainedChatImage from '@/components/chatWithMyself/RetainedChatImage';
+import { forgetRetainedChatImages } from '@/utils/chatWithMyself/retainedChatImage';
 import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefsContext';
 import { bindPreserveScrollOnHeightChange } from '@/utils/chatWithMyself/preserveScrollOnHeightChange';
 
@@ -59,6 +60,12 @@ function OgCardSkeleton({ compact }: { compact: boolean }) {
   );
 }
 
+const ogMemoryByUrl = new Map<string, OgPayload>();
+
+function rememberChatOg(url: string, data: OgPayload) {
+  ogMemoryByUrl.set(url, data);
+}
+
 /** Empty media slot — same aspect-video as skeleton / image card (CLS-stable). */
 function OgMediaPlaceholder() {
   return (
@@ -83,8 +90,10 @@ export default function ChatOgCard({
   allowEmbed = true,
   reloadKey = 0,
 }: ChatOgCardProps) {
-  const [data, setData] = useState<OgPayload | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<OgPayload | null>(
+    () => ogMemoryByUrl.get(url) ?? null,
+  );
+  const [loading, setLoading] = useState(() => !ogMemoryByUrl.has(url));
   const [showEmbed, setShowEmbed] = useState(false);
   const [nearViewport, setNearViewport] = useState(false);
   const prevReloadKeyRef = useRef(reloadKey);
@@ -122,21 +131,19 @@ export default function ChatOgCard({
     const shouldForce = reloadKey > prevReloadKeyRef.current;
     prevReloadKeyRef.current = reloadKey;
 
-    const preloadImage = (src: string) =>
-      new Promise<void>((resolve) => {
-        if (!src || typeof Image === 'undefined') {
-          resolve();
+    const load = async ({ force = false } = {}) => {
+      if (!force) {
+        const remembered = ogMemoryByUrl.get(url);
+        if (remembered) {
+          setData(remembered);
+          setLoading(false);
           return;
         }
-        const img = new Image();
-        img.decoding = 'async';
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-        img.referrerPolicy = 'no-referrer';
-        img.src = src;
-      });
-
-    const load = async ({ force = false } = {}) => {
+      } else {
+        const previous = ogMemoryByUrl.get(url);
+        ogMemoryByUrl.delete(url);
+        if (previous?.image) forgetRetainedChatImages(previous.image);
+      }
       setLoading(true);
       setShowEmbed(false);
       // Drop stale card so we keep the reserved skeleton height instead of
@@ -146,28 +153,8 @@ export default function ChatOgCard({
         const next = force
           ? await reloadOgCache(url, ogStorage)
           : (await loadAndArchiveOg(url, ogStorage)).data;
-        if (next?.image) {
-          await preloadImage(next.image);
-        }
         if (!cancelled) {
-          setData(
-            (next as OgPayload | null) ?? {
-              url,
-              fetchedAt: '',
-              title: url,
-              description: '',
-              image: '',
-              siteName: '',
-              type: '',
-              provider: '',
-              embedHtml: '',
-            },
-          );
-          setLoading(false);
-        }
-      } catch {
-        if (!cancelled) {
-          setData({
+          const resolved: OgPayload = (next as OgPayload | null) ?? {
             url,
             fetchedAt: '',
             title: url,
@@ -177,7 +164,26 @@ export default function ChatOgCard({
             type: '',
             provider: '',
             embedHtml: '',
-          });
+          };
+          rememberChatOg(url, resolved);
+          setData(resolved);
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          const fallback: OgPayload = {
+            url,
+            fetchedAt: '',
+            title: url,
+            description: '',
+            image: '',
+            siteName: '',
+            type: '',
+            provider: '',
+            embedHtml: '',
+          };
+          rememberChatOg(url, fallback);
+          setData(fallback);
           setLoading(false);
         }
       }
@@ -225,12 +231,10 @@ export default function ChatOgCard({
             }}
             aria-label="이미지 크게 보기"
           >
-            <ChatImageFade
+            <RetainedChatImage
               src={data.image}
               alt=""
               className="h-10 w-10 object-cover"
-              loading="eager"
-              decoding="async"
               referrerPolicy="no-referrer"
             />
           </button>
@@ -277,12 +281,10 @@ export default function ChatOgCard({
             }}
             aria-label={isYouTubeUrl(url) ? '동영상 재생' : '이미지 크게 보기'}
           >
-            <ChatImageFade
+            <RetainedChatImage
               src={data.image}
               alt=""
               className="h-full w-full object-cover"
-              loading="eager"
-              decoding="async"
               referrerPolicy="no-referrer"
             />
             {isYouTubeUrl(url) ? (

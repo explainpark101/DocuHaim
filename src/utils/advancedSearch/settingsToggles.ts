@@ -154,6 +154,10 @@ import {
   saveHaimCodeWrapEnabled,
 } from '@/utils/haimCodeWrapSettings';
 import {
+  loadHaimTocHideQuoteHeadings,
+  saveHaimTocHideQuoteHeadings,
+} from '@/utils/haimTocQuoteSettings';
+import {
   loadHaimTocDockEnabled,
   saveHaimTocDockEnabled,
 } from '@/utils/haimTocLayoutSettings';
@@ -205,6 +209,7 @@ export type SettingsToggleId =
   | 'settings-haim-code-line-numbers'
   | 'settings-haim-raw-line-numbers'
   | 'settings-haim-code-wrap'
+  | 'settings-haim-toc-hide-quotes'
   | 'settings-base64-image-fold'
   | `settings-haim-typography-${HaimTypographyRuleId}`;
 
@@ -491,6 +496,26 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadHaimCodeWrapEnabled,
     save: saveHaimCodeWrapEnabled,
+  },
+  {
+    id: 'settings-haim-toc-hide-quotes',
+    enableTitle: '인용 블록 제목을 목차에서 숨기기',
+    disableTitle: '인용 블록 제목을 목차에 표시',
+    description:
+      '켜면 인용(blockquote) 안에 있는 제목은 Haim 목차에 나오지 않습니다',
+    keywords: [
+      'haim',
+      'toc',
+      '목차',
+      '인용',
+      'quote',
+      'blockquote',
+      '제목',
+      'heading',
+      '숨기기',
+    ],
+    load: loadHaimTocHideQuoteHeadings,
+    save: saveHaimTocHideQuoteHeadings,
   },
   {
     id: 'settings-base64-image-fold',

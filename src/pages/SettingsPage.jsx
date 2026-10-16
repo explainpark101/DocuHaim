@@ -103,6 +103,10 @@ import {
   loadHaimCodeWrapEnabled,
 } from '@/utils/haimCodeWrapSettings';
 import {
+  HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT,
+  loadHaimTocHideQuoteHeadings,
+} from '@/utils/haimTocQuoteSettings';
+import {
   BASE64_IMAGE_FOLD_CHANGED_EVENT,
   loadBase64ImageFoldEnabled,
 } from '@/utils/base64ImageFoldSettings';
@@ -119,6 +123,7 @@ import {
 } from '@/utils/workspaceTabsSettings';
 import WorkspacePaneSoftCapSettings from '@/components/settings/WorkspacePaneSoftCapSettings';
 import WorkspacePaneFreezeSettings from '@/components/settings/WorkspacePaneFreezeSettings';
+import HaimTocQuoteControls from '@/components/settings/HaimTocQuoteControls';
 import {
   getComposerHelperTextVisible,
 } from '@/utils/chatWithMyself';
@@ -306,6 +311,9 @@ export default function SettingsPage({
   const [haimCodeWrap, setHaimCodeWrapState] = useState(() =>
     loadHaimCodeWrapEnabled(),
   );
+  const [haimTocHideQuotes, setHaimTocHideQuotesState] = useState(() =>
+    loadHaimTocHideQuoteHeadings(),
+  );
   const [base64ImageFold, setBase64ImageFoldState] = useState(() =>
     loadBase64ImageFoldEnabled(),
   );
@@ -367,6 +375,8 @@ export default function SettingsPage({
         setHaimRawLineNumbersState(enabled);
       } else if (id === 'settings-haim-code-wrap') {
         setHaimCodeWrapState(enabled);
+      } else if (id === 'settings-haim-toc-hide-quotes') {
+        setHaimTocHideQuotesState(enabled);
       } else if (id === 'settings-base64-image-fold') {
         setBase64ImageFoldState(enabled);
       } else if (id === 'settings-tree-reveal-on-open') {
@@ -517,6 +527,19 @@ export default function SettingsPage({
     };
     window.addEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
     return () => window.removeEventListener(HAIM_CODE_WRAP_CHANGED_EVENT, sync);
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const enabled =
+        typeof event?.detail?.enabled === 'boolean'
+          ? event.detail.enabled
+          : loadHaimTocHideQuoteHeadings();
+      setHaimTocHideQuotesState(enabled);
+    };
+    window.addEventListener(HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT, sync);
+    return () =>
+      window.removeEventListener(HAIM_TOC_HIDE_QUOTE_HEADINGS_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -1640,6 +1663,9 @@ export default function SettingsPage({
                 >
                   <Switch.Thumb className="block h-4 w-4 translate-x-0.5 rounded-full bg-white shadow transition-transform will-change-transform data-[state=checked]:translate-x-[1.125rem]" />
                 </Switch.Root>
+              </div>
+              <div className="mt-3 border-t border-gray-200 pt-3 dark:border-odp-borderStrong">
+                <HaimTocQuoteControls enabled={haimTocHideQuotes} />
               </div>
             </div>
           ) : null}

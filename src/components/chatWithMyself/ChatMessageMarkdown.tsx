@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
 import {
@@ -7,6 +7,11 @@ import {
 } from '@/utils/chatWithMyself';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
+import {
+  hydrateStorageImagesInRoot,
+  markdownLikelyHasStorageImages,
+} from '@/utils/storageImageHydration';
+import { retainExternalChatImages } from '@/utils/chatWithMyself/retainedChatImage';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import { MD_EDITOR_CODE_THEME } from '@/utils/mdEditorCodeTheme';
 import { MD_EDITOR_CUSTOM_ICONS } from '@/utils/mdEditorCustomIcons';
@@ -67,6 +72,19 @@ export default function ChatMessageMarkdown({
   const previewId = `chat-msg-md-${messageId}`;
 
   useWikiImageHydration(rootRef, mdText, getPresignedUrl, null);
+
+  // Swap in already-decoded images before paint when a virtual row remounts.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    if (getPresignedUrl && markdownLikelyHasStorageImages(mdText)) {
+      hydrateStorageImagesInRoot(root, {
+        getPresignedUrl,
+        currentNotePath: null,
+      });
+    }
+    retainExternalChatImages(root);
+  }, [mdText, getPresignedUrl]);
   useLazyMermaidRender(rootRef, {
     layoutKey: `${resolvedTheme}|${mdText}`,
   });

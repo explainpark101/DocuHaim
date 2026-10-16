@@ -48,6 +48,7 @@ import { getExt } from '@/App/helpers';
 import { collectOsDropPayload } from '@/utils/osDropPayload';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { isExcludedPath } from '@/utils/advancedSearch/collectSources';
+import { treeFileGestureOpensTab } from '@/utils/treeFileOpenGesture';
 
 const INDENT_SIZE = 12;
 const BASE_LEFT_PADDING = 8;
@@ -88,6 +89,8 @@ type SelectModifiers = {
   ctrlKey: boolean;
   metaKey: boolean;
   shiftKey: boolean;
+  /** When false, highlight the row without opening a file tab. */
+  open?: boolean;
 };
 
 type CurrentFileRef = {
@@ -295,6 +298,7 @@ export default function TreeNode({
 
   const titleContainerRef = useRef<HTMLSpanElement | null>(null);
   const rowRef = useRef<HTMLDivElement | null>(null);
+  const pointerTypeRef = useRef('mouse');
   const scrollTimerRef = useRef<number | null>(null);
   const scrollDirectionRef = useRef(1);
 
@@ -666,8 +670,40 @@ export default function TreeNode({
       }
     } else {
       if (onFolderFocus && !node.path.includes('/')) onFolderFocus(null);
-      onSelect?.(storageType, node, modifiers);
+      const open = treeFileGestureOpensTab({
+        pointerType: pointerTypeRef.current,
+        clickDetail: e.detail,
+        hasModifier,
+        source: 'click',
+      });
+      onSelect?.(storageType, node, { ...modifiers, open });
     }
+  };
+
+  const handleDoubleClick = (e: MouseEvent) => {
+    if (node.type !== 'file' || isNodeLocked) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (contextMenuOpenedRef.current) {
+      contextMenuOpenedRef.current = false;
+      return;
+    }
+    const hasModifier = e.ctrlKey || e.metaKey || e.shiftKey;
+    const open = treeFileGestureOpensTab({
+      pointerType: pointerTypeRef.current,
+      clickDetail: e.detail,
+      hasModifier,
+      source: 'dblclick',
+    });
+    if (!open) return;
+    onActivate?.(node);
+    if (onFolderFocus && !node.path.includes('/')) onFolderFocus(null);
+    onSelect?.(storageType, node, {
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      shiftKey: e.shiftKey,
+      open: true,
+    });
   };
 
   const handleRenameStart = (e: MouseEvent) => {
@@ -825,6 +861,16 @@ export default function TreeNode({
     };
   }, [shouldShowStickyFolder, stickyTopOffset, level]);
 
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return undefined;
+    const onPointerDown = (event: PointerEvent) => {
+      pointerTypeRef.current = event.pointerType || 'mouse';
+    };
+    el.addEventListener('pointerdown', onPointerDown, true);
+    return () => el.removeEventListener('pointerdown', onPointerDown, true);
+  }, []);
+
   return (
     <>
     <div className={shouldShowStickyFolder ? 'relative' : ''}>
@@ -864,6 +910,7 @@ export default function TreeNode({
         }`}
         style={stickyRowStyle}
         onClick={handleToggle}
+        onDoubleClick={handleDoubleClick}
         onContextMenu={
           onOpenContextMenu
             ? (e) => {
