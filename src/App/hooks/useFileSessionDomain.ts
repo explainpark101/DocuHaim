@@ -256,54 +256,39 @@ export function useFileSessionDomain() {
     if (!file?.type || !file?.id) return false;
     const activate = options.activate !== false;
     const tabId = `${file.type}:${file.id}`;
-    // Apply via functional setState against stateRef so concurrent split-pane
-    // finishes (after serialized conflict modals) do not drop sibling tab bodies.
-    let applied = false;
-    let nextState = workspaceTabsRef.current;
-    setWorkspaceTabs((prev) => {
-      // Background opens (split-pane restore, inactive tabs) must not flush the
-      // live editor mirrors into the active tab — concurrent finishes can copy
-      // one file's body onto another tab's slot.
-      let baseState = prev;
-      if (activate) {
-        baseState = flushEditorIntoActiveFileTab(baseState, {
-          editorContent: editorContentRef.current ?? '',
-          currentFile: currentFileRef.current,
-          editedFileName: editedFileNameRef.current ?? '',
-        });
-      }
-      const existing = findFileTab(baseState, file.type, file.id);
-      // Background finish after close: do not reopen the tab.
-      if (!existing && !activate) {
-        applied = false;
-        return prev;
-      }
-      let next = applyOpenedFileReducer(baseState, file, content, {
-        promptCloseDirty: softCapPrompt,
-        activate,
+    // Compute against the ref synchronously. A functional setState updater can
+    // be deferred while a fetch continuation is still running, so `finally`
+    // would still see the loading shell and replace the fetched body with "".
+    let baseState = workspaceTabsRef.current;
+    if (activate) {
+      baseState = flushEditorIntoActiveFileTab(baseState, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
       });
-      if (next === baseState && !findFileTab(baseState, file.type, file.id)) {
-        applied = false;
-        return prev;
-      }
-      if (options.baselineContent != null && typeof options.baselineContent === 'string') {
-        next = patchFileTab(next, tabId, {
-          baselineContent: options.baselineContent,
-          currentFile: { ...file, content: options.baselineContent },
-          editorContent: content,
-        });
-      }
-      // Legacy mode: one file slot only (drop other file tabs + chat tab).
-      if (!workspaceTabsEnabledRef.current) {
-        next = retainOnlyFileTab(next, tabId);
-      }
-      applied = true;
-      nextState = next;
-      return next;
+    }
+    const existing = findFileTab(baseState, file.type, file.id);
+    if (!existing && !activate) return false;
+    let next = applyOpenedFileReducer(baseState, file, content, {
+      promptCloseDirty: softCapPrompt,
+      activate,
     });
-    if (!applied) return false;
-    // Only sync editor mirrors when this tab is (or became) active.
-    if (nextState.activeId === tabId) {
+    if (next === baseState && !findFileTab(baseState, file.type, file.id)) {
+      return false;
+    }
+    if (options.baselineContent != null && typeof options.baselineContent === 'string') {
+      next = patchFileTab(next, tabId, {
+        baselineContent: options.baselineContent,
+        currentFile: { ...file, content: options.baselineContent },
+        editorContent: content,
+      });
+    }
+    if (!workspaceTabsEnabledRef.current) {
+      next = retainOnlyFileTab(next, tabId);
+    }
+    workspaceTabsRef.current = next;
+    setWorkspaceTabs(next);
+    if (next.activeId === tabId) {
       setCurrentFile(file);
       currentFileRef.current = file;
       setEditorContent(content);
@@ -343,6 +328,7 @@ export function useFileSessionDomain() {
       }
     }
 
+    let committedResolvedBody = false;
     const commit = (file, content = '', commitOpts = {}) => {
       if (!isCurrentAttempt()) {
         if (typeof file?.objectUrl === 'string' && file.objectUrl) {
@@ -358,6 +344,7 @@ export function useFileSessionDomain() {
       const wasActive = workspaceTabsRef.current.activeId === tabId;
       // Never steal focus when fetch finishes — activate only via markAsLoading / existing activate.
       const ok = commitOpenFile(file, content, { ...commitOpts, activate: false });
+      if (ok) committedResolvedBody = true;
       if (!ok) {
         if (typeof file?.objectUrl === 'string' && file.objectUrl) {
           try {
@@ -1007,7 +994,7 @@ export function useFileSessionDomain() {
     }
     } finally {
       try {
-        if (isCurrentAttempt()) {
+        if (isCurrentAttempt() && !committedResolvedBody) {
           const live = findFileTab(workspaceTabsRef.current, type, node.path);
           if (live && live.currentFile?.viewer === 'loading') {
             // Keep parked last-viewed body (split restore shells) — do not wipe

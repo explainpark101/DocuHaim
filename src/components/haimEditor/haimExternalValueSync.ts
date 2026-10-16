@@ -12,9 +12,37 @@
  */
 export function isVaultValueEcho(
   externalValue: string,
-  lastEmittedMd: string,
+  lastEmittedMd: string | null,
 ): boolean {
-  return externalValue === lastEmittedMd;
+  return lastEmittedMd != null && externalValue === lastEmittedMd;
+}
+
+/**
+ * Whether parent `value` must be written into the live editor.
+ * A fetched note often arrives after TipTap was created from an empty mount.
+ * That body is not an echo of a keystroke, so debounce / last-emitted must
+ * not skip it until the user has actually edited.
+ */
+export function shouldApplyExternalVaultMarkdown(options: {
+  externalValue: string;
+  liveMarkdown: string;
+  lastEmittedMd: string | null;
+  fileChanged: boolean;
+  userEdited: boolean;
+  localInputActive: boolean;
+}): boolean {
+  const external = options.externalValue ?? '';
+  const live = options.liveMarkdown ?? '';
+  if (live === external) return false;
+  if (!options.userEdited) return true;
+  if (
+    !options.fileChanged
+    && isVaultValueEcho(external, options.lastEmittedMd)
+  ) {
+    return false;
+  }
+  if (!options.fileChanged && options.localInputActive) return false;
+  return true;
 }
 
 /**

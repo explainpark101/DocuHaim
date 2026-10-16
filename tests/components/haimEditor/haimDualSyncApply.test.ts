@@ -10,6 +10,7 @@ import {
 } from '@/components/haimEditor/haimDualSyncApply';
 import {
   isVaultValueEcho,
+  shouldApplyExternalVaultMarkdown,
   shouldEmitVaultMarkdown,
 } from '@/components/haimEditor/haimExternalValueSync';
 
@@ -158,6 +159,48 @@ describe('shouldEmitVaultMarkdown', () => {
         userEdited: true,
       }),
     ).toBe(true);
+  });
+
+  it('applies a fetched body onto an editor that is still empty', () => {
+    expect(
+      shouldApplyExternalVaultMarkdown({
+        externalValue: '# note',
+        liveMarkdown: '',
+        lastEmittedMd: null,
+        fileChanged: false,
+        userEdited: false,
+        localInputActive: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('does not treat the fetched body as an echo before it is on screen', () => {
+    expect(
+      isVaultValueEcho('# note', null),
+    ).toBe(false);
+    expect(
+      shouldApplyExternalVaultMarkdown({
+        externalValue: '# note',
+        liveMarkdown: '',
+        lastEmittedMd: '# note',
+        fileChanged: false,
+        userEdited: false,
+        localInputActive: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('skips a keystroke echo after the user has edited', () => {
+    expect(
+      shouldApplyExternalVaultMarkdown({
+        externalValue: '# note',
+        liveMarkdown: '# note!',
+        lastEmittedMd: '# note',
+        fileChanged: false,
+        userEdited: true,
+        localInputActive: false,
+      }),
+    ).toBe(false);
   });
 
   it('does not emit when markdown already matches the parent', () => {

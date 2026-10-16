@@ -34,7 +34,7 @@ import {
   replaceTipTapPreservingView,
 } from '@/components/haimEditor/haimDualSyncApply';
 import {
-  isVaultValueEcho,
+  shouldApplyExternalVaultMarkdown,
   shouldEmitVaultMarkdown,
 } from '@/components/haimEditor/haimExternalValueSync';
 import { useHaimDoubleScrollSync } from '@/components/haimEditor/useHaimDoubleScrollSync';
@@ -206,8 +206,12 @@ export default function HaimEditor({
   const wysiwygScrollRef = useRef<HTMLDivElement | null>(null);
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
-  /** Last markdown we pushed via onChange — ignore parent echo (typing race). */
-  const lastEmittedMdRef = useRef(value || '');
+  /**
+   * Last markdown we pushed via onChange. Null until the first real emit or
+   * external apply — do not seed this with `value`, or a fetched body is
+   * treated as an echo and never written into an editor created empty.
+   */
+  const lastEmittedMdRef = useRef<string | null>(null);
   /** True after the user edits this file (so a real clear may emit ""). */
   const userEditedRef = useRef(false);
   /** False until the open note body has been applied — blocks mount-time "". */
@@ -419,7 +423,18 @@ export default function HaimEditor({
     [previewOnly],
   );
 
-  const initial = useMemo(() => markdownToEditorContent(value || ''), []);
+  // TipTap is created once, from options at that moment. Until onCreate,
+  // keep the seed aligned with the latest parent value so a fetch that
+  // lands before mount is the first document, not the empty loading render.
+  const editorSeedLockedRef = useRef(false);
+  const editorSeedRef = useRef<ReturnType<typeof markdownToEditorContent> | null>(null);
+  const editorSeedValueRef = useRef<string | null>(null);
+  const incomingSeed = value || '';
+  if (!editorSeedLockedRef.current && editorSeedValueRef.current !== incomingSeed) {
+    editorSeedValueRef.current = incomingSeed;
+    editorSeedRef.current = markdownToEditorContent(incomingSeed);
+  }
+  const initial = editorSeedRef.current ?? markdownToEditorContent('');
 
   const editor = useEditor(
     {
@@ -436,6 +451,7 @@ export default function HaimEditor({
         },
       },
       onCreate: ({ editor: ed }) => {
+        editorSeedLockedRef.current = true;
         metaPrefixRef.current = initial.prefix;
         if ((value || '') !== joinCheck(initial.prefix, initial.content)) {
           setEditorMarkdown(ed, value || '', metaPrefixRef, { emitUpdate: false });
@@ -578,29 +594,28 @@ export default function HaimEditor({
       vaultReadyRef.current = true;
     };
 
-    if (!fileChanged && isVaultValueEcho(next, lastEmittedMdRef.current)) {
-      markVaultReady();
-      return;
-    }
-
-    // While local input debounce is active, do not rewrite the live doc
-    // (prevents caret jumping to the bottom mid-keystroke).
-    if (
-      !fileChanged &&
-      isLocalInputDebounceActive(
-        Date.now(),
-        localInputAtRef.current,
-        dualSyncDebounceMsRef.current,
-      )
-    ) {
-      markVaultReady();
-      return;
-    }
-
     const current = editorToVaultMarkdown(editor, metaPrefixRef.current);
-    if (current === next) {
-      lastEmittedMdRef.current = next;
-      markVaultReady();
+    const localInputActive = isLocalInputDebounceActive(
+      Date.now(),
+      localInputAtRef.current,
+      dualSyncDebounceMsRef.current,
+    );
+    if (
+      !shouldApplyExternalVaultMarkdown({
+        externalValue: next,
+        liveMarkdown: current,
+        lastEmittedMd: lastEmittedMdRef.current,
+        fileChanged,
+        userEdited: userEditedRef.current,
+        localInputActive,
+      })
+    ) {
+      // Live doc already matches, or the user is mid-keystroke. A fetched
+      // body that the doc does not show yet must not mark the vault ready.
+      if (current === next || userEditedRef.current) {
+        if (current === next) lastEmittedMdRef.current = next;
+        markVaultReady();
+      }
       return;
     }
 
