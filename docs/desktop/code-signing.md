@@ -20,6 +20,8 @@ Bump `package.json` version in the repo before running the release workflow. The
 
 GitHub → Actions → **Release Tauri** → Run workflow (optional: mark prerelease).
 
+The workflow creates `vX.Y.Z` as a **draft** first. macOS, Windows, and Android upload into that draft in parallel. The release is published only after every build job succeeds (a prerelease input keeps it marked prerelease, but it is no longer a draft). If a build fails, the release stays a draft so `/releases/latest` and the desktop updater do not see a partial asset set. GitHub cannot turn an already published release back into a draft; re-running the same tag updates that published release in place.
+
 ## Optional secrets (1:1 with the workflow)
 
 | Secret | Platform | Purpose |

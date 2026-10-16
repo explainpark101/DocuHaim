@@ -43,7 +43,8 @@ Match the printed ABI to the table above. If unsure, use **universal**.
 ### Publish (normal)
 
 1. Actions → **Release Tauri** → Run workflow.
-2. Download DMG / EXE / the matching APK from the new `v…` release (also linked from [releases/latest](https://github.com/explainpark101/DocuHaim/releases/latest)).
+2. The workflow keeps the `v…` release as a draft until macOS, Windows, and Android builds all succeed, then publishes it. A failed build leaves the draft unpublished.
+3. Download DMG / EXE / the matching APK from the published `v…` release (also linked from [releases/latest](https://github.com/explainpark101/DocuHaim/releases/latest)).
 
 ### Publish APK only (rebuild)
 

@@ -13,10 +13,104 @@ permissions:
   contents: write
 
 # One GitHub Release per semver (vX.Y.Z): DMG + NSIS + APK + latest.json.
+# Stay a draft until macOS, Windows, and Android builds all succeed, then publish.
+# A failed build leaves the draft unpublished so /releases/latest stays on the previous release.
 # Do not publish separate android-v* tags — they steal /releases/latest and break the updater.
 
 jobs:
+  create-draft-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.app_version.outputs.version }}
+      release_id: ${{ steps.draft.outputs.release_id }}
+      draft: ${{ steps.draft.outputs.draft }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from package.json
+        id: app_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          VERSION="${VERSION#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+            echo "Invalid package.json version: $VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using version $VERSION from package.json"
+
+      # getReleaseByTag hides drafts, so later jobs must reuse this release id.
+      # GitHub cannot turn a published release back into a draft.
+      - name: Create or reuse draft release
+        id: draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.app_version.outputs.version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          NAME="DocuHaim v${VERSION}"
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            PRERELEASE_JSON=true
+          else
+            PRERELEASE_JSON=false
+          fi
+
+          MATCHES="$(gh api --paginate "/repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq ".[] | select(.tag_name==\"${TAG}\") | [.id, .draft] | @tsv")"
+
+          DRAFT_ID="$(printf '%s\n' "${MATCHES}" | awk -F '\t' '
+            $2 == "true" && (min == "" || $1 + 0 < min) { min = $1 + 0 }
+            END { if (min != "") print min }
+          ')"
+          PUBLISHED_ID="$(printf '%s\n' "${MATCHES}" | awk -F '\t' '
+            $2 == "false" && (min == "" || $1 + 0 < min) { min = $1 + 0 }
+            END { if (min != "") print min }
+          ')"
+
+          if [[ -n "${DRAFT_ID}" ]]; then
+            echo "Reusing draft release ${DRAFT_ID} for ${TAG}"
+            jq -n \
+              --rawfile body docs/desktop/github-release-body.md \
+              --arg name "${NAME}" \
+              --argjson prerelease "${PRERELEASE_JSON}" \
+              '{name:$name, body:$body, draft:true, prerelease:$prerelease}' \
+              | gh api --method PATCH --input - \
+                "/repos/${GITHUB_REPOSITORY}/releases/${DRAFT_ID}" >/dev/null
+            echo "release_id=${DRAFT_ID}" >> "$GITHUB_OUTPUT"
+            echo "draft=true" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${PUBLISHED_ID}" ]]; then
+            echo "Release ${TAG} is already published (${PUBLISHED_ID}). Uploads will update it in place."
+            echo "release_id=${PUBLISHED_ID}" >> "$GITHUB_OUTPUT"
+            echo "draft=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Creating draft release ${TAG}"
+            CREATED="$(jq -n \
+              --rawfile body docs/desktop/github-release-body.md \
+              --arg tag "${TAG}" \
+              --arg name "${NAME}" \
+              --arg target "${GITHUB_SHA}" \
+              --argjson prerelease "${PRERELEASE_JSON}" \
+              '{tag_name:$tag, name:$name, body:$body, draft:true, prerelease:$prerelease, target_commitish:$target}' \
+              | gh api --method POST --input - \
+                "/repos/${GITHUB_REPOSITORY}/releases")"
+            RELEASE_ID="$(printf '%s' "${CREATED}" | jq -r '.id')"
+            if [[ -z "${RELEASE_ID}" || "${RELEASE_ID}" == "null" ]]; then
+              echo "Failed to create draft release"
+              printf '%s\n' "${CREATED}"
+              exit 1
+            fi
+            echo "release_id=${RELEASE_ID}" >> "$GITHUB_OUTPUT"
+            echo "draft=true" >> "$GITHUB_OUTPUT"
+          fi
+
   publish-tauri:
+    needs: create-draft-release
     strategy:
       fail-fast: false
       matrix:
@@ -125,7 +219,7 @@ jobs:
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: false
+          releaseDraft: ${{ needs.create-draft-release.outputs.draft == 'true' }}
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
 
@@ -147,7 +241,7 @@ jobs:
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: false
+          releaseDraft: ${{ needs.create-draft-release.outputs.draft == 'true' }}
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
 
@@ -165,11 +259,12 @@ jobs:
           tagName: v${{ steps.app_version.outputs.version }}
           releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
           releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: false
+          releaseDraft: ${{ needs.create-draft-release.outputs.draft == 'true' }}
           prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
 
   publish-android:
+    needs: create-draft-release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -244,13 +339,64 @@ jobs:
       - name: Collect APK artifacts
         run: bun scripts/collect-android-release-apks.mjs "${{ steps.app_version.outputs.version }}"
 
-      - name: Upload Android APKs to unified GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.app_version.outputs.version }}
-          name: DocuHaim v${{ steps.app_version.outputs.version }}
-          body_path: docs/desktop/github-release-body.md
-          prerelease: ${{ inputs.prerelease }}
-          files: dist-android/*.apk
+      # softprops/action-gh-release looks up tags with getReleaseByTag, which
+      # hides drafts and would publish a second release. Upload by release id.
+      - name: Upload Android APKs to GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.create-draft-release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(dist-android/*.apk)
+          if (( ${#files[@]} == 0 )); then
+            echo "No APK files found in dist-android/"
+            exit 1
+          fi
+          UPLOAD_URL="$(gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+            --jq '.upload_url | sub("[{].*$"; "")')"
+          for f in "${files[@]}"; do
+            name="$(basename "$f")"
+            asset_id="$(gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
+              --jq "first(.[] | select(.name == \"${name}\") | .id) // empty")"
+            if [[ -n "${asset_id}" ]]; then
+              echo "Replacing existing asset ${name} (${asset_id})"
+              gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" >/dev/null
+            fi
+            echo "Uploading ${name}"
+            gh api --method POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              "${UPLOAD_URL}?name=${name}" \
+              --input "$f" >/dev/null
+          done
+
+  publish-release:
+    needs: [create-draft-release, publish-tauri, publish-android]
+    if: ${{ success() && needs.create-draft-release.outputs.draft == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.create-draft-release.outputs.release_id }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            gh api --method PATCH \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+              -F draft=false \
+              -F prerelease=true \
+              -f make_latest=false >/dev/null
+            echo "Published ${RELEASE_ID} as a prerelease"
+          else
+            gh api --method PATCH \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
+              -F draft=false \
+              -F prerelease=false \
+              -f make_latest=true >/dev/null
+            echo "Published ${RELEASE_ID}"
+          fi
