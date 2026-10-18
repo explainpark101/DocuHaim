@@ -5,8 +5,9 @@
  * `keychain-access-groups` with ad-hoc signing breaks app launch on current macOS.
  * Keychain prompts still work; choose "Always Allow" on first access.
  *
- * `tauri build` removes bundle/macos/*.app after DMG creation, so this script
- * extracts DocuHaim.app from the release DMG when needed.
+ * If the app bundle target was not requested, `tauri build` removes
+ * bundle/macos/*.app after DMG creation. This script extracts DocuHaim.app
+ * from the release DMG when that directory is missing.
  *
  * Usage:
  *   bun run tauri:build && bun run macos:adhoc

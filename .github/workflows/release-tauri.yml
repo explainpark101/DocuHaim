@@ -8,13 +8,21 @@ on:
         required: false
         type: boolean
         default: false
+      updater_json_only:
+        description: 'Do not rebuild. Regenerate latest.json from installers already on this version release.'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  actions: write
 
-# One GitHub Release per semver (vX.Y.Z): DMG + NSIS + APK + latest.json.
-# Stay a draft until macOS, Windows, and Android builds all succeed, then publish.
+# One GitHub Release per semver (vX.Y.Z): DMG + app updater archive + NSIS + APK + latest.json.
+# Build jobs only stage files. One later job uploads every installer, then writes latest.json.
+# Stay a draft until that upload succeeds, then publish.
 # A failed build leaves the draft unpublished so /releases/latest stays on the previous release.
+# updater_json_only skips builds and replaces latest.json on the existing vX.Y.Z release.
 # Do not publish separate android-v* tags — they steal /releases/latest and break the updater.
 
 jobs:
@@ -51,6 +59,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.app_version.outputs.version }}
           PRERELEASE: ${{ inputs.prerelease }}
+          UPDATER_JSON_ONLY: ${{ inputs.updater_json_only }}
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
@@ -73,13 +82,22 @@ jobs:
             END { if (min != "") print min }
           ')"
 
+          if [[ "${UPDATER_JSON_ONLY}" == "true" && -z "${DRAFT_ID}" && -z "${PUBLISHED_ID}" ]]; then
+            echo "updater_json_only: no release found for ${TAG}. Refusing to create one."
+            exit 1
+          fi
+
           if [[ -n "${DRAFT_ID}" ]]; then
             echo "Reusing draft release ${DRAFT_ID} for ${TAG}"
+            # Omit tag_name and GitHub clears it on a draft. tauri-action then
+            # misses this release, creates another draft, and latest.json lands
+            # on the copy while publish still targets this id.
             jq -n \
               --rawfile body docs/desktop/github-release-body.md \
+              --arg tag "${TAG}" \
               --arg name "${NAME}" \
               --argjson prerelease "${PRERELEASE_JSON}" \
-              '{name:$name, body:$body, draft:true, prerelease:$prerelease}' \
+              '{tag_name:$tag, name:$name, body:$body, draft:true, prerelease:$prerelease}' \
               | gh api --method PATCH --input - \
                 "/repos/${GITHUB_REPOSITORY}/releases/${DRAFT_ID}" >/dev/null
             echo "release_id=${DRAFT_ID}" >> "$GITHUB_OUTPUT"
@@ -111,6 +129,7 @@ jobs:
 
   publish-tauri:
     needs: create-draft-release
+    if: ${{ inputs.updater_json_only != true }}
     strategy:
       fail-fast: false
       matrix:
@@ -159,16 +178,6 @@ jobs:
       - name: Generate Tauri icons
         run: bunx tauri icon public/pwa-512x512.png -o src-tauri/icons
 
-      - name: Load release notes
-        id: release_notes
-        shell: bash
-        run: |
-          {
-            echo 'body<<RELEASE_BODY_EOF'
-            cat docs/desktop/github-release-body.md
-            echo 'RELEASE_BODY_EOF'
-          } >> "$GITHUB_OUTPUT"
-
       # Secrets cannot be referenced in step `if:` — probe via env in a shell step.
       # Empty strings still trigger tauri-action import/codesign and fail.
       - name: Resolve signing mode
@@ -207,7 +216,9 @@ jobs:
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and upload release (unsigned)
+      # Build only. Uploading here races across macOS, Windows, and Android and
+      # leaves the release with whichever job finished last.
+      - name: Build Tauri bundles (unsigned)
         if: steps.signing.outputs.signed == 'false'
         uses: tauri-apps/tauri-action@v1
         env:
@@ -215,15 +226,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          updaterJsonPreferNsis: true
-          tagName: v${{ steps.app_version.outputs.version }}
-          releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
-          releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: ${{ needs.create-draft-release.outputs.draft == 'true' }}
-          prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
 
-      - name: Build and upload release (signed macOS)
+      - name: Build Tauri bundles (signed macOS)
         if: matrix.platform == 'macos-latest' && steps.signing.outputs.signed == 'true'
         uses: tauri-apps/tauri-action@v1
         env:
@@ -237,15 +242,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          updaterJsonPreferNsis: true
-          tagName: v${{ steps.app_version.outputs.version }}
-          releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
-          releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: ${{ needs.create-draft-release.outputs.draft == 'true' }}
-          prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
 
-      - name: Build and upload release (signed Windows)
+      - name: Build Tauri bundles (signed Windows)
         if: matrix.platform == 'windows-latest' && steps.signing.outputs.signed == 'true'
         uses: tauri-apps/tauri-action@v1
         env:
@@ -255,16 +254,22 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          updaterJsonPreferNsis: true
-          tagName: v${{ steps.app_version.outputs.version }}
-          releaseName: DocuHaim v${{ steps.app_version.outputs.version }}
-          releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: ${{ needs.create-draft-release.outputs.draft == 'true' }}
-          prerelease: ${{ inputs.prerelease }}
           args: ${{ matrix.args }}
+
+      - name: Stage desktop installers
+        shell: bash
+        run: bun scripts/publishReleaseAssets.ts stage --from src-tauri/target --to dist-desktop
+
+      - name: Upload desktop installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-desktop-${{ matrix.platform }}
+          path: dist-desktop/*
+          if-no-files-found: error
 
   publish-android:
     needs: create-draft-release
+    if: ${{ inputs.updater_json_only != true }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -328,10 +333,22 @@ jobs:
       # Debug buildType APKs signed with committed sideload keystore
       # (src-tauri/gen/android/keystore/) so in-app updates share one cert.
       # split-per-abi → one APK per ABI; second build → universal (all ABIs).
+      # The universal build can wipe earlier outputs, so ABI APKs are copied aside first.
       - name: Build Android APKs (per-ABI + universal, debug)
+        shell: bash
         run: |
+          set -euo pipefail
           bunx tauri android build --debug --apk --split-per-abi
+          mkdir -p "$RUNNER_TEMP/apk-abi"
+          mapfile -t abi_apks < <(find src-tauri/gen/android -type f -name 'app-*-debug.apk' ! -name 'app-universal-debug.apk')
+          if (( ${#abi_apks[@]} == 0 )); then
+            echo "split-per-abi produced no ABI APKs"
+            exit 1
+          fi
+          cp "${abi_apks[@]}" "$RUNNER_TEMP/apk-abi/"
           bunx tauri android build --debug --apk
+          mkdir -p src-tauri/gen/android/preserved-abi-apks
+          cp "$RUNNER_TEMP/apk-abi/"*.apk src-tauri/gen/android/preserved-abi-apks/
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
@@ -339,64 +356,97 @@ jobs:
       - name: Collect APK artifacts
         run: bun scripts/collect-android-release-apks.mjs "${{ steps.app_version.outputs.version }}"
 
-      # softprops/action-gh-release looks up tags with getReleaseByTag, which
-      # hides drafts and would publish a second release. Upload by release id.
-      - name: Upload Android APKs to GitHub Release
+      - name: Upload Android installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-android
+          path: dist-android/*.apk
+          if-no-files-found: error
+
+  attach-release-assets:
+    needs: [create-draft-release, publish-tauri, publish-android]
+    if: ${{ !cancelled() && inputs.updater_json_only != true && needs.publish-tauri.result == 'success' && needs.publish-android.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Download every installer
+        uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Upload every installer and latest.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_ID: ${{ needs.create-draft-release.outputs.release_id }}
         run: |
-          set -euo pipefail
-          shopt -s nullglob
-          files=(dist-android/*.apk)
-          if (( ${#files[@]} == 0 )); then
-            echo "No APK files found in dist-android/"
-            exit 1
-          fi
-          UPLOAD_URL="$(gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
-            --jq '.upload_url | sub("[{].*$"; "")')"
-          for f in "${files[@]}"; do
-            name="$(basename "$f")"
-            asset_id="$(gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
-              --jq "first(.[] | select(.name == \"${name}\") | .id) // empty")"
-            if [[ -n "${asset_id}" ]]; then
-              echo "Replacing existing asset ${name} (${asset_id})"
-              gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" >/dev/null
-            fi
-            echo "Uploading ${name}"
-            gh api --method POST \
-              -H "Accept: application/vnd.github+json" \
-              -H "Content-Type: application/vnd.android.package-archive" \
-              "${UPLOAD_URL}?name=${name}" \
-              --input "$f" >/dev/null
-          done
+          bun scripts/publishReleaseAssets.ts upload \
+            --dir release-assets \
+            --release-id "${{ needs.create-draft-release.outputs.release_id }}" \
+            --version "${{ needs.create-draft-release.outputs.version }}" \
+            --notes docs/desktop/github-release-body.md
+
+  refresh-updater-json:
+    needs: create-draft-release
+    if: ${{ inputs.updater_json_only == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Regenerate latest.json only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bun scripts/publishReleaseAssets.ts json-only \
+            --release-id "${{ needs.create-draft-release.outputs.release_id }}" \
+            --version "${{ needs.create-draft-release.outputs.version }}" \
+            --notes docs/desktop/github-release-body.md
 
   publish-release:
-    needs: [create-draft-release, publish-tauri, publish-android]
-    if: ${{ success() && needs.create-draft-release.outputs.draft == 'true' }}
+    needs: [create-draft-release, attach-release-assets]
+    if: ${{ !cancelled() && inputs.updater_json_only != true && needs.create-draft-release.outputs.draft == 'true' && needs.attach-release-assets.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ needs.create-draft-release.outputs.release_id }}
+          VERSION: ${{ needs.create-draft-release.outputs.version }}
           PRERELEASE: ${{ inputs.prerelease }}
         run: |
           set -euo pipefail
-          if [[ "${PRERELEASE}" == "true" ]]; then
-            gh api --method PATCH \
-              -H "Accept: application/vnd.github+json" \
-              "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
-              -F draft=false \
-              -F prerelease=true \
-              -f make_latest=false >/dev/null
-            echo "Published ${RELEASE_ID} as a prerelease"
-          else
-            gh api --method PATCH \
-              -H "Accept: application/vnd.github+json" \
-              "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
-              -F draft=false \
-              -F prerelease=false \
-              -f make_latest=true >/dev/null
-            echo "Published ${RELEASE_ID}"
+          if ! gh api --paginate "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
+            --jq '.[] | .name' | grep -qx 'latest.json'; then
+            echo "Refusing to publish release ${RELEASE_ID}: latest.json is missing."
+            echo "Leaving the release as a draft so /releases/latest is unchanged."
+            exit 1
           fi
+          TAG="v${VERSION}"
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            MAKE_LATEST=false
+          else
+            MAKE_LATEST=true
+          fi
+          # tag_name must be sent again. A publish PATCH that omits it can
+          # detach the tag and leave an untagged Latest without latest.json.
+          jq -n \
+            --arg tag "${TAG}" \
+            --arg make_latest "${MAKE_LATEST}" \
+            --argjson prerelease "$([[ "${PRERELEASE}" == "true" ]] && echo true || echo false)" \
+            '{tag_name:$tag, draft:false, prerelease:$prerelease, make_latest:$make_latest}' \
+            | gh api --method PATCH --input - \
+              "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" >/dev/null
+          echo "Published ${RELEASE_ID} (${TAG})"

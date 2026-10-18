@@ -18,9 +18,14 @@ Bump `package.json` version in the repo before running the release workflow. The
 
 ## Trigger
 
-GitHub → Actions → **Release Tauri** → Run workflow (optional: mark prerelease).
+GitHub → Actions → **Release Tauri** → Run workflow.
 
-The workflow creates `vX.Y.Z` as a **draft** first. macOS, Windows, and Android upload into that draft in parallel. The release is published only after every build job succeeds (a prerelease input keeps it marked prerelease, but it is no longer a draft). If a build fails, the release stays a draft so `/releases/latest` and the desktop updater do not see a partial asset set. GitHub cannot turn an already published release back into a draft; re-running the same tag updates that published release in place.
+| Input | Effect |
+|-------|--------|
+| Mark prerelease | Publishes the release as a prerelease so it does not become Latest |
+| Do not rebuild… | `updater_json_only`: skip macOS, Windows, and Android builds. Replace `latest.json` on the existing `vX.Y.Z` release using the installers and `.sig` files already attached |
+
+The workflow creates `vX.Y.Z` as a **draft** first. Each build job only saves its installers. After every build succeeds, one job uploads the full set (DMG, macOS updater archive, NSIS, every APK) and then writes `latest.json`. Publish runs only after that upload succeeds (a prerelease input keeps it marked prerelease, but it is no longer a draft). If a build fails or an installer is missing, the release stays a draft so `/releases/latest` and the desktop updater do not see a partial asset set. Draft updates and the final publish PATCH send `tag_name` again — omitting it makes GitHub drop the tag. GitHub cannot turn an already published release back into a draft; re-running the same tag updates that published release in place.
 
 ## Optional secrets (1:1 with the workflow)
 
@@ -59,7 +64,7 @@ bunx tauri signer generate -w ~/.tauri/docuhaim.key
 - Store the **private** key in GitHub Secrets as `TAURI_SIGNING_PRIVATE_KEY` (paste the key file contents, or base64-encode the file).
 - If the key has a password, set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 
-The release workflow passes these secrets to `tauri-action`, which uploads signed updater artifacts and `latest.json` alongside DMG / NSIS installers.
+The release workflow passes these secrets to `tauri-action` while building. A later job uploads the signed updater artifacts and writes `latest.json` after every installer is on the release.
 
 Without `TAURI_SIGNING_PRIVATE_KEY`, releases still build but auto-update signatures will not match the embedded public key — configure the secret before shipping updater-enabled builds to users.
 
