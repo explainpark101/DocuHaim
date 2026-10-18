@@ -40,15 +40,19 @@ export async function requestInkPresenter(
   }
 }
 
-/**
- * Composite base image + ink + highlight layers into a PNG blob.
- * Prefers fetch(src) so cross-origin signed URLs stay untainted when CORS allows.
- */
-export async function compositeAnnotatedImageBlob(options: {
+export type AnnotatedCompositeOptions = {
   src: string;
   inkCanvas: HTMLCanvasElement | null;
   highlightCanvas: HTMLCanvasElement | null;
-}): Promise<Blob> {
+};
+
+/**
+ * Composite base image + ink + highlight layers.
+ * Prefers fetch(src) so cross-origin signed URLs stay untainted when CORS allows.
+ */
+export async function compositeAnnotatedImageCanvas(
+  options: AnnotatedCompositeOptions,
+): Promise<HTMLCanvasElement> {
   const { src, inkCanvas, highlightCanvas } = options;
   const bitmap = await loadBitmap(src);
   const w = 'width' in bitmap ? bitmap.width : (bitmap as ImageBitmap).width;
@@ -74,11 +78,24 @@ export async function compositeAnnotatedImageBlob(options: {
       // ignore
     }
   }
-  const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((b) => resolve(b), 'image/png');
+  return canvas;
+}
+
+export function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('Failed to encode PNG'));
+    }, 'image/png');
   });
-  if (!blob) throw new Error('Failed to encode PNG');
-  return blob;
+}
+
+/** Composite base image + ink + highlight layers into a PNG blob. */
+export async function compositeAnnotatedImageBlob(
+  options: AnnotatedCompositeOptions,
+): Promise<Blob> {
+  const canvas = await compositeAnnotatedImageCanvas(options);
+  return canvasToPngBlob(canvas);
 }
 
 async function loadBitmap(src: string): Promise<ImageBitmap | HTMLImageElement> {

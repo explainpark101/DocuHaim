@@ -613,3 +613,21 @@ export async function loadDesktopStrongholdAfterBiometric(): Promise<{
   const webdav = await loadDesktopWebdavConfig();
   return { creds, webdav };
 }
+
+const KEY_TELEGRAM_SESSION = 'telegram-session-v1';
+
+/** GramJS api id, api hash, and StringSession. Never written to localStorage. */
+export async function loadTelegramStrongholdSession(): Promise<string | null> {
+  if (!isDesktopApp()) return null;
+  return getRecord(KEY_TELEGRAM_SESSION);
+}
+
+export async function saveTelegramStrongholdSession(json: string): Promise<void> {
+  if (!isDesktopApp()) return;
+  await setRecord(KEY_TELEGRAM_SESSION, json);
+}
+
+export async function clearTelegramStrongholdSession(): Promise<void> {
+  if (!isDesktopApp()) return;
+  await removeRecord(KEY_TELEGRAM_SESSION);
+}

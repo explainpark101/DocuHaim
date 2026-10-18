@@ -17,6 +17,9 @@ export const CONTENT_SEARCH_TAB_ID = 'content-search' as const;
 /** Fixed id for the singleton LLM Assist split-pane tab. */
 export const LLM_ASSIST_TAB_ID = 'llm-assist' as const;
 
+/** Fixed id for the singleton Telegram tab. */
+export const TELEGRAM_TAB_ID = 'telegram' as const;
+
 /** Soft max open file tabs (chat / settings excluded). */
 export const WORKSPACE_TAB_SOFT_CAP = 12;
 
@@ -48,6 +51,11 @@ export type ContentSearchWorkspaceTab = {
 export type LlmAssistWorkspaceTab = {
   id: typeof LLM_ASSIST_TAB_ID;
   kind: 'llm-assist';
+};
+
+export type TelegramWorkspaceTab = {
+  id: typeof TELEGRAM_TAB_ID;
+  kind: 'telegram';
 };
 
 export type FileWorkspaceTab = {
@@ -83,6 +91,7 @@ export type WorkspaceTab =
   | SettingsWorkspaceTab
   | ContentSearchWorkspaceTab
   | LlmAssistWorkspaceTab
+  | TelegramWorkspaceTab
   | FileWorkspaceTab;
 
 export type WorkspaceTabsState = {
@@ -98,6 +107,7 @@ export type PersistedWorkspaceTab =
   | { kind: 'settings' }
   | { kind: 'content-search' }
   | { kind: 'llm-assist' }
+  | { kind: 'telegram' }
   | { kind: 'file'; type: FileStorageType; path: string };
 
 export type PersistedWorkspaceTabsV1 = {

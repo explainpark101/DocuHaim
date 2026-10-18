@@ -82,7 +82,8 @@ import {
   IconRefresh,
   IconCheck,
 } from '@/components/icons';
-import { ArrowRightToLine, ChevronsLeft, Download, HardDrive, Loader2, MessageCircle, X } from 'lucide-react';
+import { ArrowRightToLine, ChevronsLeft, Download, HardDrive, Loader2, MessageCircle, Send, X } from 'lucide-react';
+import { isTelegramShell } from '@/utils/telegram/telegramPlatform';
 import AdvancedSearchSidebarTrigger from '@/components/advancedSearch/AdvancedSearchSidebarTrigger';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 import SessionTreeList from '@/components/SessionTreeList';
@@ -265,6 +266,8 @@ export type SidebarProps = {
   onShareToChatWithMyself?: (...args: unknown[]) => void;
   onOpenChatWithMyself?: () => void;
   chatWithMyselfActive?: boolean;
+  onOpenTelegram?: () => void;
+  telegramActive?: boolean;
   chatAttachDropHost?: HTMLElement | null;
   onDropToChatAttach?: (items: TreeMoveItem[]) => void;
   quizSourceDropActive?: boolean;
@@ -347,6 +350,35 @@ type ChatWithMyselfEntryProps = {
   isActive: boolean;
   onOpen?: (() => void) | undefined;
 };
+
+function TelegramEntry({
+  isActive,
+  onOpen,
+}: {
+  isActive?: boolean;
+  onOpen?: (() => void) | undefined;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen?.();
+      }}
+      className={`flex w-full items-center gap-1.5 rounded py-1.5 pr-2 px-2 text-left text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-odp-focusBg ${
+        isActive
+          ? 'ring-2 ring-sky-400 ring-offset-1 ring-offset-white dark:ring-sky-500 dark:ring-offset-odp-bgSofter'
+          : ''
+      }`}
+      style={{ paddingLeft: '8px' }}
+    >
+      <span className="flex w-4 shrink-0 justify-center text-sky-600 dark:text-sky-400">
+        <Send size={14} />
+      </span>
+      <span className="truncate text-gray-500 dark:text-gray-400">Telegram</span>
+    </button>
+  );
+}
 
 function ChatWithMyselfEntry({ isActive, onOpen }: ChatWithMyselfEntryProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -483,6 +515,8 @@ export default function Sidebar({
   onShareToChatWithMyself,
   onOpenChatWithMyself,
   chatWithMyselfActive = false,
+  onOpenTelegram,
+  telegramActive = false,
   chatAttachDropHost = null,
   onDropToChatAttach,
   quizSourceDropActive = false,
@@ -2015,6 +2049,9 @@ export default function Sidebar({
                 isActive={chatWithMyselfActive}
                 onOpen={onOpenChatWithMyself}
               />
+              {isTelegramShell() ? (
+                <TelegramEntry isActive={telegramActive} onOpen={onOpenTelegram} />
+              ) : null}
               <RootDropZone
                 storageType="s3"
                 localRootHandle={null}
@@ -2176,6 +2213,9 @@ export default function Sidebar({
               isActive={chatWithMyselfActive}
               onOpen={onOpenChatWithMyself}
             />
+            {isTelegramShell() ? (
+              <TelegramEntry isActive={telegramActive} onOpen={onOpenTelegram} />
+            ) : null}
             <RootDropZone
               storageType="local"
               localRootHandle={localRootHandle}
@@ -2358,6 +2398,9 @@ export default function Sidebar({
               isActive={chatWithMyselfActive}
               onOpen={onOpenChatWithMyself}
             />
+            {isTelegramShell() ? (
+              <TelegramEntry isActive={telegramActive} onOpen={onOpenTelegram} />
+            ) : null}
             <RootDropZone
               storageType="idb"
               localRootHandle={null}
@@ -2508,6 +2551,9 @@ export default function Sidebar({
                 isActive={chatWithMyselfActive}
                 onOpen={onOpenChatWithMyself}
               />
+              {isTelegramShell() ? (
+                <TelegramEntry isActive={telegramActive} onOpen={onOpenTelegram} />
+              ) : null}
               <RootDropZone
                 storageType="webdav"
                 localRootHandle={null}

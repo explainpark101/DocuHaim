@@ -75,6 +75,7 @@ export type ChatMessage = {
   collapsed?: string;
   reactions?: unknown[];
   reactionsAt?: string;
+  ogCards?: import('@/utils/chatWithMyself/messageOg').ChatBubbleOgCard[];
   editHistory?: Array<{ at: string; body: string; group: string }>;
 };
 
@@ -112,6 +113,7 @@ export type PatchChatMessageMetaFields = {
   collapsed?: boolean | string | null;
   reactions?: unknown[] | null;
   reactionsAt?: string | null;
+  ogCards?: import('@/utils/chatWithMyself/messageOg').ChatBubbleOgCard[] | null;
 };
 
 export type UpdateChatMessagePatch = {
@@ -797,6 +799,9 @@ export async function patchChatMessageMeta(
     } else if (fields.reactionsAt !== undefined) {
       next.reactionsAt = fields.reactionsAt ? String(fields.reactionsAt) : '';
     }
+    if (fields.ogCards !== undefined) {
+      next.ogCards = Array.isArray(fields.ogCards) ? fields.ogCards : [];
+    }
     updated = next;
     const messages = parsed.messages.slice();
     messages[idx] = next;
@@ -876,6 +881,7 @@ export async function updateChatMessage(
       group: nextGroup,
       markdown: nextMarkdown,
       encrypted: nextEncrypted,
+      ogCards: bodyChanged ? [] : prev.ogCards,
       editedAt: new Date().toISOString(),
       // Stop embedding history in the day file; keep empty for serializers.
       editHistory: [],

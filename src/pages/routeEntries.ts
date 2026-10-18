@@ -16,4 +16,4 @@ export const APP_PAGE_ENTRIES = [
   'LlmAssistPopoutPage',
 ] as const;
 
-export const FEATURE_QUASI_PAGES = ['ChatWithMyselfPane'] as const;
+export const FEATURE_QUASI_PAGES = ['ChatWithMyselfPane', 'TelegramPane'] as const;

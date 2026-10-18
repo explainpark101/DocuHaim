@@ -87,6 +87,43 @@ async function decodeWithJsQr(imageData: ImageData): Promise<string | null> {
   return raw || null;
 }
 
+function ensureQrReadableSize(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const minSide = Math.min(canvas.width, canvas.height);
+  if (minSide >= 320 || minSide < 1) return canvas;
+  const scale = Math.min(4, 480 / minSide);
+  const out = document.createElement('canvas');
+  out.width = Math.max(1, Math.round(canvas.width * scale));
+  out.height = Math.max(1, Math.round(canvas.height * scale));
+  const ctx = out.getContext('2d');
+  if (!ctx) return canvas;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(canvas, 0, 0, out.width, out.height);
+  return out;
+}
+
+function canvasToPngFile(canvas: HTMLCanvasElement): Promise<File> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Failed to encode PNG'));
+        return;
+      }
+      resolve(new File([blob], 'qr-region.png', { type: 'image/png' }));
+    }, 'image/png');
+  });
+}
+
+/**
+ * Read QR payload text from canvas pixels (full image or a cropped region).
+ */
+export async function decodeQrCodeFromCanvas(
+  canvas: HTMLCanvasElement,
+): Promise<string> {
+  const prepared = ensureQrReadableSize(canvas);
+  const file = await canvasToPngFile(prepared);
+  return decodeQrCodeFromFile(file);
+}
+
 /**
  * Read QR payload text from an image File (PNG/JPEG/WebP/SVG, etc.).
  */

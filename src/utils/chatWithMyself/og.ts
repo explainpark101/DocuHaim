@@ -6,6 +6,10 @@ import {
   buildOgWorkerInspectUrl,
   loadOgWorkerUrl,
 } from '@/utils/ogWorkerSettings';
+import {
+  canonicalOgFetchUrl,
+  groupUrlsByOgIdentity,
+} from '@/utils/chatWithMyself/ogIdentity';
 
 const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/gi;
 
@@ -883,7 +887,7 @@ export async function fetchOgMetadata(
   url: string,
   options: { force?: boolean } = {},
 ): Promise<OgPayload> {
-  const target = String(url || '').trim();
+  const target = canonicalOgFetchUrl(String(url || '').trim());
   if (!target) throw new Error('Invalid OG url');
   const force = Boolean(options.force);
   const collected: OgPayload[] = [];
@@ -950,7 +954,8 @@ export async function readCachedOg(
   url: string,
   storage?: OgArchiveStorage | null,
 ): Promise<CachedOgRecord | null> {
-  const urlHash = await hashUrl(url);
+  const target = canonicalOgFetchUrl(String(url || '').trim());
+  const urlHash = await hashUrl(target);
   const key = ogArchiveKey(urlHash);
 
   const idb = (await getCachedOg(urlHash)) as
@@ -981,10 +986,11 @@ async function refreshAndArchiveOgOnce(
   storage: OgArchiveStorage | null | undefined,
   options: { urlHash?: string; key?: string; force?: boolean } = {},
 ): Promise<OgPayload> {
-  const hash = options.urlHash || (await hashUrl(url));
+  const target = canonicalOgFetchUrl(String(url || '').trim());
+  const hash = options.urlHash || (await hashUrl(target));
   const archiveKey = options.key || ogArchiveKey(hash);
   const fresh = await fetchOgMetadata(
-    url,
+    target,
     options.force != null ? { force: options.force } : {},
   );
   if (!hasOgContent(fresh)) {
@@ -1009,17 +1015,18 @@ export async function refreshAndArchiveOg(
   storage?: OgArchiveStorage | null,
   options: { urlHash?: string; key?: string; force?: boolean } = {},
 ): Promise<OgPayload> {
-  const existing = inflightOgRefresh.get(url);
+  const target = canonicalOgFetchUrl(String(url || '').trim());
+  const existing = inflightOgRefresh.get(target);
   if (existing) return existing;
 
-  const pending = refreshAndArchiveOgOnce(url, storage, {
+  const pending = refreshAndArchiveOgOnce(target, storage, {
     force: options.force ?? true,
     ...(options.urlHash ? { urlHash: options.urlHash } : {}),
     ...(options.key ? { key: options.key } : {}),
   }).finally(() => {
-    if (inflightOgRefresh.get(url) === pending) inflightOgRefresh.delete(url);
+    if (inflightOgRefresh.get(target) === pending) inflightOgRefresh.delete(target);
   });
-  inflightOgRefresh.set(url, pending);
+  inflightOgRefresh.set(target, pending);
   return pending;
 }
 
@@ -1030,7 +1037,7 @@ export async function reloadOgCache(
   url: string,
   storage?: OgArchiveStorage | null,
 ): Promise<OgPayload> {
-  const target = String(url || '').trim();
+  const target = canonicalOgFetchUrl(String(url || '').trim());
   if (!target) throw new Error('Invalid OG url');
   const urlHash = await hashUrl(target);
   const key = ogArchiveKey(urlHash);
@@ -1050,7 +1057,7 @@ export async function reloadOgCacheForMessageBody(
   body: string | null | undefined,
   storage?: OgArchiveStorage | null,
 ): Promise<ReloadBodyResult> {
-  const urls = extractUrls(body);
+  const urls = groupUrlsByOgIdentity(extractUrls(body)).map((group) => group.fetchUrl);
   const results: ReloadBodyResult['results'] = [];
   for (const url of urls) {
     try {
@@ -1078,8 +1085,9 @@ export async function loadAndArchiveOg(
   url: string,
   storage?: OgArchiveStorage | null,
 ): Promise<LoadOgResult> {
-  const cached = await readCachedOg(url, storage);
-  const fallback = makeFallbackOg(url);
+  const target = canonicalOgFetchUrl(String(url || '').trim());
+  const cached = await readCachedOg(target, storage);
+  const fallback = makeFallbackOg(target);
 
   if (cached?.data) {
     return {
@@ -1090,7 +1098,7 @@ export async function loadAndArchiveOg(
     };
   }
 
-  const urlHash = await hashUrl(url);
+  const urlHash = await hashUrl(target);
   const key = ogArchiveKey(urlHash);
 
   if (!isBrowserOnline()) {
@@ -1103,7 +1111,7 @@ export async function loadAndArchiveOg(
   }
 
   try {
-    const fresh = await refreshAndArchiveOg(url, storage, {
+    const fresh = await refreshAndArchiveOg(target, storage, {
       urlHash,
       key,
       force: false,

@@ -36,6 +36,7 @@ import {
   PencilRuler,
   Columns2,
   Sparkles,
+  Send,
 } from 'lucide-react';
 import { treeIconForVaultPath } from '@/utils/vaultFileViewers';
 import { Tooltip } from 'radix-ui';
@@ -320,6 +321,8 @@ function WorkspaceTabRow({
     >
       {tab.kind === 'chat' ? (
         <MessageSquare size={13} className="shrink-0 opacity-80" aria-hidden />
+      ) : tab.kind === 'telegram' ? (
+        <Send size={13} className="shrink-0 opacity-80" aria-hidden />
       ) : tab.kind === 'settings' ? (
         <IconSettings size={13} className="shrink-0 opacity-80" aria-hidden />
       ) : tab.kind === 'content-search' ? (

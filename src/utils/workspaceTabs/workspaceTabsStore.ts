@@ -3,6 +3,7 @@ import {
   CONTENT_SEARCH_TAB_ID,
   LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
+  TELEGRAM_TAB_ID,
   WORKSPACE_TAB_SOFT_CAP,
   defaultWorkspaceLayout,
   type FileWorkspaceTab,
@@ -13,6 +14,7 @@ import type { PaneNode } from '@/utils/workspaceTabs/paneLayout';
 import {
   createChatTab,
   createContentSearchTab,
+  createTelegramTab,
   createFileTab,
   createLlmAssistTab,
   createSettingsTab,
@@ -366,6 +368,32 @@ export function openOrActivateChat(
   const ordered = tabsOrderedByLayout(tabs, placed.layout);
   return ensureLayout({
     tabs: activate ? touchActivate(ordered, CHAT_TAB_ID, now) : ordered,
+    layout: placed.layout,
+    focusedPaneId: placed.focusedPaneId,
+    activeId: placed.activeId,
+  });
+}
+
+export function openOrActivateTelegram(
+  state: WorkspaceTabsState,
+  now = Date.now(),
+  opts?: { activate?: boolean },
+): WorkspaceTabsState {
+  const activate = opts?.activate !== false;
+  const existing = state.tabs.find((t) => t.kind === 'telegram');
+  if (existing) {
+    return activate ? activateTab(state, TELEGRAM_TAB_ID, now) : state;
+  }
+  const tabs = [...state.tabs, createTelegramTab()];
+  const placed = placeSingletonIntoFocusedLeaf(
+    state.layout,
+    state.focusedPaneId,
+    TELEGRAM_TAB_ID,
+    { activate },
+  );
+  const ordered = tabsOrderedByLayout(tabs, placed.layout);
+  return ensureLayout({
+    tabs: activate ? touchActivate(ordered, TELEGRAM_TAB_ID, now) : ordered,
     layout: placed.layout,
     focusedPaneId: placed.focusedPaneId,
     activeId: placed.activeId,

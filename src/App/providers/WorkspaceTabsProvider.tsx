@@ -42,6 +42,7 @@ export function WorkspaceTabsProvider({ children }: Props) {
       activateWorkspaceTab: domain.activateWorkspaceTab,
       closeWorkspaceTabById: domain.closeWorkspaceTabById,
       openChatWorkspaceTab: domain.openChatWorkspaceTab,
+      openTelegramWorkspaceTab: domain.openTelegramWorkspaceTab,
       openSettingsWorkspaceTab: domain.openSettingsWorkspaceTab,
       openContentSearchWorkspaceTab: domain.openContentSearchWorkspaceTab,
       openLlmAssistWorkspaceTab: domain.openLlmAssistWorkspaceTab,

@@ -3,12 +3,14 @@ import {
   CONTENT_SEARCH_TAB_ID,
   LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
+  TELEGRAM_TAB_ID,
   type ChatWorkspaceTab,
   type ContentSearchWorkspaceTab,
   type FileStorageType,
   type FileWorkspaceTab,
   type LlmAssistWorkspaceTab,
   type SettingsWorkspaceTab,
+  type TelegramWorkspaceTab,
   type WorkspaceTab,
   isEditableViewer,
 } from '@/utils/workspaceTabs/types';
@@ -31,6 +33,10 @@ export function createContentSearchTab(): ContentSearchWorkspaceTab {
 
 export function createLlmAssistTab(): LlmAssistWorkspaceTab {
   return { id: LLM_ASSIST_TAB_ID, kind: 'llm-assist' };
+}
+
+export function createTelegramTab(): TelegramWorkspaceTab {
+  return { id: TELEGRAM_TAB_ID, kind: 'telegram' };
 }
 
 export function createFileTab(params: {
@@ -80,6 +86,12 @@ export function isLlmAssistTab(
   return tab?.kind === 'llm-assist';
 }
 
+export function isTelegramTab(
+  tab: WorkspaceTab | null | undefined,
+): tab is TelegramWorkspaceTab {
+  return tab?.kind === 'telegram';
+}
+
 export function isFileTab(tab: WorkspaceTab | null | undefined): tab is FileWorkspaceTab {
   return tab?.kind === 'file';
 }
@@ -102,6 +114,7 @@ export function tabDisplayTitle(tab: WorkspaceTab): string {
   if (tab.kind === 'settings') return '설정';
   if (tab.kind === 'content-search') return '본문 검색';
   if (tab.kind === 'llm-assist') return 'AI 도우미';
+  if (tab.kind === 'telegram') return 'Telegram';
   const name = tab.editedFileName || String(tab.currentFile.name || '') || tab.path;
   return name.split('/').filter(Boolean).pop() || name || tab.path;
 }

@@ -58,6 +58,8 @@ type Props = {
   className?: string;
   /** Fired after CM create and again after destroy (scroll-sync rebind). */
   onViewReady?: (() => void) | undefined;
+  /** Selection, document, or focus changed — toolbar toggle refresh. */
+  onActivity?: (() => void) | undefined;
   /** Clipboard / OS image paste → upload as wiki images. */
   onPasteImages?: ((files: File[]) => void) | undefined;
   /** IndexedDB key for per-document note-cover fold persistence. */
@@ -80,6 +82,7 @@ export default function HaimSourcePane({
   viewRef,
   className = '',
   onViewReady,
+  onActivity,
   onPasteImages,
   noteCoverFoldDocKey = null,
   foldBase64Images = true,
@@ -90,6 +93,8 @@ export default function HaimSourcePane({
   onDocChangedRef.current = onDocChanged;
   const onViewReadyRef = useRef(onViewReady);
   onViewReadyRef.current = onViewReady;
+  const onActivityRef = useRef(onActivity);
+  onActivityRef.current = onActivity;
   const onPasteImagesRef = useRef(onPasteImages);
   onPasteImagesRef.current = onPasteImages;
   const foldDocKeyRef = useRef(noteCoverFoldDocKey);
@@ -166,6 +171,9 @@ export default function HaimSourcePane({
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) onDocChangedRef.current();
+        if (update.docChanged || update.selectionSet || update.focusChanged) {
+          onActivityRef.current?.();
+        }
       }),
       // Ctrl/Cmd+click markdown links before multi-cursor range add (Win Ctrl).
       Prec.high(

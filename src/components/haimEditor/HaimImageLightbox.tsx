@@ -31,19 +31,24 @@ import {
   Circle,
   Square,
   Type,
+  Eye,
+  QrCode,
+  ScanLine,
+  ExternalLink,
 } from 'lucide-react';
 import FontFamilyInput from '@/components/FontFamilyInput';
 import { getModKeyLabel } from '@/components/Kbd';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
+  canvasToPngBlob,
   compositeAnnotatedImageBlob,
+  compositeAnnotatedImageCanvas,
   isInkApiAvailable,
   requestInkPresenter,
   type DelegatedInkTrailPresenter,
 } from '@/components/haimEditor/haimImageInk';
 import {
   copyPngBlobToClipboard,
-  imageSrcToPngBlob,
   isLightboxImageCopyShortcut,
 } from '@/utils/copyImageToClipboard';
 import {
@@ -75,6 +80,13 @@ import {
   followPointerTip,
 } from '@/components/haimEditor/haimImageStrokes';
 import { isHaimAnnotateUploadAvailable } from '@/utils/haimImageAnnotateUpload';
+import {
+  axisRectToImagePixels,
+  cropCanvas,
+  pixelRectCoversCanvas,
+  type AxisRect,
+} from '@/utils/imageClientRect';
+import { decodeQrCodeFromCanvas } from '@/utils/qrCodeDecode';
 import {
   CSS_HEX_CHECKER_STYLE,
   cssHexToInputValue,
@@ -409,6 +421,8 @@ export default function HaimImageLightbox({
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [tool, setTool] = useState<Tool>('pan');
+  /** View mode is the default. Pencil opens draw tools. */
+  const [editing, setEditing] = useState(false);
   const [penColor, setPenColor] = useState<string>('#111827ff');
   const [highlightColor, setHighlightColor] = useState<string>('#facc15ff');
   const [penSizeW, setPenSizeW] = useState(4);
@@ -443,6 +457,25 @@ export default function HaimImageLightbox({
   const [saving, setSaving] = useState(false);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'done' | 'error'>('idle');
   const copyStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [qrPicking, setQrPicking] = useState(false);
+  const [qrBusy, setQrBusy] = useState(false);
+  const [qrText, setQrText] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [qrCopied, setQrCopied] = useState(false);
+  const [qrDraft, setQrDraft] = useState<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
+  const qrDragRef = useRef<{
+    pointerId: number;
+    x0: number;
+    y0: number;
+  } | null>(null);
+  const qrScanRef = useRef<(selection: AxisRect | 'full') => void>(() => {});
+  /** Drops in-flight decodes when a newer scan or cancel starts. */
+  const qrSeqRef = useRef(0);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
   const [paletteExpanded, setPaletteExpanded] = useState(false);
@@ -561,6 +594,14 @@ export default function HaimImageLightbox({
     resetView();
     clearAllDrawings();
     setTool('pan');
+    setEditing(false);
+    setQrPicking(false);
+    setQrBusy(false);
+    setQrText(null);
+    setQrError(null);
+    setQrDraft(null);
+    qrDragRef.current = null;
+    qrSeqRef.current += 1;
     setSaveError(null);
     setCursorPos(null);
   }, [visible, src, resetView, clearAllDrawings]);
@@ -750,6 +791,10 @@ export default function HaimImageLightbox({
 
   const selectTool = useCallback(
     (next: Tool) => {
+      qrSeqRef.current += 1;
+      setQrPicking(false);
+      setQrDraft(null);
+      qrDragRef.current = null;
       if (tool === 'eraser' && next !== 'eraser') {
         restoreLastBrushSize();
       }
@@ -1158,7 +1203,20 @@ export default function HaimImageLightbox({
 
   const onStagePointerDown = useCallback(
     (event: ReactPointerEvent) => {
-      if (event.button === 1 || tool === 'pan') {
+      if (qrPicking) {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+        qrDragRef.current = {
+          pointerId: event.pointerId,
+          x0: event.clientX,
+          y0: event.clientY,
+        };
+        setQrDraft({ x: event.clientX, y: event.clientY, w: 0, h: 0 });
+        return;
+      }
+      if (!editing || event.button === 1 || tool === 'pan') {
         beginPan(event);
         return;
       }
@@ -1172,7 +1230,7 @@ export default function HaimImageLightbox({
       setEditingTextId(null);
       beginDraw(event);
     },
-    [tool, beginPan, beginDraw, placeOrSelectText],
+    [qrPicking, editing, tool, beginPan, beginDraw, placeOrSelectText],
   );
 
   const onStagePointerMove = useCallback(
@@ -1199,6 +1257,20 @@ export default function HaimImageLightbox({
             });
           }
         }
+      }
+
+      const qrDrag = qrDragRef.current;
+      if (qrDrag && qrDrag.pointerId === event.pointerId) {
+        event.preventDefault();
+        const x = Math.min(qrDrag.x0, event.clientX);
+        const y = Math.min(qrDrag.y0, event.clientY);
+        setQrDraft({
+          x,
+          y,
+          w: Math.abs(event.clientX - qrDrag.x0),
+          h: Math.abs(event.clientY - qrDrag.y0),
+        });
+        return;
       }
 
       const drag = textDragRef.current;
@@ -1233,6 +1305,31 @@ export default function HaimImageLightbox({
 
   const onStagePointerUp = useCallback(
     (event: ReactPointerEvent) => {
+      const qrDrag = qrDragRef.current;
+      if (qrDrag && qrDrag.pointerId === event.pointerId) {
+        qrDragRef.current = null;
+        try {
+          (event.currentTarget as HTMLElement).releasePointerCapture?.(
+            event.pointerId,
+          );
+        } catch {
+          // ignore
+        }
+        const w = Math.abs(event.clientX - qrDrag.x0);
+        const h = Math.abs(event.clientY - qrDrag.y0);
+        setQrDraft(null);
+        if (w >= 12 && h >= 12) {
+          const left = Math.min(qrDrag.x0, event.clientX);
+          const top = Math.min(qrDrag.y0, event.clientY);
+          qrScanRef.current({
+            left,
+            top,
+            right: left + w,
+            bottom: top + h,
+          });
+        }
+        return;
+      }
       if (textDragRef.current?.pointerId === event.pointerId) {
         textDragRef.current = null;
         try {
@@ -1434,33 +1531,55 @@ export default function HaimImageLightbox({
     ],
   );
 
+  const buildAnnotatedCanvas = useCallback(async () => {
+    if (!src) throw new Error('이미지가 없습니다.');
+    const hasText = textObjects.some((t) => t.text.trim().length > 0);
+    const inkCanvas =
+      inkStrokes.length > 0 || hasText
+        ? rasterizeInkLayer(bufSize.w, bufSize.h, inkStrokes)
+        : null;
+    if (inkCanvas) {
+      const inkCtx = inkCanvas.getContext('2d');
+      if (inkCtx) {
+        drawAnnotateTextsOnCanvas(
+          inkCtx,
+          textObjects,
+          bufferScaleRef.current,
+        );
+      }
+    }
+    const highlightCanvas =
+      highlightStrokes.length > 0
+        ? rasterizeHighlightLayer(bufSize.w, bufSize.h, highlightStrokes)
+        : null;
+    return compositeAnnotatedImageCanvas({
+      src,
+      inkCanvas,
+      highlightCanvas,
+    });
+  }, [src, inkStrokes, highlightStrokes, textObjects, bufSize.w, bufSize.h]);
+
   const copyVisibleImage = useCallback(() => {
     if (!src) return;
-    const hasText = textObjects.some((t) => t.text.trim().length > 0);
-    const blobPromise =
-      inkStrokes.length === 0 && highlightStrokes.length === 0 && !hasText
-        ? imageSrcToPngBlob(src)
-        : (async () => {
-            const inkCanvas = rasterizeInkLayer(bufSize.w, bufSize.h, inkStrokes);
-            const inkCtx = inkCanvas.getContext('2d');
-            if (inkCtx) {
-              drawAnnotateTextsOnCanvas(
-                inkCtx,
-                textObjects,
-                bufferScaleRef.current,
-              );
-            }
-            const highlightCanvas = rasterizeHighlightLayer(
-              bufSize.w,
-              bufSize.h,
-              highlightStrokes,
-            );
-            return compositeAnnotatedImageBlob({
-              src,
-              inkCanvas,
-              highlightCanvas,
-            });
-          })();
+    const stage = stageHitRef.current?.getBoundingClientRect() ?? null;
+    const viewport = viewportRef.current?.getBoundingClientRect() ?? null;
+    const blobPromise = (async () => {
+      const canvas = await buildAnnotatedCanvas();
+      if (!stage || !viewport) return canvasToPngBlob(canvas);
+      const region = axisRectToImagePixels(
+        stage,
+        canvas.width,
+        canvas.height,
+        viewport,
+      );
+      if (
+        !region ||
+        pixelRectCoversCanvas(region, canvas.width, canvas.height)
+      ) {
+        return canvasToPngBlob(canvas);
+      }
+      return canvasToPngBlob(cropCanvas(canvas, region));
+    })();
     if (copyStatusTimerRef.current) clearTimeout(copyStatusTimerRef.current);
     void copyPngBlobToClipboard(blobPromise)
       .then(() => {
@@ -1471,7 +1590,108 @@ export default function HaimImageLightbox({
         setCopyStatus('error');
         copyStatusTimerRef.current = setTimeout(() => setCopyStatus('idle'), 2000);
       });
-  }, [src, inkStrokes, highlightStrokes, textObjects, bufSize.w, bufSize.h]);
+  }, [src, buildAnnotatedCanvas]);
+
+  const runQrDecode = useCallback(
+    (selection: AxisRect | 'full') => {
+      if (!src) return;
+      const seq = ++qrSeqRef.current;
+      setQrBusy(true);
+      setQrError(null);
+      setQrText(null);
+      setQrCopied(false);
+      void (async () => {
+        try {
+          const canvas = await buildAnnotatedCanvas();
+          if (qrSeqRef.current !== seq) return;
+          let target = canvas;
+          if (selection !== 'full') {
+            const stage = stageHitRef.current?.getBoundingClientRect();
+            if (!stage) throw new Error('이미지를 찾을 수 없습니다.');
+            const region = axisRectToImagePixels(
+              stage,
+              canvas.width,
+              canvas.height,
+              selection,
+            );
+            if (!region) throw new Error('이미지 안에서 영역을 선택하세요.');
+            target = cropCanvas(canvas, region);
+          }
+          const text = await decodeQrCodeFromCanvas(target);
+          if (qrSeqRef.current !== seq) return;
+          setQrText(text);
+          setQrDraft(null);
+          qrDragRef.current = null;
+        } catch (err) {
+          if (qrSeqRef.current !== seq) return;
+          setQrError(
+            err instanceof Error ? err.message : 'QR 코드를 읽을 수 없습니다.',
+          );
+        } finally {
+          if (qrSeqRef.current === seq) setQrBusy(false);
+        }
+      })();
+    },
+    [src, buildAnnotatedCanvas],
+  );
+
+  useEffect(() => {
+    qrScanRef.current = runQrDecode;
+  }, [runQrDecode]);
+
+  const cancelQrPick = useCallback(() => {
+    qrSeqRef.current += 1;
+    setQrPicking(false);
+    setQrBusy(false);
+    setQrDraft(null);
+    setQrError(null);
+    qrDragRef.current = null;
+  }, []);
+
+  const enterQrMode = useCallback(() => {
+    setQrText(null);
+    setQrCopied(false);
+    setQrDraft(null);
+    setQrError(null);
+    qrDragRef.current = null;
+    setQrPicking(true);
+    runQrDecode('full');
+  }, [runQrDecode]);
+
+  const enterEditing = useCallback(() => {
+    qrSeqRef.current += 1;
+    setQrPicking(false);
+    setQrBusy(false);
+    setQrDraft(null);
+    qrDragRef.current = null;
+    setEditing(true);
+    selectTool('pen');
+  }, [selectTool]);
+
+  const exitEditing = useCallback(() => {
+    setEditingTextId(null);
+    setSelectedTextId(null);
+    setTextObjects((list) => list.filter((t) => t.text.trim().length > 0));
+    setEditing(false);
+    setTool('pan');
+    setPaletteExpanded(false);
+    setColorPopoverOpen(false);
+    setCursorPos(null);
+  }, []);
+
+  const copyQrText = useCallback(() => {
+    const text = qrText?.trim();
+    if (!text) return;
+    void navigator.clipboard.writeText(text).then(
+      () => {
+        setQrCopied(true);
+        window.setTimeout(() => setQrCopied(false), 1600);
+      },
+      () => {
+        setQrError('클립보드에 복사하지 못했습니다.');
+      },
+    );
+  }, [qrText]);
 
   useEffect(() => {
     return () => {
@@ -1575,6 +1795,18 @@ export default function HaimImageLightbox({
       // Any other tool: Esc closes the lightbox (via requestClose / confirm).
       if (event.key === 'Escape') {
         if (closeConfirmOpen) return;
+        if (qrPicking) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          qrSeqRef.current += 1;
+          setQrPicking(false);
+          setQrBusy(false);
+          setQrDraft(null);
+          setQrError(null);
+          qrDragRef.current = null;
+          return;
+        }
         if (tool === 'text' || editingTextId) {
           event.preventDefault();
           event.stopPropagation();
@@ -1611,7 +1843,7 @@ export default function HaimImageLightbox({
         return;
       }
 
-      if (typing) return;
+      if (typing || !editing) return;
       if (!mod && event.key === '[') {
         event.preventDefault();
         event.stopPropagation();
@@ -1637,6 +1869,8 @@ export default function HaimImageLightbox({
     selectedTextId,
     editingTextId,
     tool,
+    editing,
+    qrPicking,
     finishTextEditing,
     deleteSelectedText,
     requestClose,
@@ -1644,6 +1878,8 @@ export default function HaimImageLightbox({
   ]);
 
   const showBrushCursor =
+    editing &&
+    !qrPicking &&
     tool !== 'pan' &&
     tool !== 'text' &&
     cursorPos != null &&
@@ -1725,17 +1961,19 @@ export default function HaimImageLightbox({
               >
                 <Dialog.Title className="sr-only">이미지 크게 보기</Dialog.Title>
                 <Dialog.Description className="sr-only">
-                  벡터 펜으로 그리고 확대/축소·저장할 수 있습니다. 복사 버튼 또는 Ctrl/Cmd+C로 보이는 이미지를 복사합니다.
+                  보기 모드에서 확대, 이미지 복사, QR 인식을 할 수 있습니다. 연필 버튼으로 그리기 편집을 엽니다.
                 </Dialog.Description>
 
                 <div
                   ref={setViewportNode}
                   className={`relative z-1 flex min-h-0 min-w-0 flex-1 touch-none items-center justify-center overflow-hidden p-3 sm:p-6 ${
-                    tool === 'pan'
-                      ? 'cursor-grab'
-                      : tool === 'text'
-                        ? 'cursor-text'
-                        : 'cursor-none'
+                    qrPicking
+                      ? 'cursor-crosshair'
+                      : !editing || tool === 'pan'
+                        ? 'cursor-grab'
+                        : tool === 'text'
+                          ? 'cursor-text'
+                          : 'cursor-none'
                   }`}
                   onPointerDown={onStagePointerDown}
                   onPointerMove={onStagePointerMove}
@@ -1757,7 +1995,11 @@ export default function HaimImageLightbox({
                     >
                       <div
                         ref={stageHitRef}
-                        className="relative inline-block max-h-[min(78vh,100%)] max-w-[min(92vw,100%)] overflow-hidden shadow-2xl"
+                        className={`relative inline-block max-h-[min(78vh,100%)] max-w-[min(92vw,100%)] overflow-hidden shadow-2xl ${
+                          qrPicking && !qrDraft
+                            ? 'ring-2 ring-sky-400 ring-offset-2 ring-offset-black'
+                            : ''
+                        }`}
                         style={CHECKERBOARD_STYLE}
                       >
                         <img
@@ -2000,6 +2242,19 @@ export default function HaimImageLightbox({
                   ) : null}
                 </div>
 
+                {qrDraft && qrDraft.w > 0 && qrDraft.h > 0 ? (
+                  <div
+                    className="pointer-events-none fixed z-100066 border-2 border-sky-400 bg-sky-400/25"
+                    style={{
+                      left: qrDraft.x,
+                      top: qrDraft.y,
+                      width: qrDraft.w,
+                      height: qrDraft.h,
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+
                 {showBrushCursor && cursorPos ? (
                   <div
                     className="pointer-events-none fixed z-100065 border border-white/80 bg-white/10 shadow"
@@ -2020,7 +2275,7 @@ export default function HaimImageLightbox({
                   />
                 ) : null}
 
-                {(tool === 'text' || selectedText) && (
+                {(editing && (tool === 'text' || selectedText)) && (
                   <aside
                     className="absolute right-3 top-14 z-100062 flex w-64 flex-col gap-3 rounded-xl border border-white/15 bg-black/80 p-3 text-white shadow-xl backdrop-blur-md"
                     onPointerDown={(e) => e.stopPropagation()}
@@ -2164,6 +2419,8 @@ export default function HaimImageLightbox({
                     onPointerDown={(e) => e.stopPropagation()}
                   >
                     <div className="flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-2xl border border-white/15 bg-black/70 px-2.5 py-2 shadow-lg backdrop-blur-md">
+                      {editing ? (
+                      <>
                       <ToolTipBtn
                         label="패닝"
                         active={tool === 'pan'}
@@ -2657,7 +2914,12 @@ export default function HaimImageLightbox({
                         <Trash2 size={16} />
                       </ToolTipBtn>
 
-                      <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
+                      </>
+                      ) : null}
+
+                      {editing ? (
+                        <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
+                      ) : null}
 
                       <ToolTipBtn
                         label="축소"
@@ -2715,30 +2977,140 @@ export default function HaimImageLightbox({
                       >
                         <Copy size={16} />
                       </ToolTipBtn>
+                      <ToolTipBtn
+                        label={
+                          qrBusy
+                            ? 'QR 인식 중'
+                            : qrPicking
+                              ? 'QR 인식 종료'
+                              : 'QR 코드 인식'
+                        }
+                        active={qrPicking}
+                        disabled={qrBusy}
+                        onClick={() => {
+                          if (qrPicking) {
+                            cancelQrPick();
+                            return;
+                          }
+                          enterQrMode();
+                        }}
+                      >
+                        <QrCode size={16} />
+                      </ToolTipBtn>
 
                       <span className="mx-0.5 h-5 w-px bg-white/20" aria-hidden />
 
-                      <ToolTipBtn
-                        label={`덮어쓰기 저장 (${MOD_LABEL}+S)`}
-                        tone="save"
-                        disabled={!canSave || saving}
-                        onClick={() => void runSave('overwrite')}
-                      >
-                        <Save size={16} />
-                      </ToolTipBtn>
-                      <ToolTipBtn
-                        label={`다른 이름으로 저장 (${MOD_LABEL}+Shift+S)`}
-                        tone="saveAs"
-                        disabled={!canSave || saving}
-                        onClick={() => void runSave('saveAs')}
-                      >
-                        <CopyPlus size={16} />
-                      </ToolTipBtn>
+                      {editing || canSave ? (
+                        <>
+                          <ToolTipBtn
+                            label={`덮어쓰기 저장 (${MOD_LABEL}+S)`}
+                            tone="save"
+                            disabled={!canSave || saving}
+                            onClick={() => void runSave('overwrite')}
+                          >
+                            <Save size={16} />
+                          </ToolTipBtn>
+                          <ToolTipBtn
+                            label={`다른 이름으로 저장 (${MOD_LABEL}+Shift+S)`}
+                            tone="saveAs"
+                            disabled={!canSave || saving}
+                            onClick={() => void runSave('saveAs')}
+                          >
+                            <CopyPlus size={16} />
+                          </ToolTipBtn>
+                        </>
+                      ) : null}
+                      {editing ? (
+                        <ToolTipBtn label="보기 모드" onClick={exitEditing}>
+                          <Eye size={16} />
+                        </ToolTipBtn>
+                      ) : (
+                        <ToolTipBtn label="편집" onClick={enterEditing}>
+                          <Pencil size={16} />
+                        </ToolTipBtn>
+                      )}
                     </div>
+                    {qrPicking || qrText || qrError ? (
+                      <div className="order-first flex w-full max-w-xl flex-col gap-2 rounded-xl border border-white/15 bg-black/80 px-3 py-2 text-white shadow-lg">
+                        {qrPicking ? (
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            <p className="text-[11px] text-white/80">
+                              이미지 전체를 인식합니다. 드래그하면 그 부분만 인식합니다.
+                            </p>
+                            <button
+                              type="button"
+                              disabled={qrBusy}
+                              onClick={() => runQrDecode('full')}
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-500/30 px-2 text-[11px] text-white hover:bg-sky-500/40 disabled:opacity-40"
+                            >
+                              <ScanLine size={14} aria-hidden />
+                              전체 인식
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelQrPick}
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/15 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20"
+                            >
+                              <X size={14} aria-hidden />
+                              취소
+                            </button>
+                          </div>
+                        ) : null}
+                        {qrBusy ? (
+                          <p className="text-center text-[11px] text-white/70">
+                            인식 중…
+                          </p>
+                        ) : null}
+                        {qrError ? (
+                          <p className="text-center text-[11px] text-red-300">
+                            {qrError}
+                          </p>
+                        ) : null}
+                        {qrText ? (
+                          <div className="flex flex-col gap-2">
+                            <p className="max-h-28 overflow-y-auto break-all text-xs leading-5 text-white">
+                              {qrText}
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={copyQrText}
+                                className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/15 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20"
+                              >
+                                <Copy size={14} aria-hidden />
+                                {qrCopied ? '복사됨' : '텍스트 복사'}
+                              </button>
+                              {/^https?:\/\//i.test(qrText.trim()) ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const href = qrText.trim();
+                                    window.open(href, '_blank', 'noopener,noreferrer');
+                                  }}
+                                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/15 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20"
+                                >
+                                  <ExternalLink size={14} aria-hidden />
+                                  열기
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => setQrText(null)}
+                                className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/15 bg-white/10 px-2 text-[11px] text-white hover:bg-white/20"
+                              >
+                                <X size={14} aria-hidden />
+                                닫기
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <p className="max-w-xl text-center text-[10px] text-white/55">
-                      휠 줌 · [ ] 펜 크기 · {MOD_LABEL}+[ ] / {MOD_LABEL}+Shift+&lt;&gt;
-                      글자 크기 · {MOD_LABEL}+C 이미지 복사 · {MOD_LABEL}+Z / {REDO_SHORTCUT}
-                      {inkReady ? ' · Ink API' : ''}
+                      {editing
+                        ? `휠 줌 · [ ] 펜 크기 · ${MOD_LABEL}+[ ] / ${MOD_LABEL}+Shift+<> 글자 크기 · ${MOD_LABEL}+C 이미지 복사 · ${MOD_LABEL}+Z / ${REDO_SHORTCUT}`
+                        : `휠 줌 · 드래그로 이동 · ${MOD_LABEL}+C 보이는 이미지 복사`}
+                      {inkReady && editing ? ' · Ink API' : ''}
                       {saving ? ' · 저장 중…' : ''}
                     </p>
                     {saveError ? (

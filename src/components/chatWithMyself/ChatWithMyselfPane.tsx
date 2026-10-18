@@ -1613,6 +1613,9 @@ export default function ChatWithMyselfPane({
       ),
       dateStr: message.dateStr,
       at: message.at,
+      ...(Array.isArray(message.ogCards) && message.ogCards.length
+        ? { ogCards: message.ogCards }
+        : {}),
     });
   }, [decryptedById]);
 
@@ -2558,6 +2561,41 @@ export default function ChatWithMyselfPane({
     [storageReady, ctx, noteLocalDayWrite],
   );
 
+  const handlePersistOgCards = useCallback(
+    async (
+      message: {
+        id?: string;
+        at?: string;
+        dateStr?: string;
+        pendingSync?: string;
+        encrypted?: unknown;
+      },
+      cards: import('@/utils/chatWithMyself/messageOg').ChatBubbleOgCard[],
+    ) => {
+      if (!storageReady || !message?.id || message.pendingSync) return;
+      if (isChatMessageEncrypted(message)) return;
+      const dateStr =
+        message.dateStr ||
+        localDateString(new Date(message.at || Date.now()), detectTimeZone());
+      try {
+        const updated = await patchChatMessageMeta(ctx, dateStr, message.id, {
+          ogCards: cards,
+        });
+        if (!updated) return;
+        setMessages((prev: any) =>
+          prev.map((m: any) =>
+            m.id === message.id ? { ...m, ...updated, dateStr } : m,
+          ),
+        );
+        noteLocalDayWrite(dateStr);
+        postChatSyncEvent('day', { dateStr });
+      } catch {
+        // The card still renders from memory. The next successful resolve retries the write.
+      }
+    },
+    [storageReady, ctx, noteLocalDayWrite],
+  );
+
   const handleToggleCollapse = useCallback(
     async (message: any) => {
       if (!storageReady || !message?.id) return;
@@ -3339,6 +3377,7 @@ export default function ChatWithMyselfPane({
               onAddToNote={setAddToNoteMessage}
               onViewEditHistory={setHistoryMessage}
               onTogglePin={handleTogglePin}
+              onPersistOgCards={handlePersistOgCards}
               onToggleCollapse={handleToggleCollapse}
               onToggleReaction={handleToggleReaction}
               onOpenNote={onOpenNote}

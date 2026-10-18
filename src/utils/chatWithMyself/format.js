@@ -3,6 +3,11 @@ import {
   parseReactionsAttr,
   serializeReactionsAttr,
 } from '@/utils/chatWithMyself/reactions.js';
+import {
+  mergeOgCardsOntoWinner,
+  parseOgCardsAttr,
+  serializeOgCardsAttr,
+} from '@/utils/chatWithMyself/messageOg.js';
 
 const MSG_START =
   /<!--\s*chat-msg\s+([^>]*?)-->\s*/g;
@@ -69,6 +74,7 @@ function unescapeAttr(value) {
  * @property {string} [collapsed] - "1" when folded; empty when expanded
  * @property {import('@/utils/chatWithMyself/reactions.js').ChatReaction[]} [reactions]
  * @property {string} [reactionsAt] - ISO when reactions last changed (merge)
+ * @property {import('@/utils/chatWithMyself/messageOg.js').ChatBubbleOgCard[]} [ogCards]
  * @property {{ at: string, body: string, group: string }[]} [editHistory]
  */
 
@@ -174,6 +180,7 @@ export function parseDayFile(content) {
         attrs.encrypted === '1' || attrs.encrypted === 'true',
       reactions: parseReactionsAttr(attrs.reactions || ''),
       reactionsAt: attrs.reactionsAt || '',
+      ogCards: parseOgCardsAttr(attrs.og || ''),
       editHistory,
       body,
     });
@@ -228,7 +235,9 @@ export function serializeMessage(msg) {
   const reactionsAttr = reactions ? ` reactions="${reactions}"` : '';
   const reactionsAtAttr =
     reactions && reactionsAt ? ` reactionsAt="${reactionsAt}"` : '';
-  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr}${collapsedAttr}${markdownAttr}${encryptedAttr}${reactionsAttr}${reactionsAtAttr} -->\n${body}\n\n`;
+  const ogRaw = serializeOgCardsAttr(msg.ogCards);
+  const ogAttr = ogRaw ? ` og="${escapeAttr(ogRaw)}"` : '';
+  const out = `<!-- chat-msg id="${id}" at="${at}" tz="${tz}" source="${source}" group="${group}"${replyAttrs}${editedAttr}${pinnedAttr}${notePathAttr}${collapsedAttr}${markdownAttr}${encryptedAttr}${reactionsAttr}${reactionsAtAttr}${ogAttr} -->\n${body}\n\n`;
   // Edit history is stored under `.chat-with-myself/edits/<id>/` (not inline).
   return out;
 }
@@ -277,7 +286,7 @@ export function mergeDayMessages(local, remote) {
     if (!msg?.id || deletedAtById[msg.id]) continue;
     const prev = byId.get(msg.id);
     if (!prev || MAX_MERGE_TS(msg) >= MAX_MERGE_TS(prev)) {
-      byId.set(msg.id, msg);
+      byId.set(msg.id, mergeOgCardsOntoWinner(msg, prev));
     }
   }
 

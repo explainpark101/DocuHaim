@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
+import { isTelegramAppPathname } from '@/utils/appHref';
 import { useAuth, type AuthS3Creds } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
 import { useFileSessionOwned } from '@/App/providers/AppFileSessionStateProvider';
@@ -33,6 +34,7 @@ import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
   SETTINGS_TAB_ID,
+  TELEGRAM_TAB_ID,
   pickWorkspaceTabsRestoreSource,
   clearWorkspaceTabsForRestart,
   getActiveFileTab,
@@ -162,6 +164,7 @@ export function useAppLogicSetupDomain() {
     activateWorkspaceTab,
     closeWorkspaceTabById,
     openChatWorkspaceTab,
+    openTelegramWorkspaceTab,
     openSettingsWorkspaceTab,
     openContentSearchWorkspaceTab,
     reorderWorkspaceTabs,
@@ -226,6 +229,7 @@ export function useAppLogicSetupDomain() {
     if (persisted?.tabs?.length) {
       const active = persisted.tabs.find((t) => {
         if (t.kind === 'chat') return persisted.activeId === CHAT_TAB_ID;
+        if (t.kind === 'telegram') return persisted.activeId === TELEGRAM_TAB_ID;
         if (t.kind === 'settings') return persisted.activeId === SETTINGS_TAB_ID;
         if (t.kind === 'content-search') return persisted.activeId === CONTENT_SEARCH_TAB_ID;
         if (t.kind !== 'file') return false;
@@ -235,11 +239,13 @@ export function useAppLogicSetupDomain() {
         );
       });
       if (active?.kind === 'chat') return { type: 'chat' };
+      if (active?.kind === 'telegram') return { type: 'telegram' };
       if (active?.kind === 'settings') return { type: 'settings' };
       if (active?.kind === 'content-search') return { type: 'content-search' };
       if (active?.kind === 'file') return { type: active.type, path: active.path };
       const first = persisted.tabs[0];
       if (first?.kind === 'chat') return { type: 'chat' };
+      if (first?.kind === 'telegram') return { type: 'telegram' };
       if (first?.kind === 'settings') return { type: 'settings' };
       if (first?.kind === 'content-search') return { type: 'content-search' };
       if (first?.kind === 'file') return { type: first.type, path: first.path };
@@ -420,6 +426,8 @@ export function useAppLogicSetupDomain() {
           collapseToLegacyWorkspace();
         } else if (isChatRoute) {
           openChatWorkspaceTab({ navigateUrl: false });
+        } else if (isTelegramAppPathname(location.pathname)) {
+          openTelegramWorkspaceTab({ navigateUrl: false });
         } else if (isSettingsRoute) {
           openSettingsWorkspaceTab({ navigateUrl: false });
         } else if (isContentSearchRoute) {
@@ -432,7 +440,9 @@ export function useAppLogicSetupDomain() {
     isChatRoute,
     isSettingsRoute,
     isContentSearchRoute,
+    location.pathname,
     openChatWorkspaceTab,
+    openTelegramWorkspaceTab,
     openSettingsWorkspaceTab,
     openContentSearchWorkspaceTab,
   ]);
@@ -623,6 +633,7 @@ export function useAppLogicSetupDomain() {
     activateWorkspaceTab,
     closeWorkspaceTabById,
     openChatWorkspaceTab,
+    openTelegramWorkspaceTab,
     openSettingsWorkspaceTab,
     openContentSearchWorkspaceTab,
     reorderWorkspaceTabs,

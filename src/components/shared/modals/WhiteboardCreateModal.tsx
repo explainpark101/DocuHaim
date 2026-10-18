@@ -143,7 +143,7 @@ export default function WhiteboardCreateModal({
         <p className="text-xs leading-5 text-gray-500 dark:text-odp-muted">
           빈 캔버스 PNG를 만들어 노트에{' '}
           <code className="rounded bg-gray-100 px-1 dark:bg-odp-bgSoft">![[path]]</code>{' '}
-          로 넣은 뒤, 크게 보기(더블클릭)에서 바로 그릴 수 있습니다.
+          로 넣은 뒤, 크게 보기(더블클릭)에서 연필 버튼을 누르면 그릴 수 있습니다.
         </p>
 
         <div className="flex flex-wrap gap-1.5">

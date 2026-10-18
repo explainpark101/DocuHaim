@@ -13,6 +13,7 @@ import {
   isFileTabDirty,
   isLlmAssistTab,
   isSettingsTab,
+  isTelegramTab,
   pushClosedTab,
 } from '@/utils/workspaceTabs';
 import { isEditableViewerId } from '@/utils/vaultFileViewers';
@@ -29,6 +30,7 @@ import {
   openOrActivateContentSearch,
   openOrActivateLlmAssist,
   openOrActivateSettings,
+  openOrActivateTelegram,
   replaceWorkspaceLayout,
   setFocusedPane,
   splitTabToEdge,
@@ -45,7 +47,7 @@ import {
 } from '@/utils/workspaceTabs/paneLayout';
 import { normalizeAfterSnappedResize, resizeSplitLinked } from '@/utils/workspaceTabs/paneLayoutNormalize';
 import { isQuizMdPath } from '@/utils/quiz/quizPath';
-import { isQuizAppPathname, openNotePathnameForStoragePath, contentSearchPathname, isSettingsAppPathname } from '@/utils/appHref';
+import { isQuizAppPathname, openNotePathnameForStoragePath, contentSearchPathname, isSettingsAppPathname, isTelegramAppPathname } from '@/utils/appHref';
 import { patchFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
 import {
   collapseWorkspaceToLegacy,
@@ -53,6 +55,7 @@ import {
   stripContentSearchTab,
   stripLlmAssistTab,
   stripSettingsTab,
+  stripTelegramTab,
 } from '@/utils/workspaceTabs/legacyMode';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
 import { clearEncMdPassword, isEncMdPath } from '@/utils/encMd';
@@ -154,6 +157,7 @@ export function useWorkspaceTabsDomain({
 
   const isChatRoute =
     location.pathname === '/chat' || location.pathname.endsWith('/chat');
+  const isTelegramRoute = isTelegramAppPathname(location.pathname);
   const isSettingsRoute = isSettingsAppPathname(location.pathname);
 
   const queueBackgroundTabSave = useCallback((file: any, content: any) => {
@@ -282,6 +286,10 @@ export function useWorkspaceTabsDomain({
         // Stay on current route — LLM Assist is a pane, not a page.
         setCurrentFile(null);
         currentFileRef.current = null;
+      } else if (isTelegramTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        if (navigateUrl) navigate('/telegram');
       } else if (navigateUrl) {
         navigate('/');
       }
@@ -338,6 +346,57 @@ export function useWorkspaceTabsDomain({
         currentFileRef.current = null;
       }
       if (navigateUrl && activate) navigate('/chat');
+    },
+    [
+      navigate,
+      onLeavingDirty,
+      workspaceTabsEnabledRef,
+      workspaceTabsRef,
+      setWorkspaceTabs,
+      editorContentRef,
+      currentFileRef,
+      setCurrentFile,
+    ],
+  );
+
+  const openTelegramWorkspaceTab = useCallback(
+    (options: { navigateUrl?: boolean; activate?: boolean } = {}) => {
+      const { navigateUrl = true, activate = true } = options;
+      if (!workspaceTabsEnabledRef.current) {
+        const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+          editorContent: editorContentRef.current ?? '',
+          currentFile: currentFileRef.current,
+          editedFileName: editedFileNameRef.current ?? '',
+        });
+        const leaving = getActiveFileTab(flushed);
+        if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+          onLeavingDirty(leaving.currentFile, leaving.editorContent);
+        }
+        const next = stripTelegramTab(flushed);
+        workspaceTabsRef.current = next;
+        setWorkspaceTabs(next);
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        if (navigateUrl) navigate('/telegram');
+        return;
+      }
+      const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {
+        editorContent: editorContentRef.current ?? '',
+        currentFile: currentFileRef.current,
+        editedFileName: editedFileNameRef.current ?? '',
+      });
+      const leaving = getActiveFileTab(flushed);
+      if (leaving && isFileTabDirty(leaving) && leaving.storageType !== SESSION_STORAGE_TYPE) {
+        onLeavingDirty(leaving.currentFile, leaving.editorContent);
+      }
+      const next = openOrActivateTelegram(flushed, Date.now(), { activate });
+      workspaceTabsRef.current = next;
+      setWorkspaceTabs(next);
+      if (activate) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+      }
+      if (navigateUrl && activate) navigate('/telegram');
     },
     [
       navigate,
@@ -538,6 +597,7 @@ export function useWorkspaceTabsDomain({
       editedFileName: editedFileNameRef.current ?? '',
     });
     const wasChat = isChatRoute;
+    const wasTelegram = isTelegramRoute;
     const wasSettings =
       isSettingsRoute || isSettingsTab(getActiveTab(flushed));
     const next = collapseWorkspaceToLegacy(flushed);
@@ -545,6 +605,11 @@ export function useWorkspaceTabsDomain({
     setWorkspaceTabs(next);
     const active = getActiveTab(next);
     if (wasChat) {
+      setCurrentFile(null);
+      currentFileRef.current = null;
+      return;
+    }
+    if (wasTelegram) {
       setCurrentFile(null);
       currentFileRef.current = null;
       return;
@@ -567,6 +632,7 @@ export function useWorkspaceTabsDomain({
     }
   }, [
     isChatRoute,
+    isTelegramRoute,
     isSettingsRoute,
     navigate,
     workspaceTabsRef,
@@ -622,6 +688,10 @@ export function useWorkspaceTabsDomain({
         setCurrentFile(null);
         currentFileRef.current = null;
         navigate('/chat');
+      } else if (isTelegramTab(active)) {
+        setCurrentFile(null);
+        currentFileRef.current = null;
+        navigate('/telegram');
       } else if (isSettingsTab(active)) {
         setCurrentFile(null);
         currentFileRef.current = null;
@@ -944,6 +1014,7 @@ export function useWorkspaceTabsDomain({
     activateWorkspaceTab,
     closeWorkspaceTabById,
     openChatWorkspaceTab,
+    openTelegramWorkspaceTab,
     openSettingsWorkspaceTab,
     openContentSearchWorkspaceTab,
     openLlmAssistWorkspaceTab,

@@ -154,6 +154,7 @@ import UnusedImageCleanup from '@/components/settings/UnusedImageCleanup';
 import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLockSettings';
 import MlxVlmSettings from '@/components/settings/MlxVlmSettings';
 import LlamaCppSettings from '@/components/settings/LlamaCppSettings';
+import TelegramSettings from '@/components/settings/TelegramSettings';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
@@ -1277,6 +1278,7 @@ export default function SettingsPage({
               open={groupOpen.integrations !== false}
               onOpenChange={(open) => setGroupOpenById('integrations', open)}
             >
+        <TelegramSettings />
         <UnusedImageCleanup
           storageMode={storageMode}
           canScan={canScanStorageUsage}

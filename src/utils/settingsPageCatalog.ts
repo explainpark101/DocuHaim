@@ -48,6 +48,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     title: '외부 연동',
     sections: [
       { id: 'settings-unused-images', label: '미사용 / 중복 이미지' },
+      { id: 'settings-telegram', label: 'Telegram' },
       { id: 'settings-imgbb', label: 'ImgBB' },
       { id: 'settings-og', label: 'Open Graph Worker' },
     ],

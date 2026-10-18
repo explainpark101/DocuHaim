@@ -14,6 +14,7 @@ import type {
   ChatAttachmentKind,
   ChatAttachmentMarkdownItem,
 } from '@/utils/chatWithMyself/attachments';
+import type { ChatBubbleOgCard } from '@/utils/chatWithMyself/messageOg';
 import { Check, Paperclip, Pencil, Send, X, FileText, Folder } from 'lucide-react';
 import { motion as Motion, useReducedMotion } from 'motion/react';
 import { Tooltip } from 'radix-ui';
@@ -22,7 +23,7 @@ import { EditorView, lineNumbers } from '@codemirror/view';
 import ChatSelect from '@/components/chatWithMyself/ui/ChatSelect';
 import ChatNavSwitch from '@/components/chatWithMyself/ui/ChatNavSwitch';
 import ChatLinkedText from '@/components/chatWithMyself/ChatLinkedText';
-import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
+import ChatBubbleOgCards from '@/components/chatWithMyself/ChatBubbleOgCards';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import ChatImageFade from '@/components/chatWithMyself/ChatImageFade';
 import { chatComposerAreaMaxHeight } from '@/components/chatWithMyself/ChatComposerDock';
@@ -82,6 +83,7 @@ export type ChatComposerReplyTarget = {
   snippet?: string;
   dateStr?: string;
   at?: string;
+  ogCards?: ChatBubbleOgCard[];
 };
 
 export type ChatComposerEditTarget = ChatComposerReplyTarget & {
@@ -506,6 +508,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   const sendModLabel = applePlatform ? 'Cmd+Enter' : 'Ctrl+Enter';
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
   const tz = timeZone || detectTimeZone();
+  const replyOgCards = replyTo?.ogCards;
   const replyUrls = useMemo(
     () => (replyTo?.body ? extractUrls(replyTo.body) : []),
     [replyTo?.body],
@@ -1560,14 +1563,13 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             />
             {replyUrls.length > 0 ? (
               <div className="mt-1 space-y-1">
-                {replyUrls.map((u) => (
-                  <ChatOgCard
-                    key={u}
-                    url={u}
-                    {...(ogStorage ? { ogStorage } : {})}
-                    compact
-                  />
-                ))}
+                <ChatBubbleOgCards
+                  urls={replyUrls}
+                  {...(replyOgCards?.length ? { savedCards: replyOgCards } : {})}
+                  {...(ogStorage ? { ogStorage } : {})}
+                  compact
+                  allowEmbed={false}
+                />
               </div>
             ) : null}
           </div>

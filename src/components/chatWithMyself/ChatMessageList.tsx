@@ -35,7 +35,8 @@ import {
 import { motion as Motion } from 'motion/react';
 import { VList, type VListHandle } from 'virtua';
 import { ContextMenu, DropdownMenu } from 'radix-ui';
-import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
+import ChatBubbleOgCards from '@/components/chatWithMyself/ChatBubbleOgCards';
+import type { ChatBubbleOgCard } from '@/utils/chatWithMyself/messageOg';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
 import ChatMessageContextMenu, {
   type ChatMessageContextMenuProps,
@@ -654,6 +655,7 @@ const MessageBubble = memo(function MessageBubble({
   onEnterSelection,
   onToggleSelect,
   onReloadOg,
+  onPersistOgCards,
   onBubbleActivate,
   onRequestDecrypt,
   decryptedBody = null,
@@ -1190,26 +1192,23 @@ const MessageBubble = memo(function MessageBubble({
                   수정됨
                 </button>
               ) : null}
-              {!collapsed
-                ? urls.map((u) =>
-                    ogStorage != null && typeof ogStorage === 'object' ? (
-                      <ChatOgCard
-                        key={u}
-                        url={u}
-                        ogStorage={ogStorage}
-                        allowEmbed={allowOgEmbed}
-                        reloadKey={ogReloadKey}
-                      />
-                    ) : (
-                      <ChatOgCard
-                        key={u}
-                        url={u}
-                        allowEmbed={allowOgEmbed}
-                        reloadKey={ogReloadKey}
-                      />
-                    ),
-                  )
-                : null}
+              {!collapsed ? (
+                <ChatBubbleOgCards
+                  urls={urls}
+                  savedCards={Array.isArray(msg.ogCards) ? msg.ogCards : []}
+                  {...(ogStorage != null && typeof ogStorage === 'object'
+                    ? { ogStorage: ogStorage as object }
+                    : {})}
+                  allowEmbed={allowOgEmbed}
+                  reloadKey={ogReloadKey}
+                  {...(encrypted || msg.pendingSync || !onPersistOgCards
+                    ? {}
+                    : {
+                        onCardsResolved: (cards: ChatBubbleOgCard[]) =>
+                          onPersistOgCards(msg, cards),
+                      })}
+                />
+              ) : null}
             </Motion.div>
             {!self && !isDeleting && !selectionMode ? (
               <MessageSideActions
@@ -1352,6 +1351,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
     selectedIds = null,
     onEnterSelection,
     onToggleSelect,
+    onPersistOgCards,
   },
   ref,
 ) {
@@ -1946,6 +1946,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
             onEnterSelection={onEnterSelection}
             onToggleSelect={onToggleSelect}
             onReloadOg={handleReloadOg}
+            onPersistOgCards={onPersistOgCards}
             onBubbleActivate={handleBubbleActivate}
             onRequestDecrypt={onRequestDecrypt}
             decryptedBody={
@@ -2029,6 +2030,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
       lastMessageRowIndex,
       handleSelectCopy,
       handleReloadOg,
+      onPersistOgCards,
       openMobileSheet,
       selectionMode,
       selectedIds,

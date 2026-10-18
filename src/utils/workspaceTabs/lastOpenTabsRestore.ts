@@ -1,5 +1,5 @@
 import type { FileStorageType, PersistedWorkspaceTab, PersistedWorkspaceTabs } from '@/utils/workspaceTabs/types';
-import { CHAT_TAB_ID, CONTENT_SEARCH_TAB_ID, LLM_ASSIST_TAB_ID, SETTINGS_TAB_ID } from '@/utils/workspaceTabs/types';
+import { CHAT_TAB_ID, CONTENT_SEARCH_TAB_ID, LLM_ASSIST_TAB_ID, SETTINGS_TAB_ID, TELEGRAM_TAB_ID } from '@/utils/workspaceTabs/types';
 import { fileTabId } from '@/utils/workspaceTabs/helpers';
 import type { ClosedTabEntry } from '@/utils/workspaceTabs/closedTabHistory';
 import {
@@ -60,7 +60,8 @@ function isPersistedTab(value: unknown): value is PersistedWorkspaceTab {
     v.kind === 'chat' ||
     v.kind === 'settings' ||
     v.kind === 'content-search' ||
-    v.kind === 'llm-assist'
+    v.kind === 'llm-assist' ||
+    v.kind === 'telegram'
   ) {
     return true;
   }
@@ -118,7 +119,8 @@ function isClosedTabEntry(value: unknown): value is ClosedTabEntry {
     v.kind === 'chat' ||
     v.kind === 'settings' ||
     v.kind === 'content-search' ||
-    v.kind === 'llm-assist'
+    v.kind === 'llm-assist' ||
+    v.kind === 'telegram'
   ) {
     return true;
   }
@@ -180,6 +182,7 @@ export function persistedTabId(tab: PersistedWorkspaceTab): string {
   if (tab.kind === 'settings') return SETTINGS_TAB_ID;
   if (tab.kind === 'content-search') return CONTENT_SEARCH_TAB_ID;
   if (tab.kind === 'llm-assist') return LLM_ASSIST_TAB_ID;
+  if (tab.kind === 'telegram') return TELEGRAM_TAB_ID;
   return fileTabId(tab.type, tab.path);
 }
 
@@ -188,6 +191,7 @@ export function persistedTabToClosedEntry(tab: PersistedWorkspaceTab): ClosedTab
   if (tab.kind === 'settings') return { kind: 'settings' };
   if (tab.kind === 'content-search') return { kind: 'content-search' };
   if (tab.kind === 'llm-assist') return { kind: 'llm-assist' };
+  if (tab.kind === 'telegram') return { kind: 'telegram' };
   return {
     kind: 'file',
     storageType: tab.type as Exclude<FileStorageType, 'session'>,
@@ -232,6 +236,7 @@ export function seedTabsRestoreQueueFromSnapshot(
       if (entry.kind === 'settings') return e.kind === 'settings';
       if (entry.kind === 'content-search') return e.kind === 'content-search';
       if (entry.kind === 'llm-assist') return e.kind === 'llm-assist';
+      if (entry.kind === 'telegram') return e.kind === 'telegram';
       return (
         e.kind === 'file' &&
         entry.kind === 'file' &&
