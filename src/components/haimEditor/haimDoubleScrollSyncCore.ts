@@ -4,7 +4,14 @@
  */
 
 export const HAIM_SCROLL_ALIGN_PAD_PX = 32;
-export const HAIM_SCROLL_SYNC_LOCK_RELEASE_MS = 32;
+/**
+ * How long a programmatic follower scroll is treated as an echo.
+ * Long enough for a late `scroll` event on a busy frame, short enough that
+ * a later real gesture is not swallowed. This replaces the old exclusive
+ * lock, which dropped the other pane's scroll while it was held.
+ */
+export const HAIM_SCROLL_ECHO_TTL_MS = 250;
+export const HAIM_SCROLL_ECHO_TOLERANCE_PX = 1.5;
 /**
  * Layout-settle retries after images/RO — keep short; typing must not
  * schedule these (see shouldDeferScrollLayoutResync).
@@ -46,12 +53,21 @@ export function haimAnchorY(
 }
 
 /** scrollTop that places `contentBottom` on the bottom sync pad. */
+export function haimBottomAlignScrollTop(
+  clientHeight: number,
+  contentBottom: number,
+  padPx: number = HAIM_SCROLL_ALIGN_PAD_PX,
+): number {
+  return Math.max(0, contentBottom - (clientHeight - padPx));
+}
+
+/** scrollTop that places `contentBottom` on the bottom sync pad. */
 export function haimScrollTopForBottomAlign(
   scroller: HTMLElement,
   contentBottom: number,
   padPx: number = HAIM_SCROLL_ALIGN_PAD_PX,
 ): number {
-  return Math.max(0, contentBottom - (scroller.clientHeight - padPx));
+  return haimBottomAlignScrollTop(scroller.clientHeight, contentBottom, padPx);
 }
 
 export function haimMarkersContentBottom(
@@ -81,6 +97,94 @@ export function haimComputeBottomOverscrollTarget(
   );
   if (followerMax <= followerEnd) return followerMax;
   return followerEnd + progress * (followerMax - followerEnd);
+}
+
+/**
+ * Interpolate between neighboring CM line tops / WYSIWYG marker tops.
+ * Shared by both mapping directions (t in [0, 1]).
+ */
+export type HaimScrollEcho = {
+  top: number;
+  armedAt: number;
+};
+
+/**
+ * Follower scrollTop for one sync step. Overscroll mapping wins when the
+ * driver is past its content-align end; otherwise align `mappedContentY`
+ * to the same edge `dir` used on the driver. Returns null when there is
+ * nothing to apply (no markers and not in the padding range).
+ * Both panes call this with the roles swapped.
+ */
+export function planHaimFollowerScrollTop(options: {
+  dir: HaimScrollDir;
+  driverScrollTop: number;
+  driverClientHeight: number;
+  driverContentBottom: number | null;
+  driverMaxScroll: number;
+  followerClientHeight: number;
+  followerContentBottom: number | null;
+  followerMaxScroll: number;
+  mappedContentY: number | null;
+  padPx?: number;
+}): number | null {
+  const pad = options.padPx ?? HAIM_SCROLL_ALIGN_PAD_PX;
+  const driverBottom = options.driverContentBottom;
+  const followerBottom = options.followerContentBottom;
+  if (driverBottom != null && followerBottom != null) {
+    const overscroll = haimComputeBottomOverscrollTarget(
+      options.driverScrollTop,
+      haimBottomAlignScrollTop(options.driverClientHeight, driverBottom, pad),
+      options.driverMaxScroll,
+      haimBottomAlignScrollTop(
+        options.followerClientHeight,
+        followerBottom,
+        pad,
+      ),
+      options.followerMaxScroll,
+    );
+    if (overscroll != null) {
+      return Math.max(0, Math.min(options.followerMaxScroll, overscroll));
+    }
+  }
+  if (options.mappedContentY == null) return null;
+  const raw =
+    options.dir === 'down'
+      ? options.mappedContentY - (options.followerClientHeight - pad)
+      : options.mappedContentY - pad;
+  return Math.max(0, Math.min(options.followerMaxScroll, raw));
+}
+
+/**
+ * Layout resync must not yank the focused pane. A user scroll of the other
+ * pane still writes, even when the follower holds the caret.
+ */
+export function shouldWriteFollowerScroll(options: {
+  userGesture: boolean;
+  followerFocused: boolean;
+}): boolean {
+  if (options.userGesture) return true;
+  return !options.followerFocused;
+}
+
+/**
+ * Classify a pane scroll as the echo of our own write, or a user gesture.
+ * A matching top inside the TTL is an echo. Anything else (no arm, expired
+ * arm, or a different top) is a user gesture so the other pane still follows.
+ */
+export function classifyHaimPaneScroll(options: {
+  top: number;
+  echo: HaimScrollEcho | null;
+  now: number;
+  ttlMs?: number;
+  tolerancePx?: number;
+}): 'echo' | 'user' {
+  const echo = options.echo;
+  if (!echo) return 'user';
+  const ttl = options.ttlMs ?? HAIM_SCROLL_ECHO_TTL_MS;
+  if (options.now - echo.armedAt > ttl) return 'user';
+  const tolerance = options.tolerancePx ?? HAIM_SCROLL_ECHO_TOLERANCE_PX;
+  if (Math.abs(options.top - echo.top) <= tolerance) return 'echo';
+  return 'user';
 }
 
 /**

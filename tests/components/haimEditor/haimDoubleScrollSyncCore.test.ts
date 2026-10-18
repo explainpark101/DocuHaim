@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   HAIM_SCROLL_ALIGN_PAD_PX,
+  HAIM_SCROLL_ECHO_TTL_MS,
   bindScrollEnd,
+  classifyHaimPaneScroll,
   detectHaimScrollDir,
   haimAnchorY,
   haimComputeBottomOverscrollTarget,
@@ -9,7 +11,9 @@ import {
   haimMarkersContentBottom,
   haimMaxScrollTop,
   haimScrollTopForBottomAlign,
+  planHaimFollowerScrollTop,
   shouldDeferScrollLayoutResync,
+  shouldWriteFollowerScroll,
   supportsScrollEndEvent,
 } from '@/components/haimEditor/haimDoubleScrollSyncCore';
 
@@ -141,6 +145,193 @@ describe('shouldDeferScrollLayoutResync', () => {
         cmFocused: false,
       }),
     ).toBe(false);
+  });
+});
+
+describe('bidirectional scroll sync', () => {
+  it('applies a CM scroll down onto the WYSIWYG follower', () => {
+    // Content-align end is far below scrollTop 100, so this is line mapping.
+    // down: mappedY 900 sits on the follower bottom pad.
+    // 900 - (500 - 32) = 432
+    expect(
+      planHaimFollowerScrollTop({
+        dir: 'down',
+        driverScrollTop: 100,
+        driverClientHeight: 400,
+        driverContentBottom: 5000,
+        driverMaxScroll: 4000,
+        followerClientHeight: 500,
+        followerContentBottom: 4500,
+        followerMaxScroll: 4000,
+        mappedContentY: 900,
+      }),
+    ).toBe(432);
+  });
+
+  it('applies a WYSIWYG scroll up onto the CM follower', () => {
+    // up: mappedY 240 sits on the follower top pad. 240 - 32 = 208
+    expect(
+      planHaimFollowerScrollTop({
+        dir: 'up',
+        driverScrollTop: 50,
+        driverClientHeight: 500,
+        driverContentBottom: 4000,
+        driverMaxScroll: 3500,
+        followerClientHeight: 400,
+        followerContentBottom: 5000,
+        followerMaxScroll: 2000,
+        mappedContentY: 240,
+      }),
+    ).toBe(208);
+  });
+
+  it('maps CM bottom overscroll onto WYSIWYG padding', () => {
+    // driver end = 1000 - (400 - 32) = 632, max 800, top 716 → progress 0.5
+    // follower end = 900 - (300 - 32) = 632, max 900 → 632 + 0.5*268 = 766
+    expect(
+      planHaimFollowerScrollTop({
+        dir: 'down',
+        driverScrollTop: 716,
+        driverClientHeight: 400,
+        driverContentBottom: 1000,
+        driverMaxScroll: 800,
+        followerClientHeight: 300,
+        followerContentBottom: 900,
+        followerMaxScroll: 900,
+        mappedContentY: 10,
+      }),
+    ).toBe(766);
+  });
+
+  it('maps WYSIWYG bottom overscroll onto CM padding', () => {
+    // driver end = 900 - (300 - 32) = 632, max 1000, top 816 → progress 0.5
+    // follower end = 1000 - (400 - 32) = 632, max 800 → 632 + 0.5*168 = 716
+    expect(
+      planHaimFollowerScrollTop({
+        dir: 'down',
+        driverScrollTop: 816,
+        driverClientHeight: 300,
+        driverContentBottom: 900,
+        driverMaxScroll: 1000,
+        followerClientHeight: 400,
+        followerContentBottom: 1000,
+        followerMaxScroll: 800,
+        mappedContentY: 10,
+      }),
+    ).toBe(716);
+  });
+
+  it('does not invent a target when neither pane has a mapped line', () => {
+    expect(
+      planHaimFollowerScrollTop({
+        dir: 'down',
+        driverScrollTop: 0,
+        driverClientHeight: 400,
+        driverContentBottom: null,
+        driverMaxScroll: 0,
+        followerClientHeight: 400,
+        followerContentBottom: null,
+        followerMaxScroll: 0,
+        mappedContentY: null,
+      }),
+    ).toBeNull();
+    expect(
+      planHaimFollowerScrollTop({
+        dir: 'up',
+        driverScrollTop: 20,
+        driverClientHeight: 400,
+        driverContentBottom: 800,
+        driverMaxScroll: 400,
+        followerClientHeight: 300,
+        followerContentBottom: 700,
+        followerMaxScroll: 400,
+        mappedContentY: null,
+      }),
+    ).toBeNull();
+  });
+
+  it('treats the WYSIWYG echo of a CM write as not a new driver', () => {
+    expect(
+      classifyHaimPaneScroll({
+        top: 432,
+        echo: { top: 432, armedAt: 1_000 },
+        now: 1_100,
+      }),
+    ).toBe('echo');
+    expect(
+      classifyHaimPaneScroll({
+        top: 432.4,
+        echo: { top: 432, armedAt: 1_000 },
+        now: 1_100,
+      }),
+    ).toBe('echo');
+  });
+
+  it('treats the CM echo of a WYSIWYG write as not a new driver', () => {
+    expect(
+      classifyHaimPaneScroll({
+        top: 208,
+        echo: { top: 208, armedAt: 2_000 },
+        now: 2_040,
+      }),
+    ).toBe('echo');
+  });
+
+  it('still applies a later CM gesture onto a focused WYSIWYG pane', () => {
+    expect(
+      classifyHaimPaneScroll({
+        top: 800,
+        echo: { top: 432, armedAt: 1_000 },
+        now: 1_100,
+      }),
+    ).toBe('user');
+    expect(
+      shouldWriteFollowerScroll({
+        userGesture: true,
+        followerFocused: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('still applies a later WYSIWYG gesture onto a focused CM pane', () => {
+    expect(
+      classifyHaimPaneScroll({
+        top: 40,
+        echo: { top: 208, armedAt: 2_000 },
+        now: 2_100,
+      }),
+    ).toBe('user');
+    expect(
+      shouldWriteFollowerScroll({
+        userGesture: true,
+        followerFocused: true,
+      }),
+    ).toBe(true);
+  });
+
+  it('does not let layout resync yank either focused pane', () => {
+    expect(
+      shouldWriteFollowerScroll({
+        userGesture: false,
+        followerFocused: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldWriteFollowerScroll({
+        userGesture: false,
+        followerFocused: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('expires an echo so a late scroll event cannot hold the other pane', () => {
+    expect(
+      classifyHaimPaneScroll({
+        top: 432,
+        echo: { top: 432, armedAt: 1_000 },
+        now: 1_000 + HAIM_SCROLL_ECHO_TTL_MS + 1,
+      }),
+    ).toBe('user');
   });
 });
 
