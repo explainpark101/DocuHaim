@@ -354,9 +354,35 @@ html[data-haim-prose-width-clamp='1']
   outline-offset: 2px;
 }
 
-.haim-stock-image-wrap.is-selected .haim-stock-image {
+.haim-stock-image-wrap.is-selected .haim-stock-image,
+.haim-stock-image-wrap.is-selected .haim-stock-image-fallback {
   outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
   outline-offset: 2px;
+}
+
+.haim-stock-image-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  max-width: min(100%, 28rem);
+  margin: 0.25rem auto;
+  padding: 0.6rem 0.75rem;
+  border: 1px dashed var(--md-theme-border-color, #cbd5e1);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--md-theme-code-bg, #f8fafc) 88%, transparent);
+  color: var(--md-theme-text-color, #475569);
+  line-height: 1.35;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.haim-stock-image-fallback-src {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  opacity: 0.75;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .haim-wiki-image {
@@ -373,7 +399,8 @@ html[data-haim-prose-width-clamp='1']
 }
 
 .haim-editor--dark .haim-wiki-image-wrap.is-selected .haim-wiki-image,
-.haim-editor--dark .haim-stock-image-wrap.is-selected .haim-stock-image {
+.haim-editor--dark .haim-stock-image-wrap.is-selected .haim-stock-image,
+.haim-editor--dark .haim-stock-image-wrap.is-selected .haim-stock-image-fallback {
   outline-color: var(--md-theme-code-active-color, #818cf8);
 }
 

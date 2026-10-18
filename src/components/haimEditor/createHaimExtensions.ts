@@ -137,6 +137,9 @@ export function createHaimExtensions(
         return ReactNodeViewRenderer(HaimStockImageView);
       },
     }).configure({
+      // ![alt](src) is an inline markdown token. A block image inside a
+      // paragraph fails UniqueID setNodeMarkup ("Invalid content for node type paragraph").
+      inline: true,
       allowBase64: true,
     }),
     ListKit.configure({

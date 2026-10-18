@@ -897,6 +897,7 @@ export default function MarkdownEditor({
     return registerBridge({
       editorRef,
       getEditorApi,
+      hasKeyboardFocus: () => Boolean(getEditorApi()?.getEditorView?.()?.hasFocus),
       onChange: onChangeWithUndoHistory,
       getMarkdown: () => {
         const api = getEditorApi();

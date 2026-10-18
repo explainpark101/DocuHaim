@@ -10,6 +10,11 @@ import {
   type RefObject,
 } from 'react';
 import {
+  EMPTY_LLM_ASSIST_BRIDGE_PICK_MEMORY,
+  pickLlmAssistEditorBridge,
+  type LlmAssistBridgePickMemory,
+} from '@/utils/llm/llmAssistEditorBridgePick';
+import {
   loadLlmAssistPresentation,
   saveLlmAssistPresentation,
   type LlmAssistPresentation,
@@ -49,6 +54,11 @@ export type LlmAssistEditorBridge = {
   getMarkdown?: () => string;
   /** Durable source-focus key (`storageType:path`) for demoted panes. */
   documentKey?: string;
+  /**
+   * True only while this editor's caret has keyboard focus.
+   * Hover re-registration must not become the insert target.
+   */
+  hasKeyboardFocus?: () => boolean;
 };
 
 export type LlmAssistSplitWorkspaceHandlers = {
@@ -84,7 +94,11 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
     loadLlmAssistPresentation(),
   );
   const [editorBridge, setEditorBridge] = useState<LlmAssistEditorBridge | null>(null);
-  const bridgeOwnerRef = useRef(0);
+  const bridgeHostMountedRef = useRef(true);
+  const bridgeEntriesRef = useRef(new Map<number, LlmAssistEditorBridge>());
+  const bridgePickMemoryRef = useRef<LlmAssistBridgePickMemory>(
+    EMPTY_LLM_ASSIST_BRIDGE_PICK_MEMORY,
+  );
   const nextOwnerIdRef = useRef(1);
   const splitHandlersRef = useRef<LlmAssistSplitWorkspaceHandlers | null>(null);
   const presentationRef = useRef(presentation);
@@ -148,17 +162,52 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
     }
   }, [open, presentation]);
 
+  const publishEditorBridge = useCallback(() => {
+    if (!bridgeHostMountedRef.current) return;
+    const candidates = [...bridgeEntriesRef.current.entries()].map(([ownerId, bridge]) => ({
+      ownerId,
+      bridge,
+      documentKey: bridge.documentKey ?? null,
+      editorRef: bridge.editorRef,
+      keyboardFocused: Boolean(bridge.hasKeyboardFocus?.()),
+    }));
+    const picked = pickLlmAssistEditorBridge(candidates, bridgePickMemoryRef.current);
+    bridgePickMemoryRef.current = picked.memory;
+    setEditorBridge((prev) => (prev === picked.bridge ? prev : picked.bridge));
+  }, []);
+
   const registerEditorBridge = useCallback((bridge: LlmAssistEditorBridge) => {
     const ownerId = nextOwnerIdRef.current++;
-    bridgeOwnerRef.current = ownerId;
-    setEditorBridge(bridge);
+    bridgeEntriesRef.current.set(ownerId, bridge);
+    publishEditorBridge();
     return () => {
-      if (bridgeOwnerRef.current === ownerId) {
-        bridgeOwnerRef.current = 0;
-        setEditorBridge(null);
+      if (bridgeEntriesRef.current.get(ownerId) === bridge) {
+        bridgeEntriesRef.current.delete(ownerId);
       }
+      // Defer so a demoted replacement bridge can register in the same commit
+      // before we retarget. Hover re-register publishes immediately on setup.
+      queueMicrotask(() => {
+        publishEditorBridge();
+      });
+    };
+  }, [publishEditorBridge]);
+
+  useEffect(() => {
+    bridgeHostMountedRef.current = true;
+    return () => {
+      bridgeHostMountedRef.current = false;
     };
   }, []);
+
+  // Caret focus (click / keyboard), not hover, retargets insert.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const onFocusIn = () => {
+      publishEditorBridge();
+    };
+    document.addEventListener('focusin', onFocusIn, true);
+    return () => document.removeEventListener('focusin', onFocusIn, true);
+  }, [publishEditorBridge]);
 
   const value = useMemo<LlmAssistSessionContextValue>(
     () => ({

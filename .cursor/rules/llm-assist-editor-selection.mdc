@@ -10,6 +10,8 @@ The **「선택된 텍스트」** field in `LlmAssistPanel` must stay in sync wi
 
 **Apply / insert** must target the **last source-Editor caret or selection**, not the live CM selection while focus is outside the source pane (panel, other split leaf, etc.).
 
+In a **workspace split**, several editors may register at once. The insert target is the editor that last had **keyboard caret focus** (`hasKeyboardFocus`). Hovering another pane re-renders and re-registers its bridge; that must not move the target (`pickLlmAssistEditorBridge`).
+
 ## Single source of truth
 
 | Layer | Module | Responsibility |
@@ -18,7 +20,8 @@ The **「선택된 텍스트」** field in `LlmAssistPanel` must stay in sync wi
 | Haim read / replace | `src/utils/haimLlmAssistSelection.ts` | TipTap + source CM selection / apply (via bridge hooks) |
 | Focus memory | `src/utils/mdEditorSourceFocus.ts` | Last source-Editor caret/selection (view WeakMap + durable `storageType:path`) |
 | Host state | `src/components/llm/LlmAssistModal.tsx` | `selectedText`, `refreshSelection`, subscription lifecycle |
-| Bridge | `MarkdownEditor.jsx` / `HaimEditor.tsx` / demoted `EditorPane` + `LlmAssistSessionContext` | `registerEditorBridge({ editorRef, onChange, getMarkdown, documentKey, getSelection?, applyResult?, subscribeSelection? })` |
+| Bridge pick | `src/utils/llm/llmAssistEditorBridgePick.ts` | Which split-pane bridge receives insert (keyboard focus, not hover) |
+| Bridge | `MarkdownEditor.jsx` / `HaimEditor.tsx` / demoted `EditorPane` + `LlmAssistSessionContext` | `registerEditorBridge({ editorRef, onChange, getMarkdown, documentKey, hasKeyboardFocus?, getSelection?, applyResult?, subscribeSelection? })` |
 
 Do **not** read CodeMirror / TipTap selection inline in panel/modal code. Prefer `editorSelection.ts` (md-editor) or bridge `getSelection` / `applyResult` (Haim).
 
@@ -60,8 +63,10 @@ Update `tests/utils/editorSelection.test.ts` (and `mdEditorSourceFocus.test.ts` 
 ❌ BAD — apply uses live collapsed selection after panel steals focus
 ❌ BAD — demote clears focus with no durable documentKey map
 ❌ BAD — LlmAssistModal reads editorRef.current.getEditorView() directly
+❌ BAD — last `registerEditorBridge` wins, so hovering a split pane steals insert
 ✅ GOOD — applyLlmResultToEditor + resolveMdEditorSourceFocus + documentKey
 ✅ GOOD — attachMdEditorSourceFocusTracking(view, documentKey)
+✅ GOOD — pickLlmAssistEditorBridge + hasKeyboardFocus; hover re-register keeps the caret pane
 ```
 
 Prefer **English** in new code comments if Korean Unicode might corrupt.

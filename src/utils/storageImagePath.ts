@@ -47,7 +47,9 @@ export function isStorageImageSrc(src: string): boolean {
   const value = decodeStoragePath(src);
   if (!value) return false;
   if (isInlineOrRemoteImageSrc(value)) return false;
-  if (/^(#|mailto:|tel:|javascript:)/i.test(value)) return false;
+  if (value.startsWith('#')) return false;
+  // attachment:, mailto:, javascript:, and other schemes are not vault keys.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return false;
   return true;
 }
 

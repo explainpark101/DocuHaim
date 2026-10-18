@@ -261,6 +261,12 @@ export default function HaimEditor({
   const everFocusedRef = useRef(false);
   /** Last TipTap or source-CM focus range for LLM Assist after panel steals focus. */
   const llmFocusMemoryRef = useRef<HaimLlmAssistFocusMemory | null>(null);
+  /** Stable identity so hover re-registration does not look like a new editor. */
+  const llmAssistEditorRef = useRef<{
+    focus: () => void;
+    insert: (payload: unknown) => void;
+    getSelectedText: () => string;
+  } | null>(null);
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
   const [qrCodeInitialText, setQrCodeInitialText] = useState('');
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
@@ -809,26 +815,28 @@ export default function HaimEditor({
       return { text: snap.text, from: snap.from, to: snap.to };
     };
 
-    return registerBridge({
-      editorRef: {
-        current: {
-          focus: () => {
-            if (preferSourceNow() && cmViewRef.current) {
-              cmViewRef.current.focus();
-              return;
-            }
-            editor.commands.focus();
-          },
-          insert: (payload: unknown) => {
-            if (typeof payload === 'string') {
-              editor.commands.insertContent(payload, {
-                contentType: 'markdown',
-              } as never);
-            }
-          },
-          getSelectedText: () => readSelection().text,
-        },
+    llmAssistEditorRef.current = {
+      focus: () => {
+        if (preferSourceNow() && cmViewRef.current) {
+          cmViewRef.current.focus();
+          return;
+        }
+        editor.commands.focus();
       },
+      insert: (payload: unknown) => {
+        if (typeof payload === 'string') {
+          editor.commands.insertContent(payload, {
+            contentType: 'markdown',
+          } as never);
+        }
+      },
+      getSelectedText: () => readSelection().text,
+    };
+
+    return registerBridge({
+      editorRef: llmAssistEditorRef,
+      hasKeyboardFocus: () =>
+        Boolean(editor.isFocused || cmViewRef.current?.hasFocus),
       getEditorApi: () => {
         const cm = cmViewRef.current;
         return {

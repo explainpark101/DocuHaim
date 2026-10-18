@@ -1,9 +1,11 @@
-import { useCallback, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import HaimImageLightbox, {
   type HaimImageLightboxSaveMode,
 } from '@/components/haimEditor/HaimImageLightbox';
+import { isRenderableImageSrc } from '@/components/haimEditor/extensions/stockImageSrc';
 import { uploadHaimAnnotatedImage } from '@/utils/haimImageAnnotateUpload';
+import { isStorageImageSrc } from '@/utils/storageImagePath';
 
 /**
  * Stock TipTap Image node view: click = select (edit), double-click = enlarge.
@@ -21,6 +23,16 @@ export default function HaimStockImageView({
   const editable = editor.isEditable;
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setLoadFailed(false);
+  }, [src]);
+
+  // Vault paths stay mounted so storage hydration can replace a 404 src.
+  // Unknown schemes (attachment:) and failed remote URLs use the placeholder.
+  const showFallback =
+    !isRenderableImageSrc(src) || (loadFailed && !isStorageImageSrc(src));
 
   const selectForEdit = useCallback(
     (event: ReactMouseEvent) => {
@@ -39,11 +51,11 @@ export default function HaimStockImageView({
     (event: ReactMouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
-      if (!src) return;
+      if (!isRenderableImageSrc(src) || loadFailed) return;
       setLightboxSrc(src);
       setLightboxOpen(true);
     },
-    [src],
+    [loadFailed, src],
   );
 
   const saveAnnotated = useCallback(
@@ -109,15 +121,30 @@ export default function HaimStockImageView({
       onClick={selectForEdit}
       onDoubleClick={openEnlarge}
     >
-      <img
-        src={src}
-        alt={alt}
-        {...(title ? { title } : {})}
-        className="haim-stock-image max-w-full h-auto cursor-pointer"
-        draggable={false}
-      />
+      {showFallback ? (
+        <div
+          className="haim-stock-image-fallback"
+          role="img"
+          aria-label={alt || '이미지를 불러올 수 없습니다'}
+        >
+          <span className="haim-stock-image-fallback-title">이미지를 불러올 수 없습니다</span>
+          {alt ? <span className="haim-stock-image-fallback-alt">{alt}</span> : null}
+          {src ? <span className="haim-stock-image-fallback-src">{src}</span> : null}
+        </div>
+      ) : (
+        <img
+          src={src}
+          alt={alt}
+          {...(title ? { title } : {})}
+          className="haim-stock-image max-w-full h-auto cursor-pointer"
+          draggable={false}
+          onError={() => {
+            if (!isStorageImageSrc(src)) setLoadFailed(true);
+          }}
+        />
+      )}
       <HaimImageLightbox
-        src={lightboxSrc || src || null}
+        src={showFallback ? null : lightboxSrc || src || null}
         alt={alt}
         open={lightboxOpen}
         onClose={() => {
