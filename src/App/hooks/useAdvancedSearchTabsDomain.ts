@@ -28,6 +28,7 @@ import {
   openOrActivateChat,
   openOrActivateContentSearch,
   openOrActivateSettings,
+  openOrActivateTelegram,
   openOrReplaceFileTab,
   patchFileTab,
   replaceWorkspaceLayout,
@@ -102,7 +103,7 @@ export function useAdvancedSearchTabsDomain() {
     setEditedFileName,
     setEditorContent,
   } = useFileSessionOwned();
-  const { activateWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab, openChatWorkspaceTab, openContentSearchWorkspaceTab, openLlmAssistWorkspaceTab, openSettingsWorkspaceTab, setState: setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
+  const { activateWorkspaceTab, closeWorkspaceTabById, cycleWorkspaceTab, openChatWorkspaceTab, openContentSearchWorkspaceTab, openLlmAssistWorkspaceTab, openSettingsWorkspaceTab, openTelegramWorkspaceTab, setState: setWorkspaceTabs, workspaceTabsEnabledRef, workspaceTabsRef } = useWorkspaceTabsCtx();
   const llmAssistSession = useLlmAssistSessionOptional();
   const advancedSearchTreesRef = useRef({
     storageMode,
@@ -217,6 +218,10 @@ export function useAdvancedSearchTabsDomain() {
         openChatWorkspaceTab();
         return;
       }
+      if (entry.kind === 'telegram') {
+        openTelegramWorkspaceTab();
+        return;
+      }
       if (entry.kind === 'settings') {
         openSettingsWorkspaceTab();
         return;
@@ -244,7 +249,7 @@ export function useAdvancedSearchTabsDomain() {
         return;
       }
     }
-  }, [llmAssistSession, openChatWorkspaceTab, openContentSearchWorkspaceTab, openLlmAssistWorkspaceTab, openSettingsWorkspaceTab, resolveClosedFileNode]);
+  }, [llmAssistSession, openChatWorkspaceTab, openContentSearchWorkspaceTab, openLlmAssistWorkspaceTab, openSettingsWorkspaceTab, openTelegramWorkspaceTab, resolveClosedFileNode]);
 
   /** Clear a stuck restore shell so EditorPane does not spin forever. */
   const settleRestoreLoadingShell = useCallback(
@@ -309,6 +314,9 @@ export function useAdvancedSearchTabsDomain() {
       for (const tab of persisted.tabs) {
         if (tab.kind === 'chat') {
           nextState = openOrActivateChat(nextState, Date.now(), { activate: false });
+          restoredAny = true;
+        } else if (tab.kind === 'telegram') {
+          nextState = openOrActivateTelegram(nextState, Date.now(), { activate: false });
           restoredAny = true;
         } else if (tab.kind === 'settings') {
           nextState = openOrActivateSettings(nextState, Date.now(), { activate: false });

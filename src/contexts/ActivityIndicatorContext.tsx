@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useReducer,
   type ReactNode,
 } from 'react';
@@ -21,6 +22,10 @@ export const ActivityTypes = {
   CHAT_SYNC: 'chat-sync',
   CHAT_NOTE: 'chat-note',
   ADVANCED_SEARCH_INDEX: 'advanced-search-index',
+  TELEGRAM_CONNECT: 'telegram-connect',
+  TELEGRAM_SEND: 'telegram-send',
+  TELEGRAM_DOWNLOAD: 'telegram-download',
+  TELEGRAM_SYNC: 'telegram-sync',
 } as const;
 
 export type ActivityType = (typeof ActivityTypes)[keyof typeof ActivityTypes];
@@ -114,6 +119,21 @@ function reducer(state: ReducerState, action: ReducerAction): ReducerState {
 
 const ActivityIndicatorContext = createContext<ActivityIndicatorContextValue | null>(null);
 
+type ActivityBridge = Pick<
+  ActivityIndicatorContextValue,
+  'addIndicator' | 'removeIndicator'
+>;
+
+let activityBridge: ActivityBridge | null = null;
+
+/** Flash a bar chip from non-React modules (Telegram live updates). */
+export function flashActivityIndicator(payload: AddActivityIndicatorInput, ms = 4000): void {
+  const bridge = activityBridge;
+  if (!bridge) return;
+  const id = bridge.addIndicator(payload);
+  window.setTimeout(() => bridge.removeIndicator(id), ms);
+}
+
 export function ActivityIndicatorProvider({ children }: { children: ReactNode }) {
   const [indicators, dispatch] = useReducer(reducer, initialState);
 
@@ -145,6 +165,13 @@ export function ActivityIndicatorProvider({ children }: { children: ReactNode })
     removeIndicator,
     updateIndicator,
   };
+
+  useEffect(() => {
+    activityBridge = { addIndicator, removeIndicator };
+    return () => {
+      activityBridge = null;
+    };
+  }, [addIndicator, removeIndicator]);
 
   return (
     <ActivityIndicatorContext.Provider value={value}>

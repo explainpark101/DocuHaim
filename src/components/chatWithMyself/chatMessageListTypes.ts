@@ -5,6 +5,7 @@ import type {
   ReactNode,
 } from 'react';
 import type { ChatReaction } from '@/utils/chatWithMyself/reactions';
+import type { ChatBubbleOgCard } from '@/utils/chatWithMyself/messageOg';
 import type {
   ChatMessageContextMenuMessage,
   ChatMessageDeleteOptions,
@@ -23,6 +24,7 @@ export type ChatListMessage = ChatMessageContextMenuMessage & {
   pendingSync?: 'send' | 'edit' | 'delete' | string;
   reactions?: ChatReaction[];
   reactionsAt?: string;
+  ogCards?: ChatBubbleOgCard[];
   markdown?: string | boolean;
 };
 
@@ -53,6 +55,9 @@ export type ChatMessageActionHandlers = {
   onToggleCollapse?: ((message: ChatListMessage) => void) | undefined;
   onOpenReactionPicker?: ((message: ChatListMessage) => void) | undefined;
   onReloadOg?: ((message: ChatListMessage) => void) | undefined;
+  onPersistOgCards?:
+    | ((message: ChatListMessage, cards: ChatBubbleOgCard[]) => void)
+    | undefined;
   onSelectCopy?: ((message: ChatListMessage) => void) | undefined;
   onEnterSelection?: ((message: ChatListMessage) => void) | undefined;
   onToggleReaction?:

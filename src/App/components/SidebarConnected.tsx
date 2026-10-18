@@ -28,6 +28,8 @@ export type ChromeProps = Pick<
   onShareToChatWithMyself?: SidebarProps['onShareToChatWithMyself'];
   onOpenChatWithMyself?: SidebarProps['onOpenChatWithMyself'];
   chatSurfaceActive?: boolean;
+  onOpenTelegram?: SidebarProps['onOpenTelegram'];
+  telegramActive?: boolean;
   chatAttachDropHost?: SidebarProps['chatAttachDropHost'];
   onDropToChatAttach?: SidebarProps['onDropToChatAttach'];
   quizSourceDropActive?: SidebarProps['quizSourceDropActive'];
@@ -109,6 +111,8 @@ export default function SidebarConnected(props: ChromeProps) {
         onToggleTheme: () =>
           bootstrap.setTheme(bootstrap.theme === 'dark' ? 'light' : 'dark'),
         chatWithMyselfActive: Boolean(chatSurfaceActive),
+        onOpenTelegram: chrome.onOpenTelegram,
+        telegramActive: Boolean(chrome.telegramActive),
       } as SidebarProps)}
     />
   );

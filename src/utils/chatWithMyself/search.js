@@ -1,5 +1,7 @@
 import { getCachedOg } from '@/utils/chatWithMyself/chatDb.js';
 import { extractUrls, hashUrl } from '@/utils/chatWithMyself/og';
+import { canonicalOgFetchUrl, groupUrlsByOgIdentity } from '@/utils/chatWithMyself/ogIdentity';
+import { ogCardsToSearchText } from '@/utils/chatWithMyself/messageOg';
 import { ogArchiveKey } from '@/utils/chatWithMyself/paths.js';
 import {
   fuzzyMatchText,
@@ -48,7 +50,7 @@ export function ogDataToSearchText(data, url = '') {
  */
 export async function loadOgSearchText(url, storage) {
   if (!url) return '';
-  const urlHash = await hashUrl(url);
+  const urlHash = await hashUrl(canonicalOgFetchUrl(url));
   const idb = await getCachedOg(urlHash);
   if (idb?.data) return ogDataToSearchText(idb.data, url);
   if (storage?.readArchive) {
@@ -66,7 +68,11 @@ export async function loadOgSearchText(url, storage) {
  * Concatenate OG search text for every URL in a message body.
  */
 export async function loadMessageOgSearchText(msg, storage) {
-  const urls = extractUrls(msg?.body);
+  const stored = ogCardsToSearchText(msg?.ogCards);
+  if (stored) return stored;
+  const urls = groupUrlsByOgIdentity(extractUrls(msg?.body)).map(
+    (group) => group.fetchUrl,
+  );
   if (!urls.length) return '';
   const parts = [];
   for (const url of urls) {

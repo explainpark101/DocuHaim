@@ -71,6 +71,22 @@ const typeConfig = {
     icon: IconSearch,
     label: '역색인',
   },
+  [ActivityTypes.TELEGRAM_CONNECT]: {
+    icon: IconCloud,
+    label: 'Telegram 연결',
+  },
+  [ActivityTypes.TELEGRAM_SEND]: {
+    icon: IconMessage,
+    label: 'Telegram 전송',
+  },
+  [ActivityTypes.TELEGRAM_DOWNLOAD]: {
+    icon: IconDownload,
+    label: 'Telegram 파일',
+  },
+  [ActivityTypes.TELEGRAM_SYNC]: {
+    icon: IconRefresh,
+    label: 'Telegram 동기화',
+  },
 };
 
 function chipClassName({ isError, isDone }) {

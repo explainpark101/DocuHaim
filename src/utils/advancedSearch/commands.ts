@@ -16,6 +16,10 @@ import {
   type ChatActionId,
 } from '@/utils/advancedSearch/chatActions';
 import {
+  TELEGRAM_ACTION_COMMANDS,
+  type TelegramActionId,
+} from '@/utils/advancedSearch/telegramActions';
+import {
   MLX_VLM_ACTION_COMMANDS,
   type MlxVlmActionId,
 } from '@/utils/advancedSearch/mlxVlmActions';
@@ -101,6 +105,7 @@ export type AppCommandId =
   | 'settings-workspace-pane-soft-cap'
   | 'settings-app-update'
   | 'chat'
+  | 'telegram'
   | 'content-search'
   | 'chat-settings'
   | 'chat-groups'
@@ -123,6 +128,7 @@ export type AppCommandId =
   | EditorActionId
   | PrintActionId
   | ChatActionId
+  | TelegramActionId
   | MlxVlmActionId
   | LlamaCppActionId
   | SettingsToggleId
@@ -163,6 +169,8 @@ export type AppCommandContext = {
   printActionsAvailable?: boolean;
   /** True when chat composer has registered actions (on /chat). */
   chatActionsAvailable?: boolean;
+  /** True when the Telegram composer has registered actions. */
+  telegramActionsAvailable?: boolean;
   /** True when the Chat with Myself tab/surface is active. */
   chatTabActive?: boolean;
   /** True when MLX-VLM settings registered actions (Tauri macOS). */
@@ -602,6 +610,13 @@ export const APP_COMMANDS: readonly AppCommand[] = [
     ],
   },
   {
+    id: 'telegram',
+    title: 'Telegram',
+    description: 'Telegram 메신저 열기',
+    path: '/telegram',
+    keywords: ['telegram', '텔레그램', 'tg', '메신저', 'messenger', 'gramjs'],
+  },
+  {
     id: 'chat-settings',
     title: '나와의 채팅 · 설정',
     description: '채팅 입력창·링크·성능 설정 모달',
@@ -963,6 +978,17 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
         });
       }
     }
+    if (context?.telegramActionsAvailable) {
+      for (const cmd of TELEGRAM_ACTION_COMMANDS) {
+        list.push({
+          id: cmd.id,
+          title: cmd.title,
+          description: cmd.description,
+          path: '',
+          keywords: [...cmd.keywords],
+        });
+      }
+    }
     if (context?.mlxVlmActionsAvailable) {
       for (const cmd of MLX_VLM_ACTION_COMMANDS) {
         list.push({
@@ -1016,6 +1042,17 @@ function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
   }
   if (context?.chatActionsAvailable) {
     for (const cmd of CHAT_ACTION_COMMANDS) {
+      list.push({
+        id: cmd.id,
+        title: cmd.title,
+        description: cmd.description,
+        path: '',
+        keywords: [...cmd.keywords],
+      });
+    }
+  }
+  if (context?.telegramActionsAvailable) {
+    for (const cmd of TELEGRAM_ACTION_COMMANDS) {
       list.push({
         id: cmd.id,
         title: cmd.title,

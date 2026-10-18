@@ -14,6 +14,7 @@ import { getSignedGetUrl } from '@/utils/s3Client';
 import {
   CHAT_TAB_ID,
   SETTINGS_TAB_ID,
+  TELEGRAM_TAB_ID,
   pickWorkspaceTabsRestoreSource,
   persistedTabId,
   seedTabsRestoreQueueFromSnapshot,
@@ -34,7 +35,7 @@ import {
 } from '@/utils/desktopOpenFiles';
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
-import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isContentSearchAppPathname, isExportPdfAppPathname, exportPdfPathnameForStoragePath, openNotePathnameForStoragePath, parseQuizPathFromAppPathname } from '@/utils/appHref';
+import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isContentSearchAppPathname, isExportPdfAppPathname, isTelegramAppPathname, exportPdfPathnameForStoragePath, openNotePathnameForStoragePath, parseQuizPathFromAppPathname } from '@/utils/appHref';
 
 /**
  * useFileOpenRoutingDomain: context-owned domain handlers.
@@ -64,7 +65,7 @@ export function useFileOpenRoutingDomain() {
   const { selectFileRaw } = useFileSession();
   const { createModalContext } = useTreeOpsOwned();
   const { handleTreeNodeSelect } = useTreeOps();
-  const { hasRestoredPersistedWorkspaceTabsRef, openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, workspaceTabsEnabled, workspaceTabsEnabledRef } = useWorkspaceTabsCtx();
+  const { hasRestoredPersistedWorkspaceTabsRef, openChatWorkspaceTab, openContentSearchWorkspaceTab, openSettingsWorkspaceTab, openTelegramWorkspaceTab, workspaceTabsEnabled, workspaceTabsEnabledRef } = useWorkspaceTabsCtx();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -348,6 +349,7 @@ export function useFileOpenRoutingDomain() {
 
     const onChat =
       location.pathname === '/chat' || location.pathname.endsWith('/chat');
+    const onTelegram = isTelegramAppPathname(location.pathname);
     const onSettings = isSettingsAppPathname(location.pathname);
     const onContentSearch = isContentSearchAppPathname(location.pathname);
     const openParam =
@@ -392,6 +394,13 @@ export function useFileOpenRoutingDomain() {
         openChatWorkspaceTab({ navigateUrl: false });
       }
       return;
+    } else if (onTelegram) {
+      hasRestoredLastFileRef.current = true;
+      hasProcessedOpenFromUrlRef.current = true;
+      if (workspaceTabsEnabledRef.current) {
+        openTelegramWorkspaceTab({ navigateUrl: false });
+      }
+      return;
     } else if (onSettings) {
       hasRestoredLastFileRef.current = true;
       hasProcessedOpenFromUrlRef.current = true;
@@ -423,11 +432,18 @@ export function useFileOpenRoutingDomain() {
           if (persisted.tabs.some((t) => t.kind === 'chat')) {
             openChatWorkspaceTab({ navigateUrl: false, activate: false });
           }
+          if (persisted.tabs.some((t) => t.kind === 'telegram')) {
+            openTelegramWorkspaceTab({ navigateUrl: false, activate: false });
+          }
           if (persisted.tabs.some((t) => t.kind === 'settings')) {
             openSettingsWorkspaceTab({ navigateUrl: false, activate: false });
           }
           if (persisted.activeId === CHAT_TAB_ID) {
             navigate('/chat');
+            return;
+          }
+          if (persisted.activeId === TELEGRAM_TAB_ID) {
+            navigate('/telegram');
             return;
           }
           if (persisted.activeId === SETTINGS_TAB_ID) {
@@ -440,12 +456,19 @@ export function useFileOpenRoutingDomain() {
         const fileTabs = persisted.tabs.filter((t) => t.kind === 'file');
         const activeFile =
           fileTabs.find((t) => persisted.activeId === `${t.type}:${t.path}`) ||
-          (persisted.activeId === CHAT_TAB_ID || persisted.activeId === SETTINGS_TAB_ID
+          (persisted.activeId === CHAT_TAB_ID ||
+          persisted.activeId === TELEGRAM_TAB_ID ||
+          persisted.activeId === SETTINGS_TAB_ID
             ? null
             : fileTabs[0]);
         if (persisted.activeId === CHAT_TAB_ID) {
           hasProcessedOpenFromUrlRef.current = true;
           navigate('/chat');
+          return;
+        }
+        if (persisted.activeId === TELEGRAM_TAB_ID) {
+          hasProcessedOpenFromUrlRef.current = true;
+          navigate('/telegram');
           return;
         }
         if (persisted.activeId === SETTINGS_TAB_ID) {
@@ -471,6 +494,13 @@ export function useFileOpenRoutingDomain() {
           hasProcessedOpenFromUrlRef.current = true;
           if (workspaceTabsEnabledRef.current) openChatWorkspaceTab();
           else navigate('/chat');
+          return;
+        }
+        if (saved.type === 'telegram') {
+          hasRestoredLastFileRef.current = true;
+          hasProcessedOpenFromUrlRef.current = true;
+          if (workspaceTabsEnabledRef.current) openTelegramWorkspaceTab();
+          else navigate('/telegram');
           return;
         }
         if (saved.type !== 's3' && saved.type !== 'local' && saved.type !== 'webdav' && saved.type !== 'idb') {
@@ -567,6 +597,7 @@ export function useFileOpenRoutingDomain() {
     loadLastOpenedFileRef,
     navigate,
     openChatWorkspaceTab,
+    openTelegramWorkspaceTab,
     openSettingsWorkspaceTab,
     localVaultFsPath,
   ]);
@@ -614,6 +645,8 @@ export function useFileOpenRoutingDomain() {
       : null;
     const explicitActiveId = isChatAppPathname(location.pathname)
       ? CHAT_TAB_ID
+      : isTelegramAppPathname(location.pathname)
+        ? TELEGRAM_TAB_ID
       : isSettingsAppPathname(location.pathname)
         ? SETTINGS_TAB_ID
         : routeNotePath && routeStorageType
@@ -650,6 +683,12 @@ export function useFileOpenRoutingDomain() {
 
   // Open settings as a workspace tab whenever /settings is hit (incl. locked first-run).
   useEffect(() => {
+    if (!isTelegramAppPathname(location.pathname)) return;
+    if (!workspaceTabsEnabledRef.current) return;
+    openTelegramWorkspaceTab({ navigateUrl: false });
+  }, [location.pathname, openTelegramWorkspaceTab]);
+
+  useEffect(() => {
     if (!isSettingsAppPathname(location.pathname)) return;
     if (!workspaceTabsEnabledRef.current) return;
     openSettingsWorkspaceTab({ navigateUrl: false });
@@ -670,12 +709,15 @@ export function useFileOpenRoutingDomain() {
     if (restoringWorkspaceTabsRef.current) return;
     if (
       isChatAppPathname(location.pathname) ||
+      isTelegramAppPathname(location.pathname) ||
       isSettingsAppPathname(location.pathname) ||
       isContentSearchAppPathname(location.pathname)
     ) {
       if (workspaceTabsEnabledRef.current) {
         if (isChatAppPathname(location.pathname)) {
           openChatWorkspaceTab({ navigateUrl: false });
+        } else if (isTelegramAppPathname(location.pathname)) {
+          openTelegramWorkspaceTab({ navigateUrl: false });
         } else if (isSettingsAppPathname(location.pathname)) {
           openSettingsWorkspaceTab({ navigateUrl: false });
         } else {
@@ -769,6 +811,7 @@ export function useFileOpenRoutingDomain() {
     idbTree,
     s3Tree,
     openChatWorkspaceTab,
+    openTelegramWorkspaceTab,
     openSettingsWorkspaceTab,
   ]);
 

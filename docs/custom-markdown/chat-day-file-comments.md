@@ -39,7 +39,9 @@ Regex: `/<!--\s*chat-msg\s+([^>]*?)-->\s*/g`
 
 **Required attrs:** `id`, `at` (ISO UTC).  
 **Common attrs:** `tz`, `source`, `group`.  
-**Optional:** `replyTo`, `replySnippet`, `replyGroup`, `editedAt`, `pinnedAt`, `notePath`, `collapsed` (`"1"`), `markdown` (`"1"`), `encrypted` (`"1"`), `reactions`, `reactionsAt`.
+**Optional:** `replyTo`, `replySnippet`, `replyGroup`, `editedAt`, `pinnedAt`, `notePath`, `collapsed` (`"1"`), `markdown` (`"1"`), `encrypted` (`"1"`), `reactions`, `reactionsAt`, `og`.
+
+`og` is a `encodeURIComponent(JSON)` list of collapsed link previews for that bubble. Before fetch, only a definitive YouTube id is shared: video `v` (including the same id on `youtu.be` / embed / shorts / live) or playlist `list` when no video id is present. After fetch, cards collapse only when `title` and `image` are exactly the same strings. The card stores `key`, `sourceKeys`, `url` (first pasted href), `fetchUrl` (canonical id URL), `urls`, `title`, `description`, `image`, `siteName`, `type`, `provider`, `embedHtml`, `fetchedAt`. Missing `og` means the client has not resolved previews yet. Editing the body clears `og`.
 
 **Body region:** from end of start marker to the next `chat-msg` start (or EOF). Strip leading single `\n`, trailing newlines. Strip interleaved `chat-msg-deleted` markers found inside the slice from the body text (tombstones are global, not part of body).
 
@@ -94,4 +96,5 @@ Messages and tombstones may be interleaved. Parser collects all tombstones into 
 | 직렬화·파싱 | `src/utils/chatWithMyself/format.js` |
 | 암호화·복호화 | `src/utils/chatWithMyself/encryptedMessage.ts` (+ `src/utils/crypto.js`) |
 | reactions attr | `src/utils/chatWithMyself/reactions.js` |
+| bubble OG attr | `src/utils/chatWithMyself/messageOg.ts`, `ogIdentity.ts` |
 | 일별 경로 | `src/utils/chatWithMyself/paths.js` |

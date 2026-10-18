@@ -62,6 +62,7 @@ export type AdvancedSearchModalProps = {
   printActionsAvailable?: boolean;
   /** Show chat composer shortcuts in empty-state hints. */
   chatActionsAvailable?: boolean;
+  telegramActionsAvailable?: boolean;
   /** Show MLX-VLM shortcuts in empty-state hints. */
   mlxVlmActionsAvailable?: boolean;
   /** Show llama.cpp shortcuts in empty-state hints. */
@@ -278,6 +279,7 @@ export default function AdvancedSearchModal({
   editorActionsAvailable = false,
   printActionsAvailable = false,
   chatActionsAvailable = false,
+  telegramActionsAvailable = false,
   mlxVlmActionsAvailable = false,
   llamaCppActionsAvailable = false,
   preferPrintActions = false,
@@ -432,6 +434,9 @@ export default function AdvancedSearchModal({
       if (chatActionsAvailable) {
         return '입력창 포커스·그룹·채팅 바로가기를 검색하세요';
       }
+      if (telegramActionsAvailable) {
+        return 'Telegram 입력창 포커스를 검색하세요';
+      }
       if (mlxVlmActionsAvailable) {
         return 'MLX-VLM 서버 시작·중지·모델 다운로드를 검색하세요';
       }
@@ -451,6 +456,7 @@ export default function AdvancedSearchModal({
     editorActionsAvailable,
     printActionsAvailable,
     chatActionsAvailable,
+    telegramActionsAvailable,
     mlxVlmActionsAvailable,
     llamaCppActionsAvailable,
     preferPrintActions,

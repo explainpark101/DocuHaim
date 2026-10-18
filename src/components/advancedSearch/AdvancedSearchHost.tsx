@@ -35,6 +35,11 @@ import {
   subscribeChatActions,
 } from '@/utils/advancedSearch/chatActions';
 import {
+  hasTelegramActions,
+  runTelegramAction,
+  subscribeTelegramActions,
+} from '@/utils/advancedSearch/telegramActions';
+import {
   isMlxVlmActionId,
   isMlxVlmActionsAvailable,
   runMlxVlmAction,
@@ -227,6 +232,9 @@ export default function AdvancedSearchHost({
   const [chatActionsAvailable, setChatActionsAvailable] = useState(() =>
     hasChatActions(),
   );
+  const [telegramActionsAvailable, setTelegramActionsAvailable] = useState(() =>
+    hasTelegramActions(),
+  );
   const [mlxVlmActionsAvailable, setMlxVlmActionsAvailable] = useState(() =>
     isMlxVlmActionsAvailable(),
   );
@@ -278,6 +286,12 @@ export default function AdvancedSearchHost({
   useEffect(() => {
     return subscribeChatActions(() => {
       setChatActionsAvailable(hasChatActions());
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeTelegramActions(() => {
+      setTelegramActionsAvailable(hasTelegramActions());
     });
   }, []);
 
@@ -464,6 +478,7 @@ export default function AdvancedSearchHost({
           editorActionsAvailable,
           printActionsAvailable,
           chatActionsAvailable,
+          telegramActionsAvailable,
           chatTabActive,
           mlxVlmActionsAvailable,
           llamaCppActionsAvailable,
@@ -486,6 +501,7 @@ export default function AdvancedSearchHost({
       editorActionsAvailable,
       printActionsAvailable,
       chatActionsAvailable,
+      telegramActionsAvailable,
       chatTabActive,
       mlxVlmActionsAvailable,
       llamaCppActionsAvailable,
@@ -728,6 +744,13 @@ export default function AdvancedSearchHost({
           return;
         }
 
+        if (commandId?.startsWith('telegram-')) {
+          window.setTimeout(() => {
+            runTelegramAction(commandId);
+          }, 0);
+          return;
+        }
+
         if (commandId && isMlxVlmActionId(commandId)) {
           window.setTimeout(() => {
             runMlxVlmAction(commandId);
@@ -808,6 +831,7 @@ export default function AdvancedSearchHost({
       editorActionsAvailable={editorActionsAvailable}
       printActionsAvailable={printActionsAvailable}
       chatActionsAvailable={chatActionsAvailable}
+      telegramActionsAvailable={telegramActionsAvailable}
       mlxVlmActionsAvailable={mlxVlmActionsAvailable}
       llamaCppActionsAvailable={llamaCppActionsAvailable}
       preferPrintActions={preferPrintActions}

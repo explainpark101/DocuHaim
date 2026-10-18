@@ -732,6 +732,12 @@ function manualChunks(id: string): string | undefined {
     return 'vendor-lucide';
   }
   if (
+    normalizedId.includes('/node_modules/telegram/') ||
+    normalizedId.includes('/node_modules/buffer/')
+  ) {
+    return 'vendor-telegram';
+  }
+  if (
     normalizedId.includes('/node_modules/react-aria-components/') ||
     normalizedId.includes('/node_modules/@react-aria/') ||
     normalizedId.includes('/node_modules/@react-stately/') ||
@@ -781,6 +787,7 @@ export default defineConfig({
   assetsInclude: ['**/*.wasm', '**/*.gmdl'],
   optimizeDeps: {
     exclude: ['garu-ko', 'lucivy-wasm'],
+    include: ['buffer'],
     // Patch paged.js while prebundling so findElement/createBreakToken guards land in
     // .vite/deps (and css-tree keeps normal CJS→ESM interop).
     esbuildOptions: {

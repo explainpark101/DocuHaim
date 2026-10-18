@@ -10,6 +10,7 @@ import WorkspaceMainPanels from '@/components/workspace/WorkspaceMainPanels';
 import DesktopTitlebar from '@/components/desktop/DesktopTitlebar';
 import ShareTargetGate from '@/components/chatWithMyself/ShareTargetGate';
 import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
+import TelegramRuntimeHost from '@/components/telegram/TelegramRuntimeHost';
 import { AuthModal } from '@/components/modals/AuthModal';
 import UserWebfontStyles from '@/components/UserWebfontStyles';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
@@ -37,6 +38,7 @@ import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import {
   CHAT_TAB_ID,
+  TELEGRAM_TAB_ID,
   fileTabId,
   findLeafContainingTab,
   isFileTab,
@@ -46,6 +48,7 @@ import type { SidebarPaneDropItem } from '@/utils/workspaceTabs/sidebarPaneDrop'
 import type { PaneSplitEdge } from '@/utils/workspaceTabs/paneLayout';
 import { findNodeByPath } from '@/utils/s3Tree';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import { isTelegramAppPathname } from '@/utils/appHref';
 import { useAppChrome } from '@/App/hooks/useAppChrome';
 import { useAppModals } from '@/App/hooks/useAppModals';
 import { useSessionWorkspace } from '@/App/hooks/useSessionWorkspace';
@@ -272,6 +275,12 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const activateWorkspaceTab = tabsCtx.activateWorkspaceTab;
   const closeWorkspaceTabById = tabsCtx.closeWorkspaceTabById;
   const openChatWorkspaceTab = tabsCtx.openChatWorkspaceTab;
+  const openTelegramWorkspaceTab = tabsCtx.openTelegramWorkspaceTab;
+  const { pathname } = useLocation();
+  const isTelegramRoute = isTelegramAppPathname(pathname);
+  const telegramSurfaceActive = workspaceTabsEnabled
+    ? workspaceTabs.activeId === TELEGRAM_TAB_ID
+    : isTelegramRoute;
   const openContentSearchWorkspaceTab = tabsCtx.openContentSearchWorkspaceTab;
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
   const focusWorkspacePane = tabsCtx.focusWorkspacePane;
@@ -594,6 +603,8 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         onOpenAsSession={handleOpenSessionFiles}
       />
 
+      {isUnlocked ? <TelegramRuntimeHost /> : null}
+
       {isUnlocked ? (
         <AdvancedSearchHost
           getTrees={getAdvancedSearchTrees}
@@ -710,6 +721,12 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                 if (workspaceTabsEnabled) openChatWorkspaceTab();
                 else navigate('/chat');
               }}
+              onOpenTelegram={() => {
+                if (isMobile) setSidebarOpen(false);
+                if (workspaceTabsEnabled) openTelegramWorkspaceTab();
+                else navigate('/telegram');
+              }}
+              telegramActive={telegramSurfaceActive}
               chatSurfaceActive={chatSurfaceActive}
               chatAttachDropHost={chatAttachDropHost}
               onDropToChatAttach={handleDropToChatAttach}
@@ -777,6 +794,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     : {})}
                   onClearExportPdf={clearExportPdfInFocusedPane}
                   isChatRoute={isChatRoute}
+                  isTelegramRoute={isTelegramRoute}
                   isSettingsRoute={isSettingsRoute}
                   isContentSearchRoute={isContentSearchRoute}
                   vaultDropProps={{
@@ -1093,6 +1111,29 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     localFolderLoadingPath,
                     onAttachDropHostChange: setChatAttachDropHost,
                     onRegisterTreeAttachDrop: handleRegisterChatAttachDrop,
+                  }}
+                  telegramPaneProps={{
+                    storageMode,
+                    getS3Client,
+                    s3Bucket: s3Creds.bucket,
+                    localRootHandle,
+                    localVaultFsPath: vault.localVaultFsPath,
+                    webdavConfig,
+                    isMobileLayout: isMobile,
+                    tree:
+                      storageMode === 'local'
+                        ? localTree
+                        : storageMode === 'webdav'
+                          ? webdavTree
+                          : storageMode === 'idb'
+                            ? idbTree
+                            : s3Tree,
+                    onVaultSaved: () => {
+                      if (storageMode === 'local') return vault.refreshLocalTree();
+                      if (storageMode === 'webdav') return vault.refreshWebdavTree();
+                      if (storageMode === 'idb') return vault.refreshIdbTree();
+                      return vault.loadS3Files();
+                    },
                   }}
                   contentSearchPaneProps={{
                     storageMode,

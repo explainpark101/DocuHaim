@@ -41,7 +41,9 @@ function buildPersistedWorkspaceTabsPayload(
             ? { kind: 'content-search' as const }
             : t.kind === 'llm-assist'
               ? { kind: 'llm-assist' as const }
-              : { kind: 'file' as const, storageType: t.storageType, path: t.path },
+              : t.kind === 'telegram'
+                ? { kind: 'telegram' as const }
+                : { kind: 'file' as const, storageType: t.storageType, path: t.path },
     ),
     flushed.activeId,
     toPersistedPaneNode(flushed.layout),
@@ -114,7 +116,9 @@ export function useWorkspaceTabsPersistence(deps: PersistDeps) {
                 ? { kind: 'content-search' as const }
                 : t.kind === 'llm-assist'
                   ? { kind: 'llm-assist' as const }
-                  : { kind: 'file' as const, storageType: t.storageType, path: t.path },
+                  : t.kind === 'telegram'
+                    ? { kind: 'telegram' as const }
+                    : { kind: 'file' as const, storageType: t.storageType, path: t.path },
         ),
         flushed.activeId,
         toPersistedPaneNode(flushed.layout),

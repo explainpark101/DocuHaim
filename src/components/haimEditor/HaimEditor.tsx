@@ -25,6 +25,10 @@ import {
 } from '@/components/haimEditor/useHaimDualSync';
 import { preferHaimSourceSurface } from '@/components/haimEditor/preferHaimSourceSurface';
 import {
+  queryHaimSourceFormatState,
+  type HaimToolbarToggleState,
+} from '@/components/haimEditor/haimSourceFormatState';
+import {
   runHaimFormatCommand,
   type HaimFormatCommand,
 } from '@/components/haimEditor/runHaimFormatCommand';
@@ -203,6 +207,10 @@ export default function HaimEditor({
    */
   const sourceLineEnabledRef = useRef(false);
   const cmViewRef = useRef<CmEditorView | null>(null);
+  const readSourceTogglesRef = useRef<(() => HaimToolbarToggleState | null) | null>(
+    null,
+  );
+  const notifySourceTogglesRef = useRef<(() => void) | null>(null);
   const wysiwygScrollRef = useRef<HTMLDivElement | null>(null);
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
@@ -1814,6 +1822,22 @@ export default function HaimEditor({
     ? editorToVaultMarkdown(editor, metaPrefixRef.current)
     : value || '';
 
+  readSourceTogglesRef.current = () => {
+    if (!editor || !showSource) return null;
+    const cm = cmViewRef.current;
+    if (!cm) return null;
+    const preferSource = preferHaimSourceSurface({
+      cm,
+      tipTapFocused: Boolean(editor.isFocused),
+      lastAuthor: lastAuthorRef.current,
+      effectiveMode,
+      showSource,
+      showWysiwyg,
+    });
+    if (!preferSource) return null;
+    return queryHaimSourceFormatState(cm.state);
+  };
+
   if (!editor) {
     return (
       <div
@@ -1849,6 +1873,8 @@ export default function HaimEditor({
           previewOnly={previewOnly}
           onInsertPageBreak={insertPageBreak}
           onFormatCommand={runFormatCommand}
+          readSourceTogglesRef={readSourceTogglesRef}
+          notifySourceTogglesRef={notifySourceTogglesRef}
           scrollSyncEnabled={scrollSyncEnabled}
           onScrollSyncChange={(next) => {
             setScrollSyncEnabled(next);
@@ -1964,7 +1990,13 @@ export default function HaimEditor({
                   theme={theme}
                   onDocChanged={notifyCmDocChanged}
                   viewRef={cmViewRef}
-                  onViewReady={() => setCmRevision((n) => n + 1)}
+                  onViewReady={() => {
+                    setCmRevision((n) => n + 1);
+                    notifySourceTogglesRef.current?.();
+                  }}
+                  onActivity={() => {
+                    notifySourceTogglesRef.current?.();
+                  }}
                   noteCoverFoldDocKey={noteCoverFoldDocKey}
                   foldBase64Images={foldBase64Images}
                   getTaskCheckboxKind={() =>

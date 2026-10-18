@@ -3,6 +3,7 @@ import {
   CONTENT_SEARCH_TAB_ID,
   LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
+  TELEGRAM_TAB_ID,
   defaultWorkspaceLayout,
   type FileWorkspaceTab,
   type WorkspaceTab,
@@ -76,7 +77,7 @@ export function retainOnlyFileTab(
 
 function stripKind(
   state: WorkspaceTabsState,
-  kind: 'chat' | 'settings' | 'content-search' | 'llm-assist',
+  kind: 'chat' | 'settings' | 'content-search' | 'llm-assist' | 'telegram',
   singletonId: string,
 ): WorkspaceTabsState {
   const tabs = state.tabs.filter((t) => t.kind !== kind);
@@ -115,6 +116,10 @@ export function stripSettingsTab(state: WorkspaceTabsState): WorkspaceTabsState 
 
 export function stripLlmAssistTab(state: WorkspaceTabsState): WorkspaceTabsState {
   return stripKind(state, 'llm-assist', LLM_ASSIST_TAB_ID);
+}
+
+export function stripTelegramTab(state: WorkspaceTabsState): WorkspaceTabsState {
+  return stripKind(state, 'telegram', TELEGRAM_TAB_ID);
 }
 
 export type { WorkspaceTab };

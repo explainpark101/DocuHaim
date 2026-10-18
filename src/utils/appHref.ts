@@ -138,6 +138,11 @@ export function isChatAppPathname(pathname: string): boolean {
   return normalized === '/chat' || normalized.endsWith('/chat');
 }
 
+export function isTelegramAppPathname(pathname: string): boolean {
+  const normalized = stripAppBase(pathname);
+  return normalized === '/telegram' || normalized.endsWith('/telegram');
+}
+
 export function isSettingsAppPathname(pathname: string): boolean {
   const normalized = stripAppBase(pathname);
   return normalized === '/settings' || normalized.endsWith('/settings');

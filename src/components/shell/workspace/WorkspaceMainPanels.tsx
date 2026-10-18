@@ -19,6 +19,7 @@ import {
   CONTENT_SEARCH_TAB_ID,
   LLM_ASSIST_TAB_ID,
   SETTINGS_TAB_ID,
+  TELEGRAM_TAB_ID,
   collectLeaves,
   countLeaves,
   findLeaf,
@@ -57,6 +58,7 @@ import {
 const PANE_HEADER_DRAG_SLOP_PX = 8;
 
 const ChatWithMyselfPane = lazy(() => import('@/components/chatWithMyself/ChatWithMyselfPane'));
+const TelegramPane = lazy(() => import('@/components/telegram/TelegramPane'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const ContentSearchPage = lazy(() => import('@/pages/ContentSearchPage'));
 const ExportPDFPage = lazy(() => import('@/pages/exportPdf/ExportPDFPage'));
@@ -91,6 +93,7 @@ export type WorkspaceMainPanelsProps = {
   editorPaneProps: (...args: any[]) => any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   chatPaneProps?: Record<string, any>;
+  telegramPaneProps?: Record<string, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   contentSearchPaneProps?: Record<string, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,6 +101,7 @@ export type WorkspaceMainPanelsProps = {
   mirrors?: Mirrors;
   tabsEnabled?: boolean;
   isChatRoute?: boolean;
+  isTelegramRoute?: boolean;
   isSettingsRoute?: boolean;
   isContentSearchRoute?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -200,11 +204,13 @@ export default function WorkspaceMainPanels({
   isMobileLayout = false,
   editorPaneProps,
   chatPaneProps = {},
+  telegramPaneProps = {},
   contentSearchPaneProps = {},
   settingsPaneProps = {},
   mirrors,
   tabsEnabled = true,
   isChatRoute = false,
+  isTelegramRoute = false,
   isSettingsRoute = false,
   isContentSearchRoute = false,
   vaultDropProps = {},
@@ -223,6 +229,7 @@ export default function WorkspaceMainPanels({
 }: WorkspaceMainPanelsProps) {
   const fileTabs = tabs.filter(isFileTab);
   const hasChatTab = tabs.some((t) => t.kind === 'chat');
+  const hasTelegramTab = tabs.some((t) => t.kind === 'telegram');
   const hasSettingsTab = tabs.some((t) => t.kind === 'settings');
   const hasContentSearchTab = tabs.some((t) => t.kind === 'content-search');
   const hasLlmAssistTab = tabs.some((t) => t.kind === 'llm-assist');
@@ -427,18 +434,21 @@ export default function WorkspaceMainPanels({
   }, [draggingTab, publishDropHighlight, splitDragEnabled]);
 
   const chatActive = tabsEnabled ? activeId === CHAT_TAB_ID : isChatRoute;
+  const telegramActive = tabsEnabled ? activeId === TELEGRAM_TAB_ID : isTelegramRoute;
   const settingsActive = tabsEnabled ? activeId === SETTINGS_TAB_ID : isSettingsRoute;
   const contentSearchActive = tabsEnabled
     ? activeId === CONTENT_SEARCH_TAB_ID
     : isContentSearchRoute;
   const llmAssistActive = tabsEnabled ? activeId === LLM_ASSIST_TAB_ID : false;
   const showChat = tabsEnabled ? hasChatTab : isChatRoute;
+  const showTelegram = tabsEnabled ? hasTelegramTab : isTelegramRoute;
   const showSettings = tabsEnabled ? hasSettingsTab : isSettingsRoute;
   const showContentSearch = tabsEnabled ? hasContentSearchTab : isContentSearchRoute;
   const showLlmAssist = tabsEnabled ? hasLlmAssistTab : false;
   const showEmpty = tabsEnabled
     ? tabs.length === 0 || activeId == null
     : !isChatRoute &&
+      !isTelegramRoute &&
       !isSettingsRoute &&
       !isContentSearchRoute &&
       !mirrors?.currentFile &&
@@ -472,6 +482,17 @@ export default function WorkspaceMainPanels({
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           <ChatWithMyselfPane
             {...(chatPaneProps as any)}
+            isMobileLayout={contentIsMobileLayout}
+            isActive={active && isSurfaceLive}
+          />
+        </Suspense>
+      );
+    }
+    if (tab.kind === 'telegram') {
+      return (
+        <Suspense fallback={<RouteSuspenseFallback />}>
+          <TelegramPane
+            {...telegramPaneProps}
             isMobileLayout={contentIsMobileLayout}
             isActive={active && isSurfaceLive}
           />
@@ -588,6 +609,12 @@ export default function WorkspaceMainPanels({
               <Suspense fallback={<RouteSuspenseFallback />}>
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <ChatWithMyselfPane {...(chatPaneProps as any)} isActive />
+              </Suspense>
+            </div>
+          ) : isTelegramRoute ? (
+            <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+              <Suspense fallback={<RouteSuspenseFallback />}>
+                <TelegramPane {...telegramPaneProps} isActive />
               </Suspense>
             </div>
           ) : isContentSearchRoute ? (
@@ -1101,6 +1128,16 @@ export default function WorkspaceMainPanels({
                         <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
                           {renderTabContent(
                             tabs.find((t) => t.kind === 'chat')!,
+                            true,
+                            { contentIsMobileLayout, isSurfaceLive: true },
+                          )}
+                        </div>
+                      ) : null}
+
+                      {showTelegram && telegramActive ? (
+                        <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
+                          {renderTabContent(
+                            tabs.find((t) => t.kind === 'telegram')!,
                             true,
                             { contentIsMobileLayout, isSurfaceLive: true },
                           )}

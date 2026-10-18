@@ -6,6 +6,7 @@ import {
   reloadOgCache,
   type OgPayload,
 } from '@/utils/chatWithMyself/og';
+import { canonicalOgFetchUrl } from '@/utils/chatWithMyself/ogIdentity';
 import { useChatImageLightbox } from '@/components/chatWithMyself/ChatImageLightbox';
 import RetainedChatImage from '@/components/chatWithMyself/RetainedChatImage';
 import { forgetRetainedChatImages } from '@/utils/chatWithMyself/retainedChatImage';
@@ -13,7 +14,13 @@ import { useOpenLinksInNewWindow } from '@/components/chatWithMyself/ChatUiPrefs
 import { bindPreserveScrollOnHeightChange } from '@/utils/chatWithMyself/preserveScrollOnHeightChange';
 
 type ChatOgCardProps = {
+  /** Fetch / cache URL. YouTube timestamps are canonicalized inside the loader. */
   url: string;
+  /** Click target. Defaults to `url` (keeps the first `t=` the author pasted). */
+  href?: string;
+  /** Bubble-stored preview. Skips the network until `reloadKey` changes. */
+  seed?: OgPayload | null;
+  onResolved?: (data: OgPayload) => void;
   ogStorage?: object;
   compact?: boolean;
   allowEmbed?: boolean;
@@ -85,15 +92,27 @@ function OgMediaPlaceholder() {
  */
 export default function ChatOgCard({
   url,
+  href,
+  seed = null,
+  onResolved,
   ogStorage,
   compact = false,
   allowEmbed = true,
   reloadKey = 0,
 }: ChatOgCardProps) {
+  const cacheKey = canonicalOgFetchUrl(url) || url;
+  const linkHref = href || url;
+  const seedKey = seed
+    ? `${seed.fetchedAt}|${seed.provider}|${seed.title}|${seed.image}|${seed.url}`
+    : '';
+  const onResolvedRef = useRef(onResolved);
+  onResolvedRef.current = onResolved;
   const [data, setData] = useState<OgPayload | null>(
-    () => ogMemoryByUrl.get(url) ?? null,
+    () => seed ?? ogMemoryByUrl.get(cacheKey) ?? null,
   );
-  const [loading, setLoading] = useState(() => !ogMemoryByUrl.has(url));
+  const [loading, setLoading] = useState(
+    () => !seed && !ogMemoryByUrl.has(cacheKey),
+  );
   const [showEmbed, setShowEmbed] = useState(false);
   const [nearViewport, setNearViewport] = useState(false);
   const prevReloadKeyRef = useRef(reloadKey);
@@ -125,23 +144,32 @@ export default function ChatOgCard({
   }, []);
 
   useEffect(() => {
-    if (!nearViewport) return undefined;
-
     let cancelled = false;
     const shouldForce = reloadKey > prevReloadKeyRef.current;
+    // Keep the reload bump until the card is near the viewport.
+    if (shouldForce && !nearViewport) return undefined;
     prevReloadKeyRef.current = reloadKey;
 
     const load = async ({ force = false } = {}) => {
+      if (!force && seed) {
+        rememberChatOg(cacheKey, seed);
+        setData(seed);
+        setLoading(false);
+        onResolvedRef.current?.(seed);
+        return;
+      }
+      if (!nearViewport) return;
       if (!force) {
-        const remembered = ogMemoryByUrl.get(url);
+        const remembered = ogMemoryByUrl.get(cacheKey);
         if (remembered) {
           setData(remembered);
           setLoading(false);
+          onResolvedRef.current?.(remembered);
           return;
         }
       } else {
-        const previous = ogMemoryByUrl.get(url);
-        ogMemoryByUrl.delete(url);
+        const previous = ogMemoryByUrl.get(cacheKey);
+        ogMemoryByUrl.delete(cacheKey);
         if (previous?.image) forgetRetainedChatImages(previous.image);
       }
       setLoading(true);
@@ -151,13 +179,13 @@ export default function ChatOgCard({
       setData(null);
       try {
         const next = force
-          ? await reloadOgCache(url, ogStorage)
-          : (await loadAndArchiveOg(url, ogStorage)).data;
+          ? await reloadOgCache(cacheKey, ogStorage)
+          : (await loadAndArchiveOg(cacheKey, ogStorage)).data;
         if (!cancelled) {
           const resolved: OgPayload = (next as OgPayload | null) ?? {
-            url,
+            url: cacheKey,
             fetchedAt: '',
-            title: url,
+            title: cacheKey,
             description: '',
             image: '',
             siteName: '',
@@ -165,16 +193,17 @@ export default function ChatOgCard({
             provider: '',
             embedHtml: '',
           };
-          rememberChatOg(url, resolved);
+          rememberChatOg(cacheKey, resolved);
           setData(resolved);
           setLoading(false);
+          onResolvedRef.current?.(resolved);
         }
       } catch {
         if (!cancelled) {
           const fallback: OgPayload = {
-            url,
+            url: cacheKey,
             fetchedAt: '',
-            title: url,
+            title: cacheKey,
             description: '',
             image: '',
             siteName: '',
@@ -182,9 +211,10 @@ export default function ChatOgCard({
             provider: '',
             embedHtml: '',
           };
-          rememberChatOg(url, fallback);
+          rememberChatOg(cacheKey, fallback);
           setData(fallback);
           setLoading(false);
+          onResolvedRef.current?.(fallback);
         }
       }
     };
@@ -196,7 +226,7 @@ export default function ChatOgCard({
     };
     // ogStorage identity may change; archive adapters are equivalent for a given url
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, reloadKey, nearViewport]);
+  }, [cacheKey, reloadKey, nearViewport, seedKey]);
 
   useEffect(() => {
     if (!allowEmbed) setShowEmbed(false);
@@ -214,7 +244,7 @@ export default function ChatOgCard({
       <OgCardSkeleton compact={compact} />
     ) : compact ? (
       <a
-        href={url}
+        href={linkHref}
         {...linkTargetProps}
         className="mt-1.5 flex max-w-full items-center gap-2 overflow-hidden rounded-md border border-black/10 bg-white/80 px-2 py-1.5 text-left dark:border-white/15 dark:bg-odp-bgSoft/90"
         onClick={(e) => e.stopPropagation()}
@@ -227,7 +257,7 @@ export default function ChatOgCard({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              openChatImage?.(data.image!, { alt: data.title || url });
+              openChatImage?.(data.image!, { alt: data.title || linkHref });
             }}
             aria-label="이미지 크게 보기"
           >
@@ -253,7 +283,7 @@ export default function ChatOgCard({
             </div>
           ) : null}
           <div className="truncate text-xs font-semibold text-gray-900 dark:text-odp-fgStrong">
-            {data.title || url}
+            {data.title || linkHref}
           </div>
         </div>
         <ExternalLink size={12} className="shrink-0 text-gray-400" />
@@ -277,7 +307,7 @@ export default function ChatOgCard({
                 setShowEmbed(true);
                 return;
               }
-              openChatImage?.(data.image!, { alt: data.title || url });
+              openChatImage?.(data.image!, { alt: data.title || linkHref });
             }}
             aria-label={isYouTubeUrl(url) ? '동영상 재생' : '이미지 크게 보기'}
           >
@@ -299,7 +329,7 @@ export default function ChatOgCard({
           <OgMediaPlaceholder />
         )}
         <a
-          href={url}
+          href={linkHref}
           {...linkTargetProps}
           className="block px-2.5 py-2 transition hover:bg-black/5 dark:hover:bg-white/5"
         >
@@ -311,7 +341,7 @@ export default function ChatOgCard({
                 </div>
               ) : null}
               <div className="line-clamp-2 text-sm font-semibold text-gray-900 dark:text-odp-fgStrong">
-                {data.title || url}
+                {data.title || linkHref}
               </div>
               {data.description ? (
                 <div className="mt-0.5 line-clamp-2 text-xs text-gray-600 dark:text-gray-400">

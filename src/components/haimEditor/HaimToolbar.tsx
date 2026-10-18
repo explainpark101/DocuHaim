@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
 import {
   Bold,
@@ -47,6 +47,7 @@ import {
   saveHaimViewMode,
 } from '@/utils/haimViewModeSettings';
 import type { HaimFormatCommand } from '@/components/haimEditor/runHaimFormatCommand';
+import type { HaimToolbarToggleState } from '@/components/haimEditor/haimSourceFormatState';
 
 export type HaimToolbarAppActions = {
   onExportPdf?: (() => void) | undefined;
@@ -90,6 +91,15 @@ type Props = {
    * When omitted, falls back to TipTap-only (legacy).
    */
   onFormatCommand?: ((command: HaimFormatCommand) => void) | undefined;
+  /**
+   * When this returns a state, toggle buttons follow the source caret.
+   * Null means the WYSIWYG selection is the toolbar source of truth.
+   */
+  readSourceTogglesRef?:
+    | { current: (() => HaimToolbarToggleState | null) | null }
+    | undefined;
+  /** Parent asks the toolbar to re-read source toggle flags. */
+  notifySourceTogglesRef?: { current: (() => void) | null } | undefined;
 };
 
 function ToolBtn({
@@ -157,7 +167,29 @@ export default function HaimToolbar({
   onTocOpenChange,
   appActions,
   onFormatCommand,
+  readSourceTogglesRef,
+  notifySourceTogglesRef,
 }: Props) {
+  const [sourceToggleRev, setSourceToggleRev] = useState(0);
+  useEffect(() => {
+    const slot = notifySourceTogglesRef;
+    if (!slot) return undefined;
+    slot.current = () => setSourceToggleRev((n) => n + 1);
+    return () => {
+      slot.current = null;
+    };
+  }, [notifySourceTogglesRef]);
+  useEffect(() => {
+    if (!editor || !readSourceTogglesRef) return undefined;
+    const bump = () => setSourceToggleRev((n) => n + 1);
+    editor.on('focus', bump);
+    editor.on('blur', bump);
+    return () => {
+      editor.off('focus', bump);
+      editor.off('blur', bump);
+    };
+  }, [editor, readSourceTogglesRef]);
+
   const state = useEditorState({
     editor,
     selector: ({ editor: ed }) => {
@@ -206,6 +238,13 @@ export default function HaimToolbar({
   }
 
   const s = state;
+  // sourceToggleRev bumps when the source caret or pane focus changes.
+  const sourceToggles =
+    sourceToggleRev >= 0 ? (readSourceTogglesRef?.current?.() ?? null) : null;
+  const activeFlag = (key: keyof HaimToolbarToggleState): boolean => {
+    if (sourceToggles) return sourceToggles[key];
+    return Boolean(s?.[key]);
+  };
 
   const runFormat = (command: HaimFormatCommand) => {
     if (onFormatCommand) {
@@ -305,7 +344,7 @@ export default function HaimToolbar({
         <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-odp-borderStrong" />
         <ToolBtn
           label="굵게"
-          active={Boolean(s?.bold)}
+          active={activeFlag('bold')}
           onClick={() => {
             runFormat('bold');
           }}
@@ -314,7 +353,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="기울임"
-          active={Boolean(s?.italic)}
+          active={activeFlag('italic')}
           onClick={() => {
             runFormat('italic');
           }}
@@ -323,7 +362,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="밑줄"
-          active={Boolean(s?.underline)}
+          active={activeFlag('underline')}
           onClick={() => {
             runFormat('underline');
           }}
@@ -332,7 +371,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="취소선"
-          active={Boolean(s?.strike)}
+          active={activeFlag('strike')}
           onClick={() => {
             runFormat('strike');
           }}
@@ -341,7 +380,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="인라인 코드"
-          active={Boolean(s?.code)}
+          active={activeFlag('code')}
           onClick={() => {
             runFormat('code');
           }}
@@ -350,7 +389,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="코드 블록"
-          active={Boolean(s?.codeBlock)}
+          active={activeFlag('codeBlock')}
           onClick={() => {
             runFormat('codeBlock');
           }}
@@ -359,7 +398,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="아래 첨자"
-          active={Boolean(s?.sub)}
+          active={activeFlag('sub')}
           onClick={() => {
             runFormat('sub');
           }}
@@ -368,7 +407,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="위 첨자"
-          active={Boolean(s?.sup)}
+          active={activeFlag('sup')}
           onClick={() => {
             runFormat('sup');
           }}
@@ -378,7 +417,7 @@ export default function HaimToolbar({
         <span className="mx-1 h-4 w-px bg-gray-200 dark:bg-odp-borderStrong" />
         <ToolBtn
           label="제목 1"
-          active={Boolean(s?.h1)}
+          active={activeFlag('h1')}
           onClick={() => {
             runFormat('h1');
           }}
@@ -387,7 +426,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="제목 2"
-          active={Boolean(s?.h2)}
+          active={activeFlag('h2')}
           onClick={() => {
             runFormat('h2');
           }}
@@ -396,7 +435,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="제목 3"
-          active={Boolean(s?.h3)}
+          active={activeFlag('h3')}
           onClick={() => {
             runFormat('h3');
           }}
@@ -405,7 +444,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="글머리"
-          active={Boolean(s?.bullet)}
+          active={activeFlag('bullet')}
           onClick={() => {
             runFormat('bullet');
           }}
@@ -414,7 +453,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="번호 목록"
-          active={Boolean(s?.ordered)}
+          active={activeFlag('ordered')}
           onClick={() => {
             runFormat('ordered');
           }}
@@ -423,7 +462,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="할 일"
-          active={Boolean(s?.task)}
+          active={activeFlag('task')}
           onClick={() => {
             runFormat('task');
           }}
@@ -432,7 +471,7 @@ export default function HaimToolbar({
         </ToolBtn>
         <ToolBtn
           label="인용"
-          active={Boolean(s?.quote)}
+          active={activeFlag('quote')}
           onClick={() => {
             runFormat('quote');
           }}
@@ -441,7 +480,7 @@ export default function HaimToolbar({
         </ToolBtn>
         {a?.onUrlLink || a?.onDocuhaimNoteLink ? (
           <HaimLinkMenu
-            active={Boolean(s?.link)}
+            active={activeFlag('link')}
             onRequestUrlLink={a?.onUrlLink ? () => a.onUrlLink?.() : undefined}
             onRequestDocuhaimNoteLink={
               a?.onDocuhaimNoteLink
@@ -452,7 +491,7 @@ export default function HaimToolbar({
         ) : (
           <ToolBtn
             label="링크"
-            active={Boolean(s?.link)}
+            active={activeFlag('link')}
             onClick={() => {
               const prev = editor.getAttributes('link').href as string | undefined;
               const url = window.prompt('URL', prev || 'https://');

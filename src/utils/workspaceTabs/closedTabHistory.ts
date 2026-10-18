@@ -11,6 +11,7 @@ export type ClosedTabEntry =
   | { kind: 'settings' }
   | { kind: 'content-search' }
   | { kind: 'llm-assist' }
+  | { kind: 'telegram' }
   | {
       kind: 'file';
       storageType: Exclude<FileStorageType, 'session'>;
@@ -64,7 +65,8 @@ function isClosedTabEntry(value: unknown): value is ClosedTabEntry {
     v.kind === 'chat' ||
     v.kind === 'settings' ||
     v.kind === 'content-search' ||
-    v.kind === 'llm-assist'
+    v.kind === 'llm-assist' ||
+    v.kind === 'telegram'
   ) {
     return true;
   }
@@ -108,6 +110,7 @@ export function closedTabEntryFromWorkspaceTab(tab: WorkspaceTab): ClosedTabEntr
   if (tab.kind === 'settings') return { kind: 'settings' };
   if (tab.kind === 'content-search') return { kind: 'content-search' };
   if (tab.kind === 'llm-assist') return { kind: 'llm-assist' };
+  if (tab.kind === 'telegram') return { kind: 'telegram' };
   if (!isFileTab(tab)) return null;
   if (tab.storageType === 'session') return null;
   const name =
@@ -132,6 +135,7 @@ export function pushClosedTab(entry: ClosedTabEntry | null | undefined): void {
     if (entry.kind === 'settings') return e.kind !== 'settings';
     if (entry.kind === 'content-search') return e.kind !== 'content-search';
     if (entry.kind === 'llm-assist') return e.kind !== 'llm-assist';
+    if (entry.kind === 'telegram') return e.kind !== 'telegram';
     if (entry.kind !== 'file') return true;
     return !(
       e.kind === 'file' &&

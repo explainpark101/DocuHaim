@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const lock = useCallback(() => {
+    void import('@/utils/telegram/telegramClient').then((mod) => mod.disconnectTelegram());
     clearAuthSession();
     setIsUnlocked(false);
     setAppLockPromptManual(true);

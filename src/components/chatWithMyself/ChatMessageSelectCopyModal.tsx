@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Dialog } from 'radix-ui';
 import { X } from 'lucide-react';
 import ChatMessageBody from '@/components/chatWithMyself/ChatMessageBody';
-import ChatOgCard from '@/components/chatWithMyself/ChatOgCard';
+import ChatBubbleOgCards from '@/components/chatWithMyself/ChatBubbleOgCards';
 import {
   chatDialogOverlayClass,
 } from '@/components/chatWithMyself/ui/chatUiStyles';
@@ -22,6 +22,7 @@ type ChatMessageSelectCopyModalProps = {
     group?: string;
     at?: string;
     markdown?: unknown;
+    ogCards?: import('@/utils/chatWithMyself/messageOg').ChatBubbleOgCard[];
   } | null;
   onOpenChange?: (open: boolean) => void;
   ogStorage?: object | null;
@@ -125,18 +126,14 @@ export default function ChatMessageSelectCopyModal({
                       : undefined
                   }
                 />
-                {urls.map((u) =>
-                  ogStorage ? (
-                    <ChatOgCard
-                      key={u}
-                      url={u}
-                      ogStorage={ogStorage}
-                      allowEmbed={false}
-                    />
-                  ) : (
-                    <ChatOgCard key={u} url={u} allowEmbed={false} />
-                  ),
-                )}
+                {urls.length > 0 ? (
+                  <ChatBubbleOgCards
+                    urls={urls}
+                    {...(message?.ogCards?.length ? { savedCards: message.ogCards } : {})}
+                    {...(ogStorage ? { ogStorage } : {})}
+                    allowEmbed={false}
+                  />
+                ) : null}
                 {time ? (
                   <div className="mt-1 text-right text-[10px] text-gray-400">
                     {time}
