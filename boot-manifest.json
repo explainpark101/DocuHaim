@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-18T10:13:59.768Z",
-  "totalBytes": 4343001,
+  "generatedAt": "2026-10-18T13:56:01.350Z",
+  "totalBytes": 4344737,
   "assets": [
     {
       "file": "assets/vendor-react-BPvvDyqO.js",
@@ -59,8 +59,8 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-DUBymath.js",
-      "bytes": 2104930,
+      "file": "assets/index-PA65OZMG.js",
+      "bytes": 2106666,
       "label": "앱 코어"
     }
   ]
