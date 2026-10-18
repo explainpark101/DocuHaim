@@ -52,6 +52,8 @@ export type TelegramSnapshot = {
   loginHint: string | null;
   /** True when Telegram delivered the login code to another Telegram client. */
   codeViaApp: boolean;
+  /** portal-phone / portal-code: my.telegram.org confirmation. mtproto: device sign-in. */
+  loginStep: 'portal-phone' | 'portal-code' | 'mtproto' | null;
 };
 
 export type TelegramStoredSession = {

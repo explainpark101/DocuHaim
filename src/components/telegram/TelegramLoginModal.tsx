@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyRound, LogIn, Smartphone } from 'lucide-react';
+import { LogIn, Smartphone } from 'lucide-react';
 import Modal from '@/components/modals/Modal';
 import Button from '@/components/Button';
 import { IconX } from '@/components/icons';
@@ -10,7 +10,6 @@ type TelegramLoginModalProps = {
   error: string | null;
   loginHint: string | null;
   codeViaApp: boolean;
-  onSubmitCredentials: (apiId: number, apiHash: string) => void;
   onSubmitField: (value: string) => void;
   onRequestSms: () => void;
   onClose: () => void;
@@ -21,24 +20,19 @@ export default function TelegramLoginModal({
   error,
   loginHint,
   codeViaApp,
-  onSubmitCredentials,
   onSubmitField,
   onRequestSms,
   onClose,
 }: TelegramLoginModalProps) {
-  const [apiId, setApiId] = useState('');
-  const [apiHash, setApiHash] = useState('');
   const [value, setValue] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const credentials = status === 'need-credentials';
   const naming = status === 'need-name';
-  const title = credentials
-    ? 'Telegram API 자격 증명'
-    : status === 'need-phone'
+  const title =
+    status === 'need-phone'
       ? '전화번호'
       : status === 'need-code'
-        ? '로그인 코드'
+        ? '확인 코드'
         : naming
           ? '이름'
           : '2단계 비밀번호';
@@ -49,10 +43,6 @@ export default function TelegramLoginModal({
         className="flex min-h-0 flex-1 flex-col"
         onSubmit={(event) => {
           event.preventDefault();
-          if (credentials) {
-            onSubmitCredentials(Number(apiId), apiHash);
-            return;
-          }
           if (naming) {
             onSubmitField(`${firstName.trim()}\n${lastName.trim()}`);
             return;
@@ -64,35 +54,12 @@ export default function TelegramLoginModal({
         <header className="shrink-0 border-b border-gray-200 px-6 py-4 dark:border-odp-borderSoft">
           <h2 className="text-base font-semibold text-gray-900 dark:text-odp-fgStrong">{title}</h2>
           <p className="mt-1 text-xs text-gray-500 dark:text-odp-muted">
-            전화번호, 인증 코드, 2단계 비밀번호는 이 화면에서 입력합니다. 로그인하면 Telegram 이용
-            약관에 동의하게 됩니다.
+            휴대폰 번호를 입력하면 Telegram 서버가 확인합니다. 확인이 끝나면 이 기기에 자동으로
+            저장됩니다. 로그인하면 Telegram 이용 약관에 동의하게 됩니다.
           </p>
         </header>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-4">
-          {credentials ? (
-            <>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted">
-                api_id
-                <input
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={apiId}
-                  onChange={(event) => setApiId(event.target.value)}
-                />
-              </label>
-              <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted">
-                api_hash
-                <input
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft"
-                  type="password"
-                  autoComplete="off"
-                  value={apiHash}
-                  onChange={(event) => setApiHash(event.target.value)}
-                />
-              </label>
-            </>
-          ) : naming ? (
+          {naming ? (
             <>
               <label className="block text-xs font-semibold text-gray-600 dark:text-odp-muted">
                 이름
@@ -142,7 +109,7 @@ export default function TelegramLoginModal({
             닫기
           </Button>
           <Button type="submit" variant="primary">
-            {credentials ? <KeyRound size={14} /> : <LogIn size={14} />}
+            <LogIn size={14} />
             계속
           </Button>
         </footer>

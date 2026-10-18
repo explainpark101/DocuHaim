@@ -4,6 +4,7 @@ mod android_native;
 #[cfg(desktop)]
 mod desktop_menu;
 mod stronghold_kdf;
+mod telegram_portal;
 mod system_fonts;
 
 #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
@@ -452,6 +453,8 @@ pub fn run() {
                 take_pending_open_paths,
                 read_open_uri,
                 gemini_api_fetch,
+                telegram_portal::telegram_portal_send_code,
+                telegram_portal::telegram_portal_confirm_code,
                 exit_app,
                 system_fonts::list_system_font_families,
                 desktop_menu::sync_desktop_menu_ui,
@@ -481,6 +484,8 @@ pub fn run() {
                 take_pending_open_paths,
                 read_open_uri,
                 gemini_api_fetch,
+                telegram_portal::telegram_portal_send_code,
+                telegram_portal::telegram_portal_confirm_code,
                 exit_app,
                 system_fonts::list_system_font_families,
                 as_index::commands::as_index_open,
@@ -510,6 +515,8 @@ pub fn run() {
                 take_pending_android_share,
                 read_open_uri,
                 gemini_api_fetch,
+                telegram_portal::telegram_portal_send_code,
+                telegram_portal::telegram_portal_confirm_code,
                 exit_app,
                 system_fonts::list_system_font_families,
                 as_index::commands::as_index_open,

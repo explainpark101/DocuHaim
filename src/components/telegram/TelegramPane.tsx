@@ -14,8 +14,9 @@ import TelegramSaveToVaultModal from '@/components/telegram/TelegramSaveToVaultM
 import { useTelegramSnapshot } from '@/components/telegram/useTelegramSnapshot';
 import { isTelegramShell } from '@/utils/telegram/telegramPlatform';
 import {
+  beginTelegramPhoneLogin,
+  completeTelegramPortalLogin,
   connectTelegram,
-  connectTelegramWithCredentials,
   disconnectTelegram,
   logoutTelegram,
 } from '@/utils/telegram/telegramClient';
@@ -58,13 +59,7 @@ export type TelegramPaneProps = {
   onVaultSaved?: () => void | Promise<void>;
 };
 
-const LOGIN_STATUSES = new Set([
-  'need-credentials',
-  'need-phone',
-  'need-code',
-  'need-password',
-  'need-name',
-]);
+const LOGIN_STATUSES = new Set(['need-phone', 'need-code', 'need-password', 'need-name']);
 
 export default function TelegramPane({
   isActive = true,
@@ -250,17 +245,19 @@ export default function TelegramPane({
           status={snap.status}
           error={snap.error}
           loginHint={snap.loginHint}
-          codeViaApp={snap.codeViaApp}
+          codeViaApp={snap.loginStep === 'mtproto' && snap.codeViaApp}
           onRequestSms={restartLoginForSms}
-          onSubmitCredentials={(apiId, apiHash) => {
-            void connectTelegramWithCredentials(apiId, apiHash).catch((err) => {
-              patchTelegram({
-                status: 'error',
-                error: err instanceof Error ? err.message : '연결에 실패했습니다.',
-              });
-            });
+          onSubmitField={(value) => {
+            if (snap.loginStep === 'portal-phone') {
+              void beginTelegramPhoneLogin(value);
+              return;
+            }
+            if (snap.loginStep === 'portal-code') {
+              void completeTelegramPortalLogin(value);
+              return;
+            }
+            submitLoginInput(value);
           }}
-          onSubmitField={submitLoginInput}
           onClose={() => {
             void disconnectTelegram();
           }}

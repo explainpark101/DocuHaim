@@ -16,6 +16,7 @@ const EMPTY: TelegramSnapshot = {
   notice: null,
   loginHint: null,
   codeViaApp: false,
+  loginStep: null,
 };
 
 let snapshot: TelegramSnapshot = EMPTY;
@@ -78,6 +79,7 @@ export function waitForLoginInput(kind: TelegramLoginField, hint?: string): Prom
   }
   patchTelegram({
     status: statusForLoginField(kind),
+    loginStep: 'mtproto',
     loginHint: hint ?? null,
     ...(kind === 'phone' ? { codeViaApp: false } : {}),
   });
