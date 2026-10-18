@@ -3396,7 +3396,9 @@ export default function ChatWithMyselfPane({
                     bare
                     fillParent
                     draftScope={storageScope}
-                    autoFocusOnMount={autoFocusComposer}
+                    autoFocusOnMount={
+                      autoFocusComposer && !shareGroupSend?.id && !shareGroupModal
+                    }
                     groups={groups}
                     selectedGroup={selectedGroup}
                     onSelectedGroupChange={setSelectedGroup}

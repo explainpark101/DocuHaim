@@ -1,6 +1,7 @@
 package com.docuhaim.app
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
@@ -105,9 +106,25 @@ class MainActivity : TauriActivity() {
   /** Populated in onWebViewCreate so warm shares can poke the JS bridge. */
   private var appWebView: WebView? = null
 
+  /**
+   * Share-sheet targets are activity-aliases. The real class is still MainActivity,
+   * but Activity.mComponent stays the alias, so getLocalClassName() would return
+   * ShareToGroupAlias / ShareToSelfAlias. tao stores that name and later
+   * Class.forName's it. The alias is not a class, and the process aborts.
+   */
+  override fun getLocalClassName(): String = "MainActivity"
+
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
-    captureShareIntent(intent)
+    val incoming = intent
+    captureShareIntent(incoming)
+    if (shouldDetachShareIntent(incoming)) {
+      // Payload is already in the pending* fields. WryActivity.onCreate reads
+      // intent.extras (unparcels every extra; SecurityException / BadParcelable
+      // on API 34+). tao handle_intent then unwraps ClipData / EXTRA_STREAM and
+      // aborts because release panic = abort. Hand Tauri a launcher intent.
+      setIntent(sanitizedLauncherIntent(incoming))
+    }
     super.onCreate(savedInstanceState)
     instance = this
     // Preference is applied from the web UI after boot (see initAndroidSystemStatusBar).
@@ -116,34 +133,125 @@ class MainActivity : TauriActivity() {
   }
 
   override fun onNewIntent(intent: Intent) {
-    captureShareIntent(intent)
-    super.onNewIntent(intent)
-    setIntent(intent)
-    handlePackageInstallerIntent(intent)
-    // Tao may skip RunEvent::Opened for text-only SEND; notify JS to poll pending.
-    if (lastIntentWasShare) {
-      notifyWebSharePending()
-    }
+    val detachShare = shouldDetachShareIntent(intent)
+    if (detachShare) captureShareIntent(intent)
+    val next = if (detachShare) sanitizedLauncherIntent(intent) else intent
+    super.onNewIntent(next)
+    setIntent(next)
+    if (!detachShare) handlePackageInstallerIntent(intent)
+    // Tao will not emit RunEvent::Opened for the sanitized intent.
+    if (detachShare) notifyWebSharePending()
   }
 
   /**
    * Mark share-sheet launches before Tauri/tao processes the Intent so Rust can
    * route Opened URLs to chat share intake instead of markdown file-association.
+   * Extras from other apps can throw while unparcelling; never let that kill the activity.
    */
   private fun captureShareIntent(intent: Intent?) {
     if (intent == null) return
-    val action = intent.action ?: return
+    val action = intentActionOrNull(intent) ?: return
     val isShare =
       action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE
     lastIntentWasShare = isShare
     if (!isShare) return
-    pendingShareText = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-    pendingShareTitle =
+    try {
+      pendingShareText = readShareText(intent)
+      pendingShareTitle = readShareTitle(intent)
+      pendingShareMode = shareModeFromIntent(intent)
+      pendingShareUris = collectShareStreamUris(intent).joinToString("\n")
+    } catch (t: Throwable) {
+      android.util.Log.e("DocuHaim", "share intent extras unreadable", t)
+      if (pendingShareMode.isEmpty()) pendingShareMode = "choose"
+    }
+  }
+
+  /** True when this launch must not be forwarded into Wry/tao as ACTION_SEND. */
+  private fun shouldDetachShareIntent(intent: Intent?): Boolean {
+    if (isShareIntent(intent)) return true
+    return isShareAliasComponent(intent)
+  }
+
+  private fun isShareIntent(intent: Intent?): Boolean {
+    val action = intentActionOrNull(intent) ?: return false
+    return action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE
+  }
+
+  private fun intentActionOrNull(intent: Intent?): String? {
+    if (intent == null) return null
+    return try {
+      intent.action
+    } catch (t: Throwable) {
+      android.util.Log.e("DocuHaim", "share intent action unreadable", t)
+      null
+    }
+  }
+
+  private fun isShareAliasComponent(intent: Intent?): Boolean {
+    val name = try {
+      intent?.component?.className.orEmpty()
+    } catch (_: Throwable) {
+      ""
+    }
+    return name.endsWith("ShareToSelfAlias") || name.endsWith("ShareToGroupAlias")
+  }
+
+  /**
+   * Launcher-shaped intent so tao ignores it (only SEND / SEND_MULTIPLE / VIEW).
+   * Clip data and grant flags stay so content:// read permission is not dropped.
+   * Extras are omitted: unparcelling them is what crashes startup.
+   */
+  private fun sanitizedLauncherIntent(source: Intent?): Intent {
+    val safe = Intent(Intent.ACTION_MAIN).apply {
+      component = ComponentName(this@MainActivity, MainActivity::class.java)
+      addCategory(Intent.CATEGORY_LAUNCHER)
+    }
+    if (source == null) return safe
+    try {
+      val grant = source.flags and (
+        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+      )
+      if (grant != 0) safe.addFlags(grant)
+    } catch (_: Throwable) {
+      // flags can throw if the parcel is corrupt
+    }
+    try {
+      val clip = source.clipData
+      if (clip != null) safe.clipData = clip
+    } catch (t: Throwable) {
+      android.util.Log.w("DocuHaim", "share clipData not copied", t)
+    }
+    return safe
+  }
+
+  private fun readShareText(intent: Intent): String {
+    val extra = try {
+      intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+    } catch (_: Throwable) {
+      ""
+    }
+    if (extra.isNotEmpty()) return extra
+    return try {
+      val clip = intent.clipData ?: return ""
+      val parts = ArrayList<String>()
+      for (i in 0 until clip.itemCount) {
+        val text = clip.getItemAt(i)?.text?.toString()?.trim().orEmpty()
+        if (text.isNotEmpty()) parts.add(text)
+      }
+      parts.joinToString("\n")
+    } catch (_: Throwable) {
+      ""
+    }
+  }
+
+  private fun readShareTitle(intent: Intent): String {
+    return try {
       intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty().ifEmpty {
         intent.getStringExtra(Intent.EXTRA_TITLE).orEmpty()
       }
-    pendingShareMode = shareModeFromIntent(intent)
-    pendingShareUris = collectShareStreamUris(intent).joinToString("\n")
+    } catch (_: Throwable) {
+      ""
+    }
   }
 
   /**
@@ -206,19 +314,33 @@ class MainActivity : TauriActivity() {
 
   private fun collectShareStreamUris(intent: Intent): List<String> {
     val out = ArrayList<String>()
-    when (intent.action) {
-      Intent.ACTION_SEND -> {
-        val uri = streamUriExtra(intent)
-        if (uri != null) out.add(uri.toString())
-      }
-      Intent.ACTION_SEND_MULTIPLE -> {
-        val list = streamUriListExtra(intent)
-        if (list != null) {
-          for (uri in list) {
-            if (uri != null) out.add(uri.toString())
+    fun add(uri: Uri?) {
+      val value = uri?.toString()?.trim().orEmpty()
+      if (value.isNotEmpty() && !out.contains(value)) out.add(value)
+    }
+    try {
+      when (intent.action) {
+        Intent.ACTION_SEND -> add(streamUriExtra(intent))
+        Intent.ACTION_SEND_MULTIPLE -> {
+          val list = streamUriListExtra(intent)
+          if (list != null) {
+            for (uri in list) add(uri)
           }
         }
       }
+    } catch (t: Throwable) {
+      android.util.Log.w("DocuHaim", "EXTRA_STREAM unreadable", t)
+    }
+    // Many share sheets put the file only on ClipData, not EXTRA_STREAM.
+    try {
+      val clip = intent.clipData
+      if (clip != null) {
+        for (i in 0 until clip.itemCount) {
+          add(clip.getItemAt(i)?.uri)
+        }
+      }
+    } catch (t: Throwable) {
+      android.util.Log.w("DocuHaim", "share ClipData unreadable", t)
     }
     return out
   }

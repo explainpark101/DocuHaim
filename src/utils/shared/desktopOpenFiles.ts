@@ -96,13 +96,27 @@ function basename(path: string): string {
   }
 }
 
+/**
+ * plugin-fs on Android resolves content:// via a file descriptor and calls
+ * unimplemented!() when the fd is missing. That panics, and release builds
+ * abort the process (share-to-group looks like a force close).
+ */
+export function isAndroidContentUri(path: string): boolean {
+  return String(path || '').trim().toLowerCase().startsWith('content:');
+}
+
 export async function readOpenPathBytes(abs: string): Promise<Uint8Array> {
+  if (isAndroidContentUri(abs)) {
+    const { invoke } = await import('@tauri-apps/api/core');
+    const bytes = await invoke<number[]>('read_open_uri', { path: String(abs).trim() });
+    return new Uint8Array(bytes || []);
+  }
   try {
     const { readFile } = await import('@tauri-apps/plugin-fs');
     const bytes = await readFile(abs);
     return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   } catch {
-    // Android content:// and some SAF paths need ContentResolver via Rust.
+    // Some SAF paths are not content:// but still need ContentResolver.
     const { invoke } = await import('@tauri-apps/api/core');
     const bytes = await invoke<number[]>('read_open_uri', { path: abs });
     return new Uint8Array(bytes || []);

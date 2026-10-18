@@ -349,13 +349,24 @@ fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
             return Err(format!("openInputStream returned null for {uri}"));
         }
 
+        // Cap so a shared video cannot OOM-kill the process while copying into JS.
+        const MAX_CONTENT_URI_BYTES: usize = 24 * 1024 * 1024;
         let mut out = Vec::new();
         let buf = env.new_byte_array(8192).map_err(|e| e.to_string())?;
         loop {
+            if out.len() >= MAX_CONTENT_URI_BYTES {
+                let _ = env.call_method(&input_stream, "close", "()V", &[]);
+                return Err(format!(
+                    "content URI exceeds {MAX_CONTENT_URI_BYTES} bytes"
+                ));
+            }
+            // Drop per-read local refs. A long stream otherwise overflows the
+            // JNI local table and aborts the VM.
             let n = env
-                .call_method(&input_stream, "read", "([B)I", &[(&buf).into()])
-                .map_err(|e| e.to_string())?
-                .i()
+                .with_local_frame(16, |env| {
+                    env.call_method(&input_stream, "read", "([B)I", &[(&buf).into()])?
+                        .i()
+                })
                 .map_err(|e| e.to_string())?;
             if n <= 0 {
                 break;

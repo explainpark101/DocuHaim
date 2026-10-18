@@ -84,12 +84,15 @@
           Two activity-aliases so the system share sheet shows distinct labels.
           MIME-only filters — do not mix pathPattern/scheme/BROWSABLE with SEND.
           Separate SEND vs SEND_MULTIPLE; explicit type/* so OEM share sheets match.
+          MainActivity captures the payload, then replaces this Intent before
+          Wry/tao reads extras (alias + raw SEND was aborting the process).
         -->
         <activity-alias
             android:name=".ShareToSelfAlias"
             android:targetActivity=".MainActivity"
             android:label="@string/share_to_chat_self"
             android:icon="@mipmap/ic_launcher"
+            android:theme="@style/Theme.docuhaim"
             android:exported="true"
             android:enabled="true">
             <meta-data
@@ -124,6 +127,7 @@
             android:targetActivity=".MainActivity"
             android:label="@string/share_to_my_group"
             android:icon="@mipmap/ic_launcher"
+            android:theme="@style/Theme.docuhaim"
             android:exported="true"
             android:enabled="true">
             <meta-data
