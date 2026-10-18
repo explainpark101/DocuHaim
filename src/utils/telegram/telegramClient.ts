@@ -264,11 +264,22 @@ export async function completeTelegramPortalLogin(code: string): Promise<void> {
     await disconnectTelegram({ keepSnapshot: true });
     await connectTelegram();
   } catch (err) {
-    patchTelegram({
-      status: 'need-code',
-      loginStep: 'portal-code',
-      error: errorText(err, '번호를 확인하지 못했습니다.'),
-    });
+    const message = errorText(err, '번호를 확인하지 못했습니다.');
+    const retrySameCode = message.includes('확인 코드가 올바르지 않습니다') || message.includes('확인 코드를 입력하세요');
+    patchTelegram(
+      retrySameCode
+        ? {
+            status: 'need-code',
+            loginStep: 'portal-code',
+            error: message,
+          }
+        : {
+            status: 'need-phone',
+            loginStep: 'portal-phone',
+            error: message,
+            loginHint: '휴대폰 번호를 다시 입력하면 확인 코드를 새로 받습니다.',
+          },
+    );
   }
 }
 

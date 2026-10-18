@@ -101,6 +101,11 @@ fn split_cookie_pairs(cookie: &str) -> Vec<(String, String)> {
 
 fn portal_error(body: &str) -> Option<String> {
     let text = body.trim().trim_start_matches('\u{feff}');
+    // The apps page script mentions alert('ERROR') even after a successful create.
+    // Only the short AJAX body is a rejection.
+    if text.len() > 400 {
+        return None;
+    }
     if text.contains("too many tries") {
         return Some("요청이 많습니다. 잠시 후 다시 시도하세요.".into());
     }
@@ -179,8 +184,18 @@ fn parse_credentials_from_labels(html: &str) -> Option<(i32, String)> {
 
 fn label_window<'a>(html: &'a str, markers: &[&str]) -> Option<&'a str> {
     let index = markers.iter().find_map(|marker| html.find(marker))?;
-    let rest = &html[index..];
-    Some(&rest[..rest.len().min(500)])
+    Some(prefix_at_char_boundary(&html[index..], 500))
+}
+
+fn prefix_at_char_boundary(text: &str, max_bytes: usize) -> &str {
+    if text.len() <= max_bytes {
+        return text;
+    }
+    let mut end = max_bytes;
+    while end > 0 && !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    &text[..end]
 }
 
 fn first_number(window: &str) -> Option<i32> {
@@ -213,11 +228,18 @@ fn first_api_hash(window: &str) -> Option<String> {
     if bytes.len() < 32 {
         return None;
     }
-    for index in 0..=bytes.len() - 32 {
-        let slice = &flat[index..index + 32];
-        if is_api_hash(slice) {
-            return Some(slice.to_string());
+    let mut index = 0;
+    while index + 32 <= bytes.len() {
+        let next = index + 32;
+        let bounded = (index == 0 || !bytes[index - 1].is_ascii_hexdigit())
+            && (next == bytes.len() || !bytes[next].is_ascii_hexdigit());
+        if bounded && flat.is_char_boundary(index) && flat.is_char_boundary(next) {
+            let slice = &flat[index..next];
+            if is_api_hash(slice) {
+                return Some(slice.to_string());
+            }
         }
+        index += 1;
     }
     None
 }
@@ -364,7 +386,16 @@ pub async fn telegram_portal_confirm_code(code: String) -> Result<TelegramPortal
     if !confirmed || !cookie.contains("stel_token=") {
         return Err("Telegram 서버가 번호를 확인하지 못했습니다.".into());
     }
-    let (api_id, api_hash) = load_or_create_app(&client, &cookie, &pending.platform, &pending.phone).await?;
+    let (api_id, api_hash) = match load_or_create_app(&client, &cookie, &pending.platform, &pending.phone).await {
+        Ok(creds) => creds,
+        Err(message) => {
+            // The confirmation code is already spent. Drop it so the next attempt asks for a new one.
+            if let Ok(mut guard) = PENDING.lock() {
+                *guard = None;
+            }
+            return Err(message);
+        }
+    };
     if let Ok(mut guard) = PENDING.lock() {
         *guard = None;
     }
@@ -457,15 +488,17 @@ async fn fetch_apps(client: &reqwest::Client, cookie: &str) -> Result<String, St
 
 async fn fetch_text(client: &reqwest::Client, url: &str, cookie: &str) -> Result<String, String> {
     let mut current = url.to_string();
+    let mut cookie = cookie.to_string();
     for _ in 0..3 {
         let response = client
             .get(&current)
-            .header(reqwest::header::COOKIE, cookie)
+            .header(reqwest::header::COOKIE, cookie.as_str())
             .header("Referer", format!("{ORIGIN}/auth?to=apps"))
             .send()
             .await
             .map_err(|_| "Telegram 서버에 연결하지 못했습니다.".to_string())?;
         if response.status().is_redirection() {
+            cookie = merge_stel_cookies(&cookie, &response);
             let location = response
                 .headers()
                 .get(reqwest::header::LOCATION)
@@ -503,6 +536,24 @@ mod tests {
     }
 
     #[test]
+    fn parses_korean_labels() {
+        let html = "<label for=\"app_id\">앱 api_id:</label><strong>445566</strong><label for=\"app_hash\">앱 api_hash:</label><span>fedcba9876543210fedcba9876543210</span>";
+        let (id, hash) = parse_credentials(html).expect("credentials");
+        assert_eq!(id, 445566);
+        assert_eq!(hash, "fedcba9876543210fedcba9876543210");
+    }
+
+    #[test]
+    fn utf8_window_cut_does_not_panic() {
+        let mut html = String::from("<label for=\"app_id\"><strong>445566</strong></label><label for=\"app_hash\">");
+        while html.len() < 520 {
+            html.push('한');
+        }
+        html.push_str("fedcba9876543210fedcba9876543210</label>");
+        let _ = parse_credentials(&html);
+    }
+
+    #[test]
     fn parses_label_text_when_spans_use_another_class() {
         let html = r#"<label for="app_id" class="col-md-4">App api_id:</label><div class="col-md-8"><span><strong>445566</strong></span></div><label for="app_hash" class="col-md-4">App api_hash:</label><div><span>fedcba9876543210fedcba9876543210</span></div>"#;
         let (id, hash) = parse_credentials(html).expect("credentials");
@@ -528,6 +579,22 @@ mod tests {
         assert!(portal_error("<script>alert('ERROR');</script>").is_some());
         assert!(portal_error("<div class=\"alert\">ERROR</div>").is_some());
         assert!(portal_error("true").is_none());
+        let mut page = String::from("<script>if (result == 'ERROR') alert('ERROR');</script><label for=\"app_id\"><strong>123456</strong></label><span class=\"uneditable-input\">0123456789abcdef0123456789abcdef</span>");
+        while page.len() < 500 {
+            page.push(' ');
+        }
+        assert!(portal_error(&page).is_none());
+        let (id, hash) = parse_credentials(&page).expect("credentials");
+        assert_eq!(id, 123456);
+        assert_eq!(hash, "0123456789abcdef0123456789abcdef");
+    }
+
+    #[test]
+    fn does_not_take_api_hash_from_a_longer_key() {
+        let html = "<label for=\"app_id\"><strong>123456</strong></label><label for=\"app_hash\">abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789 0123456789abcdef0123456789abcdef</label>";
+        let (id, hash) = parse_credentials(html).expect("credentials");
+        assert_eq!(id, 123456);
+        assert_eq!(hash, "0123456789abcdef0123456789abcdef");
     }
 
     #[test]
