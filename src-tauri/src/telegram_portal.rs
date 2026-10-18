@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const ORIGIN: &str = "https://my.telegram.org";
 const CREATE_REJECTED: &str =
-    "Telegram이 이 번호의 연결 정보 생성을 거절했습니다. 잠시 후 다시 시도하세요.";
+    "Telegram이 이 번호의 연결 정보 생성을 거절했습니다. VPN을 끄고 잠시 후 다시 시도하세요.";
 
 #[derive(Clone)]
 struct PendingPortal {
@@ -249,19 +249,34 @@ fn is_api_hash(value: &str) -> bool {
 }
 
 fn parse_form_hash(html: &str) -> Option<String> {
+    if let Some(index) = html
+        .find("id=\"app_create_form\"")
+        .or_else(|| html.find("action=\"/apps/create\""))
+    {
+        let window = prefix_at_char_boundary(&html[index..], 4000);
+        if let Some(value) = hash_in_fragment(window) {
+            return Some(value);
+        }
+    }
+    hash_in_fragment(html)
+}
+
+fn hash_in_fragment(html: &str) -> Option<String> {
     let mut search = html;
     while let Some(index) = search.find("name=\"hash\"").or_else(|| search.find("name='hash'")) {
         let tag_start = search[..index].rfind('<').unwrap_or(0);
         let after = &search[index..];
         let tag_end = after.find('>').map(|end| index + end).unwrap_or(search.len());
-        let tag = &search[tag_start..tag_end];
-        if let Some(value) = between(tag, "value=\"", "\"").or_else(|| between(tag, "value='", "'")) {
-            if !value.is_empty() {
-                return Some(value.to_string());
+        if tag_start <= tag_end && search.is_char_boundary(tag_start) && search.is_char_boundary(tag_end) {
+            let tag = &search[tag_start..tag_end];
+            if let Some(value) = between(tag, "value=\"", "\"").or_else(|| between(tag, "value='", "'")) {
+                if !value.is_empty() {
+                    return Some(value.to_string());
+                }
             }
         }
         let next = index + "name=\"hash\"".len();
-        if next >= search.len() {
+        if next >= search.len() || !search.is_char_boundary(next) {
             break;
         }
         search = &search[next..];
@@ -290,6 +305,7 @@ fn app_shortname(phone: &str) -> String {
     let mut name: String = format!("dh{tail}{millis:03}")
         .chars()
         .filter(|ch| ch.is_ascii_alphanumeric())
+        .flat_map(|ch| ch.to_lowercase())
         .take(32)
         .collect();
     if name.len() < 5 {
@@ -412,20 +428,33 @@ async fn load_or_create_app(
     platform: &str,
     phone: &str,
 ) -> Result<(i32, String), String> {
-    let html = fetch_apps(client, cookie).await?;
+    let mut cookie = cookie.to_string();
+    let mut html = fetch_apps(client, &cookie).await?;
     if let Some(creds) = parse_credentials(&html) {
         return Ok(creds);
     }
-    let form_hash = parse_form_hash(&html).ok_or_else(|| {
-        "Telegram 서버에서 이 번호의 연결 정보를 찾지 못했습니다.".to_string()
-    })?;
-    let (created, cookie) = create_app(client, cookie, platform, phone, &form_hash).await?;
-    if let Some(creds) = parse_credentials(&created) {
-        return Ok(creds);
-    }
-    let html = fetch_apps(client, &cookie).await?;
-    if let Some(creds) = parse_credentials(&html) {
-        return Ok(creds);
+    // Blank URL plus platform "other" is what my.telegram.org accepts.
+    // A filled URL or "android" often comes back as a bare ERROR.
+    let mut platforms = vec!["other".to_string(), platform_or_default(platform)];
+    platforms.dedup();
+    for attempt_platform in platforms {
+        let Some(form_hash) = parse_form_hash(&html) else {
+            return Err("Telegram 서버에서 이 번호의 연결 정보를 찾지 못했습니다.".to_string());
+        };
+        match create_app(client, &cookie, &attempt_platform, phone, &form_hash).await {
+            Ok((created, next_cookie)) => {
+                cookie = next_cookie;
+                if let Some(creds) = parse_credentials(&created) {
+                    return Ok(creds);
+                }
+            }
+            Err(message) if message == CREATE_REJECTED => {}
+            Err(message) => return Err(message),
+        }
+        html = fetch_apps(client, &cookie).await?;
+        if let Some(creds) = parse_credentials(&html) {
+            return Ok(creds);
+        }
     }
     if parse_form_hash(&html).is_some() {
         return Err(CREATE_REJECTED.into());
@@ -450,11 +479,11 @@ async fn create_app(
         .header(reqwest::header::COOKIE, cookie)
         .form(&[
             ("hash", form_hash),
-            ("app_title", "DocuHaim"),
+            ("app_title", shortname.as_str()),
             ("app_shortname", shortname.as_str()),
-            ("app_url", "https://telegram.org"),
+            ("app_url", ""),
             ("app_platform", platform),
-            ("app_desc", "DocuHaim"),
+            ("app_desc", "Personal notes"),
         ])
         .send()
         .await
@@ -571,6 +600,12 @@ mod tests {
     fn parses_hash_when_value_comes_before_name() {
         let html = r#"<input type="hidden" value="from-value" name="hash">"#;
         assert_eq!(parse_form_hash(html).as_deref(), Some("from-value"));
+    }
+
+    #[test]
+    fn prefers_create_form_hash_over_an_earlier_one() {
+        let html = r#"<input type="hidden" name="hash" value="logout-hash"><form id="app_create_form" action="/apps/create"><input type="hidden" name="hash" value="create-hash"></form>"#;
+        assert_eq!(parse_form_hash(html).as_deref(), Some("create-hash"));
     }
 
     #[test]

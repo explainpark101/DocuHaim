@@ -20,6 +20,10 @@ import {
   confirmTelegramPortalCode,
   requestTelegramPortalCode,
 } from '@/utils/telegram/portalLogin';
+import {
+  parseTelegramApiCredentials,
+  type TelegramApiCredentialInput,
+} from '@/utils/telegram/telegramApiCredentials';
 
 let connecting: Promise<void> | null = null;
 let presetPhone = '';
@@ -228,6 +232,31 @@ export async function connectTelegram(): Promise<void> {
     connecting = null;
   });
   return connecting;
+}
+
+export async function beginTelegramApiLogin(input: TelegramApiCredentialInput): Promise<void> {
+  const parsed = parseTelegramApiCredentials(input);
+  if (!parsed.ok) {
+    patchTelegram({ error: parsed.error });
+    return;
+  }
+  patchTelegram({ status: 'connecting', error: null, loginHint: '입력한 연결 정보로 로그인합니다.' });
+  try {
+    await saveTelegramSession({
+      apiId: parsed.value.apiId,
+      apiHash: parsed.value.apiHash,
+      session: '',
+    });
+    presetPhone = parsed.value.phone;
+    await disconnectTelegram({ keepSnapshot: true });
+    await connectTelegram();
+  } catch (err) {
+    patchTelegram({
+      status: 'need-phone',
+      loginStep: 'portal-phone',
+      error: errorText(err, '연결 정보를 저장하지 못했습니다.'),
+    });
+  }
 }
 
 export async function beginTelegramPhoneLogin(phone: string): Promise<void> {

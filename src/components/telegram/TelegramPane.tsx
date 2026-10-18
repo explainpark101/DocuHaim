@@ -14,6 +14,7 @@ import TelegramSaveToVaultModal from '@/components/telegram/TelegramSaveToVaultM
 import { useTelegramSnapshot } from '@/components/telegram/useTelegramSnapshot';
 import { isTelegramShell } from '@/utils/telegram/telegramPlatform';
 import {
+  beginTelegramApiLogin,
   beginTelegramPhoneLogin,
   completeTelegramPortalLogin,
   connectTelegram,
@@ -257,6 +258,9 @@ export default function TelegramPane({
               return;
             }
             submitLoginInput(value);
+          }}
+          onSubmitApi={(input) => {
+            void beginTelegramApiLogin(input);
           }}
           onClose={() => {
             void disconnectTelegram();
