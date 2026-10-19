@@ -1,17 +1,14 @@
 import path from 'node:path';
 import type { Plugin } from 'vite';
 import { rewriteTelegramBufferGlobals } from '../src/utils/telegram/rewriteTelegramBufferGlobals';
-import { classifyTelegramNodeStub } from '../src/utils/telegram/telegramBrowserShim';
+import {
+  classifyTelegramNodeStub,
+  TELEGRAM_EMPTY_BROWSER_STUB,
+  TELEGRAM_OS_BROWSER_STUB,
+} from '../src/utils/telegram/telegramBrowserShim';
 
 const EMPTY_STUB_ID = '\0telegram-browser-empty';
 const OS_STUB_ID = '\0telegram-browser-os';
-
-const EMPTY_STUB = 'module.exports = {};\n';
-const OS_STUB = `module.exports = {
-  type() { return "Tauri"; },
-  release() { return "1.0"; },
-};
-`;
 
 function isTelegramJs(id: string): boolean {
   const clean = id.split('?')[0]?.replace(/\\/g, '/') ?? '';
@@ -42,8 +39,8 @@ export function telegramBrowserShimsPlugin(rootDir: string): Plugin {
       return null;
     },
     load(id) {
-      if (id === EMPTY_STUB_ID) return EMPTY_STUB;
-      if (id === OS_STUB_ID) return OS_STUB;
+      if (id === EMPTY_STUB_ID) return TELEGRAM_EMPTY_BROWSER_STUB;
+      if (id === OS_STUB_ID) return TELEGRAM_OS_BROWSER_STUB;
       return null;
     },
     transform(code, id) {

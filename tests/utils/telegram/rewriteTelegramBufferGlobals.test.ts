@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { rewriteTelegramBufferGlobals } from '@/utils/telegram/rewriteTelegramBufferGlobals';
-import { classifyTelegramNodeStub } from '@/utils/telegram/telegramBrowserShim';
+import {
+  classifyTelegramNodeStub,
+  TELEGRAM_EMPTY_BROWSER_STUB,
+  TELEGRAM_OS_BROWSER_STUB,
+} from '@/utils/telegram/telegramBrowserShim';
 
 describe('rewriteTelegramBufferGlobals', () => {
   it('binds bare Buffer references used at gramjs module scope', () => {
@@ -53,5 +57,17 @@ describe('classifyTelegramNodeStub', () => {
     expect(classifyTelegramNodeStub('net', extensions)).toBeNull();
     expect(classifyTelegramNodeStub('./net', '/proj/src/app.js')).toBeNull();
     expect(classifyTelegramNodeStub('buffer')).toBeNull();
+  });
+});
+
+describe('telegram browser stubs', () => {
+  it('is ESM so virtual modules do not reference the CommonJS module global', () => {
+    expect(TELEGRAM_EMPTY_BROWSER_STUB).not.toMatch(/\bmodule\b/);
+    expect(TELEGRAM_EMPTY_BROWSER_STUB).not.toMatch(/\brequire\b/);
+    expect(TELEGRAM_OS_BROWSER_STUB).not.toMatch(/\bmodule\b/);
+    expect(TELEGRAM_OS_BROWSER_STUB).not.toMatch(/\brequire\b/);
+    expect(TELEGRAM_OS_BROWSER_STUB).toContain('export default');
+    expect(TELEGRAM_OS_BROWSER_STUB).toContain('function type()');
+    expect(TELEGRAM_OS_BROWSER_STUB).toContain('function release()');
   });
 });

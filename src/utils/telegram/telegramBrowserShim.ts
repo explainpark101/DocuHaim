@@ -1,5 +1,23 @@
 export type TelegramNodeStub = 'empty' | 'os' | 'path';
 
+/**
+ * Vite's commonjs plugin only transforms ids matching /node_modules/.
+ * Virtual modules (\0…) are served as ESM, so `module.exports` throws
+ * `module is not defined` in the browser.
+ */
+export const TELEGRAM_EMPTY_BROWSER_STUB = 'export {};\n';
+
+export const TELEGRAM_OS_BROWSER_STUB = `function type() {
+  return "Tauri";
+}
+function release() {
+  return "1.0";
+}
+const os = { type, release };
+export { type, release };
+export default os;
+`;
+
 const EMPTY_FILES = [
   '/node_modules/telegram/extensions/net',
   '/node_modules/telegram/extensions/socks',
