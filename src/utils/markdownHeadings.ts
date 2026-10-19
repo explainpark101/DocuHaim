@@ -34,7 +34,10 @@ export type HeadingRemapRow = {
 };
 
 export type OutlineNumberStyle = 'flat' | 'nested';
-export type OutlineStartNumber = 1 | 2;
+/** First outline segment. Any integer >= 1 (normalized before use). */
+export type OutlineStartNumber = number;
+
+export const MAX_OUTLINE_START = 9999;
 
 export type HeadingOutlineOptions = {
   renumberOutline?: boolean;
@@ -92,6 +95,79 @@ export function formatHeadingOutline(parts: readonly number[]): string {
   return `${parts.join('.')}. `;
 }
 
+export function normalizeOutlineStart(value: unknown): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(MAX_OUTLINE_START, n);
+}
+
+/** Non-editable tail so a custom start matches flat `N.` or nested `N.1.1.`. */
+export function outlineStartSuffix(style: OutlineNumberStyle, targetMax: number): string {
+  const level = clampInt(Math.round(Number(targetMax) || 1), 1, MAX_APP_HEADING_LEVEL);
+  if (style !== 'nested' || level <= 1) return '.';
+  const ones = Array.from({ length: level - 1 }, () => '1').join('.');
+  return `.${ones}.`;
+}
+
+export function formatOutlineStartLabel(
+  start: number,
+  style: OutlineNumberStyle,
+  targetMax: number,
+): string {
+  return `${normalizeOutlineStart(start)}${outlineStartSuffix(style, targetMax)}`;
+}
+
+/**
+ * Smallest first segment among headings that already have an outline prefix.
+ * Inner segments (`5.1.` → 1) are ignored so a child `.1` does not become the start.
+ */
+export function detectMinOutlineStart(markdown: string): number | null {
+  let min: number | null = null;
+  for (const entry of detectHeadingEntries(markdown)) {
+    const match = entry.text.match(/^(\d+)\./);
+    const raw = match?.[1];
+    if (!raw) continue;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1) continue;
+    if (min === null || n < min) min = n;
+  }
+  return min;
+}
+
+/**
+ * Parse a custom start. Digits alone are the first segment.
+ * A full prefix is accepted only when it matches the active style
+ * (`3.` for flat, `3.1.` / `3.1.1.` for nested).
+ */
+export function parseCustomOutlineStart(
+  raw: string,
+  style: OutlineNumberStyle,
+  targetMax: number,
+): number | null {
+  const text = raw.trim();
+  if (!text) return null;
+
+  const asNumber = (head: string): number | null => {
+    if (!/^\d+$/.test(head)) return null;
+    const n = Number(head);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_OUTLINE_START) return null;
+    return n;
+  };
+
+  if (/^\d+$/.test(text)) return asNumber(text);
+
+  const suffix = outlineStartSuffix(style, targetMax);
+  if (text.endsWith(suffix)) {
+    const fromSuffix = asNumber(text.slice(0, -suffix.length));
+    if (fromSuffix != null) return fromSuffix;
+  }
+
+  if (style === 'flat') return null;
+
+  const nested = text.match(/^(\d+)(?:\.\d+)+\.?$/);
+  return nested?.[1] ? asNumber(nested[1]) : null;
+}
+
 /**
  * Assign outline prefixes for remapped heading levels (document order).
  * - flat: max heading is one segment (`1.` / `2.`); deeper levels add segments
@@ -106,7 +182,7 @@ export function assignHeadingOutlineNumbers(
   },
 ): string[] {
   const style = options.style === 'nested' ? 'nested' : 'flat';
-  const startNumber: OutlineStartNumber = options.startNumber === 2 ? 2 : 1;
+  const startNumber = normalizeOutlineStart(options.startNumber);
   const targetMax = Math.max(1, Math.round(Number(options.targetMax) || 1));
   const extraPrefix = style === 'nested' ? Math.max(0, targetMax - 1) : 0;
 
@@ -138,7 +214,7 @@ function resolveOutlineOptions(options?: HeadingOutlineOptions): {
   return {
     renumber: Boolean(options?.renumberOutline),
     style: options?.outlineStyle === 'flat' ? 'flat' : 'nested',
-    start: options?.outlineStart === 2 ? 2 : 1,
+    start: normalizeOutlineStart(options?.outlineStart ?? 1),
   };
 }
 

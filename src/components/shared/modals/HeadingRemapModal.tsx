@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
-import { RadioGroup, Select, Switch, Tooltip } from 'radix-ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowDownNarrowWide, Check, ChevronDown, Hash, PenLine } from 'lucide-react';
+import { Form, RadioGroup, Select, Switch, Tooltip } from 'radix-ui';
 import Button from '@/components/Button';
 import { IconBack, IconCheck } from '@/components/icons';
 import Modal from '@/components/modals/Modal';
@@ -9,11 +9,15 @@ import {
   MAX_APP_HEADING_LEVEL,
   defaultAppHeadingMax,
   isAppHeadingLevel,
+  detectMinOutlineStart,
+  formatOutlineStartLabel,
+  normalizeOutlineStart,
+  outlineStartSuffix,
+  parseCustomOutlineStart,
   planHeadingRemapRows,
   remapMarkdownHeadingLevels,
   type AppHeadingLevel,
   type OutlineNumberStyle,
-  type OutlineStartNumber,
 } from '@/utils/markdownHeadings';
 
 export type HeadingRemapScope = 'selection' | 'document';
@@ -52,22 +56,7 @@ const OUTLINE_STYLE_OPTIONS: {
   },
 ];
 
-const OUTLINE_START_OPTIONS: {
-  value: OutlineStartNumber;
-  title: string;
-  description: string;
-}[] = [
-  {
-    value: 1,
-    title: '1부터',
-    description: '최대 heading이 1. / 1.1. …',
-  },
-  {
-    value: 2,
-    title: '2부터',
-    description: '최대 heading이 2. / 2.1. …',
-  },
-];
+type OutlineStartMode = 'one' | 'min' | 'custom';
 
 const switchRootClass = (checked: boolean) =>
   [
@@ -104,9 +93,21 @@ export default function HeadingRemapModal({
   const [headingMax, setHeadingMax] = useState<AppHeadingLevel>(1);
   const [renumberOutline, setRenumberOutline] = useState(false);
   const [outlineStyle, setOutlineStyle] = useState<OutlineNumberStyle>('nested');
-  const [outlineStart, setOutlineStart] = useState<OutlineStartNumber>(1);
+  const [outlineStartMode, setOutlineStartMode] = useState<OutlineStartMode>('one');
+  const [customOutlineStart, setCustomOutlineStart] = useState(1);
+  const [customDraft, setCustomDraft] = useState('1');
+  const customStartRef = useRef<HTMLInputElement>(null);
 
   const sourceMarkdown = scope === 'selection' ? selectedMarkdown : markdown;
+  const minOutlineStart = useMemo(
+    () => detectMinOutlineStart(sourceMarkdown),
+    [sourceMarkdown],
+  );
+  const resolvedOutlineStart = outlineStartMode === 'min'
+    ? (minOutlineStart ?? 1)
+    : outlineStartMode === 'custom'
+      ? normalizeOutlineStart(customOutlineStart)
+      : 1;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -116,8 +117,21 @@ export default function HeadingRemapModal({
     setHeadingMax(defaultAppHeadingMax(initialSource));
     setRenumberOutline(false);
     setOutlineStyle('nested');
-    setOutlineStart(1);
+    setOutlineStartMode('one');
+    setCustomOutlineStart(1);
+    setCustomDraft('1');
   }, [isOpen, markdown, selectedMarkdown, hasSelection]);
+
+  useEffect(() => {
+    if (outlineStartMode === 'min' && minOutlineStart == null) {
+      setOutlineStartMode('one');
+    }
+  }, [outlineStartMode, minOutlineStart]);
+
+  useEffect(() => {
+    if (!renumberOutline || outlineStartMode !== 'custom') return;
+    customStartRef.current?.focus();
+  }, [renumberOutline, outlineStartMode]);
 
   // Digits 1-9 set max heading; block editor key input while this modal is open.
   useEffect(() => {
@@ -144,6 +158,9 @@ export default function HeadingRemapModal({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      const tag = (event.target as HTMLElement | null)?.tagName?.toLowerCase() ?? '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
 
       const digit = event.key;
       if (digit >= '1' && digit <= '9') {
@@ -177,9 +194,9 @@ export default function HeadingRemapModal({
         maxLevel: MAX_APP_HEADING_LEVEL,
         renumberOutline,
         outlineStyle,
-        outlineStart,
+        outlineStart: resolvedOutlineStart,
       }),
-    [sourceMarkdown, headingMax, renumberOutline, outlineStyle, outlineStart],
+    [sourceMarkdown, headingMax, renumberOutline, outlineStyle, resolvedOutlineStart],
   );
 
   const handleScopeChange = (next: string) => {
@@ -196,24 +213,82 @@ export default function HeadingRemapModal({
       maxLevel: MAX_APP_HEADING_LEVEL,
       renumberOutline,
       outlineStyle,
-      outlineStart,
+      outlineStart: resolvedOutlineStart,
     });
     if (next !== sourceMarkdown) onApply(next, scope);
     onClose();
   };
 
+  const outlineSuffix = outlineStartSuffix(outlineStyle, headingMax);
+  const oneStartLabel = formatOutlineStartLabel(1, outlineStyle, headingMax);
+  const minStartLabel = minOutlineStart == null
+    ? null
+    : formatOutlineStartLabel(minOutlineStart, outlineStyle, headingMax);
+
+  const handleCustomDraftChange = (raw: string) => {
+    const trimmed = raw.trim();
+    if (trimmed === '') {
+      setCustomDraft('');
+      return;
+    }
+    const parsed = parseCustomOutlineStart(trimmed, outlineStyle, headingMax);
+    if (parsed == null) return;
+    if (/^\d+$/.test(trimmed)) {
+      setCustomDraft(trimmed);
+      setCustomOutlineStart(parsed);
+      return;
+    }
+    setCustomDraft(String(parsed));
+    setCustomOutlineStart(parsed);
+  };
+
+  const commitCustomDraft = () => {
+    const parsed = parseCustomOutlineStart(customDraft, outlineStyle, headingMax);
+    const next = normalizeOutlineStart(parsed ?? customOutlineStart);
+    setCustomOutlineStart(next);
+    setCustomDraft(String(next));
+  };
+
+  const startCardClass = (selected: boolean) =>
+    [
+      'flex-1 rounded-lg border-2 px-3 py-2 text-left outline-none transition-all duration-200',
+      'focus-visible:ring-2 focus-visible:ring-blue-500/40',
+      'disabled:cursor-not-allowed disabled:opacity-40',
+      selected
+        ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
+        : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
+    ].join(' ');
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} onConfirm={handleApply} contentClassName="max-w-3xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      onConfirm={handleApply}
+      ignoreEnterInFields
+      contentClassName="max-w-3xl max-h-[90vh]"
+    >
       <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
-        <div className="flex min-h-0 flex-1 flex-col p-6">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong">
-            최대 heading 변경
-          </h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-odp-muted">
-            감지된 최대 heading을 선택한 단계로 바꾸고, 하위 heading도 같은 간격으로 이동합니다.
-            {' '}
-            숫자 키 1–9로 최대 heading을 바꿀 수 있습니다.
-          </p>
+        <div
+          className="flex min-h-0 flex-1 flex-col"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="heading-remap-title"
+        >
+          <header className="shrink-0 border-b border-gray-100 px-6 py-4 dark:border-odp-borderSoft">
+            <h2
+              id="heading-remap-title"
+              className="text-lg font-bold text-gray-800 dark:text-odp-fgStrong"
+            >
+              최대 heading 변경
+            </h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-odp-muted">
+              감지된 최대 heading을 선택한 단계로 바꾸고, 하위 heading도 같은 간격으로 이동합니다.
+              {' '}
+              숫자 키 1–9로 최대 heading을 바꿀 수 있습니다.
+            </p>
+          </header>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
 
           <div className="mt-4">
             <div className="mb-2 text-xs font-medium text-gray-500 dark:text-odp-muted">
@@ -374,40 +449,106 @@ export default function HeadingRemapModal({
                     시작 번호
                   </div>
                   <RadioGroup.Root
-                    className="flex items-center gap-2"
-                    value={String(outlineStart)}
+                    className="flex flex-col gap-2 sm:flex-row sm:items-stretch"
+                    value={outlineStartMode}
                     onValueChange={(next) => {
-                      if (next === '1') setOutlineStart(1);
-                      if (next === '2') setOutlineStart(2);
+                      if (next !== 'one' && next !== 'min' && next !== 'custom') return;
+                      if (next === 'min' && minOutlineStart == null) return;
+                      setOutlineStartMode(next);
                     }}
                     aria-label="최대 heading 시작 번호"
                   >
-                    {OUTLINE_START_OPTIONS.map((option) => {
-                      const selected = outlineStart === option.value;
-                      return (
-                        <RadioGroup.Item
-                          key={option.value}
-                          value={String(option.value)}
-                          className={[
-                            'flex-1 rounded-lg border-2 px-3 py-2 text-left outline-none transition-all duration-200',
-                            'focus-visible:ring-2 focus-visible:ring-blue-500/40',
-                            selected
-                              ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
-                              : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
-                          ].join(' ')}
-                        >
-                          <div className={selected ? '' : 'opacity-50'}>
-                            <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
-                              {option.title}
-                            </div>
-                            <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
-                              {option.description}
-                            </div>
-                          </div>
-                        </RadioGroup.Item>
-                      );
-                    })}
+                    <RadioGroup.Item
+                      value="one"
+                      className={startCardClass(outlineStartMode === 'one')}
+                    >
+                      <div className={outlineStartMode === 'one' ? '' : 'opacity-50'}>
+                        <div className="flex items-center gap-1.5 font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
+                          <Hash size={14} aria-hidden />
+                          1부터
+                        </div>
+                        <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                          {`최대 heading이 ${oneStartLabel} 로 시작`}
+                        </div>
+                      </div>
+                    </RadioGroup.Item>
+                    <RadioGroup.Item
+                      value="min"
+                      disabled={minOutlineStart == null}
+                      className={startCardClass(outlineStartMode === 'min')}
+                    >
+                      <div className={outlineStartMode === 'min' ? '' : 'opacity-50'}>
+                        <div className="flex items-center gap-1.5 font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
+                          <ArrowDownNarrowWide size={14} aria-hidden />
+                          최소 번호부터
+                        </div>
+                        <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                          {minStartLabel
+                            ? `${scope === 'selection' ? '선택 영역' : '문서'} 번호 중 가장 작은 ${minStartLabel} 부터`
+                            : '번호가 없습니다'}
+                        </div>
+                      </div>
+                    </RadioGroup.Item>
+                    <RadioGroup.Item
+                      value="custom"
+                      className={startCardClass(outlineStartMode === 'custom')}
+                    >
+                      <div className={outlineStartMode === 'custom' ? '' : 'opacity-50'}>
+                        <div className="flex items-center gap-1.5 font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
+                          <PenLine size={14} aria-hidden />
+                          직접 입력
+                        </div>
+                        <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
+                          입력한 번호부터 현재 형식에 맞춤
+                        </div>
+                      </div>
+                    </RadioGroup.Item>
                   </RadioGroup.Root>
+                  {outlineStartMode === 'custom' ? (
+                    <Form.Root
+                      className="mt-2"
+                      onSubmit={(event) => event.preventDefault()}
+                    >
+                      <Form.Field name="outline-custom-start" className="flex flex-col gap-1">
+                        <Form.Label className="text-xs font-medium text-gray-500 dark:text-odp-muted">
+                          시작 번호
+                        </Form.Label>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <div className="inline-flex items-center gap-0.5">
+                            <Form.Control asChild>
+                              <input
+                                ref={customStartRef}
+                                id="heading-remap-outline-start"
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="off"
+                                aria-label="직접 입력한 시작 번호"
+                                aria-describedby="heading-remap-outline-format"
+                                value={customDraft}
+                                onChange={(event) => handleCustomDraftChange(event.target.value)}
+                                onBlur={commitCustomDraft}
+                                className="w-16 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-right text-sm tabular-nums text-gray-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+                              />
+                            </Form.Control>
+                            <span className="font-mono text-sm text-gray-700 dark:text-odp-fg" aria-hidden>
+                              {outlineSuffix}
+                            </span>
+                          </div>
+                          <span
+                            id="heading-remap-outline-format"
+                            className="text-[11px] text-gray-500 dark:text-odp-muted"
+                          >
+                            {`형식 ${formatOutlineStartLabel(
+                              parseCustomOutlineStart(customDraft, outlineStyle, headingMax)
+                                ?? resolvedOutlineStart,
+                              outlineStyle,
+                              headingMax,
+                            )}`}
+                          </span>
+                        </div>
+                      </Form.Field>
+                    </Form.Root>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -415,7 +556,7 @@ export default function HeadingRemapModal({
 
           <div className="mt-4 min-h-0">
             {preview.rows.length ? (
-              <div className="max-h-64 overflow-auto rounded-md border border-gray-200 dark:border-odp-borderSoft">
+              <div className="rounded-md border border-gray-200 dark:border-odp-borderSoft">
                 <table className="w-full table-fixed border-collapse text-left text-sm">
                   <thead className="sticky top-0 z-1 bg-gray-50 dark:bg-odp-bgSoft">
                     <tr className="border-b border-gray-200 dark:border-odp-borderSoft">
@@ -496,8 +637,9 @@ export default function HeadingRemapModal({
               </p>
             )}
           </div>
+          </div>
 
-          <div className="mt-6 flex justify-end gap-2">
+          <footer className="flex shrink-0 justify-end gap-2 border-t border-gray-100 px-6 py-4 dark:border-odp-borderSoft">
             <Button type="button" variant="secondary" size="md" onClick={onClose}>
               <IconBack size={16} />
               취소
@@ -512,7 +654,7 @@ export default function HeadingRemapModal({
               <IconCheck size={16} />
               적용
             </Button>
-          </div>
+          </footer>
         </div>
       </Tooltip.Provider>
     </Modal>
