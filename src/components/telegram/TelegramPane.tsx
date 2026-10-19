@@ -158,7 +158,9 @@ export default function TelegramPane({
           variant="tertiary"
           onClick={() => {
             patchTelegram({ error: null });
-            void run('대화 목록 새로고침', ActivityTypes.TELEGRAM_SYNC, () => refreshTelegramDialogs());
+            void run('대화 목록 새로고침', ActivityTypes.TELEGRAM_SYNC, async () => {
+              await refreshTelegramDialogs();
+            });
           }}
           disabled={snap.status !== 'ready'}
         >
