@@ -125,12 +125,15 @@ export type ChatVirtualRow =
   | ChatVirtualEmptyRow;
 
 export type ChatMessageListProps = ChatMessageActionHandlers & {
-  messages: ChatListMessage[];
+  /** Optional. The mounted list reads messages from the timeline store. */
+  messages?: ChatListMessage[] | undefined;
   ogStorage?: unknown;
   timeZone?: string | null | undefined;
   highlightId?: string | null | undefined;
   editingMessageId?: string | null | undefined;
   onReachTop?: (() => void | boolean | Promise<void | boolean>) | undefined;
+  /** Scroll offset is inside the top load edge. Must not set React state. */
+  onTopEdgeChange?: ((atTop: boolean) => void) | undefined;
   onFillOlder?: (() => void | boolean | Promise<void | boolean>) | undefined;
   onReachBottom?: (() => void | boolean | Promise<void | boolean>) | undefined;
   loadingOlder?: boolean | undefined;

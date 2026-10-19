@@ -73,6 +73,10 @@ import {
 } from '@/utils/chatWithMyself';
 import { IconLock } from '@/components/icons';
 import ChatJumpToBottomButton from '@/components/chatWithMyself/ChatJumpToBottomButton';
+import ChatOlderHistoryScan, {
+  ChatTimelineEmptyHint,
+} from '@/components/chatWithMyself/ChatOlderHistoryScan';
+import { useChatTimeline } from '@/components/chatWithMyself/ChatTimelineContext';
 import {
   CHAT_MESSAGE_SCROLL_MARGIN,
   type ChatListScrollAlign,
@@ -1312,17 +1316,16 @@ const MessageBubble = memo(function MessageBubble({
 const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
   function ChatMessageList(
   {
-    messages,
     ogStorage,
     timeZone,
     highlightId,
     editingMessageId = null,
     onReachTop,
+    onTopEdgeChange,
     onFillOlder,
     onReachBottom,
     loadingOlder = false,
     loadingNewer = false,
-    hasMore = false,
     hasMoreNewer = false,
     onJumpToBottom = null,
     jumpToBottomBusy = false,
@@ -1355,6 +1358,12 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
   },
   ref,
 ) {
+  const messages = useChatTimeline(
+    (state) => state.visibleMessages,
+  ) as ChatListMessage[];
+  const hasMore = useChatTimeline(
+    (state) => state.loadedDayIndex < state.dayKeys.length,
+  );
   const listRef = useRef<VListHandle | null>(null);
   const stickBottomRef = useRef(true);
   const prevFirstIdRef = useRef<string | null>(null);
@@ -1591,6 +1600,21 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
     [dateStrToIndex],
   );
 
+  const isViewportShort = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return false;
+    const scrollSize = Number(list.scrollSize) || 0;
+    const viewportSize = Number(list.viewportSize) || 0;
+    if (viewportSize <= 0) return false;
+    return scrollSize <= viewportSize + LOAD_EDGE_PX;
+  }, []);
+
+  const isNearTop = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return false;
+    return (Number(list.scrollOffset) || 0) < LOAD_EDGE_PX;
+  }, []);
+
   const scrollToBottom = useCallback(() => {
     const list = listRef.current;
     if (!list || rows.length === 0) return;
@@ -1618,8 +1642,10 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
       scrollToMessageId,
       scrollToDateStr,
       scrollToBottom,
+      isViewportShort,
+      isNearTop,
     }),
-    [scrollToMessageId, scrollToDateStr, scrollToBottom],
+    [scrollToMessageId, scrollToDateStr, scrollToBottom, isViewportShort, isNearTop],
   );
 
   // Detect prepend vs append for virtua `shift` (compare against prior render refs).
@@ -1775,6 +1801,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
         messages.length > 0 && (!nearBottom || Boolean(hasMoreNewer)),
       );
       updateOverlayFromOffset(offset);
+      onTopEdgeChange?.(offset < LOAD_EDGE_PX);
 
       if (
         offset < LOAD_EDGE_PX &&
@@ -1811,6 +1838,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
       messages.length,
       onReachTop,
       onReachBottom,
+      onTopEdgeChange,
       updateOverlayFromOffset,
     ],
   );
@@ -1842,7 +1870,10 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
         fillingRef.current = false;
         return;
       }
-      if (loadingOlderLockRef.current) return;
+      if (loadingOlderLockRef.current) {
+        raf = requestAnimationFrame(tryFill);
+        return;
+      }
       if (!hasMoreRef.current) {
         fillingRef.current = false;
         return;
@@ -1887,14 +1918,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
         );
       }
       if (row.type === 'empty') {
-        return (
-          <div
-            key={row.key}
-            className="mx-auto w-full max-w-full px-3 py-16 text-center text-sm text-gray-400 md:max-w-[min(100%,50vw)]"
-          >
-            {emptyHint || '아직 채팅이 없습니다'}
-          </div>
-        );
+        return <ChatTimelineEmptyHint key={row.key} hint={emptyHint} />;
       }
       if (row.type === 'date') {
         return (
@@ -2073,6 +2097,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
             />
           </div>
         ) : null}
+        <ChatOlderHistoryScan />
         {loadingOlder ? (
           <div
             className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center py-2"

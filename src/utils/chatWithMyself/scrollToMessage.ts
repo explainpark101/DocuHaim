@@ -36,4 +36,8 @@ export type ChatMessageListHandle = {
   scrollToDateStr: (dateStr: string) => boolean;
   /** Stick to and scroll to the end of the currently loaded window. */
   scrollToBottom: () => void;
+  /** True when loaded rows do not overflow the viewport. */
+  isViewportShort: () => boolean;
+  /** True when the scroll offset is inside the older-history edge. */
+  isNearTop: () => boolean;
 };

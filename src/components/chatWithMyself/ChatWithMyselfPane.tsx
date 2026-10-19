@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -29,6 +30,11 @@ import ChatDatePanelRaw from '@/components/chatWithMyself/ChatDatePanel';
 import ChatFileDropOverlay from '@/components/chatWithMyself/ChatFileDropOverlay';
 import ChatGroupPanelRaw from '@/components/chatWithMyself/ChatGroupPanel';
 import ChatMessageList from '@/components/chatWithMyself/ChatMessageList';
+import {
+  ChatTimelineProvider,
+  useChatTimelineMessage,
+  useChatTimelineStoreHandle,
+} from '@/components/chatWithMyself/ChatTimelineContext';
 import ChatMobileDrawer from '@/components/chatWithMyself/ChatMobileDrawer';
 import ChatSearchPanelRaw from '@/components/chatWithMyself/ChatSearchPanel';
 import ChatPinnedPanelRaw from '@/components/chatWithMyself/ChatPinnedPanel';
@@ -94,6 +100,7 @@ import {
   getCollectionMediaFlags,
   upsertCollectionMembership,
   detectTimeZone,
+  formatChatDayListLabel,
   findMessageById,
   listDayKeys,
   localDateString,
@@ -308,6 +315,16 @@ const INITIAL_MAX_DAYS = 21;
 /** Silent fill safety net: multiple days per prepend to cut scroll stutter. */
 const FILL_BATCH_DAYS = 3;
 
+const EMPTY_CHAT_MESSAGES: any[] = [];
+
+function waitForPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 /**
  * Walk day keys newest→oldest from startIndex: first until at least one
  * message exists, then until minMessages / maxDays / end of keys.
@@ -349,6 +366,49 @@ async function readMessagesForInitialWindow(
   }
 
   return { messages: dedupeMessagesById(messages), loadedDayIndex };
+}
+
+function ChatEditHistoryModalLive({
+  historyMessage,
+  onOpenChange,
+  timeZone,
+  getPresignedUrl,
+  groups,
+  onLoadHistoryPage,
+  onDeleteHistoryEntry,
+  onDeleteAllHistory,
+  onDeleteHistoryEntries,
+  onRestoreHistoryEntry,
+}: {
+  historyMessage: any;
+  onOpenChange: (next: boolean) => void;
+  timeZone?: string | undefined;
+  getPresignedUrl?: ((path: string) => Promise<string | null>) | undefined;
+  groups: any;
+  onLoadHistoryPage: any;
+  onDeleteHistoryEntry: any;
+  onDeleteAllHistory: any;
+  onDeleteHistoryEntries: any;
+  onRestoreHistoryEntry: any;
+}) {
+  const live = useChatTimelineMessage(
+    typeof historyMessage?.id === 'string' ? historyMessage.id : null,
+  );
+  return (
+    <ChatEditHistoryModal
+      open={Boolean(historyMessage)}
+      message={(live as any) || historyMessage || null}
+      onOpenChange={onOpenChange}
+      timeZone={timeZone}
+      getPresignedUrl={getPresignedUrl}
+      groups={groups}
+      onLoadHistoryPage={onLoadHistoryPage}
+      onDeleteHistoryEntry={onDeleteHistoryEntry}
+      onDeleteAllHistory={onDeleteAllHistory}
+      onDeleteHistoryEntries={onDeleteHistoryEntries}
+      onRestoreHistoryEntry={onRestoreHistoryEntry}
+    />
+  );
 }
 
 /**
@@ -507,13 +567,10 @@ export default function ChatWithMyselfPane({
   const [selectedGroup, setSelectedGroup] = useState(SELF_GROUP);
   /** null = show all groups; otherwise only that group's messages */
   const [viewGroupFilter, setViewGroupFilter] = useState<string | null>(null);
-  const [dayKeys, setDayKeys] = useState<string[]>([]);
+  const [dayKeys, setDayKeysState] = useState<string[]>([]);
   const [dayCounts, setDayCounts] = useState<Record<string, number>>({});
   /** Inclusive index of newest day currently in the message window. */
   const [windowNewestIndex, setWindowNewestIndex] = useState(0);
-  /** Exclusive end index of oldest day in the window (same role as former loadedDayIndex). */
-  const [loadedDayIndex, setLoadedDayIndex] = useState(0);
-  const [messages, setMessages] = useState<any[]>([]);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [loadingNewer, setLoadingNewer] = useState(false);
   const [booting, setBooting] = useState(false);
@@ -630,10 +687,16 @@ export default function ChatWithMyselfPane({
   const searchDayKeysRef = useRef<string[]>([]);
   const searchGenRef = useRef(0);
   const pinnedDayKeysRef = useRef<string[]>([]);
-  const messagesRef = useRef(messages);
+  const timeline = useChatTimelineStoreHandle();
+  const messagesRef = useRef<any[]>([]);
   const dayKeysRef = useRef(dayKeys);
-  const loadedDayIndexRef = useRef(loadedDayIndex);
+  const loadedDayIndexRef = useRef(0);
   const windowNewestIndexRef = useRef(windowNewestIndex);
+  const groupsRef = useRef(groups);
+  const viewGroupFilterRef = useRef(viewGroupFilter);
+  const mountedRef = useRef(true);
+  groupsRef.current = groups;
+  viewGroupFilterRef.current = viewGroupFilter;
   const sendQueueRef = useRef<any[]>([]);
   const flushingSendRef = useRef(false);
   const reactionChainRef = useRef<Map<string, Promise<unknown>>>(new Map());
@@ -646,6 +709,37 @@ export default function ChatWithMyselfPane({
   /** @type {React.MutableRefObject<import('@/utils/chatWithMyself/scrollToMessage').ChatMessageListHandle | null>} */
   const messageListRef = useRef<any>(null);
   const composerRef = useRef<ChatComposerHandle | null>(null);
+
+  const setMessages = useCallback((value: any) => {
+    timeline.setMessages(value);
+    messagesRef.current = timeline.getState().messages;
+  }, [timeline]);
+
+  const setDayKeys = useCallback((value: any) => {
+    const prev = dayKeysRef.current;
+    const next = typeof value === 'function' ? value(prev) : value;
+    dayKeysRef.current = next;
+    timeline.setDayKeys(next);
+    setDayKeysState(next);
+  }, [timeline]);
+
+  const setLoadedDayIndex = useCallback((value: any) => {
+    const prev = loadedDayIndexRef.current;
+    const next = typeof value === 'function' ? Number(value(prev)) : Number(value);
+    loadedDayIndexRef.current = next;
+    timeline.setLoadedDayIndex(next);
+  }, [timeline]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    timeline.setViewContext(groups, viewGroupFilter);
+  }, [groups, viewGroupFilter, timeline]);
 
   const noteLocalDayWrite = useCallback((dateStr: string) => {
     if (dateStr) syncApiRef.current?.invalidateDay(dateStr);
@@ -680,14 +774,8 @@ export default function ChatWithMyselfPane({
   }, [handleTreeAttachDrop, onRegisterTreeAttachDrop]);
 
   useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
-  useEffect(() => {
     dayKeysRef.current = dayKeys;
   }, [dayKeys]);
-  useEffect(() => {
-    loadedDayIndexRef.current = loadedDayIndex;
-  }, [loadedDayIndex]);
   useEffect(() => {
     windowNewestIndexRef.current = windowNewestIndex;
   }, [windowNewestIndex]);
@@ -785,26 +873,48 @@ export default function ChatWithMyselfPane({
     });
   }, []);
 
-  const hasMore = loadedDayIndex < dayKeys.length;
   const hasMoreNewer = windowNewestIndex > 0;
 
-  const visibleMessages = useMemo(() => {
-    const source = !viewGroupFilter
-      ? messages
-      : messages.filter((m: any) =>
-          groupMatches(groups, m.group || SELF_GROUP, viewGroupFilter),
-        );
-    return dedupeMessagesById(source);
-  }, [messages, viewGroupFilter, groups]);
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const [visibleSelectionEpoch, setVisibleSelectionEpoch] = useState(0);
+  useEffect(() => {
+    let prevVisible = timeline.getState().visibleMessages;
+    return timeline.subscribe(() => {
+      const nextVisible = timeline.getState().visibleMessages;
+      if (nextVisible === prevVisible) return;
+      prevVisible = nextVisible;
+      if (selectedIdsRef.current.size === 0) return;
+      setVisibleSelectionEpoch((n) => n + 1);
+    });
+  }, [timeline]);
 
-  const pendingSend = useMemo(
-    () => messages.some((m: any) => m.pendingSync === 'send'),
-    [messages],
-  );
-  const pendingEdit = useMemo(
-    () => messages.some((m: any) => m.pendingSync === 'edit'),
-    [messages],
-  );
+  const [pendingSend, setPendingSend] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState(false);
+  useEffect(() => {
+    let send = false;
+    let edit = false;
+    const sync = () => {
+      const msgs = timeline.getState().messages;
+      let nextSend = false;
+      let nextEdit = false;
+      for (const message of msgs) {
+        if (message?.pendingSync === 'send') nextSend = true;
+        else if (message?.pendingSync === 'edit') nextEdit = true;
+        if (nextSend && nextEdit) break;
+      }
+      if (nextSend !== send) {
+        send = nextSend;
+        setPendingSend(nextSend);
+      }
+      if (nextEdit !== edit) {
+        edit = nextEdit;
+        setPendingEdit(nextEdit);
+      }
+    };
+    sync();
+    return timeline.subscribe(sync);
+  }, [timeline]);
   const deleting = deletingCount > 0;
 
   const handleToggleViewGroup = useCallback(
@@ -1103,9 +1213,11 @@ export default function ChatWithMyselfPane({
 
   /**
    * Load older day file(s) and prepend.
+   * With a group filter, keep walking older days while the list is at the
+   * top or still shorter than the viewport. The scan pill shows the date.
    * @param {{ silent?: boolean, maxDays?: number }} [opts]
-   *   silent — skip loadingOlder UI (viewport fill)
-   *   maxDays — how many day files to read in one prepend (default 1)
+   *   silent — skip loadingOlder UI (viewport fill, unfiltered)
+   *   maxDays — how many day files to read in one prepend when unfiltered
    * @returns {Promise<boolean>} true if the window advanced
    */
   const handleLoadOlder = useCallback(async (opts: any = {}) => {
@@ -1116,38 +1228,95 @@ export default function ChatWithMyselfPane({
     const startIdx = loadedDayIndexRef.current;
     if (startIdx >= keys.length) return false;
 
+    const groupFilter = viewGroupFilterRef.current;
     loadingOlderRef.current = true;
-    if (!silent) setLoadingOlder(true);
 
-    let nextIdx = startIdx;
-    /** @type {import('@/utils/chatWithMyself/format.js').ChatMessage[]} */
-    let olderHead: any[] = [];
-    try {
-      let daysAttempted = 0;
-      while (nextIdx < keys.length && daysAttempted < maxDays) {
-        const dateStr = keys[nextIdx];
-        nextIdx += 1;
-        daysAttempted += 1;
-        if (!dateStr) continue;
-        const older = await readDayMessages(ctx, dateStr);
-        olderHead = prependUniqueMessages(older || [], olderHead);
+    if (!groupFilter) {
+      if (!silent) setLoadingOlder(true);
+      let nextIdx = startIdx;
+      let olderHead: any[] = [];
+      try {
+        let daysAttempted = 0;
+        while (nextIdx < keys.length && daysAttempted < maxDays) {
+          const dateStr = keys[nextIdx];
+          nextIdx += 1;
+          daysAttempted += 1;
+          if (!dateStr) continue;
+          const older = await readDayMessages(ctx, dateStr);
+          olderHead = prependUniqueMessages(older || [], olderHead);
+        }
+        setLoadedDayIndex(nextIdx);
+        if (olderHead.length) {
+          setMessages((prev: any) => prependUniqueMessages(olderHead, prev));
+        }
+        return nextIdx > startIdx;
+      } catch (e: any) {
+        setLoadedDayIndex(startIdx);
+        if (mountedRef.current) setError(e?.message || '이전 대화 로드 실패');
+        return false;
+      } finally {
+        loadingOlderRef.current = false;
+        if (!silent) setLoadingOlder(false);
       }
-      loadedDayIndexRef.current = nextIdx;
-      setLoadedDayIndex(nextIdx);
-      if (olderHead.length) {
-        setMessages((prev: any) => prependUniqueMessages(olderHead, prev));
+    }
+
+    timeline.setViewContext(groupsRef.current, groupFilter);
+    let nextIdx = startIdx;
+    try {
+      let visibleCount = timeline.getState().visibleMessages.length;
+      while (nextIdx < keys.length && mountedRef.current) {
+        if (viewGroupFilterRef.current !== groupFilter) break;
+        const short = Boolean(messageListRef.current?.isViewportShort?.());
+        const atTop = short || Boolean(messageListRef.current?.isNearTop?.());
+        if (!atTop && nextIdx > startIdx) break;
+
+        const dateStr = keys[nextIdx];
+        if (!dateStr) {
+          nextIdx += 1;
+          setLoadedDayIndex(nextIdx);
+          continue;
+        }
+
+        timeline.setOlderScan({
+          dateStr,
+          label: formatChatDayListLabel(dateStr, timeZone),
+          groupLabel: resolveGroupLabel(groupsRef.current, groupFilter),
+          index: nextIdx,
+          total: keys.length,
+        });
+        await waitForPaint();
+        if (!mountedRef.current || viewGroupFilterRef.current !== groupFilter) break;
+        const stillShort = Boolean(messageListRef.current?.isViewportShort?.());
+        const stillTop =
+          stillShort || Boolean(messageListRef.current?.isNearTop?.());
+        if (!stillTop && nextIdx > startIdx) break;
+
+        const older = await readDayMessages(ctx, dateStr);
+        nextIdx += 1;
+        setLoadedDayIndex(nextIdx);
+        if (older?.length) {
+          setMessages((prev: any) => prependUniqueMessages(older, prev));
+        }
+        const visibleNow = timeline.getState().visibleMessages.length;
+        if (visibleNow > visibleCount) {
+          visibleCount = visibleNow;
+          await waitForPaint();
+          await waitForPaint();
+          const shortAfter = Boolean(messageListRef.current?.isViewportShort?.());
+          const topAfter =
+            shortAfter || Boolean(messageListRef.current?.isNearTop?.());
+          if (!topAfter) break;
+        }
       }
       return nextIdx > startIdx;
     } catch (e: any) {
-      loadedDayIndexRef.current = startIdx;
-      setLoadedDayIndex(startIdx);
-      setError(e?.message || '이전 대화 로드 실패');
-      return false;
+      if (mountedRef.current) setError(e?.message || '이전 대화 로드 실패');
+      return nextIdx > startIdx;
     } finally {
+      timeline.setOlderScan(null);
       loadingOlderRef.current = false;
-      if (!silent) setLoadingOlder(false);
     }
-  }, [storageReady, ctx]);
+  }, [storageReady, ctx, timeZone, timeline, setLoadedDayIndex, setMessages]);
 
   const handleFillOlder = useCallback(
     () => handleLoadOlder({ silent: true, maxDays: FILL_BATCH_DAYS }),
@@ -1919,8 +2088,9 @@ export default function ChatWithMyselfPane({
     ) => {
       if (!message?.id) return;
       const id = String(message.id);
-      const orderedIds = visibleMessages
-        .map((m: any) => m?.id)
+      const orderedIds = timeline
+        .getState()
+        .visibleMessages.map((m: any) => m?.id)
         .filter(Boolean) as string[];
 
       setSelectionMode(true);
@@ -1944,29 +2114,35 @@ export default function ChatWithMyselfPane({
         return next;
       });
     },
-    [visibleMessages],
+    [timeline],
   );
 
   useEffect(() => {
-    if (!selectionMode) return;
+    if (!selectionMode) return undefined;
     if (selectedIds.size === 0) {
       clearMessageSelection();
-      return;
+      return undefined;
     }
-    // Drop ids that left the loaded window / were deleted.
-    setSelectedIds((prev) => {
-      const alive = new Set(
-        visibleMessages.map((m: any) => m?.id).filter(Boolean) as string[],
-      );
-      let changed = false;
-      const next = new Set<string>();
-      for (const id of prev) {
-        if (alive.has(id)) next.add(id);
-        else changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [selectionMode, selectedIds, clearMessageSelection, visibleMessages]);
+    let prevVisible = timeline.getState().visibleMessages;
+    const prune = () => {
+      const visible = timeline.getState().visibleMessages;
+      if (visible === prevVisible) return;
+      prevVisible = visible;
+      setSelectedIds((prev) => {
+        const alive = new Set(
+          visible.map((m: any) => m?.id).filter(Boolean) as string[],
+        );
+        let changed = false;
+        const next = new Set<string>();
+        for (const id of prev) {
+          if (alive.has(id)) next.add(id);
+          else changed = true;
+        }
+        return changed ? next : prev;
+      });
+    };
+    return timeline.subscribe(prune);
+  }, [selectionMode, selectedIds, clearMessageSelection, timeline]);
 
   useEffect(() => {
     if (!selectionMode) return undefined;
@@ -1981,9 +2157,11 @@ export default function ChatWithMyselfPane({
   }, [selectionMode, clearMessageSelection]);
 
   const selectedMessages = useMemo(() => {
-    if (selectedIds.size === 0) return [];
-    return visibleMessages.filter((m: any) => selectedIds.has(m.id));
-  }, [visibleMessages, selectedIds]);
+    if (selectedIds.size === 0) return EMPTY_CHAT_MESSAGES;
+    return timeline
+      .getState()
+      .visibleMessages.filter((m: any) => selectedIds.has(m.id));
+  }, [timeline, selectedIds, visibleSelectionEpoch]);
 
   const selectionAllPinned = useMemo(
     () =>
@@ -3213,6 +3391,7 @@ export default function ChatWithMyselfPane({
   }, []);
 
   return (
+    <ChatTimelineProvider store={timeline}>
     <ChatImageLightboxProvider>
     <ChatUiPrefsProvider openLinksInNewWindow={openLinksInNewWindow}>
     <ChatFileDropOverlay
@@ -3357,7 +3536,6 @@ export default function ChatWithMyselfPane({
           <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden bg-[#b9cfe0] dark:bg-[#0b1220]">
             <ChatMessageList
               ref={messageListRef}
-              messages={visibleMessages}
               ogStorage={ogStorage}
               timeZone={timeZone}
               highlightId={highlightId}
@@ -3367,7 +3545,6 @@ export default function ChatWithMyselfPane({
               onReachBottom={handleLoadNewer}
               loadingOlder={loadingOlder}
               loadingNewer={loadingNewer}
-              hasMore={hasMore}
               hasMoreNewer={hasMoreNewer}
               onJumpToBottom={jumpToLatest}
               jumpToBottomBusy={jumping}
@@ -3710,14 +3887,9 @@ export default function ChatWithMyselfPane({
         composerLightweight={composerLightweight}
         onComposerLightweightChange={toggleComposerLightweight}
       />
-      <ChatEditHistoryModal
-        open={Boolean(historyMessage)}
-        message={
-          historyMessage
-            ? messages.find((m: any) => m.id === historyMessage.id) || historyMessage
-            : null
-        }
-        onOpenChange={(next: any) => {
+      <ChatEditHistoryModalLive
+        historyMessage={historyMessage}
+        onOpenChange={(next: boolean) => {
           if (!next) setHistoryMessage(null);
         }}
         timeZone={timeZone}
@@ -3835,5 +4007,6 @@ export default function ChatWithMyselfPane({
     </ChatFileDropOverlay>
     </ChatUiPrefsProvider>
     </ChatImageLightboxProvider>
+    </ChatTimelineProvider>
   );
 }
