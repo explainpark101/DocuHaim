@@ -24,6 +24,7 @@ import {
   parseTelegramApiCredentials,
   type TelegramApiCredentialInput,
 } from '@/utils/telegram/telegramApiCredentials';
+import { installBrowserBuffer } from '@/utils/telegram/installBrowserBuffer';
 
 let connecting: Promise<void> | null = null;
 let presetPhone = '';
@@ -52,10 +53,29 @@ function describeAuthError(err: unknown): string {
   return '';
 }
 
+const SAFE_ERROR_MAX = 180;
+
+function clipError(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= SAFE_ERROR_MAX) return trimmed;
+  return `${trimmed.slice(0, SAFE_ERROR_MAX - 1)}…`;
+}
+
 function safeError(err: unknown): string {
   const raw = err instanceof Error ? err.message : 'Telegram connection failed';
-  if (!raw || raw.length > 180) return 'Telegram connection failed';
-  return raw;
+  const external = raw.match(/Module "([^"]+)" has been externalized/);
+  const moduleName = external?.[1];
+  if (moduleName) {
+    return clipError(`이 환경에서 Node 모듈 "${moduleName}"을 사용할 수 없습니다.`);
+  }
+  if (!raw.trim()) return 'Telegram connection failed';
+  return clipError(raw);
+}
+
+function assertTelegramBrowserApis(): void {
+  if (typeof WebSocket === 'undefined' || !globalThis.crypto?.subtle) {
+    throw new Error('이 환경에서는 Telegram 연결에 필요한 WebCrypto 또는 WebSocket을 사용할 수 없습니다.');
+  }
 }
 
 function bindResume(): void {
@@ -68,9 +88,8 @@ function bindResume(): void {
 }
 
 async function loadGram() {
-  const { Buffer } = await import('buffer');
-  const g = globalThis as typeof globalThis & { Buffer?: typeof Buffer };
-  if (!g.Buffer) g.Buffer = Buffer;
+  assertTelegramBrowserApis();
+  installBrowserBuffer();
   const [telegram, sessions, extensions, loggerMod, events] = await Promise.all([
     import('telegram'),
     import('telegram/sessions'),

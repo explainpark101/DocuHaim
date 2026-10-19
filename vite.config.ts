@@ -14,6 +14,7 @@ import {
   type BootManifest,
   type BootManifestAsset,
 } from './src/boot/bootManifest';
+import { telegramBrowserShimsPlugin } from './vite/telegramBrowserShims';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const isElectron = process.env.VITE_ELECTRON === 'true';
@@ -485,6 +486,7 @@ export function useRegisterSW(_options) {
 }
 
 const plugins: PluginOption[] = [
+  telegramBrowserShimsPlugin(rootDir),
   fixMermaidKatexNewlinesPlugin(),
   patchPagedJsFindElementPlugin(),
   react({
@@ -731,10 +733,12 @@ function manualChunks(id: string): string | undefined {
   if (normalizedId.includes('/node_modules/lucide-react/')) {
     return 'vendor-lucide';
   }
-  if (
-    normalizedId.includes('/node_modules/telegram/') ||
-    normalizedId.includes('/node_modules/buffer/')
-  ) {
+  // Keep `buffer` out of the telegram chunk. gramjs calls `Buffer.from` while the
+  // chunk evaluates; sharing a chunk runs that call before the polyfill assigns it.
+  if (normalizedId.includes('/node_modules/buffer/')) {
+    return 'vendor-buffer';
+  }
+  if (normalizedId.includes('/node_modules/telegram/')) {
     return 'vendor-telegram';
   }
   if (
@@ -786,7 +790,7 @@ export default defineConfig({
   plugins,
   assetsInclude: ['**/*.wasm', '**/*.gmdl'],
   optimizeDeps: {
-    exclude: ['garu-ko', 'lucivy-wasm'],
+    exclude: ['garu-ko', 'lucivy-wasm', 'telegram'],
     include: ['buffer'],
     // Patch paged.js while prebundling so findElement/createBreakToken guards land in
     // .vite/deps (and css-tree keeps normal CJS→ESM interop).

@@ -1,3 +1,4 @@
+import { installBrowserBuffer } from '@/utils/telegram/installBrowserBuffer';
 import { getTelegramSnapshot, patchTelegram } from '@/utils/telegram/telegramState';
 import { getTelegramClient, recallTelegramEntity } from '@/utils/telegram/telegramRuntime';
 import { mapTelegramMessage, rawTelegramMessage } from '@/utils/telegram/messages';
@@ -21,9 +22,13 @@ function entityFor(dialogId: string): unknown {
 }
 
 function toUint8Array(raw: unknown): Uint8Array {
-  if (raw instanceof Uint8Array) return raw;
-  if (typeof raw === 'string') return new TextEncoder().encode(raw);
-  throw new Error('Could not download Telegram media');
+  let view: Uint8Array;
+  if (raw instanceof Uint8Array) view = raw;
+  else if (typeof raw === 'string') view = new TextEncoder().encode(raw);
+  else throw new Error('Could not download Telegram media');
+  const copy = new Uint8Array(view.byteLength);
+  copy.set(view);
+  return copy;
 }
 
 export async function sendTelegramFile(
@@ -34,7 +39,7 @@ export async function sendTelegramFile(
 ): Promise<void> {
   const client = requireClient();
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const { Buffer } = await import('buffer');
+  const Buffer = installBrowserBuffer();
   const sent = await client.sendFile(entityFor(dialogId) as never, {
     file: Buffer.from(bytes),
     ...(caption.trim() ? { caption: caption.trim() } : {}),

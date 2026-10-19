@@ -156,18 +156,29 @@ export default function TelegramPane({
         <Button
           type="button"
           variant="tertiary"
-          onClick={() => void refreshTelegramDialogs()}
+          onClick={() => {
+            patchTelegram({ error: null });
+            void run('대화 목록 새로고침', ActivityTypes.TELEGRAM_SYNC, () => refreshTelegramDialogs());
+          }}
           disabled={snap.status !== 'ready'}
         >
           <RefreshCw size={14} />
           새로고침
         </Button>
-        <Button type="button" variant="secondary" onClick={() => void logoutTelegram()} disabled={snap.status === 'idle'}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            patchTelegram({ error: null });
+            void run('Telegram 로그아웃', ActivityTypes.TELEGRAM_CONNECT, () => logoutTelegram());
+          }}
+          disabled={snap.status === 'idle'}
+        >
           <LogOut size={14} />
           로그아웃
         </Button>
       </header>
-      {snap.error && snap.status === 'error' ? (
+      {snap.error && (snap.status === 'error' || snap.status === 'ready') ? (
         <p className="shrink-0 bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-200">
           {snap.error}
         </p>
@@ -214,7 +225,9 @@ export default function TelegramPane({
               onDownload={(message) => {
                 void run('기기에 다운로드', ActivityTypes.TELEGRAM_DOWNLOAD, async () => {
                   const media = await downloadTelegramMedia(message.dialogId, message.id);
-                  const blob = new Blob([media.bytes as BlobPart], { type: media.mime });
+                  const copy = new Uint8Array(media.bytes.byteLength);
+                  copy.set(media.bytes);
+                  const blob = new Blob([copy], { type: media.mime });
                   const url = URL.createObjectURL(blob);
                   const anchor = document.createElement('a');
                   anchor.href = url;
