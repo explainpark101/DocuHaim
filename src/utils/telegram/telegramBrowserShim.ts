@@ -38,7 +38,17 @@ inspect.custom = custom;
 exports.inspect = inspect;
 `;
 
+/**
+ * Rollup's commonjs plugin loads a virtual ".../inspect.js?commonjs-exports" module and exports
+ * `__exports` from it. That id still ends with `inspect.js` once the query is
+ * stripped, so a path-only check would replace the helper and break the build.
+ */
+export function isTelegramRollupHelperId(id: string): boolean {
+  return id.startsWith('\0') || id.includes('?commonjs-');
+}
+
 export function isTelegramInspectModule(id: string): boolean {
+  if (isTelegramRollupHelperId(id)) return false;
   const clean = id.split('?')[0]?.replace(/\\/g, '/') ?? '';
   return clean.endsWith('/node_modules/telegram/inspect.js');
 }

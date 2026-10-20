@@ -3,6 +3,7 @@ import { rewriteTelegramBufferGlobals } from '@/utils/telegram/rewriteTelegramBu
 import {
   classifyTelegramNodeStub,
   isTelegramInspectModule,
+  isTelegramRollupHelperId,
   TELEGRAM_EMPTY_BROWSER_STUB,
   TELEGRAM_INSPECT_BROWSER_STUB,
   TELEGRAM_OS_BROWSER_STUB,
@@ -67,6 +68,9 @@ describe('telegram browser stubs', () => {
     expect(isTelegramInspectModule('C:\\proj\\node_modules\\telegram\\inspect.js')).toBe(true);
     expect(isTelegramInspectModule('/proj/node_modules/telegram/inspect.js?v=1')).toBe(true);
     expect(isTelegramInspectModule('/proj/node_modules/telegram/client/TelegramClient.js')).toBe(false);
+    const helper = '\0/proj/node_modules/telegram/inspect.js?commonjs-exports';
+    expect(isTelegramRollupHelperId(helper)).toBe(true);
+    expect(isTelegramInspectModule(helper)).toBe(false);
     expect(TELEGRAM_INSPECT_BROWSER_STUB).not.toMatch(/require\(["']util["']\)/);
     expect(TELEGRAM_INSPECT_BROWSER_STUB).toContain('inspect.custom = custom');
     expect(TELEGRAM_INSPECT_BROWSER_STUB).toContain('Symbol.for("nodejs.util.inspect.custom")');

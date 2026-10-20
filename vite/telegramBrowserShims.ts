@@ -4,6 +4,7 @@ import { rewriteTelegramBufferGlobals } from '../src/utils/telegram/rewriteTeleg
 import {
   classifyTelegramNodeStub,
   isTelegramInspectModule,
+  isTelegramRollupHelperId,
   TELEGRAM_EMPTY_BROWSER_STUB,
   TELEGRAM_INSPECT_BROWSER_STUB,
   TELEGRAM_OS_BROWSER_STUB,
@@ -13,6 +14,7 @@ const EMPTY_STUB_ID = '\0telegram-browser-empty';
 const OS_STUB_ID = '\0telegram-browser-os';
 
 function isTelegramJs(id: string): boolean {
+  if (isTelegramRollupHelperId(id)) return false;
   const clean = id.split('?')[0]?.replace(/\\/g, '/') ?? '';
   return clean.includes('/node_modules/telegram/') && clean.endsWith('.js');
 }
