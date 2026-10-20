@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-19T13:22:31.345Z",
-  "totalBytes": 4347602,
+  "generatedAt": "2026-10-20T11:51:27.961Z",
+  "totalBytes": 4354238,
   "assets": [
     {
       "file": "assets/vendor-react-BPvvDyqO.js",
@@ -49,8 +49,8 @@
       "label": "UI 컴포넌트"
     },
     {
-      "file": "assets/index-DrimxRrn.css",
-      "bytes": 335153,
+      "file": "assets/index-B43cclHb.css",
+      "bytes": 335232,
       "label": "스타일시트"
     },
     {
@@ -59,8 +59,8 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-BE2IsW3s.js",
-      "bytes": 2107911,
+      "file": "assets/index-BWRKY1kH.js",
+      "bytes": 2114468,
       "label": "앱 코어"
     }
   ]
