@@ -103,12 +103,17 @@ describe('createAutoSaveSyncHandlers', () => {
       lastInputAt,
     });
 
-    expect(typeof cleanup).toBe('function');
+    expect(typeof cleanup).toBe('undefined');
     await vi.advanceTimersByTimeAsync(4999);
     expect(deps.saveFile).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(deps.saveFile).toHaveBeenCalled();
-    cleanup?.();
+    const stop = runAutoSaveEffect({
+      currentFile: deps.currentFile,
+      editorContent: 'old',
+      lastInputAt,
+    });
+    expect(stop).toBeUndefined();
     vi.useRealTimers();
   });
 
@@ -170,6 +175,71 @@ describe('createAutoSaveSyncHandlers', () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(deps.saveFile).toHaveBeenCalledTimes(1);
     second?.();
+    vi.useRealTimers();
+  });
+
+  it('does not save on every dual-view echo after the delay has elapsed', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    const deps = makeDeps({
+      getAutoSavePolicy: () => ({ mode: 'afterDelay', amount: 5, unit: 's' }),
+      currentFile: {
+        type: 'local',
+        viewer: 'markdown',
+        id: 'note.md',
+        name: 'note.md',
+        content: 'old',
+      },
+    });
+    const { runAutoSaveEffect } = createAutoSaveSyncHandlers(deps);
+    const file = deps.currentFile;
+    const run = (editorContent: string) =>
+      runAutoSaveEffect({
+        currentFile: file,
+        editorContent,
+        lastInputAt: Date.now(),
+      });
+
+    run('a');
+    await vi.advanceTimersByTimeAsync(1);
+    run('ab');
+    await vi.advanceTimersByTimeAsync(1);
+    expect(deps.saveFile).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(4998);
+    expect(deps.saveFile).toHaveBeenCalledTimes(1);
+    run('abc');
+    await vi.advanceTimersByTimeAsync(50);
+    expect(deps.saveFile).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('keeps the idle deadline when dual view repeats the same markdown', async () => {
+    vi.useFakeTimers();
+    const deps = makeDeps({
+      getAutoSavePolicy: () => ({ mode: 'afterDebounce', amount: 5, unit: 's' }),
+      currentFile: {
+        type: 'local',
+        viewer: 'markdown',
+        id: 'note.md',
+        name: 'note.md',
+        content: 'old',
+      },
+    });
+    const { runAutoSaveEffect } = createAutoSaveSyncHandlers(deps);
+    const file = deps.currentFile;
+    runAutoSaveEffect({
+      currentFile: file,
+      editorContent: 'ab',
+      lastInputAt: 1,
+    });
+    await vi.advanceTimersByTimeAsync(4000);
+    runAutoSaveEffect({
+      currentFile: file,
+      editorContent: 'ab',
+      lastInputAt: 2,
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(deps.saveFile).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
   });
 });

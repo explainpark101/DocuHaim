@@ -26,6 +26,33 @@ export function useAutoSaveDomain(): AutoSaveValue {
   const ownedPrevRef = useRef('');
   const prevEditorContentRef = file.prevEditorContentRef ?? ownedPrevRef;
   const dirtySinceRef = useRef<number | null>(null);
+  const scheduleRef = useRef<{
+    timer: ReturnType<typeof setTimeout> | null;
+    saving: boolean;
+    armedContent: string | null;
+    armedKey: string | null;
+    fileId: string | null;
+  }>({
+    timer: null,
+    saving: false,
+    armedContent: null,
+    armedKey: null,
+    fileId: null,
+  });
+  const latestFileRef = useRef(file.currentFile);
+  latestFileRef.current = file.currentFile;
+  const lastInputAtRef = useRef(lastInputAt);
+  lastInputAtRef.current = lastInputAt;
+
+  useEffect(() => {
+    const slot = scheduleRef.current;
+    return () => {
+      if (slot.timer != null) {
+        clearTimeout(slot.timer);
+        slot.timer = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const onPolicy = () => setAutoSavePolicyRev((n) => n + 1);
@@ -52,6 +79,9 @@ export function useAutoSaveDomain(): AutoSaveValue {
     captureSync,
     currentFile: file.currentFile,
     dirtySinceRef,
+    scheduleRef,
+    latestFileRef,
+    lastInputAtRef,
   });
 
   useEffect(
