@@ -4,9 +4,12 @@
  * toggle raw markdown ↔ WYSIWYG. Patch the manager to emit literal text.
  */
 
+import { protectEscapedTildes } from '@/components/haimEditor/preserveEscapedTilde'
+
 type MarkdownManagerLike = {
   encodeTextForMarkdown?: (text: string, ...rest: unknown[]) => string
   escapeMarkdownSyntax?: (text: string) => string
+  parse?: (markdown: string) => unknown
 }
 
 /**
@@ -24,5 +27,9 @@ export function patchMarkdownManagerPreserveRawText(
   // returning the raw string skips both escapeMarkdownSyntax and encodeHtmlEntities.
   m.encodeTextForMarkdown = (text: string) => text
   m.escapeMarkdownSyntax = (text: string) => text
+  const parse = m.parse?.bind(m)
+  if (typeof parse === 'function') {
+    m.parse = (markdown: string) => parse(protectEscapedTildes(markdown))
+  }
   m.__haimRawTextPatched = true
 }

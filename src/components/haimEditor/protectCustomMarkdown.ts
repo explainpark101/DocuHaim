@@ -18,6 +18,7 @@ import {
 } from '@/utils/wikiImageSyntax';
 import { wikiImageToProtectedHtml } from '@/components/haimEditor/extensions/WikiImage';
 import { renderAppMarkdownInline } from '@/utils/createAppMarkdownIt';
+import { restoreEscapedTildes } from '@/components/haimEditor/preserveEscapedTilde';
 
 const SENTINEL_OPEN = '@@@haim-raw:';
 const SENTINEL_CLOSE = '@@@/haim-raw';
@@ -195,7 +196,7 @@ export function restoreCustomMarkdown(src: string): string {
   // Collapse blank lines left by stripped note-cover host
   out = out.replace(/^\n+/, '');
 
-  return out;
+  return restoreEscapedTildes(out);
 }
 
 /** @deprecated Use wrapRawHtml path; kept for tests referencing sentinel string. */
