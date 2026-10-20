@@ -6,6 +6,7 @@ import { useVault } from '@/App/hooks/useVault';
 import { useWorkspaceTabsCtx } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useRecordingSync } from '@/App/context/RecordingSyncContext';
 import { SESSION_STORAGE_TYPE } from '@/utils/sessionWorkspace';
+import { WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT } from '@/utils/workspaceTabsSettings';
 import type { AutoSaveValue } from '@/App/context/AutoSaveContext';
 
 /**
@@ -21,8 +22,16 @@ export function useAutoSaveDomain(): AutoSaveValue {
   const [lastInputAt, setLastInputAt] = useState<number | null>(null);
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState<number | null>(null);
   const [lastAutoSyncAt, setLastAutoSyncAt] = useState<number | null>(null);
+  const [autoSavePolicyRev, setAutoSavePolicyRev] = useState(0);
   const ownedPrevRef = useRef('');
   const prevEditorContentRef = file.prevEditorContentRef ?? ownedPrevRef;
+  const dirtySinceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const onPolicy = () => setAutoSavePolicyRev((n) => n + 1);
+    window.addEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onPolicy);
+    return () => window.removeEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onPolicy);
+  }, []);
 
   useEffect(() => registerAutoSaveTimestampSetter(setLastAutoSaveAt), []);
   useEffect(() => registerAutoSaveSyncTimestampSetter(setLastAutoSyncAt), []);
@@ -42,6 +51,7 @@ export function useAutoSaveDomain(): AutoSaveValue {
     isRecording,
     captureSync,
     currentFile: file.currentFile,
+    dirtySinceRef,
   });
 
   useEffect(
@@ -53,7 +63,7 @@ export function useAutoSaveDomain(): AutoSaveValue {
       }),
     // recreate when inputs change — handlers close over latest deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lastInputAt, file.currentFile, file.editorContent],
+    [lastInputAt, file.currentFile, file.editorContent, autoSavePolicyRev],
   );
 
   useEffect(

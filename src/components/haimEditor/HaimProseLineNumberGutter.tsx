@@ -13,6 +13,8 @@ import {
   HAIM_PROSE_LINE_NUMBERS_CHANGED_EVENT,
   loadHaimProseLineNumbersEnabled,
 } from '@/utils/haimWysiwygLineNumberSettings';
+import { bindScrollEnd } from '@/components/haimEditor/haimDoubleScrollSyncCore';
+import { yieldToMain } from '@/components/haimEditor/yieldToMain';
 
 type Props = {
   editor: Editor | null;
@@ -60,6 +62,8 @@ export default function HaimProseLineNumberGutter({
   const [enabled, setEnabled] = useState(loadHaimProseLineNumbersEnabled);
   const [lines, setLines] = useState<HaimProseLineStart[]>([]);
   const [columnLeft, setColumnLeft] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewHeight, setViewHeight] = useState(0);
 
   useLayoutEffect(() => {
     const syncPref = () => setEnabled(loadHaimProseLineNumbersEnabled());
@@ -78,21 +82,45 @@ export default function HaimProseLineNumberGutter({
     let raf = 0;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const PROSE_GUTTER_DEBOUNCE_MS = 120;
+    const GUTTER_BUDGET_MS = 50;
+    let generation = 0;
+
+    const applyMeasured = (nextLeft: number, nextLines: HaimProseLineStart[]) => {
+      setColumnLeft((prev) => (Math.abs(prev - nextLeft) < 0.5 ? prev : nextLeft));
+      setLines((prev) => (proseLinesEqual(prev, nextLines) ? prev : nextLines));
+      const scrollEl = scrollRef.current;
+      if (scrollEl) setViewHeight(scrollEl.clientHeight);
+    };
 
     const syncNow = () => {
       cancelAnimationFrame(raf);
+      const ticket = ++generation;
       raf = requestAnimationFrame(() => {
-        const scrollEl = scrollRef.current;
-        if (!scrollEl || editor.isDestroyed) {
-          setLines([]);
-          setColumnLeft(0);
-          return;
-        }
-        const pm = editor.view.dom as HTMLElement;
-        const nextLeft = measureProseColumnLeft(scrollEl, pm);
-        const nextLines = collectHaimProseLineStarts(editor, scrollEl);
-        setColumnLeft((prev) => (Math.abs(prev - nextLeft) < 0.5 ? prev : nextLeft));
-        setLines((prev) => (proseLinesEqual(prev, nextLines) ? prev : nextLines));
+        void (async () => {
+          const scrollEl = scrollRef.current;
+          if (!scrollEl || editor.isDestroyed) {
+            if (ticket === generation) {
+              setLines([]);
+              setColumnLeft(0);
+            }
+            return;
+          }
+          const pm = editor.view.dom as HTMLElement;
+          const nextLeft = measureProseColumnLeft(scrollEl, pm);
+          const measured = collectHaimProseLineStarts(
+            editor,
+            scrollEl,
+            GUTTER_BUDGET_MS,
+          );
+          if (ticket !== generation) return;
+          applyMeasured(nextLeft, measured.lines);
+          if (!measured.hitBudget) return;
+          await yieldToMain();
+          if (ticket !== generation || editor.isDestroyed) return;
+          const rest = collectHaimProseLineStarts(editor, scrollEl);
+          if (ticket !== generation) return;
+          applyMeasured(nextLeft, rest.lines);
+        })();
       });
     };
 
@@ -123,10 +151,24 @@ export default function HaimProseLineNumberGutter({
       sync();
     };
 
+    let scrollRaf = 0;
+    const onScroll = () => {
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0;
+        const el = scrollRef.current;
+        if (!el) return;
+        setScrollTop(el.scrollTop);
+      });
+    };
+
     syncNow();
     editor.on('update', onEditorUpdate);
-
     const scrollEl = scrollRef.current;
+    scrollEl?.addEventListener('scroll', onScroll, { passive: true });
+    const unbindScrollEnd = scrollEl
+      ? bindScrollEnd(scrollEl, syncNow)
+      : () => {};
     const ro = new ResizeObserver(sync);
     if (scrollEl) ro.observe(scrollEl);
     const pm = editor.view.dom;
@@ -138,8 +180,11 @@ export default function HaimProseLineNumberGutter({
     window.addEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, sync);
     return () => {
       cancelAnimationFrame(raf);
+      cancelAnimationFrame(scrollRaf);
       if (debounceTimer != null) clearTimeout(debounceTimer);
       editor.off('update', onEditorUpdate);
+      scrollEl?.removeEventListener('scroll', onScroll);
+      unbindScrollEnd();
       ro.disconnect();
       window.removeEventListener('resize', sync);
       window.removeEventListener(HAIM_PROSE_WIDTH_CHANGED_EVENT, sync);
@@ -148,13 +193,18 @@ export default function HaimProseLineNumberGutter({
 
   if (!active || !enabled || lines.length === 0) return null;
 
+  const overscan = viewHeight || 800;
+  const visibleLines = lines.filter(
+    (line) => line.top >= scrollTop - overscan && line.top <= scrollTop + overscan * 2,
+  );
+
   return (
     <div
       className="haim-prose-line-numbers"
       style={{ left: columnLeft }}
       aria-hidden
     >
-      {lines.map((line) => (
+      {visibleLines.map((line) => (
         <span
           key={`${line.n}-${Math.round(line.top * 10)}`}
           className="haim-prose-line-numbers__n"

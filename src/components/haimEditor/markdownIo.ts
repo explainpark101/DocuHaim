@@ -8,7 +8,7 @@ import {
   restoreCustomMarkdown,
 } from '@/components/haimEditor/protectCustomMarkdown';
 import { migrateMathStringsOutsideCode } from '@/components/haimEditor/migrateMathOutsideCode';
-import { getCachedMarkdown, invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
+import { getCachedVaultMarkdown, invalidateMarkdownCache } from '@/components/haimEditor/markdownCache';
 import { trimCodeBlocksInEditor } from '@/components/haimEditor/trimCodeBlockEdges';
 import { noteCoverPlaceholderProtectedHtml } from '@/components/haimEditor/extensions/NoteCover';
 
@@ -40,9 +40,10 @@ export function editorToVaultMarkdown(
   metaPrefix: string,
 ): string {
   if (!editor) return metaPrefix || '';
-  const raw = getCachedMarkdown(editor);
-  const restored = scrubEmptyParagraphNbsp(restoreCustomMarkdown(raw));
-  return joinMetaPrefix(metaPrefix, restored);
+  return getCachedVaultMarkdown(editor, metaPrefix, (raw) => {
+    const restored = scrubEmptyParagraphNbsp(restoreCustomMarkdown(raw));
+    return joinMetaPrefix(metaPrefix, restored);
+  });
 }
 
 /** Drop stock TipTap empty-paragraph markers (`&nbsp;` / U+00A0-only lines). */

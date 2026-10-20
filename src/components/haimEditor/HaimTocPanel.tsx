@@ -4,7 +4,7 @@ import { AnimatePresence, motion as Motion } from 'motion/react';
 import { ListTree, X } from 'lucide-react';
 import type { ComponentType, RefObject } from 'react';
 import TocResizeHandleJs from '@/components/TocResizeHandle';
-import { extractHaimTocItems, visibleHaimTocItems } from '@/components/haimEditor/extractHaimTocItems';
+import { extractHaimTocItems, visibleHaimTocItems, type HaimTocItem } from '@/components/haimEditor/extractHaimTocItems';
 import { useResizablePanelWidth } from '@/hooks/useResizablePanelWidth';
 import { scrollWithinContainer } from '@/utils/settingsPageScroll';
 import type { EditorView as CmEditorView } from '@codemirror/view';
@@ -30,6 +30,8 @@ const TocResizeHandle = TocResizeHandleJs as unknown as ComponentType<{
 const HAIM_TOC_WIDTH_KEY = 's3haim_haim_editor_toc_width';
 const HAIM_TOC_DEFAULT_WIDTH = 280;
 const TOC_SCROLL_OFFSET_PX = 2;
+
+const EMPTY_TOC_ITEMS: HaimTocItem[] = [];
 
 const SLIDE_EASE: [number, number, number, number] = [0.32, 0.72, 0, 1];
 
@@ -123,7 +125,8 @@ export default function HaimTocPanel({
 }: Props) {
   const rawItems = useEditorState({
     editor,
-    selector: ({ editor: ed }) => extractHaimTocItems(ed),
+    selector: ({ editor: ed }) =>
+      open ? extractHaimTocItems(ed) : EMPTY_TOC_ITEMS,
   });
   const [hideQuoteHeadings, setHideQuoteHeadings] = useState(() =>
     loadHaimTocHideQuoteHeadings(),

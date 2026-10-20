@@ -60,6 +60,15 @@ function unlockResizeCursor() {
   document.body.style.userSelect = '';
 }
 
+function layoutsEqual(a: LlmModalLayout, b: LlmModalLayout): boolean {
+  return (
+    a.leftPx === b.leftPx &&
+    a.topPx === b.topPx &&
+    a.widthPx === b.widthPx &&
+    a.heightPx === b.heightPx
+  );
+}
+
 export function useLlmAssistModalLayout(
   editorRef: { current?: unknown } | null | undefined,
   { enabled = true }: { enabled?: boolean } = {},
@@ -78,17 +87,27 @@ export function useLlmAssistModalLayout(
   const resizeRef = useRef<ResizeState | null>(null);
 
   const refreshBounds = useCallback(() => {
-    boundsRef.current = getLlmAssistEditorBounds(editorRef);
-    setLayout((prev) => clampLlmModalLayout(prev, boundsRef.current));
+    const nextBounds = getLlmAssistEditorBounds(editorRef);
+    boundsRef.current = nextBounds;
+    setLayout((prev) => {
+      const next = clampLlmModalLayout(prev, nextBounds);
+      return layoutsEqual(prev, next) ? prev : next;
+    });
   }, [editorRef]);
 
   useEffect(() => {
     if (!enabled) return undefined;
     refreshBounds();
 
-    const onWindowChange = () => refreshBounds();
+    let raf = 0;
+    const onWindowChange = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        refreshBounds();
+      });
+    };
     window.addEventListener('resize', onWindowChange);
-    window.addEventListener('scroll', onWindowChange, true);
 
     const root =
       (editorRef?.current as { value?: { root?: Element }; root?: Element } | null | undefined)
@@ -112,8 +131,8 @@ export function useLlmAssistModalLayout(
     }
 
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener('resize', onWindowChange);
-      window.removeEventListener('scroll', onWindowChange, true);
       resizeObserver?.disconnect();
     };
   }, [enabled, editorRef, refreshBounds]);

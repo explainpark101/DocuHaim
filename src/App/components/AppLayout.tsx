@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ReactNode } from 'react';
-import { lazy, Suspense, useCallback } from 'react';
+import { lazy, Suspense, useCallback, useEffect } from 'react';
 import { Routes, Route } from 'react-router';
 import { IconX } from '@/components/icons';
 import { ChevronsRight, Cloud, MessagesSquare } from 'lucide-react';
@@ -76,9 +76,62 @@ import { useLlamaCppProviderAutoSync } from '@/hooks/useLlamaCppProviderAutoSync
 import { useMlxVlmLoadToast } from '@/hooks/useMlxVlmLoadToast';
 import { useDesktopMenuBridge } from '@/hooks/useDesktopMenuBridge';
 import AiSettingsDock from '@/components/settings/AiSettingsDock';
-import { useLlmAssistSession } from '@/contexts/LlmAssistSessionContext';
+import { useLlmAssistOpen } from '@/contexts/LlmAssistSessionContext';
 
 const LlmAssistModal = lazy(() => import('@/components/LlmAssistModal'));
+
+function LlmAssistMenuBridge(
+  props: Omit<
+    Parameters<typeof useDesktopMenuBridge>[0],
+    'llmAssistOpen' | 'toggleLlmAssist'
+  >,
+) {
+  const { open, toggleAssist } = useLlmAssistOpen();
+  useDesktopMenuBridge({
+    ...props,
+    llmAssistOpen: open,
+    toggleLlmAssist: toggleAssist,
+  });
+  return null;
+}
+
+function LlmAssistModalHost({
+  llmProviderProfiles,
+  theme,
+}: {
+  llmProviderProfiles: ReturnType<typeof resolveLlmProviderProfiles>;
+  theme: 'light' | 'dark' | string;
+}) {
+  const { open } = useLlmAssistOpen();
+  useEffect(() => {
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId = 0;
+    let timerId = 0;
+    const prefetch = () => {
+      void import('@/components/LlmAssistModal');
+    };
+    if (typeof win.requestIdleCallback === 'function') {
+      idleId = win.requestIdleCallback(prefetch);
+    } else {
+      timerId = window.setTimeout(prefetch, 400);
+    }
+    return () => {
+      if (idleId && typeof win.cancelIdleCallback === 'function') {
+        win.cancelIdleCallback(idleId);
+      }
+      if (timerId) window.clearTimeout(timerId);
+    };
+  }, []);
+  if (!open) return null;
+  return (
+    <Suspense fallback={null}>
+      <LlmAssistModal llmProviderProfiles={llmProviderProfiles} theme={theme} />
+    </Suspense>
+  );
+}
 
 /** Main app chrome — domain hooks + thin contexts (no AppHandlers bag). */
 export function AppLayout({ children }: { children?: ReactNode }) {
@@ -424,17 +477,6 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   } = pwaSnippets;
 
   const { isUnlocked, s3Creds, masterPassword } = auth;
-  const llmAssist = useLlmAssistSession();
-  useDesktopMenuBridge({
-    enabled: isUnlocked,
-    setStorageMode,
-    openLocalFolder,
-    currentFile,
-    editorContent,
-    theme,
-    llmAssistOpen: llmAssist.open,
-    toggleLlmAssist: llmAssist.toggleAssist,
-  });
   const llmProviderProfiles = resolveLlmProviderProfiles(s3Creds);
   useMlxVlmProviderAutoSync(s3Creds, handleSaveS3Creds);
   useLlamaCppProviderAutoSync(s3Creds, handleSaveS3Creds);
@@ -1149,14 +1191,18 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             />
           </Routes>
           </div>
-          {llmAssist.open ? (
-            <Suspense fallback={null}>
-              <LlmAssistModal
-                llmProviderProfiles={llmProviderProfiles}
-                theme={theme}
-              />
-            </Suspense>
-          ) : null}
+          <LlmAssistMenuBridge
+            enabled={isUnlocked}
+            setStorageMode={setStorageMode}
+            openLocalFolder={openLocalFolder}
+            currentFile={currentFile}
+            editorContent={editorContent}
+            theme={theme}
+          />
+          <LlmAssistModalHost
+            llmProviderProfiles={llmProviderProfiles}
+            theme={theme}
+          />
           <AiSettingsDock
             profiles={llmProviderProfiles}
             onSaveProfiles={(next) =>

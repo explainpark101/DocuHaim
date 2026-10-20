@@ -1,0 +1,19 @@
+{
+  "name": "haim-line-diff",
+  "type": "module",
+  "description": "Line diff for Haim dual-pane follower patches",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "haim_line_diff_bg.wasm",
+    "haim_line_diff.js",
+    "haim_line_diff_bg.js",
+    "haim_line_diff.d.ts"
+  ],
+  "main": "haim_line_diff.js",
+  "types": "haim_line_diff.d.ts",
+  "sideEffects": [
+    "./haim_line_diff.js",
+    "./snippets/*"
+  ]
+}

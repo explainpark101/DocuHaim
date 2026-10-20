@@ -1,0 +1,20 @@
+[package]
+name = "haim-line-diff"
+version = "0.1.0"
+edition = "2021"
+description = "Line diff for Haim dual-pane follower patches"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+similar = "2"
+wasm-bindgen = "0.2"
+
+[profile.release]
+lto = true
+opt-level = "z"
+codegen-units = 1

@@ -57,7 +57,7 @@ import LlmAssistPresentationMenu from '@/components/llm/LlmAssistPresentationMen
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { normalizeImageAttachment, readImageFilesAsAttachments } from '@/utils/llmAssistImages';
 import { copyText } from '@/utils/copyText';
-import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
+import { useLlmAssistOpenOptional, useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useTreeOps } from '@/App/hooks/useTreeOps';
 import {
@@ -147,10 +147,11 @@ export default function LlmAssistModal({
   theme = 'light',
 }: LlmAssistModalProps) {
   const session = useLlmAssistSessionOptional();
+  const assistOpen = useLlmAssistOpenOptional();
   const tabsCtx = useWorkspaceTabsCtxOptional();
   const { requestCreateFileWithContent } = useTreeOps();
-  const open = session ? session.open : Boolean(openProp);
-  const onOpenChange = session ? session.setOpen : onOpenChangeProp;
+  const open = assistOpen ? assistOpen.open : Boolean(openProp);
+  const onOpenChange = assistOpen ? assistOpen.setOpen : onOpenChangeProp;
   const presentation = session?.presentation ?? 'floating';
   const setPresentation = session?.setPresentation;
   const openAsSplit = session?.openAsSplit;
@@ -324,15 +325,9 @@ export default function LlmAssistModal({
       ...(editorBridge?.getEditorApi ? { getEditorApi: editorBridge.getEditorApi } : {}),
       ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
     });
-    // When demoted (no view), fill text from getMarkdown + durable range.
-    let resolvedText = text;
-    if (!resolvedText && editorBridge?.getMarkdown && from !== to) {
-      const md = editorBridge.getMarkdown() ?? '';
-      resolvedText = md.slice(from, to);
-    }
-    setSelectedText((prev) => (prev === resolvedText ? prev : resolvedText));
+    setSelectedText((prev) => (prev === text ? prev : text));
     setSelectionRange((prev) => (prev.from === from && prev.to === to ? prev : { from, to }));
-    return resolvedText;
+    return text;
   }, [editorRef, editorBridge]);
 
   const loadTemplates = useCallback(async () => {
@@ -342,7 +337,7 @@ export default function LlmAssistModal({
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
     if (presentation !== 'floating') {
       setHidden(false);
       saveLlmModalHidden(false);
@@ -350,11 +345,34 @@ export default function LlmAssistModal({
     if (presentation === 'split' || presentation === 'docked') {
       closePopout();
     }
-    refreshBounds();
-    syncProfileId();
-    refreshSelection();
-    loadTemplates();
     setError('');
+    syncProfileId();
+    let raf = 0;
+    let idleId = 0;
+    let timerId = 0;
+    raf = requestAnimationFrame(() => {
+      refreshSelection();
+    });
+    const deferHeavy = () => {
+      refreshBounds();
+      void loadTemplates();
+    };
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof win.requestIdleCallback === 'function') {
+      idleId = win.requestIdleCallback(deferHeavy);
+    } else {
+      timerId = window.setTimeout(deferHeavy, 1);
+    }
+    return () => {
+      cancelAnimationFrame(raf);
+      if (idleId && typeof win.cancelIdleCallback === 'function') {
+        win.cancelIdleCallback(idleId);
+      }
+      if (timerId) window.clearTimeout(timerId);
+    };
   }, [open, presentation, refreshBounds, refreshSelection, loadTemplates, syncProfileId, closePopout]);
 
   useEffect(() => {
@@ -412,21 +430,6 @@ export default function LlmAssistModal({
     editorBridge?.documentKey,
     editorBridge?.subscribeSelection,
   ]);
-
-  useEffect(() => {
-    if (
-      !open
-      || popoutActive
-      || (!editorRef && !editorBridge?.getEditorApi && !editorBridge?.getSelection)
-    ) {
-      return undefined;
-    }
-    if (presentation === 'floating' && hidden) return undefined;
-    const interval = window.setInterval(() => {
-      refreshSelection();
-    }, 800);
-    return () => window.clearInterval(interval);
-  }, [open, hidden, popoutActive, editorRef, editorBridge, presentation, refreshSelection]);
 
   useEffect(() => {
     syncToPopout();

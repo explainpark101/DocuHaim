@@ -114,13 +114,10 @@ import {
   loadAltVimNavigationEnabled,
 } from '@/utils/altVimNavigationSettings';
 import {
-  loadWorkspaceTabsAutoSaveMode,
   loadWorkspaceTabsEnabled,
-  saveWorkspaceTabsAutoSaveMode,
-  WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT,
-  WORKSPACE_TABS_AUTO_SAVE_OPTIONS,
   requestFocusWorkspacePaneSoftCapSetting,
 } from '@/utils/workspaceTabsSettings';
+import AutoSaveSettings from '@/components/settings/AutoSaveSettings';
 import WorkspacePaneSoftCapSettings from '@/components/settings/WorkspacePaneSoftCapSettings';
 import WorkspacePaneFreezeSettings from '@/components/settings/WorkspacePaneFreezeSettings';
 import HaimTocQuoteControls from '@/components/settings/HaimTocQuoteControls';
@@ -263,9 +260,6 @@ export default function SettingsPage({
   );
   const [workspaceTabsEnabled, setWorkspaceTabsEnabled] = useState(() =>
     loadWorkspaceTabsEnabled(),
-  );
-  const [workspaceTabsAutoSaveMode, setWorkspaceTabsAutoSaveMode] = useState(() =>
-    loadWorkspaceTabsAutoSaveMode(),
   );
   const [composerHelperTextVisible, setComposerHelperTextVisible] = useState(() =>
     getComposerHelperTextVisible(),
@@ -554,17 +548,6 @@ export default function SettingsPage({
     window.addEventListener(BASE64_IMAGE_FOLD_CHANGED_EVENT, sync);
     return () =>
       window.removeEventListener(BASE64_IMAGE_FOLD_CHANGED_EVENT, sync);
-  }, []);
-
-  useEffect(() => {
-    const onAutoSaveMode = (event) => {
-      const mode = event?.detail?.mode ?? loadWorkspaceTabsAutoSaveMode();
-      setWorkspaceTabsAutoSaveMode(mode);
-    };
-    window.addEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
-    return () => {
-      window.removeEventListener(WORKSPACE_TABS_AUTO_SAVE_CHANGED_EVENT, onAutoSaveMode);
-    };
   }, []);
 
   useEffect(() => {
@@ -2129,6 +2112,7 @@ export default function SettingsPage({
               open={groupOpen['ui-navigation'] !== false}
               onOpenChange={(open) => setGroupOpenById('ui-navigation', open)}
             >
+        <AutoSaveSettings />
         {/* Navigation */}
         <div
           id="settings-navigation"
@@ -2203,51 +2187,6 @@ export default function SettingsPage({
               contentKey="settings-workspace-tabs-autosave"
             >
               <div className="pl-12 space-y-2">
-                <p className="text-xs font-medium text-gray-700 dark:text-odp-fg">
-                  탭 자동 저장 설정
-                </p>
-                <RadioGroup.Root
-                  className="flex flex-col gap-2"
-                  value={workspaceTabsAutoSaveMode}
-                  onValueChange={(next) => {
-                    if (
-                      next !== 'off' &&
-                      next !== 'onFocusChange' &&
-                      next !== 'onWindowChange'
-                    ) {
-                      return;
-                    }
-                    saveWorkspaceTabsAutoSaveMode(next);
-                    setWorkspaceTabsAutoSaveMode(next);
-                  }}
-                  aria-label="탭 자동 저장"
-                >
-                  {WORKSPACE_TABS_AUTO_SAVE_OPTIONS.map((opt) => {
-                    const selected = workspaceTabsAutoSaveMode === opt.value;
-                    return (
-                      <RadioGroup.Item
-                        key={opt.value}
-                        value={opt.value}
-                        className={[
-                          'rounded-lg border-2 px-3 py-2.5 text-left outline-none transition-all duration-200 origin-left w-90',
-                          'focus-visible:ring-2 focus-visible:ring-blue-500/40',
-                          selected
-                            ? 'scale-100 border-blue-600 bg-blue-50 shadow-sm dark:border-blue-400 dark:bg-blue-950/30'
-                            : 'scale-[0.92] border-gray-400 hover:border-gray-500 dark:border-odp-borderStrong dark:hover:border-gray-400',
-                        ].join(' ')}
-                      >
-                        <div className={selected ? '' : 'opacity-50'}>
-                          <div className="font-medium text-sm text-gray-800 dark:text-odp-fgStrong">
-                            {opt.label}
-                          </div>
-                          <div className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-odp-muted">
-                            {opt.description}
-                          </div>
-                        </div>
-                      </RadioGroup.Item>
-                    );
-                  })}
-                </RadioGroup.Root>
                 <WorkspacePaneSoftCapSettings />
                 <WorkspacePaneFreezeSettings />
               </div>

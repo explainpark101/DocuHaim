@@ -13,6 +13,21 @@ import {
   shouldApplyExternalVaultMarkdown,
   shouldEmitVaultMarkdown,
 } from '@/components/haimEditor/haimExternalValueSync';
+import {
+  applyTextChanges,
+  lineDiffChanges,
+  mapSelectionThroughChanges,
+  prefixSuffixChange,
+  shouldUseWasmLineDiff,
+} from '@/components/haimEditor/haimTextDiff';
+import {
+  changedBlockIndexes,
+  shouldAbortScheduledApply,
+  shouldRewriteCmFromParentValue,
+  shouldUseFullTipTapReplace,
+  splitTopLevelMarkdownBlocks,
+} from '@/components/haimEditor/haimTipTapBlockPatch';
+import { runDualIdleFlush } from '@/components/haimEditor/haimDualIdleFlush';
 
 describe('HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS', () => {
   it('defaults to 150ms while local input is ongoing', () => {
@@ -211,5 +226,127 @@ describe('shouldEmitVaultMarkdown', () => {
         userEdited: false,
       }),
     ).toBe(false);
+  });
+});
+
+describe('source follower apply', () => {
+  it('aborts when the CM document moved after the sync was scheduled', () => {
+    expect(
+      shouldAbortScheduledApply({
+        scheduledDocLength: 10,
+        currentDocLength: 11,
+        scheduledInputAt: 1,
+        currentInputAt: 1,
+      }),
+    ).toBe(true);
+    expect(
+      shouldAbortScheduledApply({
+        scheduledDocLength: 10,
+        currentDocLength: 10,
+        scheduledInputAt: 1,
+        currentInputAt: 2,
+      }),
+    ).toBe(true);
+    expect(
+      shouldAbortScheduledApply({
+        scheduledDocLength: 10,
+        currentDocLength: 10,
+        scheduledInputAt: 5,
+        currentInputAt: 5,
+      }),
+    ).toBe(false);
+  });
+
+  it('full setContent only on blur or an explicit full replace', () => {
+    expect(
+      shouldUseFullTipTapReplace({ sourceFocused: true, forceFull: false }),
+    ).toBe(false);
+    expect(
+      shouldUseFullTipTapReplace({ sourceFocused: true, forceFull: true }),
+    ).toBe(true);
+    expect(
+      shouldUseFullTipTapReplace({ sourceFocused: false, forceFull: false }),
+    ).toBe(true);
+  });
+
+  it('patches only changed top-level blocks while the count stays the same', () => {
+    const before = splitTopLevelMarkdownBlocks('one\n\ntwo\n\nthree');
+    const after = splitTopLevelMarkdownBlocks('one\n\nTWO\n\nthree');
+    expect(changedBlockIndexes(before, after)).toEqual([1]);
+    expect(
+      changedBlockIndexes(before, splitTopLevelMarkdownBlocks('one\n\ntwo')),
+    ).toBeNull();
+  });
+
+  it('does not rewrite CM from parent value while source is the author', () => {
+    expect(
+      shouldRewriteCmFromParentValue({
+        fileChanged: false,
+        authorIsSource: true,
+        sourceFocused: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRewriteCmFromParentValue({
+        fileChanged: true,
+        authorIsSource: true,
+        sourceFocused: true,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe('CM prefix/suffix selection', () => {
+  it('keeps the same document string', () => {
+    const before = 'hello world';
+    const after = 'hello there world';
+    const span = prefixSuffixChange(before, after);
+    expect(span).not.toBeNull();
+    expect(applyTextChanges(before, span ? [span] : [])).toBe(after);
+  });
+
+  it('keeps cursor N on a covering replace and does not expand a range to the whole doc', () => {
+    const before = 'x'.repeat(80);
+    const after = 'y'.repeat(80);
+    const changes = [{ from: 0, to: before.length, insert: after }];
+    expect(mapSelectionThroughChanges(40, 40, changes, after.length)).toEqual({
+      anchor: 40,
+      head: 40,
+    });
+    const range = mapSelectionThroughChanges(10, 30, changes, after.length);
+    expect(range).toEqual({ anchor: 10, head: 30 });
+    expect(range).not.toEqual({ anchor: 0, head: after.length });
+  });
+
+  it('uses WASM only for a large dirty span and JS hunks round-trip', () => {
+    const small = 'a\nb\n';
+    expect(shouldUseWasmLineDiff(small, 'a\nB\n', 2)).toBe(false);
+    const before = 'a'.repeat(40_000);
+    const after = `${'b'.repeat(20_000)}${'a'.repeat(20_000)}`;
+    expect(before.length).toBeGreaterThanOrEqual(32 * 1024);
+    expect(after.length).toBeGreaterThanOrEqual(32 * 1024);
+    const span = prefixSuffixChange(before, after);
+    expect(span).not.toBeNull();
+    expect(
+      shouldUseWasmLineDiff(before, after, span ? Math.max(span.to - span.from, span.insert.length) : 0),
+    ).toBe(true);
+    const hunks = lineDiffChanges('alpha\nbeta\ngamma', 'alpha\nBETA\ngamma');
+    expect(applyTextChanges('alpha\nbeta\ngamma', hunks)).toBe('alpha\nBETA\ngamma');
+  });
+});
+
+describe('dual idle flush', () => {
+  it('reads vault markdown once', () => {
+    let reads = 0;
+    const markdown = runDualIdleFlush({
+      readVaultMarkdown: () => {
+        reads += 1;
+        return 'once';
+      },
+      applyFollower: () => {},
+      updateSourceLines: () => {},
+    });
+    expect(reads).toBe(1);
+    expect(markdown).toBe('once');
   });
 });

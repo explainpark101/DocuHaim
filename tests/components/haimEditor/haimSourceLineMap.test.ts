@@ -160,3 +160,21 @@ describe('remapTopLevelBlocksToSourceLines', () => {
     ).toBe(1);
   });
 });
+
+describe('dual idle flush serialize', () => {
+  it('asks for vault markdown once per flush', async () => {
+    const { runDualIdleFlush } = await import(
+      '@/components/haimEditor/haimDualIdleFlush'
+    );
+    let reads = 0;
+    runDualIdleFlush({
+      readVaultMarkdown: () => {
+        reads += 1;
+        return 'body';
+      },
+      applyFollower: () => {},
+      updateSourceLines: () => {},
+    });
+    expect(reads).toBe(1);
+  });
+});

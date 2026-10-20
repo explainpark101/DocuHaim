@@ -16,22 +16,27 @@
  * - Programmatic follower writes are echo-tagged so they do not reverse-drive.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { EditorView } from '@codemirror/view';
 import {
   HAIM_SCROLL_ECHO_TTL_MS,
   HAIM_SCROLL_IMAGE_RETRY_MS,
+  alignStackToMeasuredTop,
   bindScrollEnd,
   classifyHaimPaneScroll,
   detectHaimScrollDir,
+  estimateBlockMarkerStack,
   haimAnchorY,
   haimLerpSpan,
   haimMarkersContentBottom,
   haimMaxScrollTop,
+  haimProportionalScrollTop,
+  markersForScrollFrame,
   planHaimFollowerScrollTop,
   shouldDeferScrollLayoutResync,
   shouldWriteFollowerScroll,
   type HaimDataLineMarker,
+  type HaimEstimatedBlock,
   type HaimScrollDir,
   type HaimScrollEcho,
   type HaimScrollSyncSource,
@@ -53,6 +58,14 @@ type Options = {
    * Set by dual content sync around doc replaces.
    */
   suppressScrollSyncUntilRef?: React.MutableRefObject<number>;
+  /** Source-line index. Scroll frames never query the DOM for this. */
+  readSourceLineEntries?: () => ReadonlyArray<{
+    line0: number;
+    blockNewlines: number;
+    pos: number;
+  }>;
+  /** nodeDOM for a top-level block. Used on scrollend only. */
+  blockElementAt?: (pos: number) => HTMLElement | null;
 };
 
 type SyncSource = HaimScrollSyncSource;
@@ -90,47 +103,6 @@ function cmContentBottom(view: EditorView): number {
   const last = view.state.doc.line(view.state.doc.lines);
   const block = view.lineBlockAt(last.from);
   return block.top + block.height;
-}
-
-/**
- * Outermost [data-line] blocks under the WYSIWYG root
- * (skip nested table cells / figures that also carry data-line).
- */
-function queryOutermostDataLineBlocks(root: Element): HTMLElement[] {
-  const all: HTMLElement[] = [];
-  for (const node of root.querySelectorAll('[data-line]')) {
-    if (node instanceof HTMLElement) all.push(node);
-  }
-  const outermost = all.filter((el) => {
-    let parent = el.parentElement;
-    while (parent && parent !== root) {
-      if (parent.hasAttribute('data-line')) return false;
-      parent = parent.parentElement;
-    }
-    return true;
-  });
-  return outermost.length > 0 ? outermost : all;
-}
-
-function collectDataLineMarkers(
-  root: Element,
-  scroller: HTMLElement,
-): DataLineMarker[] {
-  const markers: DataLineMarker[] = [];
-  const scrollerRect = scroller.getBoundingClientRect();
-  const scrollTop = scroller.scrollTop;
-  for (const el of queryOutermostDataLineBlocks(root)) {
-    const line0 = Number(el.getAttribute('data-line'));
-    if (!Number.isFinite(line0)) continue;
-    markers.push({
-      line0,
-      top: offsetTopWithinScroller(el, scroller, scrollerRect, scrollTop),
-      height: Math.max(1, el.offsetHeight),
-      el,
-    });
-  }
-  markers.sort((a, b) => a.line0 - b.line0 || a.top - b.top);
-  return markers;
 }
 
 function cmLineTop(view: EditorView, line0: number): number {
@@ -245,7 +217,14 @@ export function useHaimDoubleScrollSync({
   cmViewRef,
   cmRevision = 0,
   suppressScrollSyncUntilRef,
+  readSourceLineEntries,
+  blockElementAt,
 }: Options): void {
+  const readEntriesRef = useRef(readSourceLineEntries);
+  const blockElementAtRef = useRef(blockElementAt);
+  readEntriesRef.current = readSourceLineEntries;
+  blockElementAtRef.current = blockElementAt;
+
   useEffect(() => {
     if (!enabled) return undefined;
 
@@ -264,6 +243,8 @@ export function useHaimDoubleScrollSync({
     let resizeObserver: ResizeObserver | null = null;
     /** Cached [data-line] geometry — invalidated on layout/image/content changes. */
     let markerCache: DataLineMarker[] | null = null;
+    let markerGeneration = 0;
+    let cacheGeneration = -1;
     let imageResyncCoalesceRaf = 0;
     /** Layout dirty while typing/suppress — flush on scrollend / idle. */
     let layoutDirty = false;
@@ -276,19 +257,78 @@ export function useHaimDoubleScrollSync({
     let wysiwygEchoTimer: ReturnType<typeof setTimeout> | null = null;
 
     const invalidateMarkerCache = () => {
+      markerGeneration += 1;
       markerCache = null;
+      cacheGeneration = -1;
     };
 
-    const getMarkers = (wysiwyg: HTMLElement): DataLineMarker[] => {
-      if (
-        markerCache != null &&
-        (markerCache.length === 0 ||
-          markerCache.every((m) => m.el.isConnected))
-      ) {
-        return markerCache;
+    const measureMarkers = (wysiwyg: HTMLElement): DataLineMarker[] => {
+      const entries = readEntriesRef.current?.() ?? [];
+      if (entries.length === 0) return [];
+      const parsed = Number.parseFloat(getComputedStyle(wysiwyg).lineHeight);
+      const lineHeight = Number.isFinite(parsed) && parsed > 0 ? parsed : 24;
+      const blocks: HaimEstimatedBlock[] = entries.map((entry) => ({
+        line0: entry.line0,
+        blockNewlines: entry.blockNewlines,
+      }));
+      const estimated = estimateBlockMarkerStack({ blocks, lineHeight });
+      const scrollTop = wysiwyg.scrollTop;
+      const overscan = wysiwyg.clientHeight;
+      const viewTop = scrollTop - overscan;
+      const viewBottom = scrollTop + overscan * 2;
+      const measuredHeights = new Map<number, number>();
+      let anchorIndex = -1;
+      let anchorTop = 0;
+      for (let i = 0; i < estimated.length; i += 1) {
+        const row = estimated[i];
+        const entry = entries[i];
+        if (!row || !entry) continue;
+        if (row.top + row.height < viewTop || row.top > viewBottom) continue;
+        const el = blockElementAtRef.current?.(entry.pos) ?? null;
+        if (!el) continue;
+        const top = offsetTopWithinScroller(el, wysiwyg);
+        measuredHeights.set(i, Math.max(1, el.offsetHeight));
+        if (anchorIndex < 0) {
+          anchorIndex = i;
+          anchorTop = top;
+        }
       }
-      markerCache = collectDataLineMarkers(wysiwyg, wysiwyg);
-      return markerCache;
+      const stacked = estimateBlockMarkerStack({
+        blocks,
+        lineHeight,
+        measuredHeightByIndex: measuredHeights,
+      });
+      if (anchorIndex >= 0) {
+        alignStackToMeasuredTop({
+          markers: stacked,
+          index: anchorIndex,
+          measuredTop: anchorTop,
+        });
+      }
+      return stacked.map((row) => ({
+        line0: row.line0,
+        top: row.top,
+        height: row.height,
+        el: wysiwyg,
+      }));
+    };
+
+    const rememberMarkers = (wysiwyg: HTMLElement): DataLineMarker[] => {
+      const measured = measureMarkers(wysiwyg);
+      markerCache = measured;
+      cacheGeneration = markerGeneration;
+      return measured;
+    };
+
+    /** Scroll rAF: cached content-Y only. Dirty cache → null (ratio scroll). */
+    const getMarkers = (_wysiwyg: HTMLElement): DataLineMarker[] | null => {
+      const cached = markersForScrollFrame(
+        markerCache,
+        cacheGeneration,
+        markerGeneration,
+      );
+      if (!cached) return null;
+      return cached as DataLineMarker[];
     };
 
     const clearRetry = () => {
@@ -374,6 +414,19 @@ export function useHaimDoubleScrollSync({
 
       const scrollDom = view.scrollDOM;
       const markers = getMarkers(wysiwyg);
+      if (!markers) {
+        writeFollower(
+          'wysiwyg',
+          wysiwyg,
+          haimProportionalScrollTop(
+            scrollDom.scrollTop,
+            haimMaxScrollTop(scrollDom),
+            haimMaxScrollTop(wysiwyg),
+          ),
+        );
+        lastWysiwygTop = wysiwyg.scrollTop;
+        return;
+      }
       const wysiwygBottom = haimMarkersContentBottom(markers);
       const anchorY = haimAnchorY(scrollDom, dir);
       const top = planHaimFollowerScrollTop({
@@ -408,6 +461,19 @@ export function useHaimDoubleScrollSync({
 
       const scrollDom = view.scrollDOM;
       const markers = getMarkers(wysiwyg);
+      if (!markers) {
+        writeFollower(
+          'cm',
+          scrollDom,
+          haimProportionalScrollTop(
+            wysiwyg.scrollTop,
+            haimMaxScrollTop(wysiwyg),
+            haimMaxScrollTop(scrollDom),
+          ),
+        );
+        lastCmTop = scrollDom.scrollTop;
+        return;
+      }
       const wysiwygBottom = haimMarkersContentBottom(markers);
       const anchorY = haimAnchorY(wysiwyg, dir);
       const top = planHaimFollowerScrollTop({
@@ -469,7 +535,8 @@ export function useHaimDoubleScrollSync({
         for (const ms of HAIM_SCROLL_IMAGE_RETRY_MS) {
           imageRetryTimers.push(
             setTimeout(() => {
-              invalidateMarkerCache();
+              const wysiwyg = wysiwygScrollRef.current;
+              if (wysiwyg) rememberMarkers(wysiwyg);
               resyncAfterLayout();
             }, ms),
           );
@@ -597,6 +664,10 @@ export function useHaimDoubleScrollSync({
         unbindWysiwygEnd();
         unbindCmEnd();
       };
+
+      requestAnimationFrame(() => {
+        if (!disposed) rememberMarkers(wysiwyg);
+      });
 
       if (typeof ResizeObserver !== 'undefined') {
         resizeObserver = new ResizeObserver(() => {

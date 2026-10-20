@@ -22,32 +22,48 @@
  *    Cause: decorations remapped (N+1 serialize) even while typing; also
  *    ran in WYSIWYG-only mode.
  *    Fix: gate with isSourceLineEnabled (dual + scroll sync only);
- *    shouldUpdate=false while WYSIWYG focused (map decorations only) +
- *    120ms debounce force-remap; incremental remap via PM child identity;
- *    line-index binary search on full rebuild.
+ *    shouldUpdate=false while WYSIWYG focused (map decorations only);
+ *    dual idle flush calls updateDecorations once (no 120ms second timer);
+ *    incremental remap via PM child identity.
  *
  * 5. Dual content sync TipTap ↔ CM full replace
- *    Cause: necessary for markdown fidelity; mitigated by 150ms debounce,
- *    author focus, lastPushed skip, scroll suppress around replaces.
- *    Setting: HaimDualSyncDebounceSettings (0 = immediate).
+ *    Cause: full CM replace + TipTap setContent on the keystroke task.
+ *    Fix: one idle flush; prefix/suffix ChangeSet; source focus patches
+ *    changed blocks only; full setContent after blur/idle; pointer selection
+ *    defers CM writes; covering replaces do not use selection.map.
+ *    Large dirty spans use a worker line diff (JS fallback in tests).
  *
  * 6. Parent `value` echo rewriting live doc mid-keystroke
  *    Fix: lastEmitted echo skip + isLocalInputDebounceActive window.
+ *    Source focus skips replaceCmDocPreservingView. Vault markdown scrub
+ *    is cached by doc identity + meta prefix and skipped unless a panel
+ *    that needs it is open.
  *
  * 7. Line-number gutters / drag-handle / find-replace
  *    Fix: lazy Suspense; gutters skip caret-only updates; prose gutter
- *    debounces remasure while WYSIWYG focused.
+ *    measures on scrollend/idle, yields past 50ms, renders viewport rows.
+ *
+ * 8. Scroll frames
+ *    Fix: rAF uses marker cache only. Dirty generation uses ratio scroll.
+ *    scrollend measures viewport blocks and estimates the rest.
+ *
+ * 9. LLM Assist toggle
+ *    Fix: `open` is a separate context so the editor tree does not render.
+ *    No selection interval, no capture scroll setState, no full-note slice.
  *
  * --- Architecture checklist ---
  *
  * - NoteEditorSurface must lazy-import only the selected engine.
  * - Dual mode mounts HaimSourcePane only when viewMode === dual.
  * - useHaimDualSync: keyboard-focus author drives TipTap↔CM (default 150ms debounce, 0 = immediate); origin tags + lastPushed skip feedback.
+ * - Source focus never full-setContent; block patch, abort if the CM snapshot moved.
+ * - CM replace is prefix/suffix (or worker hunks). Pointer drags defer the write.
  * - HaimEditor skips parent `value` echo (lastEmitted) + local-input debounce window.
  * - Follower rewrite skipped while focused; focus handoff flushes previous author once.
- * - getCachedMarkdown skips serialize when PM doc identity unchanged.
- * - Scroll sync: warm marker cache on scroll; layout work deferred to scrollend when typing.
- * - HaimSourceLine only when dual + scroll sync enabled; typing maps decorations, idle remaps.
+ * - getCachedMarkdown / getCachedVaultMarkdown skip work when PM doc identity unchanged.
+ * - Scroll sync: rAF uses cache only; dirty cache is ratio scroll; scrollend measures.
+ * - HaimSourceLine only when dual + scroll sync enabled; idle flush remaps once.
+ * - LLM Assist open does not render the editor tree.
  * - vite manualChunks: vendor-tiptap separate from vendor-md-editor.
  * - Frozen panes use MarkdownPreviewSurface with engineHint="legacy" (no TipTap)
  *   when demoted, even if the note editor type is Haim.
@@ -78,6 +94,15 @@ export const HAIM_PERF_CHECKLIST = [
   'source-line-dual-only',
   'source-line-defer-while-focused',
   'source-line-incremental-remap',
+  'source-line-single-flush',
+  'dual-source-no-full-setcontent',
+  'dual-cm-prefix-suffix',
+  'dual-selection-not-from-top',
+  'scroll-cache-only-on-frame',
+  'scroll-estimate-offscreen',
+  'dual-pane-contain',
+  'vault-markdown-cached',
+  'llm-assist-open-split',
   'prose-gutter-debounce-while-focused',
   'vendor-tiptap-chunk',
   'freeze-demote-preview-surface',
@@ -91,6 +116,9 @@ export const HAIM_PERF_CHECKLIST = [
 export const HAIM_DUAL_PERF_MANUAL_REVIEW = [
   'type-wysiwyg-no-jump',
   'type-source-no-jump',
+  'type-source-no-stall',
+  'source-selection-not-from-top',
+  'llm-assist-toggle-no-editor-stall',
   'scroll-either-pane-smooth',
   'scroll-sync-off-skips-source-line',
   'wysiwyg-only-idle-dual-hooks',

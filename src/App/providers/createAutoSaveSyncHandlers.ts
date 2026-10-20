@@ -3,6 +3,12 @@ import { getActiveFileTab } from '@/utils/workspaceTabs';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import { isVaultPathStorageType } from '@/App/context/VaultContext';
 import { schedulePersistLastViewedNoteContent } from '@/utils/lastViewedNoteDraft';
+import {
+  autoSaveDelayToMs,
+  isTimedAutoSaveMode,
+  loadAutoSavePolicy,
+  type AutoSavePolicy,
+} from '@/utils/workspaceTabsSettings';
 
 /** §7–8 Auto save / sync + editor change bridge (factory). */
 export function createAutoSaveSyncHandlers(deps: Record<string, any>) {
@@ -19,7 +25,13 @@ export function createAutoSaveSyncHandlers(deps: Record<string, any>) {
     getBackendForType,
     isRecording,
     captureSync,
+    dirtySinceRef,
+    getAutoSavePolicy,
   } = deps;
+
+  const dirtySince: { current: number | null } = dirtySinceRef ?? { current: null };
+  const readPolicy: () => AutoSavePolicy =
+    typeof getAutoSavePolicy === 'function' ? getAutoSavePolicy : loadAutoSavePolicy;
 
   function handleEditorChange(value: string) {
     editorContentRef.current = value;
@@ -83,20 +95,45 @@ export function createAutoSaveSyncHandlers(deps: Record<string, any>) {
     if (isEncMdPath(currentFile.id) || isEncMdPath(currentFile.name)) return undefined;
     if (!lastInputAt) return undefined;
 
-    const now = Date.now();
+    const policy = readPolicy();
+    if (!isTimedAutoSaveMode(policy.mode)) {
+      dirtySince.current = null;
+      return undefined;
+    }
+    if (currentFile.content === editorContent) {
+      dirtySince.current = null;
+      return undefined;
+    }
+
+    const delayMs = autoSaveDelayToMs(policy);
+    let wait = delayMs;
+    if (policy.mode === 'afterDelay') {
+      if (dirtySince.current == null) dirtySince.current = Date.now();
+      wait = Math.max(0, delayMs - (Date.now() - dirtySince.current));
+    } else {
+      dirtySince.current = null;
+    }
+
+    let fired = false;
     const timeout = setTimeout(async () => {
+      fired = true;
+      dirtySince.current = null;
+      const latest = readPolicy();
+      if (!isTimedAutoSaveMode(latest.mode)) return;
       if (currentFile.content === editorContent) return;
       if (!currentFile || !isVaultPathStorageType(currentFile.type)) return;
       if (isEncMdPath(currentFile.id) || isEncMdPath(currentFile.name)) return;
       try {
         await saveFile(null, { lastInputAt });
-        setLastAutoSaveAt(now);
+        setLastAutoSaveAt(Date.now());
       } catch (_e) {
         // saveFile handles alerts
       }
-    }, 5000);
+    }, wait);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      if (!fired) clearTimeout(timeout);
+    };
   }
 
   function runAutoSyncEffect({

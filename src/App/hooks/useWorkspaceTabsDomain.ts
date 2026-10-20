@@ -214,11 +214,10 @@ export function useWorkspaceTabsDomain({
 
   const onLeavingDirty = useCallback(
     (file: any, content: any) => {
-      if (!workspaceTabsEnabledRef.current) return;
       if (workspaceTabsAutoSaveModeRef.current !== 'onFocusChange') return;
       queueBackgroundTabSave(file, content);
     },
-    [workspaceTabsEnabledRef, queueBackgroundTabSave],
+    [queueBackgroundTabSave],
   );
 
   const activateWorkspaceTab = useCallback(

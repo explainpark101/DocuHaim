@@ -77,6 +77,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     id: 'ui-navigation',
     title: 'UI 및 네비게이션',
     sections: [
+      { id: 'settings-auto-save', label: '자동 저장' },
       { id: 'settings-navigation', label: '네비게이션' },
       { id: 'settings-workspace-pane-soft-cap', label: '분할 페인 개수 상한' },
       { id: 'settings-workspace-pane-freeze', label: '비활성 스플릿 페인 프리징' },

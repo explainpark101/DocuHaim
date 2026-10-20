@@ -16,6 +16,7 @@ import {
   saveWorkspaceTabsAutoSaveMode,
   saveWorkspaceTabsEnabled,
   WORKSPACE_TABS_AUTO_SAVE_OPTIONS,
+  type WorkspaceTabsAutoSaveMode,
 } from '@/utils/workspaceTabsSettings';
 import {
   loadWorkspacePaneFreezeMode,
@@ -928,12 +929,16 @@ export function getSettingsToggleStates(): Record<SettingsToggleId, boolean> {
 export type WorkspaceTabsAutoSaveCommandId =
   | 'settings-tabs-autosave-off'
   | 'settings-tabs-autosave-onFocusChange'
-  | 'settings-tabs-autosave-onWindowChange';
+  | 'settings-tabs-autosave-onWindowChange'
+  | 'settings-tabs-autosave-afterDelay'
+  | 'settings-tabs-autosave-afterDebounce';
 
 const AUTO_SAVE_COMMAND_BY_MODE = {
   off: 'settings-tabs-autosave-off',
   onFocusChange: 'settings-tabs-autosave-onFocusChange',
   onWindowChange: 'settings-tabs-autosave-onWindowChange',
+  afterDelay: 'settings-tabs-autosave-afterDelay',
+  afterDebounce: 'settings-tabs-autosave-afterDebounce',
 } as const;
 
 export function isWorkspaceTabsAutoSaveCommandId(
@@ -942,30 +947,33 @@ export function isWorkspaceTabsAutoSaveCommandId(
   return (
     id === 'settings-tabs-autosave-off' ||
     id === 'settings-tabs-autosave-onFocusChange' ||
-    id === 'settings-tabs-autosave-onWindowChange'
+    id === 'settings-tabs-autosave-onWindowChange' ||
+    id === 'settings-tabs-autosave-afterDelay' ||
+    id === 'settings-tabs-autosave-afterDebounce'
   );
 }
 
 export function workspaceTabsAutoSaveModeFromCommandId(
   id: WorkspaceTabsAutoSaveCommandId,
-): 'off' | 'onFocusChange' | 'onWindowChange' {
+): WorkspaceTabsAutoSaveMode {
   if (id === 'settings-tabs-autosave-off') return 'off';
   if (id === 'settings-tabs-autosave-onWindowChange') return 'onWindowChange';
+  if (id === 'settings-tabs-autosave-afterDelay') return 'afterDelay';
+  if (id === 'settings-tabs-autosave-afterDebounce') return 'afterDebounce';
   return 'onFocusChange';
 }
 
-/** Situational: only modes other than the current one (when tabs are enabled). */
+/** Situational: modes other than the current global auto-save style. */
 export function getWorkspaceTabsAutoSaveCommands(): Array<{
   id: WorkspaceTabsAutoSaveCommandId;
   title: string;
   description: string;
   keywords: string[];
 }> {
-  if (!loadWorkspaceTabsEnabled()) return [];
   const current = loadWorkspaceTabsAutoSaveMode();
   return WORKSPACE_TABS_AUTO_SAVE_OPTIONS.filter((opt) => opt.value !== current).map((opt) => ({
     id: AUTO_SAVE_COMMAND_BY_MODE[opt.value],
-    title: `탭 자동 저장: ${opt.label}`,
+    title: `자동 저장: ${opt.label}`,
     description: opt.description,
     keywords: [
       'tab',
@@ -978,6 +986,13 @@ export function getWorkspaceTabsAutoSaveCommands(): Array<{
       'vscode',
       'onFocusChange',
       'onWindowChange',
+      'afterDelay',
+      'debounce',
+      '포커스',
+      '창',
+      '지연',
+      'ms',
+      '초',
       'off',
       opt.value,
       opt.label,

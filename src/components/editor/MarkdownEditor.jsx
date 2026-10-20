@@ -2545,7 +2545,6 @@ export default function MarkdownEditor({
     />,
     <LlmAssistToolbar
       key="llm-assist"
-      active={Boolean(llmAssist?.open)}
       onToggle={() => {
         llmAssist?.toggleAssist?.();
       }}
@@ -2603,7 +2602,6 @@ export default function MarkdownEditor({
     onUploadImage,
     handleToolbarImageUpload,
     openHeadingRemap,
-    llmAssist?.open,
     llmAssist?.toggleAssist,
   ]);
 

@@ -12,6 +12,8 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 type CacheEntry = {
   doc: PMNode;
   markdown: string;
+  vaultPrefix?: string;
+  vaultMarkdown?: string;
 };
 
 const cacheByEditor = new WeakMap<Editor, CacheEntry>();
@@ -28,6 +30,33 @@ export function getCachedMarkdown(editor: Editor | null | undefined): string {
     typeof withMd.getMarkdown === 'function' ? withMd.getMarkdown() : '';
   cacheByEditor.set(editor, { doc, markdown });
   return markdown;
+}
+
+/** Scrubbed vault markdown, cached by doc identity + meta prefix. */
+export function getCachedVaultMarkdown(
+  editor: Editor | null | undefined,
+  metaPrefix: string,
+  build: (rawMarkdown: string) => string,
+): string {
+  if (!editor) return build('');
+  const doc = editor.state.doc;
+  const prev = cacheByEditor.get(editor);
+  if (
+    prev &&
+    prev.doc === doc &&
+    prev.vaultPrefix === metaPrefix &&
+    prev.vaultMarkdown != null
+  ) {
+    return prev.vaultMarkdown;
+  }
+  const raw = getCachedMarkdown(editor);
+  const vaultMarkdown = build(raw);
+  const entry = cacheByEditor.get(editor);
+  if (entry && entry.doc === doc) {
+    entry.vaultPrefix = metaPrefix;
+    entry.vaultMarkdown = vaultMarkdown;
+  }
+  return vaultMarkdown;
 }
 
 export function invalidateMarkdownCache(editor: Editor | null | undefined): void {

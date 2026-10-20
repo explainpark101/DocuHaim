@@ -632,6 +632,15 @@ html[data-haim-prose-width-clamp='1']
   height: 100%;
 }
 
+.haim-dual-pane {
+  contain: layout paint;
+}
+
+.haim-editor .tiptap > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3lh;
+}
+
 /* Match md-editor-rt / Haim WYSIWYG: allow scrolling last lines to ~viewport center */
 .haim-source-pane .cm-scroller .cm-content {
   padding-bottom: 50vh;

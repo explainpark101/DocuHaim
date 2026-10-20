@@ -9,14 +9,29 @@ import type { Editor } from '@tiptap/react';
 import type { EditorView } from '@codemirror/view';
 import { editorToVaultMarkdown } from '@/components/haimEditor/markdownIo';
 import {
-  HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
+  isCmPointerSelecting,
   replaceCmDocPreservingView,
+  replaceCmDocPreservingViewAsync,
+} from '@/components/haimEditor/haimCmDocReplace';
+import {
+  HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
   replaceTipTapPreservingView,
   canDriveVaultSync,
   resolveHaimDualSyncAuthor,
   shouldRewriteFollowerPane,
   type HaimDualSyncAuthor,
 } from '@/components/haimEditor/haimDualSyncApply';
+import { runDualIdleFlush } from '@/components/haimEditor/haimDualIdleFlush';
+import {
+  shouldAbortScheduledApply,
+  shouldUseFullTipTapReplace,
+  tryPatchTipTapTopLevelBlocks,
+} from '@/components/haimEditor/haimTipTapBlockPatch';
+import { shouldUseWasmLineDiff, dirtySpanBytes, prefixSuffixChange } from '@/components/haimEditor/haimTextDiff';
+import { yieldToMain } from '@/components/haimEditor/yieldToMain';
+
+/** Full TipTap parse above this size yields once before setContent. */
+const HAIM_FULL_TIPTAP_YIELD_CHARS = 32_000;
 
 export type SyncOrigin = 'tiptap' | 'cm' | 'external' | null;
 
@@ -129,6 +144,15 @@ export function useHaimDualSync({
   const composingRef = useRef(false);
   /** Last markdown pushed to vault / follower — skip no-op feedback sync. */
   const lastPushedMdRef = useRef<string | null>(null);
+  /** Last markdown applied to TipTap, so a source patch can diff blocks. */
+  const tipTapMdRef = useRef<string | null>(null);
+  /** CM doc length + localInputAt captured when a source sync was scheduled. */
+  const cmScheduleRef = useRef({ docLength: -1, inputAt: 0 });
+  const cmPatchRafRef = useRef<number | null>(null);
+  const cmIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Pointer is down in the source pane (set before focusin). */
+  const sourcePointerDownRef = useRef(false);
+  const deferredCmReplaceRef = useRef(false);
   /** Last pane that held keyboard focus (fallback when neither is focused). */
   const lastAuthorRef = useRef<HaimDualSyncAuthor>('tiptap');
   const debounceMsRef = useRef(debounceMs);
@@ -165,51 +189,97 @@ export function useHaimDualSync({
     });
   }, [readFocusFlags]);
 
+  const refreshSourceLines = useCallback(
+    (ed: Editor) => {
+      try {
+        ed.commands.updateDecorations('haimSourceLine');
+      } catch {
+        // Extension is off when scroll sync is disabled.
+      }
+    },
+    [],
+  );
+
+  const writeCmFollower = useCallback(
+    (cm: EditorView, md: string) => {
+      if (sourcePointerDownRef.current || isCmPointerSelecting(cm)) {
+        deferredCmReplaceRef.current = true;
+        return;
+      }
+      const before = cm.state.doc.toString();
+      const span = prefixSuffixChange(before, md);
+      const useWasm =
+        span != null &&
+        shouldUseWasmLineDiff(before, md, dirtySpanBytes(span));
+      bumpScrollSuppress(suppressScrollSyncUntilRef);
+      if (!useWasm) {
+        const wrote = replaceCmDocPreservingView(cm, md);
+        if (!wrote && isCmPointerSelecting(cm)) deferredCmReplaceRef.current = true;
+        return;
+      }
+      const generation = cmScheduleRef.current.inputAt;
+      void replaceCmDocPreservingViewAsync(cm, md).then((wrote) => {
+        if (cmScheduleRef.current.inputAt !== generation) return;
+        if (!wrote && isCmPointerSelecting(cm)) deferredCmReplaceRef.current = true;
+      });
+    },
+    [suppressScrollSyncUntilRef],
+  );
+
   const applyTipTapToOther = useCallback(
     (options?: { forceFollower?: boolean }) => {
       if (!editor) return;
       if (isBlockDragActive()) return;
-      const md = editorToVaultMarkdown(editor, metaPrefixRef.current);
-      // No-op feedback (e.g. trimCodeBlocks after CM→TipTap) — do not rewrite CM.
-      if (md === lastPushedMdRef.current) return;
-      runWithOrigin(originRef, 'tiptap', () => {
-        lastPushedMdRef.current = md;
-        onVaultChangeRef.current(md);
-        const cm = cmViewRef.current;
-        if (!cm) return;
-        const force = Boolean(options?.forceFollower);
-        // Never rewrite CM while the user is typing in source (unless focus handoff).
-        if (!force && !shouldRewriteFollowerPane(cm.hasFocus)) return;
-        bumpScrollSuppress(suppressScrollSyncUntilRef);
-        replaceCmDocPreservingView(cm, md);
+      runDualIdleFlush({
+        readVaultMarkdown: () => editorToVaultMarkdown(editor, metaPrefixRef.current),
+        applyFollower: (md) => {
+          if (md === lastPushedMdRef.current) return;
+          runWithOrigin(originRef, 'tiptap', () => {
+            lastPushedMdRef.current = md;
+            tipTapMdRef.current = md;
+            onVaultChangeRef.current(md);
+            const cm = cmViewRef.current;
+            if (!cm) return;
+            const force = Boolean(options?.forceFollower);
+            if (!force && !shouldRewriteFollowerPane(cm.hasFocus)) return;
+            writeCmFollower(cm, md);
+          });
+        },
+        updateSourceLines: () => {
+          refreshSourceLines(editor);
+        },
       });
     },
     [
       editor,
       cmViewRef,
       metaPrefixRef,
-      suppressScrollSyncUntilRef,
       blockDragActiveRef,
+      writeCmFollower,
+      refreshSourceLines,
     ],
   );
 
-  const applyCmToOther = useCallback(
-    (options?: { forceFollower?: boolean }) => {
+  const applyCmFullReplace = useCallback(
+    async (md: string) => {
       if (!editor) return;
-      if (isBlockDragActive()) return;
-      const cm = cmViewRef.current;
-      if (!cm) return;
-      const md = cm.state.doc.toString();
-      if (md === lastPushedMdRef.current) {
-        const tipTapMd = editorToVaultMarkdown(editor, metaPrefixRef.current);
-        if (tipTapMd === md) return;
+      if (md.length >= HAIM_FULL_TIPTAP_YIELD_CHARS) {
+        await yieldToMain();
       }
-      runWithOrigin(originRef, 'cm', () => {
-        lastPushedMdRef.current = md;
-        onVaultChangeRef.current(md);
-        const force = Boolean(options?.forceFollower);
-        // Never rewrite TipTap while the user is typing in WYSIWYG (unless handoff).
-        if (!force && !shouldRewriteFollowerPane(editor.isFocused)) return;
+      const cm = cmViewRef.current;
+      if (!cm || cm.state.doc.toString() !== md) return;
+      if (
+        shouldAbortScheduledApply({
+          scheduledDocLength: cmScheduleRef.current.docLength,
+          currentDocLength: cm.state.doc.length,
+          scheduledInputAt: cmScheduleRef.current.inputAt,
+          currentInputAt: localInputAtRef?.current ?? 0,
+        })
+      ) {
+        return;
+      }
+      originRef.current = 'cm';
+      try {
         bumpScrollSuppress(suppressScrollSyncUntilRef);
         replaceTipTapPreservingView(
           editor,
@@ -217,6 +287,129 @@ export function useHaimDualSync({
           metaPrefixRef,
           wysiwygScrollRef?.current,
         );
+        tipTapMdRef.current = md;
+        refreshSourceLines(editor);
+      } finally {
+        void Promise.resolve().then(() => {
+          if (originRef.current === 'cm') originRef.current = null;
+        });
+      }
+    },
+    [
+      editor,
+      cmViewRef,
+      metaPrefixRef,
+      suppressScrollSyncUntilRef,
+      wysiwygScrollRef,
+      localInputAtRef,
+      refreshSourceLines,
+    ],
+  );
+
+  const scheduleIdleFullReplace = useCallback(() => {
+    if (cmIdleTimerRef.current) clearTimeout(cmIdleTimerRef.current);
+    const scheduledLength = cmScheduleRef.current.docLength;
+    const scheduledInputAt = cmScheduleRef.current.inputAt;
+    const wait = Math.max(debounceMsRef.current, 400);
+    cmIdleTimerRef.current = setTimeout(() => {
+      cmIdleTimerRef.current = null;
+      const cm = cmViewRef.current;
+      if (!editor || !cm) return;
+      if (
+        shouldAbortScheduledApply({
+          scheduledDocLength: scheduledLength,
+          currentDocLength: cm.state.doc.length,
+          scheduledInputAt,
+          currentInputAt: localInputAtRef?.current ?? 0,
+        })
+      ) {
+        return;
+      }
+      const md = cm.state.doc.toString();
+      void applyCmFullReplace(md);
+    }, wait);
+  }, [editor, cmViewRef, localInputAtRef, applyCmFullReplace]);
+
+  const applyCmToOther = useCallback(
+    (options?: { forceFollower?: boolean }) => {
+      if (!editor) return;
+      if (isBlockDragActive()) return;
+      const cm = cmViewRef.current;
+      if (!cm) return;
+      if (cm.composing) return;
+      const sourceFocused = Boolean(cm.hasFocus);
+      const forceFull = Boolean(options?.forceFollower);
+      if (
+        !forceFull &&
+        shouldAbortScheduledApply({
+          scheduledDocLength: cmScheduleRef.current.docLength,
+          currentDocLength: cm.state.doc.length,
+          scheduledInputAt: cmScheduleRef.current.inputAt,
+          currentInputAt: localInputAtRef?.current ?? 0,
+        })
+      ) {
+        return;
+      }
+      runDualIdleFlush({
+        readVaultMarkdown: () => cm.state.doc.toString(),
+        applyFollower: (md) => {
+          const tipTapMd = tipTapMdRef.current;
+          if (md === lastPushedMdRef.current && tipTapMd === md) return;
+          lastPushedMdRef.current = md;
+          onVaultChangeRef.current(md);
+          if (!forceFull && editor.isFocused) return;
+          if (
+            !shouldUseFullTipTapReplace({
+              sourceFocused,
+              forceFull,
+            })
+          ) {
+            let before = tipTapMdRef.current;
+            if (before == null) {
+              before = editorToVaultMarkdown(editor, metaPrefixRef.current);
+              tipTapMdRef.current = before;
+            }
+            originRef.current = 'cm';
+            let patched = false;
+            try {
+              patched =
+                before === md ||
+                tryPatchTipTapTopLevelBlocks(editor, before, md);
+            } finally {
+              void Promise.resolve().then(() => {
+                if (originRef.current === 'cm') originRef.current = null;
+              });
+            }
+            if (patched) {
+              tipTapMdRef.current = md;
+              return;
+            }
+            scheduleIdleFullReplace();
+            return;
+          }
+          if (md.length >= HAIM_FULL_TIPTAP_YIELD_CHARS) {
+            void applyCmFullReplace(md);
+            return;
+          }
+          originRef.current = 'cm';
+          try {
+            bumpScrollSuppress(suppressScrollSyncUntilRef);
+            replaceTipTapPreservingView(
+              editor,
+              md,
+              metaPrefixRef,
+              wysiwygScrollRef?.current,
+            );
+            tipTapMdRef.current = md;
+          } finally {
+            void Promise.resolve().then(() => {
+              if (originRef.current === 'cm') originRef.current = null;
+            });
+          }
+        },
+        updateSourceLines: () => {
+          refreshSourceLines(editor);
+        },
       });
     },
     [
@@ -226,6 +419,10 @@ export function useHaimDualSync({
       suppressScrollSyncUntilRef,
       wysiwygScrollRef,
       blockDragActiveRef,
+      localInputAtRef,
+      scheduleIdleFullReplace,
+      applyCmFullReplace,
+      refreshSourceLines,
     ],
   );
 
@@ -325,8 +522,16 @@ export function useHaimDualSync({
       clearTipTapTimer();
       clearCmTimer();
       if (prev === 'tiptap' && next === 'cm') {
-        applyTipTapToOther({ forceFollower: true });
+        if (sourcePointerDownRef.current) {
+          deferredCmReplaceRef.current = true;
+        } else {
+          applyTipTapToOther({ forceFollower: true });
+        }
       } else if (prev === 'cm' && next === 'tiptap') {
+        if (cmIdleTimerRef.current) {
+          clearTimeout(cmIdleTimerRef.current);
+          cmIdleTimerRef.current = null;
+        }
         applyCmToOther({ forceFollower: true });
       }
       lastAuthorRef.current = next;
@@ -334,8 +539,28 @@ export function useHaimDualSync({
 
     // Capture so CM (lazy dual mount) is covered without polling.
     document.addEventListener('focusin', onFocusIn, true);
+
+    const onPointerDown = (event: PointerEvent) => {
+      const cm = cmViewRef.current;
+      const target = event.target;
+      if (!cm || !(target instanceof Node) || !cm.dom.contains(target)) return;
+      sourcePointerDownRef.current = true;
+    };
+    const onPointerUp = () => {
+      if (!sourcePointerDownRef.current && !deferredCmReplaceRef.current) return;
+      sourcePointerDownRef.current = false;
+      if (!deferredCmReplaceRef.current) return;
+      deferredCmReplaceRef.current = false;
+      applyTipTapToOther({ forceFollower: true });
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointerup', onPointerUp, true);
+    document.addEventListener('pointercancel', onPointerUp, true);
     return () => {
       document.removeEventListener('focusin', onFocusIn, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('pointerup', onPointerUp, true);
+      document.removeEventListener('pointercancel', onPointerUp, true);
     };
   }, [editor, enabled, cmViewRef, applyTipTapToOther, applyCmToOther]);
 
@@ -413,22 +638,52 @@ export function useHaimDualSync({
     if (author !== 'cm') return;
     lastAuthorRef.current = 'cm';
     bumpLocalInput(localInputAtRef);
-    // Latest author wins — drop pending TipTap → CM so we do not stomp CM.
     clearTipTapTimer();
     clearCmTimer();
-    const delay = debounceMsRef.current;
-    if (delay <= 0) {
-      if (!cmDrivesVault()) return;
-      applyCmToOther();
-      return;
+    if (cmIdleTimerRef.current) {
+      clearTimeout(cmIdleTimerRef.current);
+      cmIdleTimerRef.current = null;
     }
-    cmTimer.current = setTimeout(() => {
-      cmTimer.current = null;
+    const cm = cmViewRef.current;
+    cmScheduleRef.current = {
+      docLength: cm?.state.doc.length ?? 0,
+      inputAt: localInputAtRef?.current ?? 0,
+    };
+    const delay = debounceMsRef.current;
+    const run = () => {
       if (!editor) return;
       if (originRef.current === 'tiptap' || originRef.current === 'external') return;
       if (isBlockDragActive()) return;
       if (!cmDrivesVault()) return;
+      const view = cmViewRef.current;
+      if (view?.composing) return;
+      if (
+        shouldAbortScheduledApply({
+          scheduledDocLength: cmScheduleRef.current.docLength,
+          currentDocLength: view?.state.doc.length ?? -1,
+          scheduledInputAt: cmScheduleRef.current.inputAt,
+          currentInputAt: localInputAtRef?.current ?? 0,
+        })
+      ) {
+        return;
+      }
       applyCmToOther();
+    };
+    if (delay <= 0 && cm?.hasFocus) {
+      if (cmPatchRafRef.current != null) return;
+      cmPatchRafRef.current = requestAnimationFrame(() => {
+        cmPatchRafRef.current = null;
+        run();
+      });
+      return;
+    }
+    if (delay <= 0) {
+      run();
+      return;
+    }
+    cmTimer.current = setTimeout(() => {
+      cmTimer.current = null;
+      run();
     }, delay);
   };
 

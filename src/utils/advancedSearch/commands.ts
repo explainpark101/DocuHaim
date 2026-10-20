@@ -90,6 +90,7 @@ export type AppCommandId =
   | 'settings-webauthn'
   | 'settings-editor'
   | 'settings-export-pdf-preview'
+  | 'settings-auto-save'
   | 'settings-navigation'
   | 'settings-display'
   | 'settings-chat'
@@ -413,6 +414,23 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '에디터 따라가기',
       'md-editor-rt',
       'haim',
+    ],
+  },
+  {
+    id: 'settings-auto-save',
+    title: '설정 · 자동 저장',
+    description: '포커스·탭 변경, 일정 시간, 입력 멈춤, 자동 저장 끄기',
+    path: '/settings#settings-auto-save',
+    keywords: [
+      '자동 저장',
+      'auto save',
+      'autosave',
+      '저장',
+      '포커스',
+      '탭',
+      'debounce',
+      '지연',
+      'vscode',
     ],
   },
   {

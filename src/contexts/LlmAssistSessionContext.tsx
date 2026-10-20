@@ -1,5 +1,6 @@
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -69,7 +70,6 @@ export type LlmAssistSplitWorkspaceHandlers = {
 };
 
 type LlmAssistSessionContextValue = {
-  open: boolean;
   setOpen: (open: boolean) => void;
   openAssist: () => void;
   closeAssist: () => void;
@@ -88,8 +88,18 @@ type LlmAssistSessionContextValue = {
 
 const LlmAssistSessionContext = createContext<LlmAssistSessionContextValue | null>(null);
 
+type LlmAssistOpenContextValue = {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  openAssist: () => void;
+  closeAssist: () => void;
+  toggleAssist: () => void;
+};
+
+const LlmAssistOpenContext = createContext<LlmAssistOpenContextValue | null>(null);
+
 export function LlmAssistSessionProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
   const [presentation, setPresentationState] = useState<LlmAssistPresentation>(() =>
     loadLlmAssistPresentation(),
   );
@@ -111,16 +121,24 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
     saveLlmAssistPresentation(next);
   }, []);
 
+  const setOpen = useCallback((next: boolean) => {
+    startTransition(() => {
+      setOpenState(next);
+    });
+  }, []);
+
   const openAssist = useCallback(() => {
     setOpen(true);
-  }, []);
+  }, [setOpen]);
 
   const closeAssist = useCallback(() => {
     setOpen(false);
-  }, []);
+  }, [setOpen]);
 
   const toggleAssist = useCallback(() => {
-    setOpen((prev) => !prev);
+    startTransition(() => {
+      setOpenState((prev) => !prev);
+    });
   }, []);
 
   const dockToRight = useCallback(() => {
@@ -211,7 +229,6 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
 
   const value = useMemo<LlmAssistSessionContextValue>(
     () => ({
-      open,
       setOpen,
       openAssist,
       closeAssist,
@@ -227,7 +244,7 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
       canInsertIntoDocument: Boolean(editorBridge),
     }),
     [
-      open,
+      setOpen,
       openAssist,
       closeAssist,
       toggleAssist,
@@ -242,9 +259,22 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
     ],
   );
 
+  const openValue = useMemo<LlmAssistOpenContextValue>(
+    () => ({
+      open,
+      setOpen,
+      openAssist,
+      closeAssist,
+      toggleAssist,
+    }),
+    [open, setOpen, openAssist, closeAssist, toggleAssist],
+  );
+
   return (
     <LlmAssistSessionContext.Provider value={value}>
-      {children}
+      <LlmAssistOpenContext.Provider value={openValue}>
+        {children}
+      </LlmAssistOpenContext.Provider>
     </LlmAssistSessionContext.Provider>
   );
 }
@@ -260,4 +290,16 @@ export function useLlmAssistSession(): LlmAssistSessionContextValue {
 /** Optional access when provider may be missing (e.g. popout page). */
 export function useLlmAssistSessionOptional(): LlmAssistSessionContextValue | null {
   return useContext(LlmAssistSessionContext);
+}
+
+export function useLlmAssistOpen(): LlmAssistOpenContextValue {
+  const ctx = useContext(LlmAssistOpenContext);
+  if (!ctx) {
+    throw new Error('useLlmAssistOpen must be used within LlmAssistSessionProvider');
+  }
+  return ctx;
+}
+
+export function useLlmAssistOpenOptional(): LlmAssistOpenContextValue | null {
+  return useContext(LlmAssistOpenContext);
 }

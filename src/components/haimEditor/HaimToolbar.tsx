@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useLlmAssistOpenOptional } from '@/contexts/LlmAssistSessionContext';
 import { useEditorState, type Editor } from '@tiptap/react';
 import {
   Bold,
@@ -150,6 +151,20 @@ function ToolBtn({
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
+  );
+}
+
+function HaimLlmAssistToolButton({ onToggle }: { onToggle: () => void }) {
+  const assist = useLlmAssistOpenOptional();
+  const open = Boolean(assist?.open);
+  return (
+    <ToolBtn
+      label={open ? 'AI 도우미 닫기' : 'AI 도우미'}
+      active={open}
+      onClick={onToggle}
+    >
+      <Sparkles size={14} />
+    </ToolBtn>
   );
 }
 
@@ -576,13 +591,7 @@ export default function HaimToolbar({
           </ToolBtn>
         ) : null}
         {a?.onLlmAssist ? (
-          <ToolBtn
-            label={a.llmAssistActive ? 'AI 도우미 닫기' : 'AI 도우미'}
-            active={Boolean(a.llmAssistActive)}
-            onClick={() => a.onLlmAssist?.()}
-          >
-            <Sparkles size={14} />
-          </ToolBtn>
+          <HaimLlmAssistToolButton onToggle={() => a.onLlmAssist?.()} />
         ) : null}
         {a?.onExportPdf ? (
           <ToolBtn label="PDF로 내보내기" onClick={() => a.onExportPdf?.()}>

@@ -221,6 +221,70 @@ export function shouldDeferScrollLayoutResync(options: {
   return false;
 }
 
+/** Ratio scroll when the marker cache is missing or dirty. No layout reads. */
+export function haimProportionalScrollTop(
+  driverScrollTop: number,
+  driverMaxScroll: number,
+  followerMaxScroll: number,
+): number {
+  if (driverMaxScroll <= 0 || followerMaxScroll <= 0) return 0;
+  const ratio = Math.max(0, Math.min(1, driverScrollTop / driverMaxScroll));
+  return Math.max(0, Math.min(followerMaxScroll, ratio * followerMaxScroll));
+}
+
+/**
+ * Scroll frames may use a cache from the same generation only.
+ * A miss returns null so the caller does not measure.
+ */
+export function markersForScrollFrame<T>(
+  cache: readonly T[] | null,
+  cacheGeneration: number,
+  currentGeneration: number,
+): readonly T[] | null {
+  if (!cache) return null;
+  if (cacheGeneration !== currentGeneration) return null;
+  return cache;
+}
+
+export type HaimEstimatedBlock = {
+  line0: number;
+  blockNewlines: number;
+};
+
+/**
+ * Stack block tops from newline estimates, replacing heights that were
+ * measured in the viewport.
+ */
+export function estimateBlockMarkerStack(options: {
+  blocks: readonly HaimEstimatedBlock[];
+  lineHeight: number;
+  measuredHeightByIndex?: ReadonlyMap<number, number>;
+}): Array<{ line0: number; top: number; height: number }> {
+  let top = 0;
+  const lineHeight = Math.max(1, options.lineHeight);
+  return options.blocks.map((block, index) => {
+    const measured = options.measuredHeightByIndex?.get(index);
+    const lines = Math.max(1, (block.blockNewlines || 0) + 1);
+    const height = measured && measured > 0 ? measured : lines * lineHeight;
+    const row = { line0: block.line0, top, height };
+    top += height;
+    return row;
+  });
+}
+
+/** Shift the whole stack so one measured block keeps its real content Y. */
+export function alignStackToMeasuredTop<T extends { top: number }>(options: {
+  markers: T[];
+  index: number;
+  measuredTop: number;
+}): void {
+  const row = options.markers[options.index];
+  if (!row) return;
+  const delta = options.measuredTop - row.top;
+  if (delta === 0) return;
+  for (const marker of options.markers) marker.top += delta;
+}
+
 /** Feature-detect scrollend (Baseline Newly Available since 2025-12). */
 export function supportsScrollEndEvent(
   target: EventTarget | null | undefined,

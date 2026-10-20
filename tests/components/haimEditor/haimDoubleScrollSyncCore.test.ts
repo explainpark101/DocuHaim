@@ -15,6 +15,10 @@ import {
   shouldDeferScrollLayoutResync,
   shouldWriteFollowerScroll,
   supportsScrollEndEvent,
+  alignStackToMeasuredTop,
+  estimateBlockMarkerStack,
+  haimProportionalScrollTop,
+  markersForScrollFrame,
 } from '@/components/haimEditor/haimDoubleScrollSyncCore';
 
 describe('detectHaimScrollDir', () => {
@@ -404,5 +408,36 @@ describe('bindScrollEnd', () => {
     vi.advanceTimersByTime(40);
     expect(onEnd).toHaveBeenCalledTimes(1);
     dispose();
+  });
+});
+
+describe('scroll frame marker cache', () => {
+  it('does not remasure when the cache generation is dirty', () => {
+    const cache = [{ line0: 0, top: 0, height: 20 }];
+    expect(markersForScrollFrame(cache, 1, 1)).toBe(cache);
+    expect(markersForScrollFrame(cache, 1, 2)).toBeNull();
+    expect(markersForScrollFrame(null, 0, 0)).toBeNull();
+    expect(haimProportionalScrollTop(50, 100, 200)).toBe(100);
+  });
+
+  it('aligns an estimated stack to a viewport measurement', () => {
+    const estimated = estimateBlockMarkerStack({
+      blocks: [
+        { line0: 0, blockNewlines: 0 },
+        { line0: 1, blockNewlines: 1 },
+        { line0: 3, blockNewlines: 0 },
+      ],
+      lineHeight: 20,
+      measuredHeightByIndex: new Map([[1, 80]]),
+    });
+    expect(estimated[1]?.height).toBe(80);
+    alignStackToMeasuredTop({
+      markers: estimated,
+      index: 1,
+      measuredTop: 120,
+    });
+    expect(estimated[1]?.top).toBe(120);
+    expect(estimated[0]?.top).toBe(100);
+    expect(estimated[2]?.top).toBe(200);
   });
 });

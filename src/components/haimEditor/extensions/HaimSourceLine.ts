@@ -5,9 +5,9 @@
  * only / scroll-sync-off modes skip the work.
  *
  * While WYSIWYG is focused, `shouldUpdate` returns false so TipTap maps
- * existing decorations without N+1 serialize (scroll layout is already
- * deferred while typing). A short debounce then force-rebuilds accurate
- * line numbers for scroll sync.
+ * existing decorations without N+1 serialize. Dual idle flush calls
+ * `updateDecorations` once after the single vault serialize — there is
+ * no second 120ms timer.
  */
 
 import { Decoration, Extension } from '@tiptap/core';
@@ -39,7 +39,6 @@ type MarkdownManager = {
 type SourceLineStorage = {
   lastDoc: PMNode | null;
   lastEntries: HaimSourceLineEntry[];
-  pendingTimer: ReturnType<typeof setTimeout> | null;
 };
 
 function getMarkdownSerialize(
@@ -49,28 +48,6 @@ function getMarkdownSerialize(
   const manager = md?.manager;
   if (!manager || typeof manager.serialize !== 'function') return null;
   return (doc: JSONContent) => manager.serialize(doc);
-}
-
-function clearPendingTimer(storage: SourceLineStorage): void {
-  if (storage.pendingTimer == null) return;
-  clearTimeout(storage.pendingTimer);
-  storage.pendingTimer = null;
-}
-
-function scheduleSourceLineRemap(
-  editor: Editor,
-  storage: SourceLineStorage,
-): void {
-  clearPendingTimer(storage);
-  storage.pendingTimer = setTimeout(() => {
-    storage.pendingTimer = null;
-    if (editor.isDestroyed) return;
-    try {
-      editor.commands.updateDecorations('haimSourceLine');
-    } catch {
-      // ignore if command unavailable during teardown
-    }
-  }, HAIM_SOURCE_LINE_REMAP_DEBOUNCE_MS);
 }
 
 function entriesToDecorations(entries: HaimSourceLineEntry[]) {
@@ -98,12 +75,7 @@ export const HaimSourceLine = Extension.create<
     return {
       lastDoc: null,
       lastEntries: [],
-      pendingTimer: null,
     };
-  },
-
-  onDestroy() {
-    clearPendingTimer(this.storage);
   },
 
   addDecorations() {
@@ -115,10 +87,7 @@ export const HaimSourceLine = Extension.create<
       update: 'document',
       shouldUpdate: ({ editor, tr }) => {
         const enabled = isEnabled();
-        if (!enabled) {
-          clearPendingTimer(storage);
-          return true;
-        }
+        if (!enabled) return true;
         if (
           shouldDeferSourceLineRemap({
             enabled,
@@ -126,17 +95,12 @@ export const HaimSourceLine = Extension.create<
             tipTapFocused: Boolean(editor.view?.hasFocus?.()),
           })
         ) {
-          scheduleSourceLineRemap(editor, storage);
           return false;
-        }
-        if (tr.docChanged) {
-          clearPendingTimer(storage);
         }
         return tr.docChanged;
       },
       create: ({ editor, state }) => {
         if (!isEnabled()) {
-          clearPendingTimer(storage);
           storage.lastDoc = null;
           storage.lastEntries = [];
           return [];

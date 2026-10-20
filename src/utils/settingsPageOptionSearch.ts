@@ -78,6 +78,36 @@ const EXTRA_OPTION_ENTRIES: SettingsOptionSearchEntry[] = [
     label: 'Android 화면 모드',
     keywords: ['android', 'chrome', '화면 모드'],
   },
+  {
+    sectionId: 'settings-auto-save',
+    label: '자동 저장',
+    keywords: ['autosave', 'auto save', '저장', 'vscode', 'debounce'],
+  },
+  {
+    sectionId: 'settings-auto-save',
+    label: '자동 저장 안 함',
+    keywords: ['off', '끄기', '수동 저장'],
+  },
+  {
+    sectionId: 'settings-auto-save',
+    label: '포커스 변경',
+    keywords: ['onFocusChange', 'focus', '포커스'],
+  },
+  {
+    sectionId: 'settings-auto-save',
+    label: '탭·창 변경',
+    keywords: ['onWindowChange', 'window', '탭', '창'],
+  },
+  {
+    sectionId: 'settings-auto-save',
+    label: '일정 시간 경과',
+    keywords: ['afterDelay', 'delay', '지연', 'ms', '초'],
+  },
+  {
+    sectionId: 'settings-auto-save',
+    label: '입력 멈춘 뒤',
+    keywords: ['debounce', 'idle', '디바운스', 'ms', '초'],
+  },
 ];
 
 function stripToggleActionSuffix(title: string): string {

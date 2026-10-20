@@ -320,19 +320,17 @@ export function useAppLogicSetupDomain() {
     })();
   }, []);
 
-  /** VS Code onFocusChange: save when leaving a dirty file tab. */
+  /** Focus change: save when leaving a dirty file. */
   const maybeAutoSaveOnFocusChange = useCallback(
     (file: BackgroundTabSaveFile, content: string) => {
-      if (!workspaceTabsEnabledRef.current) return;
       if (workspaceTabsAutoSaveModeRef.current !== 'onFocusChange') return;
       queueBackgroundTabSave(file, content);
     },
     [queueBackgroundTabSave],
   );
 
-  /** VS Code onWindowChange: save active dirty file when window/tab loses focus. */
+  /** Window or browser-tab change: save the active dirty file when focus leaves the app. */
   const maybeAutoSaveOnWindowChange = useCallback(() => {
-    if (!workspaceTabsEnabledRef.current) return;
     if (workspaceTabsAutoSaveModeRef.current !== 'onWindowChange') return;
     quizFlushBeforeSaveRef.current?.();
     const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {

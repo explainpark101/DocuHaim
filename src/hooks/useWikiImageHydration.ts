@@ -8,6 +8,8 @@ import { PRINT_SETTINGS_STORE_CHANGED_EVENT } from '@/utils/printSettingsStore';
 export type UseWikiImageHydrationOptions = {
   /** When false, disconnect observers and skip hydrate passes (paused pane). */
   enabled?: boolean;
+  /** Skip the value-driven rescan when this ref already holds the same markdown. */
+  echoMarkdownRef?: { current: string | null };
 };
 
 /**
@@ -26,7 +28,7 @@ export function useWikiImageHydration(
   currentNotePath: string | null = null,
   options: UseWikiImageHydrationOptions = {},
 ): void {
-  const { enabled = true } = options;
+  const { enabled = true, echoMarkdownRef } = options;
   const valueRef = useRef(value);
   valueRef.current = value;
 
@@ -92,10 +94,11 @@ export function useWikiImageHydration(
   // MutationObserver covers cases where React commits after this effect.
   useEffect(() => {
     if (!enabled || !getPresignedUrl || !value) return;
+    if (echoMarkdownRef?.current === value) return;
     if (!markdownLikelyHasStorageImages(value)) return;
     hydrateStorageImagesInRoot(rootRef?.current ?? null, {
       getPresignedUrl,
       currentNotePath,
     });
-  }, [enabled, value, getPresignedUrl, rootRef, currentNotePath]);
+  }, [enabled, value, getPresignedUrl, rootRef, currentNotePath, echoMarkdownRef]);
 }

@@ -37,6 +37,7 @@ import {
   replaceCmDocPreservingView,
   replaceTipTapPreservingView,
 } from '@/components/haimEditor/haimDualSyncApply';
+import { shouldRewriteCmFromParentValue } from '@/components/haimEditor/haimTipTapBlockPatch';
 import {
   shouldApplyExternalVaultMarkdown,
   shouldEmitVaultMarkdown,
@@ -261,6 +262,7 @@ export default function HaimEditor({
   const everFocusedRef = useRef(false);
   /** Last TipTap or source-CM focus range for LLM Assist after panel steals focus. */
   const llmFocusMemoryRef = useRef<HaimLlmAssistFocusMemory | null>(null);
+  const cmSelectionListenersRef = useRef(new Set<() => void>());
   /** Stable identity so hover re-registration does not look like a new editor. */
   const llmAssistEditorRef = useRef<{
     focus: () => void;
@@ -651,7 +653,14 @@ export default function HaimEditor({
         // ignore
       }
       const cm = cmViewRef.current;
-      if (cm) {
+      if (
+        cm &&
+        shouldRewriteCmFromParentValue({
+          fileChanged,
+          authorIsSource: lastAuthorRef.current === 'cm',
+          sourceFocused: cm.hasFocus,
+        })
+      ) {
         replaceCmDocPreservingView(cm, next);
       }
     } finally {
@@ -671,6 +680,25 @@ export default function HaimEditor({
     cmViewRef,
     cmRevision,
     suppressScrollSyncUntilRef,
+    readSourceLineEntries: () => {
+      const storage = (
+        editor?.storage as {
+          haimSourceLine?: {
+            lastEntries?: Array<{
+              line0: number;
+              blockNewlines: number;
+              pos: number;
+            }>;
+          };
+        }
+      )?.haimSourceLine;
+      return storage?.lastEntries ?? [];
+    },
+    blockElementAt: (pos) => {
+      if (!editor || editor.isDestroyed) return null;
+      const dom = editor.view.nodeDOM(pos);
+      return dom instanceof HTMLElement ? dom : null;
+    },
   });
 
   const resolveWikiUrl = useCallback(
@@ -695,6 +723,7 @@ export default function HaimEditor({
       enabled: Boolean(
         showWysiwyg && isSurfaceLive && onResolveWikiImageUrl,
       ),
+      echoMarkdownRef: lastEmittedMdRef,
     },
   );
 
@@ -867,28 +896,19 @@ export default function HaimEditor({
         editor.on('focus', onTipTap);
         emit();
 
-        // Source CM: poll while subscribed (view remounts in dual mode).
-        // LlmAssistModal also polls; this keeps memory fresh while CM is focused.
-        const cmInterval = window.setInterval(() => {
+        const onCm = () => {
           const cm = cmViewRef.current;
           if (!cm?.hasFocus) return;
           const next = cmFocusMemory(cm);
-          const prev = llmFocusMemoryRef.current;
-          if (
-            !prev
-            || prev.surface !== 'cm'
-            || prev.from !== next.from
-            || prev.to !== next.to
-          ) {
-            llmFocusMemoryRef.current = next;
-            emit();
-          }
-        }, 200);
+          llmFocusMemoryRef.current = next;
+          emit();
+        };
+        cmSelectionListenersRef.current.add(onCm);
 
         return () => {
           editor.off('selectionUpdate', onTipTap);
           editor.off('focus', onTipTap);
-          window.clearInterval(cmInterval);
+          cmSelectionListenersRef.current.delete(onCm);
         };
       },
       onChange: (next: string) => {
@@ -1826,9 +1846,10 @@ export default function HaimEditor({
 
   const providerValue = useMemo(() => ({ editor }), [editor]);
 
-  const vaultMarkdown = editor
-    ? editorToVaultMarkdown(editor, metaPrefixRef.current)
-    : value || '';
+  const vaultMarkdown =
+    editor && (headingRemapOpen || checklistProgressOpen)
+      ? editorToVaultMarkdown(editor, metaPrefixRef.current)
+      : '';
 
   readSourceTogglesRef.current = () => {
     if (!editor || !showSource) return null;
@@ -1897,7 +1918,6 @@ export default function HaimEditor({
               navigateToExportPdf();
             },
             onLlmAssist: () => llmAssist?.toggleAssist?.(),
-            llmAssistActive: Boolean(llmAssist?.open),
             onHeadingRemap: openHeadingRemap,
             onChecklistProgress: () => {
               setChecklistProgressOpen(true);
@@ -1984,7 +2004,7 @@ export default function HaimEditor({
           >
             {showSource ? (
               <div
-                className={`min-h-0 shrink-0 ${
+                className={`haim-dual-pane min-h-0 shrink-0 ${
                   doublePane
                     ? stackDouble
                       ? 'h-1/2 w-full border-b border-slate-200 dark:border-odp-borderStrong'
@@ -2004,6 +2024,9 @@ export default function HaimEditor({
                   }}
                   onActivity={() => {
                     notifySourceTogglesRef.current?.();
+                    cmSelectionListenersRef.current.forEach((listener) => {
+                      listener();
+                    });
                   }}
                   noteCoverFoldDocKey={noteCoverFoldDocKey}
                   foldBase64Images={foldBase64Images}
@@ -2027,7 +2050,7 @@ export default function HaimEditor({
             {showWysiwyg ? (
               <div
                 ref={wysiwygScrollRef}
-                className={`relative min-h-0 overflow-auto ${
+                className={`haim-dual-pane relative min-h-0 overflow-auto ${
                   doublePane
                     ? stackDouble
                       ? 'h-1/2 w-full flex-1'

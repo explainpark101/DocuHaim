@@ -7,23 +7,35 @@ export type HaimProseLineStart = {
   top: number;
 };
 
+const LINE_COLLECT_STOP = Symbol('haim-prose-line-budget');
+
 /**
  * Collect WYSIWYG line-number anchors: start of each textblock / atom block,
  * plus each hard break. Soft-wrapped visual rows are not numbered (v1).
+ * `budgetMs` stops the coordsAtPos walk so the caller can yield and finish later.
  */
 export function collectHaimProseLineStarts(
   editor: Editor,
   scrollEl: HTMLElement,
-): HaimProseLineStart[] {
-  if (!editor || editor.isDestroyed) return [];
+  budgetMs = Number.POSITIVE_INFINITY,
+): { lines: HaimProseLineStart[]; hitBudget: boolean } {
+  if (!editor || editor.isDestroyed) return { lines: [], hitBudget: false };
   const { view } = editor;
   const { doc } = view.state;
   const scrollRect = scrollEl.getBoundingClientRect();
   const scrollTop = scrollEl.scrollTop;
   const out: HaimProseLineStart[] = [];
   let n = 1;
+  const started = typeof performance !== 'undefined' ? performance.now() : 0;
 
   const pushAtPos = (pos: number) => {
+    if (
+      budgetMs < Number.POSITIVE_INFINITY &&
+      typeof performance !== 'undefined' &&
+      performance.now() - started > budgetMs
+    ) {
+      throw LINE_COLLECT_STOP;
+    }
     try {
       const max = doc.content.size;
       const safe = Math.max(0, Math.min(pos, max));
@@ -32,35 +44,39 @@ export function collectHaimProseLineStarts(
       if (!Number.isFinite(top)) return;
       out.push({ n, top });
       n += 1;
-    } catch {
-      // ignore invalid pos
+    } catch (error) {
+      if (error === LINE_COLLECT_STOP) throw error;
     }
   };
 
-  doc.descendants((node, pos) => {
-    // Code blocks keep their own gutter; only mark the block start here.
-    if (node.type.name === 'codeBlock') {
-      pushAtPos(pos + 1);
-      return false;
-    }
-    if (node.isTextblock) {
-      // Content starts after the opening token.
-      pushAtPos(pos + 1);
-      let offset = 0;
-      node.forEach((child) => {
-        if (child.type.name === 'hardBreak') {
-          pushAtPos(pos + 1 + offset + 1);
-        }
-        offset += child.nodeSize;
-      });
-      return false;
-    }
-    if (node.isBlock && (node.isAtom || node.type.isLeaf)) {
-      pushAtPos(pos);
-      return false;
-    }
-    return true;
-  });
+  let hitBudget = false;
+  try {
+    doc.descendants((node, pos) => {
+      if (node.type.name === 'codeBlock') {
+        pushAtPos(pos + 1);
+        return false;
+      }
+      if (node.isTextblock) {
+        pushAtPos(pos + 1);
+        let offset = 0;
+        node.forEach((child) => {
+          if (child.type.name === 'hardBreak') {
+            pushAtPos(pos + 1 + offset + 1);
+          }
+          offset += child.nodeSize;
+        });
+        return false;
+      }
+      if (node.isBlock && (node.isAtom || node.type.isLeaf)) {
+        pushAtPos(pos);
+        return false;
+      }
+      return true;
+    });
+  } catch (error) {
+    if (error !== LINE_COLLECT_STOP) throw error;
+    hitBudget = true;
+  }
 
-  return out;
+  return { lines: out, hitBudget };
 }
