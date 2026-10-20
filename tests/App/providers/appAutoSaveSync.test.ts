@@ -158,14 +158,13 @@ describe('createAutoSaveSyncHandlers', () => {
     });
     const { runAutoSaveEffect } = createAutoSaveSyncHandlers(deps);
 
-    const first = runAutoSaveEffect({
+    runAutoSaveEffect({
       currentFile: deps.currentFile,
       editorContent: 'new',
       lastInputAt: Date.now(),
     });
     await vi.advanceTimersByTimeAsync(2000);
-    first?.();
-    const second = runAutoSaveEffect({
+    runAutoSaveEffect({
       currentFile: deps.currentFile,
       editorContent: 'newer',
       lastInputAt: Date.now(),
@@ -174,7 +173,6 @@ describe('createAutoSaveSyncHandlers', () => {
     expect(deps.saveFile).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(deps.saveFile).toHaveBeenCalledTimes(1);
-    second?.();
     vi.useRealTimers();
   });
 

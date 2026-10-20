@@ -1,20 +1,15 @@
 import Heading, { type Level } from '@tiptap/extension-heading';
-import type { Editor } from '@tiptap/core';
+import type { Editor, JSONContent, KeyboardShortcutCommand } from '@tiptap/core';
 import type { Node as ProseMirrorNode, NodeType } from '@tiptap/pm/model';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
-
-type HeadingMarkdownNode = {
-  attrs?: { level?: unknown } | null;
-  content?: unknown;
-};
 
 /**
  * Empty TipTap headings omit `content`. Stock renderMarkdown then returns ''
  * and the ATX marks never reach vault markdown.
  */
 export function renderHaimHeadingMarkdown(
-  node: HeadingMarkdownNode,
-  renderChildren: (content: unknown) => string,
+  node: JSONContent,
+  renderChildren: (content: JSONContent | JSONContent[]) => string,
 ): string {
   const raw = Number(node.attrs?.level ?? 1);
   const level = Number.isFinite(raw) ? Math.min(6, Math.max(1, Math.trunc(raw))) : 1;
@@ -132,14 +127,12 @@ export function toggleHaimHeadingLevel(editor: Editor, level: Level): boolean {
  */
 export const HaimHeading = Heading.extend({
   renderMarkdown(node, helpers) {
-    return renderHaimHeadingMarkdown(node, (content) =>
-      helpers.renderChildren(content as Parameters<typeof helpers.renderChildren>[0]),
-    );
+    return renderHaimHeadingMarkdown(node, (content) => helpers.renderChildren(content));
   },
 
   addKeyboardShortcuts() {
     const parent = this.parent?.() ?? {};
-    const shortcuts: Record<string, () => boolean> = { ...parent };
+    const shortcuts: Record<string, KeyboardShortcutCommand> = { ...parent };
     for (const level of this.options.levels) {
       shortcuts[`Mod-${level}`] = () => toggleHaimHeadingLevel(this.editor, level);
     }
