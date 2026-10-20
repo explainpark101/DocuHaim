@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { rewriteTelegramBufferGlobals } from '@/utils/telegram/rewriteTelegramBufferGlobals';
 import {
   classifyTelegramNodeStub,
+  isTelegramInspectModule,
   TELEGRAM_EMPTY_BROWSER_STUB,
+  TELEGRAM_INSPECT_BROWSER_STUB,
   TELEGRAM_OS_BROWSER_STUB,
 } from '@/utils/telegram/telegramBrowserShim';
 
@@ -61,6 +63,16 @@ describe('classifyTelegramNodeStub', () => {
 });
 
 describe('telegram browser stubs', () => {
+  it('replaces gramjs inspect.js without Node util', () => {
+    expect(isTelegramInspectModule('C:\\proj\\node_modules\\telegram\\inspect.js')).toBe(true);
+    expect(isTelegramInspectModule('/proj/node_modules/telegram/inspect.js?v=1')).toBe(true);
+    expect(isTelegramInspectModule('/proj/node_modules/telegram/client/TelegramClient.js')).toBe(false);
+    expect(TELEGRAM_INSPECT_BROWSER_STUB).not.toMatch(/require\(["']util["']\)/);
+    expect(TELEGRAM_INSPECT_BROWSER_STUB).toContain('inspect.custom = custom');
+    expect(TELEGRAM_INSPECT_BROWSER_STUB).toContain('Symbol.for("nodejs.util.inspect.custom")');
+    expect(TELEGRAM_INSPECT_BROWSER_STUB).toContain('exports.inspect = inspect');
+  });
+
   it('is ESM so virtual modules do not reference the CommonJS module global', () => {
     expect(TELEGRAM_EMPTY_BROWSER_STUB).not.toMatch(/\bmodule\b/);
     expect(TELEGRAM_EMPTY_BROWSER_STUB).not.toMatch(/\brequire\b/);

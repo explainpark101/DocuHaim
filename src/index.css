@@ -307,7 +307,8 @@ button {
   flex-direction: column !important;
   height: 100% !important;
   min-height: 0 !important;
-  overflow: hidden !important;
+  /* clip is not a scroll container — caret scroll stays in the inner scroller */
+  overflow: clip !important;
 }
 /* Scrollport for TipTap body (outer shell stays overflow:hidden). */
 .chat-composer-editor .chat-composer-haim-scroll {
@@ -346,19 +347,19 @@ button {
   flex: 1 1 auto !important;
   min-height: 0 !important;
   height: 0 !important;
-  overflow: hidden !important;
+  overflow: clip !important;
   padding: 0 !important;
 }
 .chat-composer-editor .md-editor-content-wrapper {
   min-height: 0 !important;
   height: 100% !important;
-  overflow: hidden !important;
+  overflow: clip !important;
 }
 .chat-composer-editor .md-editor-input-wrapper,
 .chat-composer-editor .md-editor-input {
   height: 100% !important;
   min-height: 0 !important;
-  overflow: hidden !important;
+  overflow: clip !important;
   padding: 0 !important;
 }
 .chat-composer-editor .cm-editor {

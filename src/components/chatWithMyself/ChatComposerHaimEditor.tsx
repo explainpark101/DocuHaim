@@ -29,6 +29,44 @@ import {
 } from '@/utils/haimTypographySettings';
 import '@/styles/haim-editor/style.css';
 
+/**
+ * Keep caret scrolling inside the composer scroller.
+ * ProseMirror's default also scrolls overflow ancestors, which hides the input
+ * after a long paste or edit.
+ */
+function scrollComposerCaretIntoView(view: {
+  dom: HTMLElement;
+  state: { selection: { head: number } };
+  coordsAtPos: (pos: number) => {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  };
+}): boolean {
+  const scroller = view.dom.closest('.chat-composer-haim-scroll');
+  if (!(scroller instanceof HTMLElement)) return false;
+  let coords: { top: number; bottom: number; left: number; right: number };
+  try {
+    coords = view.coordsAtPos(view.state.selection.head);
+  } catch {
+    return true;
+  }
+  const box = scroller.getBoundingClientRect();
+  const margin = 8;
+  if (coords.top < box.top + margin) {
+    scroller.scrollTop -= box.top + margin - coords.top;
+  } else if (coords.bottom > box.bottom - margin) {
+    scroller.scrollTop += coords.bottom - (box.bottom - margin);
+  }
+  if (coords.left < box.left + margin) {
+    scroller.scrollLeft -= box.left + margin - coords.left;
+  } else if (coords.right > box.right - margin) {
+    scroller.scrollLeft += coords.right - (box.right - margin);
+  }
+  return true;
+}
+
 function ToolBtn({
   label,
   active = false,
@@ -125,6 +163,7 @@ export default function ChatComposerHaimEditor({
             theme === 'dark' ? 'haim-editor--dark' : ''
           }`,
         },
+        handleScrollToSelection: (view) => scrollComposerCaretIntoView(view),
       },
     },
     [extensions],
@@ -187,10 +226,14 @@ export default function ChatComposerHaimEditor({
     }
     lastEmittedMdRef.current = next;
     invalidateMarkdownCache(editor);
-    editor.commands.setContent(next, {
-      contentType: 'markdown',
-      emitUpdate: false,
-    } as never);
+    try {
+      editor.commands.setContent(next, {
+        contentType: 'markdown',
+        emitUpdate: false,
+      } as never);
+    } catch {
+      // A failed parse must not tear down the composer.
+    }
   }, [editor, value]);
 
   useEffect(() => {
@@ -364,7 +407,7 @@ export default function ChatComposerHaimEditor({
         </Tooltip.Provider>
       ) : null}
       {/* Bounded dock + overflow-auto — same scrollport pattern as note HaimEditor. */}
-      <div className="chat-composer-haim-scroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="chat-composer-haim-scroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none]">
         <EditorContent editor={editor} className="haim-editor-content min-h-full" />
       </div>
     </div>

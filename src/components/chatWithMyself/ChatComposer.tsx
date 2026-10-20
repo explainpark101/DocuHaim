@@ -31,7 +31,10 @@ import {
   CHAT_COMPOSER_HEIGHT_INSTANT,
   CHAT_COMPOSER_HEIGHT_SPRING,
 } from '@/components/chatWithMyself/chatComposerMotion';
-import { measureComposerFitHeights } from '@/components/chatWithMyself/composerFitMeasure';
+import {
+  measureComposerFitHeights,
+  measureTextareaContentHeight,
+} from '@/components/chatWithMyself/composerFitMeasure';
 import PromptModal from '@/components/modals/PromptModal';
 import {
   ADD_GROUP_VALUE,
@@ -392,14 +395,10 @@ function measureComposerHeight(
     'textarea[data-chat-composer-textarea]',
   );
   if (textarea instanceof HTMLTextAreaElement) {
-    const prev = textarea.style.height;
-    textarea.style.height = 'auto';
-    const contentH = Math.min(
+    return Math.min(
       contentMaxH,
-      Math.max(COMPOSER_MIN_H, Math.ceil(textarea.scrollHeight)),
+      Math.max(COMPOSER_MIN_H, measureTextareaContentHeight(textarea)),
     );
-    textarea.style.height = prev || '100%';
-    return contentH;
   }
   const toolbar =
     root.querySelector('.md-editor-toolbar-wrapper') ||
@@ -861,11 +860,6 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           maxEditorHeight: maxEditor,
         },
       );
-      if (editing) {
-        setEditorHeight((prev) =>
-          prev === measured.editorHeight ? prev : measured.editorHeight,
-        );
-      }
       // Outer card (py) + dock padding — keep input from losing space to the preview.
       const outerChrome = 28;
       onFitHeightsChange?.({
@@ -1479,7 +1473,11 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     />
   );
 
-  const sizeEditorToContent = Boolean(editTarget) || !fillParent;
+  // Docked composer always fills the dock and scrolls inside the field.
+  // Sizing the field to the full pasted/edited document makes it taller than
+  // the dock; scrollIntoView then moves an overflow ancestor and the input
+  // stays off-screen after send.
+  const sizeEditorToContent = !fillParent;
   const editorHeightTransition =
     reduceMotion ? CHAT_COMPOSER_HEIGHT_INSTANT : CHAT_COMPOSER_HEIGHT_SPRING;
 
@@ -1488,7 +1486,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       ref={rootRef}
       className={
         fillParent
-          ? `flex h-full min-h-0 flex-col overflow-hidden ${editTarget ? 'pb-0.5' : ''}`
+          ? `flex h-full min-h-0 flex-col overflow-clip ${editTarget ? 'pb-0.5' : ''}`
           : bare
             ? `shrink-0 ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
             : `shrink-0 border-t border-gray-200 bg-white dark:border-odp-borderSoft dark:bg-odp-bgSoft ${editTarget ? 'pb-1.5 md:pb-2' : ''}`
@@ -1497,7 +1495,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       <div
         className={
           fillParent
-            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+            ? 'flex min-h-0 flex-1 flex-col overflow-clip'
             : bare
               ? ''
               : 'px-2 py-1 md:px-3 md:py-1.5'
@@ -1701,10 +1699,10 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           data-composer-fit-controls=""
           className={
             showToolbar
-              ? fillParent && !editTarget
+              ? fillParent
                 ? 'grid min-h-0 flex-1 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] gap-1.5'
                 : 'grid grid-cols-[auto_minmax(0,1fr)] gap-1.5'
-              : fillParent && !editTarget
+              : fillParent
                 ? 'flex min-h-0 flex-1 flex-col gap-1.5'
                 : 'flex flex-col gap-1.5'
           }
@@ -1827,7 +1825,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           <div
             className={`flex items-start gap-2 ${
               showToolbar ? 'col-span-2' : ''
-            } ${fillParent && !editTarget ? 'min-h-0 flex-1' : ''}`}
+            } ${fillParent ? 'min-h-0 flex-1' : ''}`}
           >
             {!showToolbar ? (
               <button
@@ -1842,7 +1840,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
             ) : null}
             <Motion.div
               ref={wrapRef}
-              className={`chat-composer-editor min-w-0 flex-1 overflow-hidden rounded-md border border-gray-200 dark:border-odp-borderSoft ${
+              className={`chat-composer-editor min-w-0 flex-1 overflow-clip rounded-md border border-gray-200 dark:border-odp-borderSoft ${
                 !useLightweightEditor && showLineNumbers
                   ? 'chat-composer-editor--line-numbers'
                   : ''
@@ -1850,7 +1848,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                 useLightweightEditor || !showToolbar
                   ? 'chat-composer-editor--no-toolbar'
                   : ''
-              } ${fillParent && !editTarget ? 'h-full min-h-0' : 'shrink-0'}`}
+              } ${fillParent ? 'h-full min-h-0 self-stretch' : 'shrink-0'}`}
               initial={false}
               {...(sizeEditorToContent
                 ? {
@@ -1865,7 +1863,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   ref={textareaRef}
                   value={value}
                   onChange={applyComposerValue}
-                  fillParent={fillParent && !editTarget}
+                  fillParent={fillParent}
                   minHeight={COMPOSER_MIN_H}
                 />
               ) : (
@@ -1874,7 +1872,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     <ChatComposerPlainTextarea
                       value={value}
                       onChange={applyComposerValue}
-                      fillParent={fillParent && !editTarget}
+                      fillParent={fillParent}
                       minHeight={COMPOSER_MIN_H}
                     />
                   }

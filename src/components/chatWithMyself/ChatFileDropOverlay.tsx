@@ -138,6 +138,7 @@ export default function ChatFileDropOverlay({
     <div
       ref={setRootNode}
       data-chat-file-drop=""
+      data-chat-scroll-lock=""
       className={`relative ${className}`.trim()}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}

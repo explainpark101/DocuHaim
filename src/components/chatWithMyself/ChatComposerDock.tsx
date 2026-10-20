@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -102,12 +103,46 @@ export default function ChatComposerDock({
   const reduceMotion = useReducedMotion();
   const [maxHeight, setMaxHeight] = useState(chatComposerAreaMaxHeight);
   const heightBeforeFitRef = useRef<number | null>(null);
+  const [shellNode, setShellNode] = useState<HTMLDivElement | null>(null);
+  const setShellRef = useCallback((node: HTMLDivElement | null) => {
+    setShellNode((prev) => (prev === node ? prev : node));
+  }, []);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [fitHeight, setFitHeight] = useState<number | null>(null);
   /** Once the user drags the handle during autoFit, stop overriding with measures. */
   const userResizedDuringFitRef = useRef(false);
   const toolbarBump = Math.max(0, Math.ceil(toolbarChromeHeight || 0));
   const helperBump = Math.max(0, Math.ceil(helperChromeHeight || 0));
+
+  // overflow:hidden ancestors are still scroll containers. A long paste/edit
+  // scrolls them to the caret and leaves the input off-screen after send.
+  useEffect(() => {
+    const shell = shellNode;
+    if (!shell) return undefined;
+    const stop = shell.closest('[data-chat-file-drop]');
+    if (!(stop instanceof HTMLElement)) return undefined;
+    const nodes: HTMLElement[] = [];
+    let node: HTMLElement | null = shell;
+    while (node) {
+      nodes.push(node);
+      if (node === stop) break;
+      node = node.parentElement;
+    }
+    const pin = (event: Event) => {
+      const target = event.currentTarget;
+      if (!(target instanceof HTMLElement)) return;
+      if (target.scrollTop !== 0) target.scrollTop = 0;
+      if (target.scrollLeft !== 0) target.scrollLeft = 0;
+    };
+    for (const el of nodes) {
+      if (el.scrollTop !== 0) el.scrollTop = 0;
+      if (el.scrollLeft !== 0) el.scrollLeft = 0;
+      el.addEventListener('scroll', pin);
+    }
+    return () => {
+      for (const el of nodes) el.removeEventListener('scroll', pin);
+    };
+  }, [shellNode]);
 
   useEffect(() => {
     const sync = () => setMaxHeight(chatComposerAreaMaxHeight());
@@ -244,7 +279,9 @@ export default function ChatComposerDock({
 
   return (
     <Motion.div
-      className={`relative w-full shrink-0 overflow-hidden border-t-2 border-gray-300 bg-slate-100 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)] ${className}`}
+      ref={setShellRef}
+      data-chat-scroll-lock=""
+      className={`relative w-full shrink-0 overflow-clip border-t-2 border-gray-300 bg-slate-100 shadow-[0_-6px_16px_rgba(15,23,42,0.12)] dark:border-odp-borderStrong dark:bg-odp-bg dark:shadow-[0_-6px_16px_rgba(0,0,0,0.45)] ${className}`}
       initial={false}
       animate={{ height: targetHeight }}
       transition={heightTransition}
@@ -271,7 +308,7 @@ export default function ChatComposerDock({
       </div>
       <div
         ref={contentRef}
-        className="relative z-0 flex h-full min-h-0 flex-col overflow-hidden pt-1.5 pb-1.5 md:pb-2"
+        className="relative z-0 flex h-full min-h-0 flex-col overflow-clip pt-1.5 pb-1.5 md:pb-2"
       >
         <div className="flex h-full min-h-0 flex-col">{children}</div>
       </div>

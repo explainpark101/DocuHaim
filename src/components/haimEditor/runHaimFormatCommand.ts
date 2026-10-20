@@ -5,6 +5,7 @@
 import { undo, redo } from '@codemirror/commands';
 import type { EditorView } from '@codemirror/view';
 import type { Editor } from '@tiptap/core';
+import { toggleHaimHeadingLevel } from '@/components/haimEditor/extensions/HaimHeading';
 import {
   toggleBoldForSelection,
   toggleHeadingForSelection,
@@ -160,17 +161,17 @@ function runOnTipTap(editor: Editor, command: HaimFormatCommand): boolean {
     case 'sup':
       return chain.toggleSuperscript().run();
     case 'h1':
-      return chain.toggleHeading({ level: 1 }).run();
+      return toggleHaimHeadingLevel(editor, 1);
     case 'h2':
-      return chain.toggleHeading({ level: 2 }).run();
+      return toggleHaimHeadingLevel(editor, 2);
     case 'h3':
-      return chain.toggleHeading({ level: 3 }).run();
+      return toggleHaimHeadingLevel(editor, 3);
     case 'h4':
-      return chain.toggleHeading({ level: 4 }).run();
+      return toggleHaimHeadingLevel(editor, 4);
     case 'h5':
-      return chain.toggleHeading({ level: 5 }).run();
+      return toggleHaimHeadingLevel(editor, 5);
     case 'h6':
-      return chain.toggleHeading({ level: 6 }).run();
+      return toggleHaimHeadingLevel(editor, 6);
     case 'h7':
       return chain.toggleDeepHeading({ level: 7 }).run();
     case 'h8':

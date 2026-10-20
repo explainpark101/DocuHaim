@@ -5,6 +5,7 @@ import {
   getTelegramClient,
   recallTelegramEntity,
 } from '@/utils/telegram/telegramRuntime';
+import { formatTelegramError } from '@/utils/telegram/telegramError';
 import type { TelegramMessageItem } from '@/utils/telegram/types';
 
 const PAGE_SIZE = 40;
@@ -65,18 +66,16 @@ export function mapTelegramMessage(dialogId: string, raw: RawMessage): TelegramM
 
 function requireClient() {
   const client = getTelegramClient();
-  if (!client) throw new Error('Telegram is not connected');
+  if (!client) throw new Error('Telegram에 연결되지 않았습니다.');
   return client;
 }
 
-function entityFor(dialogId: string): unknown {
-  const entity = recallTelegramEntity(dialogId);
-  if (!entity) throw new Error('Chat not found');
-  return entity;
+/** Cached dialog entity, or the id so GramJS can resolve it from the session. */
+export function telegramDialogTarget(dialogId: string): unknown {
+  return recallTelegramEntity(dialogId) ?? dialogId;
 }
 
 export async function loadTelegramHistory(dialogId: string, older = false): Promise<void> {
-  const client = requireClient();
   const snap = getTelegramSnapshot();
   const oldest = older ? snap.messages[0]?.id : undefined;
   patchTelegram({
@@ -85,42 +84,48 @@ export async function loadTelegramHistory(dialogId: string, older = false): Prom
     error: null,
     ...(older ? {} : { messages: [], hasMoreHistory: false, replyTo: null }),
   });
-  let batch: unknown;
   try {
-    batch = await client.getMessages(entityFor(dialogId) as never, {
+    const client = requireClient();
+    const batch = await client.getMessages(telegramDialogTarget(dialogId) as never, {
       limit: PAGE_SIZE,
       ...(oldest ? { offsetId: oldest } : {}),
     });
-  } catch (err) {
+    const list = Array.isArray(batch) ? (batch as RawMessage[]) : [];
+    const mapped = list
+      .map((raw) => mapTelegramMessage(dialogId, raw))
+      .filter((item): item is TelegramMessageItem => item != null)
+      .sort((a, b) => a.id - b.id);
+    const prev = older ? getTelegramSnapshot().messages : [];
+    const merged = [...mapped.filter((m) => !prev.some((p) => p.id === m.id)), ...prev].sort(
+      (a, b) => a.id - b.id,
+    );
     patchTelegram({
+      messages: merged,
       messagesLoading: false,
-      error: err instanceof Error ? err.message : '메시지 기록을 불러오지 못했습니다.',
+      hasMoreHistory: mapped.length >= PAGE_SIZE,
+      dialogs: getTelegramSnapshot().dialogs.map((dialog) =>
+        dialog.id === dialogId ? { ...dialog, unread: 0 } : dialog,
+      ),
     });
-    return;
+  } catch (err) {
+    patchTelegram({ messagesLoading: false });
+    try {
+      const { dropDeadTelegramSession } = await import('@/utils/telegram/telegramClient');
+      if (await dropDeadTelegramSession(err)) return;
+    } catch {
+      // Show the original failure if session cleanup itself throws.
+    }
+    patchTelegram({
+      error: formatTelegramError(err, '메시지 기록을 불러오지 못했습니다.'),
+    });
   }
-  const mapped = (batch as RawMessage[])
-    .map((raw) => mapTelegramMessage(dialogId, raw))
-    .filter((item): item is TelegramMessageItem => item != null)
-    .sort((a, b) => a.id - b.id);
-  const prev = older ? getTelegramSnapshot().messages : [];
-  const merged = [...mapped.filter((m) => !prev.some((p) => p.id === m.id)), ...prev].sort(
-    (a, b) => a.id - b.id,
-  );
-  patchTelegram({
-    messages: merged,
-    messagesLoading: false,
-    hasMoreHistory: mapped.length >= PAGE_SIZE,
-    dialogs: getTelegramSnapshot().dialogs.map((dialog) =>
-      dialog.id === dialogId ? { ...dialog, unread: 0 } : dialog,
-    ),
-  });
 }
 
 export async function sendTelegramText(dialogId: string, text: string, replyToId?: number): Promise<void> {
   const client = requireClient();
   const body = text.trim();
   if (!body) return;
-  const sent = await client.sendMessage(entityFor(dialogId) as never, {
+  const sent = await client.sendMessage(telegramDialogTarget(dialogId) as never, {
     message: body,
     ...(replyToId ? { replyTo: replyToId } : {}),
   });
@@ -143,9 +148,9 @@ export async function forwardTelegramMessage(
 ): Promise<void> {
   const client = requireClient();
   const raw = cachedTelegramMessage(fromDialogId, messageId);
-  await client.forwardMessages(entityFor(toDialogId) as never, {
+  await client.forwardMessages(telegramDialogTarget(toDialogId) as never, {
     messages: raw ? [raw as never] : [messageId],
-    fromPeer: entityFor(fromDialogId) as never,
+    fromPeer: telegramDialogTarget(fromDialogId) as never,
   });
 }
 

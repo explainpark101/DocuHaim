@@ -3,7 +3,9 @@ import type { Plugin } from 'vite';
 import { rewriteTelegramBufferGlobals } from '../src/utils/telegram/rewriteTelegramBufferGlobals';
 import {
   classifyTelegramNodeStub,
+  isTelegramInspectModule,
   TELEGRAM_EMPTY_BROWSER_STUB,
+  TELEGRAM_INSPECT_BROWSER_STUB,
   TELEGRAM_OS_BROWSER_STUB,
 } from '../src/utils/telegram/telegramBrowserShim';
 
@@ -44,6 +46,9 @@ export function telegramBrowserShimsPlugin(rootDir: string): Plugin {
       return null;
     },
     transform(code, id) {
+      if (isTelegramInspectModule(id)) {
+        return { code: TELEGRAM_INSPECT_BROWSER_STUB, map: null };
+      }
       if (!isTelegramJs(id)) return null;
       const next = rewriteTelegramBufferGlobals(code);
       if (next == null) return null;

@@ -3395,7 +3395,7 @@ export default function ChatWithMyselfPane({
     <ChatImageLightboxProvider>
     <ChatUiPrefsProvider openLinksInNewWindow={openLinksInNewWindow}>
     <ChatFileDropOverlay
-      className="@container relative flex h-full max-h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-odp-bg"
+      className="@container relative flex h-full max-h-full min-h-0 w-full flex-col overflow-clip bg-white dark:bg-odp-bg"
       disabled={!storageReady}
       onFilesDrop={handleComposerFilesDrop}
       rootRef={setAttachDropHostNode}
@@ -3532,8 +3532,8 @@ export default function ChatWithMyselfPane({
           {storageNotReadyHint}
         </div>
       ) : (
-        <div className="flex min-h-0 max-h-full flex-1 overflow-hidden" data-chat-rails-root>
-          <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-hidden bg-[#b9cfe0] dark:bg-[#0b1220]">
+        <div className="flex min-h-0 max-h-full flex-1 overflow-clip" data-chat-rails-root data-chat-scroll-lock="">
+          <div className="flex min-h-0 min-w-0 max-h-full flex-1 flex-col overflow-clip bg-[#b9cfe0] dark:bg-[#0b1220]" data-chat-scroll-lock="">
             <ChatMessageList
               ref={messageListRef}
               ogStorage={ogStorage}
@@ -3605,7 +3605,7 @@ export default function ChatWithMyselfPane({
                 helperChromeHeight={composerHelperChromeHeight}
               >
               <div className="mx-auto flex h-full min-h-0 w-full max-w-full px-2 @[768px]:max-w-[min(100%,50cqw)] @[768px]:px-3">
-                <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5">
+                <div className="flex h-full min-h-0 w-full flex-col overflow-clip rounded-xl border border-gray-300 bg-white px-2 py-1 shadow-sm dark:border-odp-borderStrong dark:bg-odp-bgSoft dark:shadow-none @[768px]:px-3 @[768px]:py-1.5" data-chat-scroll-lock="">
                   <ChatComposer
                     ref={composerRef}
                     key={storageScope || 'pending'}

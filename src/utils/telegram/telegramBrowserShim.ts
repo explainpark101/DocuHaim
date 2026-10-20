@@ -18,6 +18,31 @@ export { type, release };
 export default os;
 `;
 
+/**
+ * gramjs class fields evaluate `inspect.custom` while the module loads.
+ * Node `util.inspect` is missing in the browser, so replace `telegram/inspect.js`
+ * with this CommonJS stub. Keep it CJS: the file stays under node_modules and
+ * Vite's commonjs plugin turns `exports` into ESM.
+ */
+export const TELEGRAM_INSPECT_BROWSER_STUB = `"use strict";
+var custom = Symbol.for("nodejs.util.inspect.custom");
+function inspect(value) {
+  if (value == null) return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return Object.prototype.toString.call(value);
+  }
+}
+inspect.custom = custom;
+exports.inspect = inspect;
+`;
+
+export function isTelegramInspectModule(id: string): boolean {
+  const clean = id.split('?')[0]?.replace(/\\/g, '/') ?? '';
+  return clean.endsWith('/node_modules/telegram/inspect.js');
+}
+
 const EMPTY_FILES = [
   '/node_modules/telegram/extensions/net',
   '/node_modules/telegram/extensions/socks',

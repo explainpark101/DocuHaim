@@ -19,6 +19,7 @@ import {
   completeTelegramPortalLogin,
   connectTelegram,
   disconnectTelegram,
+  dropDeadTelegramSession,
   logoutTelegram,
 } from '@/utils/telegram/telegramClient';
 import { refreshTelegramDialogs } from '@/utils/telegram/dialogs';
@@ -33,6 +34,7 @@ import { createTelegramChat, type TelegramCreateKind } from '@/utils/telegram/ch
 import { shareTelegramMessageToChat } from '@/utils/telegram/shareToChat';
 import { saveTelegramMediaToVault } from '@/utils/telegram/saveToVault';
 import { submitLoginInput, patchTelegram, restartLoginForSms } from '@/utils/telegram/telegramState';
+import { formatTelegramError } from '@/utils/telegram/telegramError';
 import type { TelegramMessageItem } from '@/utils/telegram/types';
 
 type TreeNode = {
@@ -127,9 +129,11 @@ export default function TelegramPane({
       await fn();
       updateIndicator(id, { status: 'done' });
     } catch (err) {
-      const detail = err instanceof Error ? err.message : '실패';
+      const detail = formatTelegramError(err, '실패');
       updateIndicator(id, { status: 'error', detail });
-      patchTelegram({ error: detail });
+      if (!(await dropDeadTelegramSession(err))) {
+        patchTelegram({ error: detail });
+      }
     } finally {
       window.setTimeout(() => removeIndicator(id), 4000);
     }

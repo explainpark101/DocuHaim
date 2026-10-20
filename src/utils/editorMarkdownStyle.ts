@@ -2,7 +2,15 @@
  * Apply markdown wrap / line-prefix style edits to every CodeMirror selection.
  */
 
-import { EditorSelection, type ChangeSpec, type SelectionRange, type Text } from '@codemirror/state';
+import {
+  ChangeSet,
+  EditorSelection,
+  type ChangeSpec,
+  type EditorState,
+  type SelectionRange,
+  type Text,
+  type Transaction,
+} from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import {
   advanceTaskCheckboxStatus,
@@ -229,14 +237,19 @@ export function wrapSelectionWithInlineCode(view: EditorView): boolean {
   return dispatchRangePlans(view, plans);
 }
 
-function collectLineNumbers(view: EditorView): number[] {
+function collectLineNumbersFromState(state: EditorState): number[] {
   const lineNumbers = new Set<number>();
-  for (const range of view.state.selection.ranges) {
-    const fromLine = view.state.doc.lineAt(range.from).number;
-    const toLine = view.state.doc.lineAt(range.to).number;
+  for (const range of state.selection.ranges) {
+    const fromLine = state.doc.lineAt(range.from).number;
+    const toLine = state.doc.lineAt(range.to).number;
     for (let n = fromLine; n <= toLine; n += 1) lineNumbers.add(n);
   }
   return [...lineNumbers].sort((a, b) => a - b);
+}
+
+function collectLineNumbers(view: EditorView): number[] {
+  if (!view?.state) return [];
+  return collectLineNumbersFromState(view.state);
 }
 
 function dispatchLineTextChanges(
@@ -361,17 +374,79 @@ export function toggleQuoteForSelection(view: EditorView): boolean {
   });
 }
 
-export function toggleHeadingForSelection(view: EditorView, level: number): boolean {
-  if (level < 1 || level > 10) return false;
+function headingLineReplacement(text: string, level: number): string {
   const marks = '#'.repeat(level);
-  return dispatchLineTextChanges(view, (text) => {
-    const heading = text.match(HEADING_LINE_RE);
-    if (heading) {
-      if (heading[1]?.length === level) return heading[2] ?? '';
-      return `${marks} ${heading[2] ?? ''}`;
-    }
-    return `${marks} ${text}`;
+  const heading = text.match(HEADING_LINE_RE);
+  if (heading) {
+    if (heading[1]?.length === level) return heading[2] ?? '';
+    return `${marks} ${heading[2] ?? ''}`;
+  }
+  return `${marks} ${text}`;
+}
+
+/** ATX line whose title is empty (`#`, `# `, `## `, …). */
+function headingBodyIsEmpty(text: string): boolean {
+  const heading = text.match(HEADING_LINE_RE);
+  if (!heading) return false;
+  return (heading[2] ?? '').trim() === '';
+}
+
+/** Title text, ignoring an ATX prefix. Blank and whitespace-only lines are empty. */
+function lineHasHeadingText(text: string): boolean {
+  const heading = text.match(HEADING_LINE_RE);
+  if (heading) return (heading[2] ?? '').trim() !== '';
+  return text.trim() !== '';
+}
+
+/**
+ * Toggle ATX heading marks on selected lines.
+ * A caret on one empty line inserts the hashes and leaves the caret after them.
+ * A selection that covers several lines changes only lines that already have text.
+ * CodeMirror maps a caret at the start of a full-line replace to the start.
+ */
+export function headingToggleTransaction(
+  state: EditorState,
+  level: number,
+): Transaction | null {
+  if (level < 1 || level > 10) return null;
+  const lineNumbers = collectLineNumbersFromState(state);
+  const multiLine = lineNumbers.length > 1;
+  const changes: { from: number; to: number; insert: string }[] = [];
+  const caretAtEndOfLine = new Set<number>();
+
+  for (const lineNumber of lineNumbers) {
+    const line = state.doc.line(lineNumber);
+    if (multiLine && !lineHasHeadingText(line.text)) continue;
+    const nextText = headingLineReplacement(line.text, level);
+    if (nextText === line.text) continue;
+    changes.push({ from: line.from, to: line.to, insert: nextText });
+    if (headingBodyIsEmpty(nextText)) caretAtEndOfLine.add(lineNumber);
+  }
+  if (!changes.length) return null;
+
+  const changeSet = ChangeSet.of(changes, state.doc.length);
+  const mapped = state.selection.map(changeSet);
+  const ranges = mapped.ranges.map((range, index) => {
+    const original = state.selection.ranges[index];
+    if (!original?.empty) return range;
+    const line = state.doc.lineAt(original.head);
+    if (!caretAtEndOfLine.has(line.number)) return range;
+    return EditorSelection.cursor(changeSet.mapPos(line.to, 1));
   });
+
+  return state.update({
+    changes,
+    selection: EditorSelection.create(ranges, mapped.mainIndex),
+    scrollIntoView: true,
+  });
+}
+
+export function toggleHeadingForSelection(view: EditorView, level: number): boolean {
+  if (!view?.state) return false;
+  const tr = headingToggleTransaction(view.state, level);
+  if (!tr) return false;
+  view.dispatch(tr);
+  return true;
 }
 
 

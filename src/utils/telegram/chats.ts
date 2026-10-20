@@ -9,9 +9,9 @@ export async function createTelegramChat(
   about = '',
 ): Promise<void> {
   const client = getTelegramClient();
-  if (!client) throw new Error('Telegram is not connected');
+  if (!client) throw new Error('Telegram에 연결되지 않았습니다.');
   const name = title.trim();
-  if (!name) throw new Error('Title is required');
+  if (!name) throw new Error('제목을 입력하세요.');
   const { Api } = await import('telegram');
   await client.invoke(
     new Api.channels.CreateChannel({

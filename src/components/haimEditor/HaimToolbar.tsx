@@ -47,6 +47,7 @@ import {
   saveHaimViewMode,
 } from '@/utils/haimViewModeSettings';
 import type { HaimFormatCommand } from '@/components/haimEditor/runHaimFormatCommand';
+import { toggleHaimHeadingLevel } from '@/components/haimEditor/extensions/HaimHeading';
 import type { HaimToolbarToggleState } from '@/components/haimEditor/haimSourceFormatState';
 
 export type HaimToolbarAppActions = {
@@ -284,13 +285,13 @@ export default function HaimToolbar({
         editor.chain().focus().toggleSuperscript().run();
         break;
       case 'h1':
-        editor.chain().focus().toggleHeading({ level: 1 }).run();
+        toggleHaimHeadingLevel(editor, 1);
         break;
       case 'h2':
-        editor.chain().focus().toggleHeading({ level: 2 }).run();
+        toggleHaimHeadingLevel(editor, 2);
         break;
       case 'h3':
-        editor.chain().focus().toggleHeading({ level: 3 }).run();
+        toggleHaimHeadingLevel(editor, 3);
         break;
       case 'bullet':
         editor.chain().focus().toggleBulletList().run();

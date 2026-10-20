@@ -167,12 +167,20 @@ function lineHeightPxFromEditorWrap(editorWrap: HTMLElement): number {
 }
 
 /**
- * Live textarea height (height:auto → scrollHeight). Matches rendered glyphs.
+ * Live textarea content height.
+ * Prefer scrollHeight on a bounded field. If the field is already content-sized
+ * (scrollHeight ~= clientHeight), probe at 0px — never height:auto. Expanding
+ * a long draft reflows ancestors and scroll-anchoring leaves the composer
+ * scrolled out of view after the height is restored.
  */
-function measureTextareaContentHeight(textarea: HTMLTextAreaElement): number {
+export function measureTextareaContentHeight(textarea: HTMLTextAreaElement): number {
+  const visible = Math.ceil(textarea.scrollHeight);
+  if (textarea.clientHeight > 0 && visible > textarea.clientHeight + 1) {
+    return visible;
+  }
   const prevHeight = textarea.style.height;
   const prevMin = textarea.style.minHeight;
-  textarea.style.height = 'auto';
+  textarea.style.height = '0px';
   textarea.style.minHeight = '0';
   const contentH = Math.ceil(textarea.scrollHeight);
   textarea.style.height = prevHeight;

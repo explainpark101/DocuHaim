@@ -1,7 +1,7 @@
 import { installBrowserBuffer } from '@/utils/telegram/installBrowserBuffer';
 import { getTelegramSnapshot, patchTelegram } from '@/utils/telegram/telegramState';
-import { getTelegramClient, recallTelegramEntity } from '@/utils/telegram/telegramRuntime';
-import { mapTelegramMessage, rawTelegramMessage } from '@/utils/telegram/messages';
+import { getTelegramClient } from '@/utils/telegram/telegramRuntime';
+import { mapTelegramMessage, rawTelegramMessage, telegramDialogTarget } from '@/utils/telegram/messages';
 
 export type TelegramMediaBytes = {
   bytes: Uint8Array;
@@ -11,21 +11,15 @@ export type TelegramMediaBytes = {
 
 function requireClient() {
   const client = getTelegramClient();
-  if (!client) throw new Error('Telegram is not connected');
+  if (!client) throw new Error('Telegram에 연결되지 않았습니다.');
   return client;
-}
-
-function entityFor(dialogId: string): unknown {
-  const entity = recallTelegramEntity(dialogId);
-  if (!entity) throw new Error('Chat not found');
-  return entity;
 }
 
 function toUint8Array(raw: unknown): Uint8Array {
   let view: Uint8Array;
   if (raw instanceof Uint8Array) view = raw;
   else if (typeof raw === 'string') view = new TextEncoder().encode(raw);
-  else throw new Error('Could not download Telegram media');
+  else throw new Error('파일을 받지 못했습니다.');
   const copy = new Uint8Array(view.byteLength);
   copy.set(view);
   return copy;
@@ -40,7 +34,7 @@ export async function sendTelegramFile(
   const client = requireClient();
   const bytes = new Uint8Array(await file.arrayBuffer());
   const Buffer = installBrowserBuffer();
-  const sent = await client.sendFile(entityFor(dialogId) as never, {
+  const sent = await client.sendFile(telegramDialogTarget(dialogId) as never, {
     file: Buffer.from(bytes),
     ...(caption.trim() ? { caption: caption.trim() } : {}),
     ...(replyToId ? { replyTo: replyToId } : {}),
@@ -68,10 +62,10 @@ export async function downloadTelegramMedia(
   const client = requireClient();
   let raw = rawTelegramMessage(dialogId, messageId);
   if (!raw) {
-    const fetched = await client.getMessages(entityFor(dialogId) as never, { ids: messageId });
+    const fetched = await client.getMessages(telegramDialogTarget(dialogId) as never, { ids: messageId });
     raw = Array.isArray(fetched) ? fetched[0] : fetched;
   }
-  if (!raw) throw new Error('Message not found');
+  if (!raw) throw new Error('메시지를 찾을 수 없습니다.');
   const downloaded = await client.downloadMedia(raw as never, {});
   const rec = raw as { file?: { name?: string; mimeType?: string } };
   const name = rec.file?.name || `telegram-${messageId}`;

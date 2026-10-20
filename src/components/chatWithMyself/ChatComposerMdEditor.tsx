@@ -4,7 +4,7 @@
  * While the chunk loads, a plain textarea stays usable.
  */
 
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import {
   EDITOR_TYPE_CHANGED_EVENT,
   EDITOR_TYPE_HAIM,
@@ -20,6 +20,45 @@ const ChatComposerLegacyMdEditor = lazy(
 const ChatComposerHaimEditor = lazy(
   () => import('@/components/chatWithMyself/ChatComposerHaimEditor'),
 );
+
+type BoundaryProps = {
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+};
+
+type BoundaryState = { failed: boolean };
+
+/**
+ * If the rich editor throws while applying a large paste, keep a textarea
+ * so the composer input does not disappear.
+ */
+class ChatComposerEditorBoundary extends Component<BoundaryProps, BoundaryState> {
+  state: BoundaryState = { failed: false };
+
+  static getDerivedStateFromError(): BoundaryState {
+    return { failed: true };
+  }
+
+  componentDidUpdate(prev: BoundaryProps) {
+    if (this.state.failed && !this.props.value && prev.value) {
+      this.setState({ failed: false });
+    }
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <ChatComposerPlainTextarea
+          value={this.props.value}
+          onChange={this.props.onChange}
+          fillParent
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /**
  * Drop-in replacement for the previous ChatComposerMdEditor export.
@@ -47,12 +86,18 @@ export default function ChatComposerMdEditor(props: ChatComposerEditorProps) {
   );
 
   return (
-    <Suspense fallback={loadingFallback}>
-      {useHaim ? (
-        <ChatComposerHaimEditor {...props} />
-      ) : (
-        <ChatComposerLegacyMdEditor {...props} />
-      )}
-    </Suspense>
+    <ChatComposerEditorBoundary
+      key={editorType}
+      value={props.value}
+      onChange={props.onChange}
+    >
+      <Suspense fallback={loadingFallback}>
+        {useHaim ? (
+          <ChatComposerHaimEditor {...props} />
+        ) : (
+          <ChatComposerLegacyMdEditor {...props} />
+        )}
+      </Suspense>
+    </ChatComposerEditorBoundary>
   );
 }

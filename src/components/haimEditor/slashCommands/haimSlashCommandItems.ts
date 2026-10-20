@@ -1,4 +1,6 @@
 import type { Editor } from '@tiptap/core';
+import type { Level } from '@tiptap/extension-heading';
+import { toggleHaimHeadingLevel } from '@/components/haimEditor/extensions/HaimHeading';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bold,
@@ -94,7 +96,7 @@ const GROUP_LABEL: Record<HaimSlashCommandGroup, string> = {
 
 function toggleHeadingLevel(editor: Editor, level: number): void {
   if (level >= 1 && level <= 6) {
-    editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 | 4 | 5 | 6 }).run();
+    toggleHaimHeadingLevel(editor, level as Level);
     return;
   }
   if (level >= 7 && level <= 10) {

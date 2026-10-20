@@ -43,6 +43,7 @@ import { Figcaption } from '@/components/haimEditor/extensions/Figcaption';
 import { NoteCover } from '@/components/haimEditor/extensions/NoteCover';
 import { RawMarkdownBlock } from '@/components/haimEditor/extensions/RawMarkdownBlock';
 import { DeepHeading } from '@/components/haimEditor/extensions/DeepHeading';
+import { HaimHeading } from '@/components/haimEditor/extensions/HaimHeading';
 import { HaimSlashCommands } from '@/components/haimEditor/slashCommands/HaimSlashCommands';
 import { HaimShiftArrowSelect } from '@/components/haimEditor/extensions/HaimShiftArrowSelect';
 import { HaimInsertLineAbove } from '@/components/haimEditor/extensions/HaimInsertLineAbove';
@@ -95,7 +96,7 @@ export function createHaimExtensions(
 
   const starterKit = isNote
     ? StarterKit.configure({
-        heading: { levels: [1, 2, 3, 4, 5, 6] },
+        heading: false,
         paragraph: false,
         codeBlock: false,
         bulletList: false,
@@ -106,7 +107,7 @@ export function createHaimExtensions(
         trailingNode: false,
       })
     : StarterKit.configure({
-        heading: { levels: [1, 2, 3, 4, 5, 6] },
+        heading: false,
         paragraph: false,
         bulletList: false,
         orderedList: false,
@@ -118,6 +119,7 @@ export function createHaimExtensions(
 
   const base: Extensions = [
     starterKit,
+    HaimHeading.configure({ levels: [1, 2, 3, 4, 5, 6] }),
     HaimParagraph,
     HaimMarkdown,
     HaimSourceLine.configure({

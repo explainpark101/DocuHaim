@@ -25,52 +25,14 @@ import {
   type TelegramApiCredentialInput,
 } from '@/utils/telegram/telegramApiCredentials';
 import { installBrowserBuffer } from '@/utils/telegram/installBrowserBuffer';
+import { formatTelegramError, isTelegramSessionDead } from '@/utils/telegram/telegramError';
 
 let connecting: Promise<void> | null = null;
 let presetPhone = '';
 let resumeBound = false;
 let updateHandler: ((event: { message?: unknown }) => void) | null = null;
 
-function errorText(err: unknown, fallback: string): string {
-  if (typeof err === 'string' && err.trim()) return err.trim();
-  if (err instanceof Error && err.message.trim()) return err.message.trim();
-  return fallback;
-}
-
-function describeAuthError(err: unknown): string {
-  const rec = err as { errorMessage?: string; message?: string };
-  const code = rec.errorMessage || '';
-  if (code === 'PHONE_CODE_INVALID') return '인증 코드가 올바르지 않습니다.';
-  if (code === 'PHONE_CODE_EXPIRED') return '인증 코드가 만료되었습니다. 전화번호를 다시 입력하세요.';
-  if (code === 'PHONE_NUMBER_INVALID') return '전화번호는 국가 코드를 포함해 입력하세요. 예: +821012345678';
-  if (code === 'PHONE_NUMBER_BANNED' || code === 'PHONE_NUMBER_FLOOD') {
-    return '이 번호로는 지금 로그인할 수 없습니다.';
-  }
-  if (code === 'PASSWORD_HASH_INVALID') return '2단계 비밀번호가 올바르지 않습니다.';
-  if (code.startsWith('FLOOD_WAIT')) return '요청이 많습니다. 잠시 후 다시 시도하세요.';
-  if (rec.message === 'Code is empty' || rec.message === 'Password is empty') return '값을 입력하세요.';
-  if (rec.message === 'First name is required') return '이름을 입력하세요.';
-  return '';
-}
-
-const SAFE_ERROR_MAX = 180;
-
-function clipError(text: string): string {
-  const trimmed = text.trim();
-  if (trimmed.length <= SAFE_ERROR_MAX) return trimmed;
-  return `${trimmed.slice(0, SAFE_ERROR_MAX - 1)}…`;
-}
-
-function safeError(err: unknown): string {
-  const raw = err instanceof Error ? err.message : 'Telegram connection failed';
-  const external = raw.match(/Module "([^"]+)" has been externalized/);
-  const moduleName = external?.[1];
-  if (moduleName) {
-    return clipError(`이 환경에서 Node 모듈 "${moduleName}"을 사용할 수 없습니다.`);
-  }
-  if (!raw.trim()) return 'Telegram connection failed';
-  return clipError(raw);
-}
+const PORTAL_PHONE_HINT = '휴대폰 번호를 입력하세요. Telegram 서버가 확인하면 이 기기에 자동으로 저장됩니다.';
 
 function assertTelegramBrowserApis(): void {
   if (typeof WebSocket === 'undefined' || !globalThis.crypto?.subtle) {
@@ -156,8 +118,7 @@ async function startClient(stored: TelegramStoredSession): Promise<void> {
     // Prefer SMS so the code can be typed here without opening another Telegram client.
     forceSMS: true,
     onError: async (err) => {
-      const text = describeAuthError(err);
-      if (text) patchTelegram({ error: text });
+      patchTelegram({ error: formatTelegramError(err, '로그인하지 못했습니다.') });
       return false;
     },
   });
@@ -172,36 +133,46 @@ async function startClient(stored: TelegramStoredSession): Promise<void> {
     const me = await client.getMe();
     const user = me as { firstName?: string; username?: string };
     selfName = user.firstName || user.username || '';
-  } catch {
+  } catch (err) {
+    if (isTelegramSessionDead(err)) throw err;
     selfName = '';
   }
   if (updateHandler) {
     client.removeEventHandler(updateHandler, new gram.NewMessage({}));
   }
   updateHandler = (event) => {
-    const raw = event.message as {
-      out?: boolean;
-      message?: string;
-      text?: string;
-      chatId?: unknown;
-      peerId?: unknown;
-    };
-    if (!raw) return;
-    const dialogId = telegramPeerId(raw.chatId) || telegramPeerId(raw.peerId);
-    if (!dialogId) return;
-    const mapped = mapTelegramMessage(dialogId, raw);
-    if (!mapped) return;
-    const snap = getTelegramSnapshot();
-    applyIncomingMessage(snap.dialogs, snap.activeDialogId, snap.messages, mapped);
-    if (mapped.out) return;
-    const dialog = snap.dialogs.find((item) => item.id === dialogId);
-    const title = dialog?.title || 'Telegram';
-    void notifyTelegramIncoming(title, mapped.text || mapped.mediaName || '새 메시지');
+    try {
+      const raw = event.message as {
+        out?: boolean;
+        message?: string;
+        text?: string;
+        chatId?: unknown;
+        peerId?: unknown;
+      };
+      if (!raw) return;
+      const dialogId = telegramPeerId(raw.chatId) || telegramPeerId(raw.peerId);
+      if (!dialogId) return;
+      const mapped = mapTelegramMessage(dialogId, raw);
+      if (!mapped) return;
+      const snap = getTelegramSnapshot();
+      applyIncomingMessage(snap.dialogs, snap.activeDialogId, snap.messages, mapped);
+      if (mapped.out) return;
+      const dialog = snap.dialogs.find((item) => item.id === dialogId);
+      const title = dialog?.title || 'Telegram';
+      void notifyTelegramIncoming(title, mapped.text || mapped.mediaName || '새 메시지');
+    } catch {
+      // One bad update must not stop the receive loop.
+    }
   };
   client.addEventHandler(updateHandler, new gram.NewMessage({}));
   presetPhone = '';
   patchTelegram({ status: 'ready', error: null, loginStep: null, selfName });
-  await refreshTelegramDialogs();
+  try {
+    await refreshTelegramDialogs();
+  } catch (err) {
+    if (isTelegramSessionDead(err)) throw err;
+    patchTelegram({ error: formatTelegramError(err, '대화 목록을 불러오지 못했습니다.') });
+  }
 }
 
 /** Reconnect a saved session without prompting for login. */
@@ -228,24 +199,25 @@ export async function connectTelegram(): Promise<void> {
         status: 'need-phone',
         loginStep: 'portal-phone',
         error: null,
-        loginHint: '휴대폰 번호를 입력하세요. Telegram 서버가 확인하면 이 기기에 자동으로 저장됩니다.',
+        loginHint: PORTAL_PHONE_HINT,
       });
       return;
     }
     try {
       await startClient(stored);
     } catch (err) {
-      if (safeError(err) === 'Telegram login cancelled') {
+      if (err instanceof Error && err.message === 'Telegram login cancelled') {
         patchTelegram({
           status: 'need-phone',
           loginStep: 'portal-phone',
           error: null,
-          loginHint: '휴대폰 번호를 입력하세요. Telegram 서버가 확인하면 이 기기에 자동으로 저장됩니다.',
+          loginHint: PORTAL_PHONE_HINT,
         });
         return;
       }
-      setTelegramClient(null);
-      patchTelegram({ status: 'error', error: safeError(err) });
+      if (await dropDeadTelegramSession(err)) return;
+      await disconnectTelegram({ keepSnapshot: true });
+      patchTelegram({ status: 'error', error: formatTelegramError(err, 'Telegram 연결에 실패했습니다.') });
     }
   })().finally(() => {
     connecting = null;
@@ -273,7 +245,7 @@ export async function beginTelegramApiLogin(input: TelegramApiCredentialInput): 
     patchTelegram({
       status: 'need-phone',
       loginStep: 'portal-phone',
-      error: errorText(err, '연결 정보를 저장하지 못했습니다.'),
+      error: formatTelegramError(err, '연결 정보를 저장하지 못했습니다.'),
     });
   }
 }
@@ -294,7 +266,7 @@ export async function beginTelegramPhoneLogin(phone: string): Promise<void> {
     patchTelegram({
       status: 'need-phone',
       loginStep: 'portal-phone',
-      error: errorText(err, '확인 코드를 요청하지 못했습니다.'),
+      error: formatTelegramError(err, '확인 코드를 요청하지 못했습니다.'),
     });
   }
 }
@@ -312,7 +284,7 @@ export async function completeTelegramPortalLogin(code: string): Promise<void> {
     await disconnectTelegram({ keepSnapshot: true });
     await connectTelegram();
   } catch (err) {
-    const message = errorText(err, '번호를 확인하지 못했습니다.');
+    const message = formatTelegramError(err, '번호를 확인하지 못했습니다.');
     const retrySameCode = message.includes('확인 코드가 올바르지 않습니다') || message.includes('확인 코드를 입력하세요');
     patchTelegram(
       retrySameCode
@@ -341,8 +313,10 @@ export async function reconnectTelegramIfNeeded(): Promise<void> {
   }
   try {
     await client.connect();
-  } catch {
-    // Activity resume can race a socket that is already up.
+  } catch (err) {
+    if (!(await dropDeadTelegramSession(err))) {
+      // Activity resume can race a socket that is already up.
+    }
   }
 }
 
@@ -370,6 +344,24 @@ export async function disconnectTelegram(opts?: { keepSnapshot?: boolean }): Pro
     presetPhone = '';
     resetTelegramSnapshot();
   }
+}
+
+/** Drop a revoked session and return to phone login. Returns false for other errors. */
+export async function dropDeadTelegramSession(err: unknown): Promise<boolean> {
+  if (!isTelegramSessionDead(err)) return false;
+  try {
+    await clearTelegramSession();
+  } catch {
+    // Still leave the dead socket even if the vault wipe fails.
+  }
+  await disconnectTelegram({ keepSnapshot: true });
+  patchTelegram({
+    status: 'need-phone',
+    loginStep: 'portal-phone',
+    error: formatTelegramError(err, '이 기기의 Telegram 세션이 만료되었습니다. 다시 로그인하세요.'),
+    loginHint: PORTAL_PHONE_HINT,
+  });
+  return true;
 }
 
 export async function logoutTelegram(): Promise<void> {
