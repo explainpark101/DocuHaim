@@ -148,7 +148,7 @@ if (typeof window !== 'undefined') {
 }
 
 export function editorScrollMemoryKeyFromFile(
-  currentFile: { type?: string; id?: string } | null | undefined,
+  currentFile: { type?: string | null; id?: string | null } | null | undefined,
 ): string | null {
   if (!currentFile?.id || !currentFile?.type) return null;
   return `${currentFile.type}:${currentFile.id}`;

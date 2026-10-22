@@ -1,6 +1,14 @@
 import type { Editor } from '@tiptap/core';
 import type { Plugin } from '@tiptap/pm/state';
 
+/** Runtime Plugin.key is a string. The public type only exposes spec.key. */
+function pluginKeyName(plugin: Plugin): string {
+  const runtimeKey = (plugin as { key?: unknown }).key;
+  if (typeof runtimeKey === 'string') return runtimeKey;
+  const specKey = plugin.spec.key as { key?: unknown } | undefined;
+  return typeof specKey?.key === 'string' ? specKey.key : '';
+}
+
 export type HaimFindMeta = {
   searchTerm?: string;
   replaceTerm?: string;
@@ -14,7 +22,7 @@ export type HaimFindSummary = {
 };
 
 function findAndReplacePlugin(editor: Editor): Plugin | undefined {
-  return editor.state.plugins.find((plugin) => String(plugin.key).includes('findAndReplace'));
+  return editor.state.plugins.find((plugin) => pluginKeyName(plugin).includes('findAndReplace'));
 }
 
 /**

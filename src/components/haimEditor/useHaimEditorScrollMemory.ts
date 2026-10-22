@@ -16,7 +16,7 @@ import {
 
 type Args = {
   editor: Editor | null;
-  currentFile: { type?: string; id?: string } | null | undefined;
+  currentFile: { type?: string | null; id?: string | null } | null | undefined;
   enabled: boolean;
   showWysiwyg: boolean;
   showSource: boolean;
