@@ -1,3 +1,4 @@
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import {
   DndContext,
   DragOverlay,
@@ -783,7 +784,7 @@ function WorkspaceTabGroupChrome({
 }
 
 export default function WorkspaceTabBar({
-  tabs,
+  tabs: tabsProp,
   activeId,
   savingTabIds = [],
   onActivate,
@@ -800,6 +801,10 @@ export default function WorkspaceTabBar({
   variant = 'inline',
   className = '',
 }: WorkspaceTabBarProps) {
+  const tabs = useMemo(
+    () => (isTelegramTabVisible() ? tabsProp : tabsProp.filter((tab) => tab.kind !== 'telegram')),
+    [tabsProp],
+  );
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },

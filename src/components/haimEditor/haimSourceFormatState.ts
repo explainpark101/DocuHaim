@@ -194,8 +194,10 @@ export function queryHaimSourceFormatState(state: EditorState): HaimToolbarToggl
     : false;
 
   return {
-    bold: !inCode && Boolean(findCovering(state, ['StrongEmphasis'])),
-    italic: !inCode && Boolean(findCovering(state, ['Emphasis'])),
+    // Inline code may sit inside ** or *. Literal ** inside `...` has no
+    // StrongEmphasis ancestor, so those stay unmarked.
+    bold: Boolean(findCovering(state, ['StrongEmphasis'])),
+    italic: Boolean(findCovering(state, ['Emphasis'])),
     underline: slice ? insideUnderline(state, from, to) : false,
     strike,
     code: inInlineCode,

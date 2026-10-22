@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { openSearchPanel, SearchQuery, setSearchQuery } from '@codemirror/search';
 import { useEditor, EditorContent, EditorContext } from '@tiptap/react';
 import { Loader2 } from 'lucide-react';
 import type { NoteEditorProps } from '@/editor/contracts/noteEditorTypes';
@@ -43,6 +44,8 @@ import {
   shouldEmitVaultMarkdown,
 } from '@/components/haimEditor/haimExternalValueSync';
 import { useHaimDoubleScrollSync } from '@/components/haimEditor/useHaimDoubleScrollSync';
+import { useHaimEditorScrollMemory } from '@/components/haimEditor/useHaimEditorScrollMemory';
+import { bindHaimContentVisibilityHold } from '@/components/haimEditor/haimContentVisibilityHold';
 import {
   registerHaimAnnotateUpload,
   normalizeUploadResult,
@@ -278,6 +281,7 @@ export default function HaimEditor({
   } | null>(null);
   const [clipCropFile, setClipCropFile] = useState<File | null>(null);
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const openFindRef = useRef<(force?: boolean) => void>(() => {});
   const [invisibleCharsVisible, setInvisibleCharsVisible] = useState(false);
   const [coverExportConfirmOpen, setCoverExportConfirmOpen] = useState(false);
   const [localImageUploading, setLocalImageUploading] = useState(false);
@@ -302,6 +306,22 @@ export default function HaimEditor({
     effectiveMode === HAIM_VIEW_MODE_WYSIWYG ||
     effectiveMode === HAIM_VIEW_MODE_DOUBLE;
   const doublePane = showSource && showWysiwyg;
+  openFindRef.current = (force?: boolean) => {
+    const cm = cmViewRef.current;
+    const sourceOnly = showSource && !showWysiwyg && cm != null && cm.dom.isConnected;
+    const next = typeof force === 'boolean' ? force : !findReplaceOpen;
+    if (sourceOnly && next) {
+      openSearchPanel(cm);
+      setFindReplaceOpen(false);
+      return;
+    }
+    if (!next && showSource && cm != null && cm.dom.isConnected) {
+      cm.dispatch({
+        effects: setSearchQuery.of(new SearchQuery({ search: '' })),
+      });
+    }
+    setFindReplaceOpen(next);
+  };
   sourceLineEnabledRef.current = Boolean(
     doublePane && scrollSyncEnabled && !previewOnly && isSurfaceLive,
   );
@@ -593,6 +613,30 @@ export default function HaimEditor({
     vaultReadyRef,
   });
 
+  useHaimEditorScrollMemory({
+    editor,
+    currentFile,
+    enabled: Boolean(editor) && isSurfaceLive,
+    showWysiwyg,
+    showSource,
+    wysiwygScrollRef,
+    cmViewRef,
+    rootRef,
+    suppressScrollSyncUntilRef,
+  });
+
+  useEffect(() => {
+    if (!showWysiwyg || !editor) return undefined;
+    const root = rootRef.current;
+    const scroller = wysiwygScrollRef.current;
+    if (!root || !scroller) return undefined;
+    return bindHaimContentVisibilityHold({
+      root,
+      scroller,
+      suppressScrollSyncUntilRef,
+    });
+  }, [showWysiwyg, editor, suppressScrollSyncUntilRef]);
+
   // Apply parent `value` only for true external changes (file switch, LLM, etc.).
   // Never re-apply our own onChange echo — that races ahead of in-flight typing
   // (especially list Enter/indent) and resets WYSIWYG scroll / caret.
@@ -807,14 +851,28 @@ export default function HaimEditor({
         flush();
         onSave?.();
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'f') {
+        const cm = cmViewRef.current;
+        const target = e.target;
+        const sourceEvent =
+          showSource &&
+          cm != null &&
+          (cm.hasFocus || (target instanceof Node && cm.dom.contains(target)));
+        // Capture-phase preventDefault makes CodeMirror ignore the key
+        // (eventBelongsToEditor bails on defaultPrevented). Open its panel here.
+        if (sourceEvent && cm) {
+          e.preventDefault();
+          openSearchPanel(cm);
+          setFindReplaceOpen(false);
+          return;
+        }
         e.preventDefault();
         setFindReplaceOpen(true);
       }
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [editor, previewOnly, flush, onSave]);
+  }, [editor, previewOnly, flush, onSave, showSource]);
 
   const registerBridge = llmAssist?.registerEditorBridge;
   useEffect(() => {
@@ -1601,7 +1659,7 @@ export default function HaimEditor({
       'editor-h9': () => format('h9'),
       'editor-h10': () => format('h10'),
       'editor-catalog': () => setTocOpen((v) => !v),
-      'editor-find-replace': () => setFindReplaceOpen((v) => !v),
+      'editor-find-replace': () => openFindRef.current(),
       'editor-invisible-chars': () => toggleInvisibleChars(),
       'editor-mermaid': () => {
         editor
@@ -1780,7 +1838,7 @@ export default function HaimEditor({
         flush();
         navigateToExportPdf();
       },
-      onFindReplaceToggle: () => setFindReplaceOpen((v) => !v),
+      onFindReplaceToggle: () => openFindRef.current(),
       onInvisibleCharsToggle: toggleInvisibleChars,
       onTocToggle: () => setTocOpen((v) => !v),
     });
@@ -1959,7 +2017,7 @@ export default function HaimEditor({
                 .run();
             },
             findReplaceOpen,
-            onFindReplaceOpenChange: setFindReplaceOpen,
+            onFindReplaceOpenChange: (open) => openFindRef.current(open),
             invisibleCharsVisible,
             onInvisibleCharsToggle: toggleInvisibleChars,
           }}
@@ -1968,7 +2026,20 @@ export default function HaimEditor({
           <Suspense fallback={null}>
             <HaimFindReplaceBar
               editor={editor}
-              onClose={() => setFindReplaceOpen(false)}
+              onClose={() => openFindRef.current(false)}
+              onQueryState={(state) => {
+                const cm = cmViewRef.current;
+                if (!showSource || cm == null || !cm.dom.isConnected) return;
+                cm.dispatch({
+                  effects: setSearchQuery.of(
+                    new SearchQuery({
+                      search: state.query,
+                      caseSensitive: state.caseSensitive,
+                      replace: state.replace,
+                    }),
+                  ),
+                });
+              }}
             />
           </Suspense>
         ) : null}

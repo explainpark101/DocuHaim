@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import { X } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import EditorPane from '@/components/EditorPane';
@@ -434,14 +435,16 @@ export default function WorkspaceMainPanels({
   }, [draggingTab, publishDropHighlight, splitDragEnabled]);
 
   const chatActive = tabsEnabled ? activeId === CHAT_TAB_ID : isChatRoute;
-  const telegramActive = tabsEnabled ? activeId === TELEGRAM_TAB_ID : isTelegramRoute;
+  const telegramActive =
+    isTelegramTabVisible() && (tabsEnabled ? activeId === TELEGRAM_TAB_ID : isTelegramRoute);
   const settingsActive = tabsEnabled ? activeId === SETTINGS_TAB_ID : isSettingsRoute;
   const contentSearchActive = tabsEnabled
     ? activeId === CONTENT_SEARCH_TAB_ID
     : isContentSearchRoute;
   const llmAssistActive = tabsEnabled ? activeId === LLM_ASSIST_TAB_ID : false;
   const showChat = tabsEnabled ? hasChatTab : isChatRoute;
-  const showTelegram = tabsEnabled ? hasTelegramTab : isTelegramRoute;
+  const showTelegram =
+    isTelegramTabVisible() && (tabsEnabled ? hasTelegramTab : isTelegramRoute);
   const showSettings = tabsEnabled ? hasSettingsTab : isSettingsRoute;
   const showContentSearch = tabsEnabled ? hasContentSearchTab : isContentSearchRoute;
   const showLlmAssist = tabsEnabled ? hasLlmAssistTab : false;
@@ -611,7 +614,7 @@ export default function WorkspaceMainPanels({
                 <ChatWithMyselfPane {...(chatPaneProps as any)} isActive />
               </Suspense>
             </div>
-          ) : isTelegramRoute ? (
+          ) : isTelegramRoute && isTelegramTabVisible() ? (
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
               <Suspense fallback={<RouteSuspenseFallback />}>
                 <TelegramPane {...telegramPaneProps} isActive />

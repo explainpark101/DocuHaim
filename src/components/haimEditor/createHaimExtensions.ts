@@ -56,6 +56,7 @@ import {
   HaimInlineMath,
 } from '@/components/haimEditor/extensions/HaimMath';
 import { HaimCodeBlock } from '@/components/haimEditor/extensions/HaimCodeBlock';
+import { HaimInlineCode } from '@/components/haimEditor/extensions/HaimInlineCode';
 import { HaimParagraph } from '@/components/haimEditor/extensions/HaimParagraph';
 import { HaimSourceLine } from '@/components/haimEditor/extensions/HaimSourceLine';
 import { HaimTypography } from '@/components/haimEditor/extensions/HaimTypography';
@@ -97,6 +98,7 @@ export function createHaimExtensions(
 
   const starterKit = isNote
     ? StarterKit.configure({
+        code: false,
         heading: false,
         paragraph: false,
         codeBlock: false,
@@ -108,6 +110,7 @@ export function createHaimExtensions(
         trailingNode: false,
       })
     : StarterKit.configure({
+        code: false,
         heading: false,
         paragraph: false,
         bulletList: false,
@@ -120,6 +123,7 @@ export function createHaimExtensions(
 
   const base: Extensions = [
     starterKit,
+    HaimInlineCode,
     HaimHeading.configure({ levels: [1, 2, 3, 4, 5, 6] }),
     HaimParagraph,
     HaimMarkdown,

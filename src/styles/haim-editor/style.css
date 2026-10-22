@@ -11,6 +11,15 @@
   --haim-pgbr-color: #94a3b8;
 }
 
+/* Find bar matches. Library injects the same classes; keep them visible in this surface. */
+.haim-editor .find-and-replace-result {
+  background-color: rgb(255 225 0 / 0.45);
+}
+
+.haim-editor .find-and-replace-result-current {
+  background-color: rgb(255 165 0 / 0.7);
+}
+
 .haim-toolbar {
   position: relative;
   z-index: 2;
@@ -633,12 +642,19 @@ html[data-haim-prose-width-clamp='1']
 }
 
 .haim-dual-pane {
-  contain: layout paint;
+  /* Paint containment on this scroller leaves content-visibility blocks
+     blank after a pointer drag until the next scroll. */
+  contain: layout;
 }
 
 .haim-editor .tiptap > * {
   content-visibility: auto;
   contain-intrinsic-size: auto 3lh;
+}
+
+/* Pointer / block drag: keep on-screen blocks painted. */
+.haim-editor.haim-cv-hold .tiptap > * {
+  content-visibility: visible;
 }
 
 /* Match md-editor-rt / Haim WYSIWYG: allow scrolling last lines to ~viewport center */

@@ -14,6 +14,8 @@ import {
 } from '@codemirror/commands';
 import {
   highlightSelectionMatches,
+  openSearchPanel,
+  search,
   selectNextOccurrence,
   selectSelectionMatches,
 } from '@codemirror/search';
@@ -129,6 +131,9 @@ export default function HaimSourcePane({
         minSelectionLength: 2,
         maxMatches: 200,
       }),
+      // Match highlighter + panel. Mod-f is also bound below because a window
+      // capture listener preventDefault's Ctrl/Cmd-f before this view sees it.
+      search({ top: true }),
       haimCodeFenceIndentUnitExtension(),
       // Match WYSIWYG code-block keys inside ``` fences (brackets/quotes + Tab/Enter indent).
       CODE_FENCE_BRACKET_PAIRS_EXTENSION,
@@ -143,6 +148,16 @@ export default function HaimSourcePane({
       // Above defaultKeymap so Mod-d wins over macOS Ctrl-d deleteCharForward.
       Prec.high(
         keymap.of([
+          {
+            key: 'Mod-f',
+            preventDefault: true,
+            run: openSearchPanel,
+          },
+          {
+            key: 'Ctrl-f',
+            preventDefault: true,
+            run: openSearchPanel,
+          },
           {
             key: 'Mod-d',
             preventDefault: true,

@@ -47,6 +47,7 @@ import {
 } from '@/utils/workspaceTabs/paneLayout';
 import { normalizeAfterSnappedResize, resizeSplitLinked } from '@/utils/workspaceTabs/paneLayoutNormalize';
 import { isQuizMdPath } from '@/utils/quiz/quizPath';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import { isQuizAppPathname, openNotePathnameForStoragePath, contentSearchPathname, isSettingsAppPathname, isTelegramAppPathname } from '@/utils/appHref';
 import { patchFileTab } from '@/utils/workspaceTabs/workspaceTabsStore';
 import {
@@ -360,6 +361,7 @@ export function useWorkspaceTabsDomain({
 
   const openTelegramWorkspaceTab = useCallback(
     (options: { navigateUrl?: boolean; activate?: boolean } = {}) => {
+      if (!isTelegramTabVisible()) return;
       const { navigateUrl = true, activate = true } = options;
       if (!workspaceTabsEnabledRef.current) {
         const flushed = flushEditorIntoActiveFileTab(workspaceTabsRef.current, {

@@ -96,7 +96,9 @@
   padding: 0.15em 0.35em;
   font-size: 0.85em;
   font-family: D2Coding, ui-monospace, monospace;
-  font-weight: 500;
+  /* D2Coding is a single weight. A fixed 500 never synthesizes bold,
+     so code inside strong/headings stayed regular. */
+  font-weight: inherit;
 }
 
 .haim-editor--dark .tiptap :not(pre) > code,

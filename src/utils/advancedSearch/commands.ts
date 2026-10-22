@@ -11,6 +11,7 @@ import {
   PRINT_PAPER_SIZE_COMMANDS,
   type PrintActionId,
 } from '@/utils/advancedSearch/printActions';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import {
   CHAT_ACTION_COMMANDS,
   type ChatActionId,
@@ -820,7 +821,9 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
     }));
   }
 
-  const list: AppCommand[] = [...APP_COMMANDS];
+  const list: AppCommand[] = (
+    isTelegramTabVisible() ? APP_COMMANDS : APP_COMMANDS.filter((cmd) => cmd.id !== 'telegram')
+  ).slice();
   const openMdFile = isOpenMarkdownFile(context?.currentFile)
     ? context?.currentFile
     : null;
@@ -996,7 +999,7 @@ export function getAppCommands(context?: AppCommandContext): AppCommand[] {
         });
       }
     }
-    if (context?.telegramActionsAvailable) {
+    if (isTelegramTabVisible() && context?.telegramActionsAvailable) {
       for (const cmd of TELEGRAM_ACTION_COMMANDS) {
         list.push({
           id: cmd.id,
@@ -1069,7 +1072,7 @@ function getPageActionCommands(context?: AppCommandContext): AppCommand[] {
       });
     }
   }
-  if (context?.telegramActionsAvailable) {
+  if (isTelegramTabVisible() && context?.telegramActionsAvailable) {
     for (const cmd of TELEGRAM_ACTION_COMMANDS) {
       list.push({
         id: cmd.id,

@@ -84,6 +84,17 @@ describe('queryHaimSourceFormatState', () => {
     expect(insideBold.code).toBe(false);
   });
 
+  it('marks bold and italic that wrap inline code', () => {
+    const bold = caretIn('**`code`**', 'code', 1);
+    expect(bold.code).toBe(true);
+    expect(bold.bold).toBe(true);
+    expect(bold.italic).toBe(false);
+    const italic = caretIn('*`code`*', 'code', 1);
+    expect(italic.code).toBe(true);
+    expect(italic.italic).toBe(true);
+    expect(italic.bold).toBe(false);
+  });
+
   it('marks a fenced code block and ignores inner emphasis', () => {
     const doc = '```\n**no**\n```';
     const at = doc.indexOf('no');

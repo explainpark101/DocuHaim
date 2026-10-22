@@ -31,6 +31,7 @@ import {
   haimMarkersContentBottom,
   haimMaxScrollTop,
   haimProportionalScrollTop,
+  isHaimScrollerPinActive,
   markersForScrollFrame,
   planHaimFollowerScrollTop,
   shouldDeferScrollLayoutResync,
@@ -378,6 +379,9 @@ export function useHaimDoubleScrollSync({
       scroller: HTMLElement,
       top: number,
     ) => {
+      // A doc replace is re-pinning this scroller. A layout resync in the
+      // same frames would pull bottom overscroll back up to the caret.
+      if (isHaimScrollerPinActive(scroller)) return;
       const max = haimMaxScrollTop(scroller);
       const next = Math.max(0, Math.min(max, top));
       if (Math.abs(scroller.scrollTop - next) < 0.5) return;

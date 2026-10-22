@@ -12,12 +12,14 @@ import {
   CHAT_TAB_ID,
   CONTENT_SEARCH_TAB_ID,
   SETTINGS_TAB_ID,
+  TELEGRAM_TAB_ID,
   popClosedTab,
   popTabsRestoreQueue,
   pushClosedTab,
 } from '@/utils/workspaceTabs';
 import { findFileTab, softCapPrompt } from '@/utils/workspaceTabs/appBridge';
 import { closedTabEntryFromWorkspaceTab } from '@/utils/workspaceTabs/closedTabHistory';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import {
   applyPersistedLayoutMembership,
   fromPersistedPaneNode,
@@ -219,6 +221,7 @@ export function useAdvancedSearchTabsDomain() {
         return;
       }
       if (entry.kind === 'telegram') {
+        if (!isTelegramTabVisible()) continue;
         openTelegramWorkspaceTab();
         return;
       }
@@ -316,8 +319,10 @@ export function useAdvancedSearchTabsDomain() {
           nextState = openOrActivateChat(nextState, Date.now(), { activate: false });
           restoredAny = true;
         } else if (tab.kind === 'telegram') {
-          nextState = openOrActivateTelegram(nextState, Date.now(), { activate: false });
-          restoredAny = true;
+          if (isTelegramTabVisible()) {
+            nextState = openOrActivateTelegram(nextState, Date.now(), { activate: false });
+            restoredAny = true;
+          }
         } else if (tab.kind === 'settings') {
           nextState = openOrActivateSettings(nextState, Date.now(), { activate: false });
           restoredAny = true;
@@ -391,6 +396,9 @@ export function useAdvancedSearchTabsDomain() {
         } else if (typeof targetActiveId === 'string' && targetActiveId) {
           if (workspaceTabsRef.current.tabs.some((tab) => tab.id === targetActiveId)) {
             activateWorkspaceTab(targetActiveId, { navigateUrl });
+          } else if (!isTelegramTabVisible() && targetActiveId === TELEGRAM_TAB_ID) {
+            const fallback = workspaceTabsRef.current.tabs.find((tab) => tab.kind !== 'telegram');
+            if (fallback) activateWorkspaceTab(fallback.id, { navigateUrl });
           }
         }
       };

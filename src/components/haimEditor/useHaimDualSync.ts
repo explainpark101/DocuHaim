@@ -28,6 +28,11 @@ import {
   tryPatchTipTapTopLevelBlocks,
 } from '@/components/haimEditor/haimTipTapBlockPatch';
 import { shouldUseWasmLineDiff, dirtySpanBytes, prefixSuffixChange } from '@/components/haimEditor/haimTextDiff';
+import {
+  captureHaimScrollerPin,
+  haimMaxScrollTop,
+  retainHaimScrollerPin,
+} from '@/components/haimEditor/haimDoubleScrollSyncCore';
 import { yieldToMain } from '@/components/haimEditor/yieldToMain';
 
 /** Full TipTap parse above this size yields once before setContent. */
@@ -371,10 +376,21 @@ export function useHaimDualSync({
             }
             originRef.current = 'cm';
             let patched = false;
+            const wysiwyg = wysiwygScrollRef?.current ?? null;
+            const wysiwygPin = wysiwyg
+              ? captureHaimScrollerPin(
+                  wysiwyg.scrollTop,
+                  haimMaxScrollTop(wysiwyg),
+                  wysiwyg.scrollLeft,
+                )
+              : null;
             try {
               patched =
                 before === md ||
                 tryPatchTipTapTopLevelBlocks(editor, before, md);
+              if (patched && before !== md && wysiwyg && wysiwygPin) {
+                retainHaimScrollerPin(wysiwyg, wysiwygPin);
+              }
             } finally {
               void Promise.resolve().then(() => {
                 if (originRef.current === 'cm') originRef.current = null;

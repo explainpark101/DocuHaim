@@ -36,6 +36,7 @@ import {
 import { consumePendingPrintReturnState } from '@/utils/printNavigationState';
 import { resolveLocalFileNode } from '@/utils/localFileNode';
 import { parseViewPathFromAppPathname, parseExportPdfPathFromAppPathname, parseOpenNotePathFromAppPathname, isChatAppPathname, isSettingsAppPathname, isContentSearchAppPathname, isExportPdfAppPathname, isTelegramAppPathname, exportPdfPathnameForStoragePath, openNotePathnameForStoragePath, parseQuizPathFromAppPathname } from '@/utils/appHref';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 
 /**
  * useFileOpenRoutingDomain: context-owned domain handlers.
@@ -394,7 +395,7 @@ export function useFileOpenRoutingDomain() {
         openChatWorkspaceTab({ navigateUrl: false });
       }
       return;
-    } else if (onTelegram) {
+    } else if (onTelegram && isTelegramTabVisible()) {
       hasRestoredLastFileRef.current = true;
       hasProcessedOpenFromUrlRef.current = true;
       if (workspaceTabsEnabledRef.current) {
@@ -432,7 +433,7 @@ export function useFileOpenRoutingDomain() {
           if (persisted.tabs.some((t) => t.kind === 'chat')) {
             openChatWorkspaceTab({ navigateUrl: false, activate: false });
           }
-          if (persisted.tabs.some((t) => t.kind === 'telegram')) {
+          if (isTelegramTabVisible() && persisted.tabs.some((t) => t.kind === 'telegram')) {
             openTelegramWorkspaceTab({ navigateUrl: false, activate: false });
           }
           if (persisted.tabs.some((t) => t.kind === 'settings')) {
@@ -442,7 +443,7 @@ export function useFileOpenRoutingDomain() {
             navigate('/chat');
             return;
           }
-          if (persisted.activeId === TELEGRAM_TAB_ID) {
+          if (isTelegramTabVisible() && persisted.activeId === TELEGRAM_TAB_ID) {
             navigate('/telegram');
             return;
           }
@@ -466,7 +467,7 @@ export function useFileOpenRoutingDomain() {
           navigate('/chat');
           return;
         }
-        if (persisted.activeId === TELEGRAM_TAB_ID) {
+        if (isTelegramTabVisible() && persisted.activeId === TELEGRAM_TAB_ID) {
           hasProcessedOpenFromUrlRef.current = true;
           navigate('/telegram');
           return;
@@ -496,7 +497,7 @@ export function useFileOpenRoutingDomain() {
           else navigate('/chat');
           return;
         }
-        if (saved.type === 'telegram') {
+        if (saved.type === 'telegram' && isTelegramTabVisible()) {
           hasRestoredLastFileRef.current = true;
           hasProcessedOpenFromUrlRef.current = true;
           if (workspaceTabsEnabledRef.current) openTelegramWorkspaceTab();
@@ -645,7 +646,7 @@ export function useFileOpenRoutingDomain() {
       : null;
     const explicitActiveId = isChatAppPathname(location.pathname)
       ? CHAT_TAB_ID
-      : isTelegramAppPathname(location.pathname)
+      : isTelegramAppPathname(location.pathname) && isTelegramTabVisible()
         ? TELEGRAM_TAB_ID
       : isSettingsAppPathname(location.pathname)
         ? SETTINGS_TAB_ID
@@ -683,7 +684,7 @@ export function useFileOpenRoutingDomain() {
 
   // Open settings as a workspace tab whenever /settings is hit (incl. locked first-run).
   useEffect(() => {
-    if (!isTelegramAppPathname(location.pathname)) return;
+    if (!isTelegramTabVisible() || !isTelegramAppPathname(location.pathname)) return;
     if (!workspaceTabsEnabledRef.current) return;
     openTelegramWorkspaceTab({ navigateUrl: false });
   }, [location.pathname, openTelegramWorkspaceTab]);
@@ -717,7 +718,7 @@ export function useFileOpenRoutingDomain() {
         if (isChatAppPathname(location.pathname)) {
           openChatWorkspaceTab({ navigateUrl: false });
         } else if (isTelegramAppPathname(location.pathname)) {
-          openTelegramWorkspaceTab({ navigateUrl: false });
+          if (isTelegramTabVisible()) openTelegramWorkspaceTab({ navigateUrl: false });
         } else if (isSettingsAppPathname(location.pathname)) {
           openSettingsWorkspaceTab({ navigateUrl: false });
         } else {

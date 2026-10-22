@@ -5,6 +5,18 @@
 
 export const HAIM_SCROLL_ALIGN_PAD_PX = 32;
 /**
+ * Distance from max scroll that still counts as the bottom edge.
+ * Matches the slack CodeMirror uses for "scrolled to bottom", so a
+ * subpixel max and the 50dvh padding overscroll stay pinned together.
+ */
+export const HAIM_SCROLL_BOTTOM_EDGE_PX = 4;
+/**
+ * Frames to re-apply a scroller pin after a programmatic doc replace.
+ * Selection collapse and editor measure can scroll the caret into view
+ * on a later frame; this stays inside the dual-sync suppress window.
+ */
+export const HAIM_SCROLL_PIN_RETAIN_FRAMES = 4;
+/**
  * How long a programmatic follower scroll is treated as an echo.
  * Long enough for a late `scroll` event on a busy frame, short enough that
  * a later real gesture is not swallowed. This replaces the old exclusive
@@ -39,6 +51,115 @@ export function detectHaimScrollDir(
 
 export function haimMaxScrollTop(scroller: HTMLElement): number {
   return Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+}
+
+export type HaimScrollerPin = {
+  top: number;
+  left: number;
+  /** Pixels between the captured scrollTop and the captured max. */
+  fromBottom: number;
+  /** True when the scroller was sitting on its bottom edge. */
+  atBottom: boolean;
+};
+
+/**
+ * Snapshot scroll before a doc replace. `atBottom` follows the new max
+ * so bottom overscroll (50dvh padding) is not left behind a taller doc.
+ */
+export function captureHaimScrollerPin(
+  scrollTop: number,
+  maxScroll: number,
+  scrollLeft = 0,
+): HaimScrollerPin {
+  const fromBottom = maxScroll - scrollTop;
+  const atBottom =
+    maxScroll > 0 &&
+    fromBottom <= HAIM_SCROLL_BOTTOM_EDGE_PX &&
+    fromBottom >= -1;
+  return {
+    top: scrollTop,
+    left: scrollLeft,
+    fromBottom: Math.max(0, fromBottom),
+    atBottom,
+  };
+}
+
+/** Scroll top to restore for the scroller's current max. */
+export function haimScrollerPinTop(pin: HaimScrollerPin, maxScroll: number): number {
+  if (pin.atBottom) {
+    return Math.max(0, maxScroll - Math.min(pin.fromBottom, maxScroll));
+  }
+  return Math.max(0, Math.min(maxScroll, pin.top));
+}
+
+type PinRetainJob = {
+  gen: number;
+  anchor: string;
+  active: boolean;
+};
+
+const pinRetainJobs = new WeakMap<HTMLElement, PinRetainJob>();
+
+/** True while a post-replace pin is still being reapplied. */
+export function isHaimScrollerPinActive(scroller: HTMLElement): boolean {
+  return pinRetainJobs.get(scroller)?.active === true;
+}
+
+/**
+ * Reapply `pin` now and for a few frames. Disables overflow anchoring
+ * on this scroller so the browser does not drag the view off the pin
+ * after the replaced DOM loses its scroll anchor.
+ */
+export function retainHaimScrollerPin(
+  scroller: HTMLElement,
+  pin: HaimScrollerPin,
+  frames: number = HAIM_SCROLL_PIN_RETAIN_FRAMES,
+): void {
+  const previous = pinRetainJobs.get(scroller);
+  const gen = (previous?.gen ?? 0) + 1;
+  const anchor = previous?.anchor ?? scroller.style.overflowAnchor;
+  pinRetainJobs.set(scroller, { gen, anchor, active: true });
+  scroller.style.overflowAnchor = 'none';
+
+  const apply = () => {
+    if (scroller.isConnected === false) return;
+    const write = () => {
+      const top = haimScrollerPinTop(pin, haimMaxScrollTop(scroller));
+      if (Math.abs(scroller.scrollTop - top) >= 0.5) scroller.scrollTop = top;
+      if (scroller.scrollLeft !== pin.left) scroller.scrollLeft = pin.left;
+    };
+    // Setting scrollTop can run an editor measure() on the scroll event
+    // and nudge the position. A second write sees a stable height.
+    write();
+    write();
+  };
+
+  const finish = () => {
+    const job = pinRetainJobs.get(scroller);
+    if (!job || job.gen !== gen) return;
+    job.active = false;
+    if (scroller.isConnected !== false) scroller.style.overflowAnchor = job.anchor;
+  };
+
+  apply();
+  if (frames <= 0 || typeof requestAnimationFrame !== 'function') {
+    finish();
+    return;
+  }
+
+  let left = frames;
+  const step = () => {
+    const job = pinRetainJobs.get(scroller);
+    if (!job || job.gen !== gen) return;
+    apply();
+    left -= 1;
+    if (left <= 0) {
+      finish();
+      return;
+    }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 export function haimAnchorY(
@@ -109,10 +230,13 @@ export type HaimScrollEcho = {
 };
 
 /**
- * Follower scrollTop for one sync step. Overscroll mapping wins when the
- * driver is past its content-align end; otherwise align `mappedContentY`
- * to the same edge `dir` used on the driver. Returns null when there is
- * nothing to apply (no markers and not in the padding range).
+ * Follower scrollTop for one sync step.
+ * The driver's bottom edge (within a few pixels of max scroll) maps onto
+ * the follower's bottom edge before any content math, so layout resync
+ * cannot pull a pane up out of the padding overscroll.
+ * Otherwise overscroll mapping wins when the driver is past its
+ * content-align end; else align `mappedContentY` to the same edge `dir`
+ * used on the driver. Returns null when there is nothing to apply.
  * Both panes call this with the roles swapped.
  */
 export function planHaimFollowerScrollTop(options: {
@@ -128,6 +252,18 @@ export function planHaimFollowerScrollTop(options: {
   padPx?: number;
 }): number | null {
   const pad = options.padPx ?? HAIM_SCROLL_ALIGN_PAD_PX;
+  if (options.driverMaxScroll > 0) {
+    const fromBottom = options.driverMaxScroll - options.driverScrollTop;
+    // Bottom edge wins over line mapping. A content-bottom estimate that
+    // runs past max scroll makes the padding-range check fail, and the
+    // follower then jumps up out of the 50dvh overscroll on layout resync.
+    if (fromBottom <= HAIM_SCROLL_BOTTOM_EDGE_PX && fromBottom >= -1) {
+      return Math.max(
+        0,
+        options.followerMaxScroll - Math.max(0, fromBottom),
+      );
+    }
+  }
   const driverBottom = options.driverContentBottom;
   const followerBottom = options.followerContentBottom;
   if (driverBottom != null && followerBottom != null) {

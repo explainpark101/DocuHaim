@@ -12,6 +12,11 @@ import {
   replaceCmDocPreservingViewAsync,
 } from '@/components/haimEditor/haimCmDocReplace';
 import { HAIM_DUAL_SYNC_DEBOUNCE_MS_DEFAULT } from '@/utils/haimDualSyncDebounceSettings';
+import {
+  captureHaimScrollerPin,
+  haimMaxScrollTop,
+  retainHaimScrollerPin,
+} from '@/components/haimEditor/haimDoubleScrollSyncCore';
 
 export { replaceCmDocPreservingView, replaceCmDocPreservingViewAsync };
 
@@ -96,8 +101,13 @@ export function replaceTipTapPreservingView(
   metaPrefixRef: { current: string },
   wysiwygScrollEl: HTMLElement | null | undefined,
 ): void {
-  const savedTop = wysiwygScrollEl?.scrollTop ?? null;
-  const savedLeft = wysiwygScrollEl?.scrollLeft ?? null;
+  const pin = wysiwygScrollEl
+    ? captureHaimScrollerPin(
+        wysiwygScrollEl.scrollTop,
+        haimMaxScrollTop(wysiwygScrollEl),
+        wysiwygScrollEl.scrollLeft,
+      )
+    : null;
   const { from, to } = editor.state.selection;
 
   setEditorMarkdown(editor, md, metaPrefixRef, { emitUpdate: false });
@@ -112,8 +122,5 @@ export function replaceTipTapPreservingView(
     // Selection restore is best-effort after full markdown replace.
   }
 
-  if (wysiwygScrollEl && savedTop != null) {
-    wysiwygScrollEl.scrollTop = savedTop;
-    if (savedLeft != null) wysiwygScrollEl.scrollLeft = savedLeft;
-  }
+  if (wysiwygScrollEl && pin) retainHaimScrollerPin(wysiwygScrollEl, pin);
 }

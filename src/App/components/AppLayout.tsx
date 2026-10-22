@@ -11,6 +11,7 @@ import DesktopTitlebar from '@/components/desktop/DesktopTitlebar';
 import ShareTargetGate from '@/components/chatWithMyself/ShareTargetGate';
 import AdvancedSearchHost from '@/components/advancedSearch/AdvancedSearchHost';
 import TelegramRuntimeHost from '@/components/telegram/TelegramRuntimeHost';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import { AuthModal } from '@/components/modals/AuthModal';
 import UserWebfontStyles from '@/components/UserWebfontStyles';
 import ActivityIndicatorBar from '@/components/ActivityIndicatorBar';
@@ -645,7 +646,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         onOpenAsSession={handleOpenSessionFiles}
       />
 
-      {isUnlocked ? <TelegramRuntimeHost /> : null}
+      {isUnlocked && isTelegramTabVisible() ? <TelegramRuntimeHost /> : null}
 
       {isUnlocked ? (
         <AdvancedSearchHost

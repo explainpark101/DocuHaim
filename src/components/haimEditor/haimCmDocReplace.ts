@@ -14,6 +14,11 @@ import {
   HAIM_LINE_DIFF_WORKER_TIMEOUT_MS,
   type HaimTextChange,
 } from '@/components/haimEditor/haimTextDiff';
+import {
+  captureHaimScrollerPin,
+  haimMaxScrollTop,
+  retainHaimScrollerPin,
+} from '@/components/haimEditor/haimDoubleScrollSyncCore';
 
 type WorkerResponse = {
   id: number;
@@ -94,8 +99,11 @@ export function replaceCmDocWithChanges(
   if (changes.length === 0) return false;
   if (isCmPointerSelecting(view)) return false;
   const scrollDom = view.scrollDOM;
-  const savedTop = scrollDom.scrollTop;
-  const savedLeft = scrollDom.scrollLeft;
+  const pin = captureHaimScrollerPin(
+    scrollDom.scrollTop,
+    haimMaxScrollTop(scrollDom),
+    scrollDom.scrollLeft,
+  );
   const main = view.state.selection.main;
   const nextLength =
     before.length +
@@ -119,8 +127,7 @@ export function replaceCmDocWithChanges(
     selection: EditorSelection.single(mapped.anchor, mapped.head),
     scrollIntoView: false,
   });
-  scrollDom.scrollTop = savedTop;
-  scrollDom.scrollLeft = savedLeft;
+  retainHaimScrollerPin(scrollDom, pin);
   return true;
 }
 

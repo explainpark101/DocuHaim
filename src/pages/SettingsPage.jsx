@@ -152,6 +152,7 @@ import DesktopAppEntryLockSettings from '@/components/settings/DesktopAppEntryLo
 import MlxVlmSettings from '@/components/settings/MlxVlmSettings';
 import LlamaCppSettings from '@/components/settings/LlamaCppSettings';
 import TelegramSettings from '@/components/settings/TelegramSettings';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import {
   resolveLlmProviderProfiles,
   syncLegacyLlmCredsFromProfiles,
@@ -1261,7 +1262,7 @@ export default function SettingsPage({
               open={groupOpen.integrations !== false}
               onOpenChange={(open) => setGroupOpenById('integrations', open)}
             >
-        <TelegramSettings />
+        {isTelegramTabVisible() ? <TelegramSettings /> : null}
         <UnusedImageCleanup
           storageMode={storageMode}
           canScan={canScanStorageUsage}

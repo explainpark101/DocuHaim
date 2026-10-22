@@ -1,4 +1,5 @@
 import { isTauriDesktopPlatform, isTauriMacOS } from '@/utils/tauriPlatform';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import { filterSettingsPageGroupsFuzzy } from '@/utils/settingsPageOptionSearch';
 
 export type SettingsPageCatalogContext = {
@@ -48,7 +49,7 @@ export const SETTINGS_PAGE_GROUPS: SettingsPageGroupDef[] = [
     title: '외부 연동',
     sections: [
       { id: 'settings-unused-images', label: '미사용 / 중복 이미지' },
-      { id: 'settings-telegram', label: 'Telegram' },
+      { id: 'settings-telegram', label: 'Telegram', visible: () => isTelegramTabVisible() },
       { id: 'settings-imgbb', label: 'ImgBB' },
       { id: 'settings-og', label: 'Open Graph Worker' },
     ],

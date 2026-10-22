@@ -83,7 +83,7 @@ import {
   IconCheck,
 } from '@/components/icons';
 import { ArrowRightToLine, ChevronsLeft, Download, HardDrive, Loader2, MessageCircle, Send, X } from 'lucide-react';
-import { isTelegramShell } from '@/utils/telegram/telegramPlatform';
+import { isTelegramTabVisible } from '@/utils/telegram/telegramPlatform';
 import AdvancedSearchSidebarTrigger from '@/components/advancedSearch/AdvancedSearchSidebarTrigger';
 import SidebarContextMenu from '@/components/SidebarContextMenu';
 import SessionTreeList from '@/components/SessionTreeList';
@@ -2049,7 +2049,7 @@ export default function Sidebar({
                 isActive={chatWithMyselfActive}
                 onOpen={onOpenChatWithMyself}
               />
-              {isTelegramShell() ? (
+              {isTelegramTabVisible() ? (
                 <TelegramEntry isActive={telegramActive} onOpen={onOpenTelegram} />
               ) : null}
               <RootDropZone
@@ -2213,7 +2213,7 @@ export default function Sidebar({
               isActive={chatWithMyselfActive}
               onOpen={onOpenChatWithMyself}
             />
-            {isTelegramShell() ? (
+            {isTelegramTabVisible() ? (
               <TelegramEntry isActive={telegramActive} onOpen={onOpenTelegram} />
             ) : null}
             <RootDropZone
@@ -2398,7 +2398,7 @@ export default function Sidebar({
               isActive={chatWithMyselfActive}
               onOpen={onOpenChatWithMyself}
             />
-            {isTelegramShell() ? (
+            {isTelegramTabVisible() ? (
               <TelegramEntry isActive={telegramActive} onOpen={onOpenTelegram} />
             ) : null}
             <RootDropZone
@@ -2551,7 +2551,7 @@ export default function Sidebar({
                 isActive={chatWithMyselfActive}
                 onOpen={onOpenChatWithMyself}
               />
-              {isTelegramShell() ? (
+              {isTelegramTabVisible() ? (
                 <TelegramEntry isActive={telegramActive} onOpen={onOpenTelegram} />
               ) : null}
               <RootDropZone

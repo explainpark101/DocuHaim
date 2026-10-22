@@ -6,8 +6,11 @@ import {
   classifyHaimPaneScroll,
   detectHaimScrollDir,
   haimAnchorY,
+  captureHaimScrollerPin,
+  HAIM_SCROLL_BOTTOM_EDGE_PX,
   haimComputeBottomOverscrollTarget,
   haimLerpSpan,
+  haimScrollerPinTop,
   haimMarkersContentBottom,
   haimMaxScrollTop,
   haimScrollTopForBottomAlign,
@@ -99,6 +102,36 @@ describe('haimComputeBottomOverscrollTarget', () => {
 
   it('clamps to followerMax when follower has no padding range', () => {
     expect(haimComputeBottomOverscrollTarget(150, 100, 200, 180, 180)).toBe(180);
+  });
+});
+
+describe('bottom overscroll pin', () => {
+  it('follows a new max when the capture was on the bottom edge', () => {
+    const pin = captureHaimScrollerPin(5000, 5000, 12);
+    expect(pin.atBottom).toBe(true);
+    expect(pin.left).toBe(12);
+    expect(haimScrollerPinTop(pin, 5200)).toBe(5200);
+    expect(haimScrollerPinTop(pin, 4800)).toBe(4800);
+  });
+
+  it('keeps a few pixels of slack inside the bottom edge', () => {
+    const pin = captureHaimScrollerPin(5000 - HAIM_SCROLL_BOTTOM_EDGE_PX, 5000);
+    expect(pin.atBottom).toBe(true);
+    expect(haimScrollerPinTop(pin, 5100)).toBe(5100 - HAIM_SCROLL_BOTTOM_EDGE_PX);
+  });
+
+  it('restores an absolute top when the view is not on the bottom edge', () => {
+    const pin = captureHaimScrollerPin(4200, 5000);
+    expect(pin.atBottom).toBe(false);
+    expect(haimScrollerPinTop(pin, 5000)).toBe(4200);
+    expect(haimScrollerPinTop(pin, 1000)).toBe(1000);
+    expect(haimScrollerPinTop(pin, 5300)).toBe(4200);
+  });
+
+  it('does not treat a non-overflowing scroller as pinned to the bottom', () => {
+    const pin = captureHaimScrollerPin(0, 0);
+    expect(pin.atBottom).toBe(false);
+    expect(haimScrollerPinTop(pin, 0)).toBe(0);
   });
 });
 
@@ -205,6 +238,41 @@ describe('bidirectional scroll sync', () => {
         mappedContentY: 10,
       }),
     ).toBe(766);
+  });
+
+  it('keeps the follower on the bottom edge when content end is past max scroll', () => {
+    // Overestimated content bottom: align end is past max, so padding
+    // overscroll would return null and line mapping (mappedContentY 100,
+    // dir up) would jump the follower to the top of the doc.
+    expect(
+      planHaimFollowerScrollTop({
+        dir: 'up',
+        driverScrollTop: 5000,
+        driverClientHeight: 800,
+        driverContentBottom: 7000,
+        driverMaxScroll: 5000,
+        followerClientHeight: 800,
+        followerContentBottom: 6400,
+        followerMaxScroll: 4800,
+        mappedContentY: 100,
+      }),
+    ).toBe(4800);
+  });
+
+  it('keeps a few pixels of bottom-edge slack on the follower', () => {
+    expect(
+      planHaimFollowerScrollTop({
+        dir: 'down',
+        driverScrollTop: 4996,
+        driverClientHeight: 800,
+        driverContentBottom: 7000,
+        driverMaxScroll: 5000,
+        followerClientHeight: 800,
+        followerContentBottom: 6400,
+        followerMaxScroll: 4800,
+        mappedContentY: 100,
+      }),
+    ).toBe(4796);
   });
 
   it('maps WYSIWYG bottom overscroll onto CM padding', () => {
