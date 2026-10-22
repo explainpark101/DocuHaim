@@ -1,14 +1,40 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   clearAllEditorScrollMemory,
   clearEditorScroll,
   editorScrollMemoryKeyFromFile,
+  flushEditorScrollMemory,
+  hydrateEditorScrollMemoryFromStorage,
   recallEditorScroll,
   rememberEditorScroll,
 } from '@/utils/editorScrollMemory';
 
+const STORAGE_KEY = 's3haim_editor_scroll_v1';
+
+function installMemoryStorage(): void {
+  const store = new Map<string, string>();
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+  });
+}
+
+function roundTripFromStorage(): void {
+  flushEditorScrollMemory();
+  const raw = globalThis.localStorage.getItem(STORAGE_KEY);
+  clearAllEditorScrollMemory();
+  if (raw) globalThis.localStorage.setItem(STORAGE_KEY, raw);
+  hydrateEditorScrollMemoryFromStorage();
+}
+
 describe('editorScrollMemory', () => {
   beforeEach(() => {
+    installMemoryStorage();
     clearAllEditorScrollMemory();
   });
 
@@ -67,5 +93,35 @@ describe('editorScrollMemory', () => {
     clearEditorScroll('s3:a.md');
     expect(recallEditorScroll('s3:a.md')).toBeNull();
     expect(recallEditorScroll('s3:b.md')?.editorTop).toBe(2);
+  });
+
+  it('reloads a snapshot from localStorage after the memory map is cleared', () => {
+    rememberEditorScroll('s3:a.md', {
+      editorTop: 240,
+      editorLeft: 3,
+      previewTop: 90,
+      previewLeft: 1,
+    });
+    roundTripFromStorage();
+    expect(recallEditorScroll('s3:a.md')).toEqual({
+      editorTop: 240,
+      editorLeft: 3,
+      previewTop: 90,
+      previewLeft: 1,
+    });
+  });
+
+  it('drops the oldest file once the stored cap is exceeded', () => {
+    for (let i = 0; i < 81; i += 1) {
+      rememberEditorScroll(`s3:n${i}.md`, {
+        editorTop: i,
+        editorLeft: 0,
+        previewTop: 0,
+        previewLeft: 0,
+      });
+    }
+    roundTripFromStorage();
+    expect(recallEditorScroll('s3:n0.md')).toBeNull();
+    expect(recallEditorScroll('s3:n80.md')?.editorTop).toBe(80);
   });
 });
