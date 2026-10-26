@@ -35,11 +35,13 @@ import {
   getFootnoteDisplayModeCommands,
   getEditorImageAlignCommands,
   getExportPdfPreviewEngineCommands,
+  getExportPdfPaginationModeCommands,
   type SettingsToggleId,
   type WorkspaceTabsAutoSaveCommandId,
   type WorkspacePaneFreezeCommandId,
   type FootnoteDisplayModeCommandId,
   type ExportPdfPreviewEngineCommandId,
+  type ExportPdfPaginationModeCommandId,
   type EditorImageAlignCommandId,
   type StatusBarClockFormatCommandId,
   getStatusBarClockFormatCommands,
@@ -91,6 +93,7 @@ export type AppCommandId =
   | 'settings-webauthn'
   | 'settings-editor'
   | 'settings-export-pdf-preview'
+  | 'settings-export-pdf-pagination'
   | 'settings-auto-save'
   | 'settings-navigation'
   | 'settings-display'
@@ -138,6 +141,7 @@ export type AppCommandId =
   | WorkspacePaneFreezeCommandId
   | FootnoteDisplayModeCommandId
   | ExportPdfPreviewEngineCommandId
+  | ExportPdfPaginationModeCommandId
   | EditorImageAlignCommandId
   | StatusBarClockFormatCommandId
   | FootnoteInsertCommandId
@@ -381,7 +385,7 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'settings-editor',
     title: '설정 · 마크다운 에디터',
-    description: '기존 에디터 / Haim Editor, Export PDF 미리보기 엔진, 각주 표기',
+    description: '기존 에디터 / Haim Editor, Export PDF 미리보기 엔진·페이지 나누기, 각주 표기',
     path: '/settings#settings-editor',
     keywords: [
       '에디터',
@@ -395,6 +399,26 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '기존 에디터',
       'export pdf',
       '미리보기 엔진',
+      'pagedjs',
+      '흐름',
+    ],
+  },
+  {
+    id: 'settings-export-pdf-pagination',
+    title: '설정 · Export PDF 페이지 나누기',
+    description: '흐름 보기(기본) / Paged.js',
+    path: '/settings#settings-export-pdf-pagination',
+    keywords: [
+      'export pdf',
+      'pdf',
+      '인쇄',
+      'print',
+      '페이지',
+      'pagination',
+      'paged',
+      'pagedjs',
+      '흐름',
+      'flow',
     ],
   },
   {
@@ -1254,6 +1278,16 @@ function getExportPdfPreviewEngineAppCommands(): AppCommand[] {
   }));
 }
 
+function getExportPdfPaginationModeAppCommands(): AppCommand[] {
+  return getExportPdfPaginationModeCommands().map((cmd) => ({
+    id: cmd.id,
+    title: cmd.title,
+    description: cmd.description,
+    path: '',
+    keywords: cmd.keywords,
+  }));
+}
+
 function getEditorImageAlignAppCommands(): AppCommand[] {
   return getEditorImageAlignCommands().map((cmd) => ({
     id: cmd.id,
@@ -1410,6 +1444,7 @@ export function matchAppCommandsRanked(
   const paneFreeze = getWorkspacePaneFreezeAppCommands();
   const footnoteDisplay = getFootnoteDisplayModeAppCommands();
   const exportPdfPreviewEngine = getExportPdfPreviewEngineAppCommands();
+  const exportPdfPaginationMode = getExportPdfPaginationModeAppCommands();
   const imageAlign = getEditorImageAlignAppCommands();
   const statusBarClockFormat = getStatusBarClockFormatAppCommands();
   const seen = new Set<string>();
@@ -1423,6 +1458,7 @@ export function matchAppCommandsRanked(
     ...paneFreeze,
     ...footnoteDisplay,
     ...exportPdfPreviewEngine,
+    ...exportPdfPaginationMode,
     ...imageAlign,
     ...statusBarClockFormat,
   ]) {

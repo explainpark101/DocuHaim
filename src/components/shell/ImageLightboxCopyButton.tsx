@@ -20,7 +20,7 @@ type ImageLightboxCopyButtonProps = {
  */
 export default function ImageLightboxCopyButton({
   src,
-  className = 'absolute right-14 top-3 z-2',
+  className = '',
 }: ImageLightboxCopyButtonProps) {
   const [status, setStatus] = useState<CopyStatus>('idle');
   const srcRef = useRef(src);

@@ -63,6 +63,22 @@
 }
 
 /*
+ * Live WYSIWYG must cover the scrollport. A content-sized ProseMirror leaves
+ * a non-editable band of the pane background above and below the paper.
+ */
+.haim-editor:not([data-haim-preview-only]) .haim-editor-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-height: 100%;
+}
+
+.haim-editor:not([data-haim-preview-only]) .haim-editor-content > .tiptap {
+  flex: 1 0 auto;
+  min-height: 100%;
+}
+
+/*
  * Optional reading-width clamp (Settings → Haim prose max-width).
  * Outside the clamped column: slightly darker gutter so the reading
  * column stays visually distinct from the full editor width.
@@ -659,6 +675,7 @@ html[data-haim-prose-width-clamp='1']
 
 /* Match md-editor-rt / Haim WYSIWYG: allow scrolling last lines to ~viewport center */
 .haim-source-pane .cm-scroller .cm-content {
+  min-height: 100%;
   padding-bottom: 50vh;
   padding-bottom: 50dvh;
 }

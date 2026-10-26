@@ -28,6 +28,7 @@ import {
   Save,
   Copy,
   CopyPlus,
+  Download,
   Circle,
   Square,
   Type,
@@ -37,6 +38,10 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import FontFamilyInput from '@/components/FontFamilyInput';
+import {
+  downloadImageBlob,
+  imageDownloadFileName,
+} from '@/utils/downloadImageSrc';
 import { getModKeyLabel } from '@/components/Kbd';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
@@ -1559,27 +1564,29 @@ export default function HaimImageLightbox({
     });
   }, [src, inkStrokes, highlightStrokes, textObjects, bufSize.w, bufSize.h]);
 
-  const copyVisibleImage = useCallback(() => {
-    if (!src) return;
+  const visibleImagePngBlob = useCallback(async () => {
+    const canvas = await buildAnnotatedCanvas();
     const stage = stageHitRef.current?.getBoundingClientRect() ?? null;
     const viewport = viewportRef.current?.getBoundingClientRect() ?? null;
-    const blobPromise = (async () => {
-      const canvas = await buildAnnotatedCanvas();
-      if (!stage || !viewport) return canvasToPngBlob(canvas);
-      const region = axisRectToImagePixels(
-        stage,
-        canvas.width,
-        canvas.height,
-        viewport,
-      );
-      if (
-        !region ||
-        pixelRectCoversCanvas(region, canvas.width, canvas.height)
-      ) {
-        return canvasToPngBlob(canvas);
-      }
-      return canvasToPngBlob(cropCanvas(canvas, region));
-    })();
+    if (!stage || !viewport) return canvasToPngBlob(canvas);
+    const region = axisRectToImagePixels(
+      stage,
+      canvas.width,
+      canvas.height,
+      viewport,
+    );
+    if (
+      !region ||
+      pixelRectCoversCanvas(region, canvas.width, canvas.height)
+    ) {
+      return canvasToPngBlob(canvas);
+    }
+    return canvasToPngBlob(cropCanvas(canvas, region));
+  }, [buildAnnotatedCanvas]);
+
+  const copyVisibleImage = useCallback(() => {
+    if (!src) return;
+    const blobPromise = visibleImagePngBlob();
     if (copyStatusTimerRef.current) clearTimeout(copyStatusTimerRef.current);
     void copyPngBlobToClipboard(blobPromise)
       .then(() => {
@@ -1590,7 +1597,17 @@ export default function HaimImageLightbox({
         setCopyStatus('error');
         copyStatusTimerRef.current = setTimeout(() => setCopyStatus('idle'), 2000);
       });
-  }, [src, buildAnnotatedCanvas]);
+  }, [src, visibleImagePngBlob]);
+
+  const downloadVisibleImage = useCallback(() => {
+    if (!src) return;
+    const name = imageDownloadFileName(src, 'png').replace(/\.[^.]+$/i, '') + '.png';
+    void visibleImagePngBlob()
+      .then((blob) => downloadImageBlob(blob, name))
+      .catch((error) => {
+        console.error('Image download failed:', error);
+      });
+  }, [src, visibleImagePngBlob]);
 
   const runQrDecode = useCallback(
     (selection: AxisRect | 'full') => {
@@ -2964,6 +2981,12 @@ export default function HaimImageLightbox({
                       </ToolTipBtn>
                       <ToolTipBtn label="보기 초기화" onClick={resetView}>
                         <RotateCcw size={16} />
+                      </ToolTipBtn>
+                      <ToolTipBtn
+                        label="이미지 다운로드"
+                        onClick={downloadVisibleImage}
+                      >
+                        <Download size={16} />
                       </ToolTipBtn>
                       <ToolTipBtn
                         label={

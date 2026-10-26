@@ -588,6 +588,9 @@ export default function MarkdownEditor({
       theme: themeRef.current === 'dark' ? 'dark' : 'light',
       navigate,
       openCoverEdit: Boolean(options.openCoverEdit),
+      ...(options.paginationMode === 'flow' || options.paginationMode === 'pagedjs'
+        ? { paginationMode: options.paginationMode }
+        : {}),
       openInFocusedPane: (tabId) =>
         Boolean(tabsCtx?.workspaceTabsEnabled && tabsCtx.openExportPdfInFocusedPane?.(tabId)),
     });
@@ -742,7 +745,8 @@ export default function MarkdownEditor({
       redo(view);
     };
     handlers['editor-llm-assist'] = () => llmAssist?.toggleAssist?.();
-    handlers['editor-export-pdf'] = openExport;
+    handlers['editor-export-pdf'] = () => openExport({ paginationMode: 'flow' });
+    handlers['editor-export-pdf-pagedjs'] = () => openExport({ paginationMode: 'pagedjs' });
     handlers['editor-pgbr'] = () => {
       restoreSelectionIfNeeded();
       insertPgbr();

@@ -64,6 +64,12 @@ import {
   saveExportPdfPreviewEngine,
 } from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
 import {
+  EXPORT_PDF_PAGINATION_MODE_CHANGED_EVENT,
+  EXPORT_PDF_PAGINATION_MODE_OPTIONS,
+  loadExportPdfPaginationMode,
+  saveExportPdfPaginationMode,
+} from '@/utils/exportPdf/exportPdfPaginationModeSettings';
+import {
   HAIM_VIEW_MODE_CHANGED_EVENT,
   HAIM_VIEW_MODE_OPTIONS,
   loadHaimViewMode,
@@ -284,6 +290,9 @@ export default function SettingsPage({
   const [exportPdfPreviewEngine, setExportPdfPreviewEngineState] = useState(() =>
     loadExportPdfPreviewEngine(),
   );
+  const [exportPdfPaginationMode, setExportPdfPaginationModeState] = useState(() =>
+    loadExportPdfPaginationMode(),
+  );
   const [haimViewMode, setHaimViewModeState] = useState(() => loadHaimViewMode());
   const [haimTocLayout, setHaimTocLayoutState] = useState(() => loadHaimTocLayout());
   const [haimFocusOutline, setHaimFocusOutlineState] = useState(() =>
@@ -421,6 +430,17 @@ export default function SettingsPage({
     window.addEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, sync);
     return () => {
       window.removeEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const sync = (event) => {
+      const mode = event?.detail?.mode ?? loadExportPdfPaginationMode();
+      setExportPdfPaginationModeState(mode);
+    };
+    window.addEventListener(EXPORT_PDF_PAGINATION_MODE_CHANGED_EVENT, sync);
+    return () => {
+      window.removeEventListener(EXPORT_PDF_PAGINATION_MODE_CHANGED_EVENT, sync);
     };
   }, []);
 
@@ -1410,6 +1430,45 @@ export default function SettingsPage({
                 </label>
               ))}
             </div>
+          </div>
+          <div
+            id="settings-export-pdf-pagination"
+            tabIndex={-1}
+            className="mt-4 scroll-mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderStrong"
+          >
+            <p className="text-xs font-medium text-gray-700 dark:text-odp-fg mb-2">
+              Export PDF 페이지 나누기
+            </p>
+            <p className="text-xs text-gray-600 dark:text-odp-muted mb-3">
+              인쇄 미리보기를 열 때의 기본 방식입니다. 기본값은 흐름 보기이며 Paged.js를 쓰지 않습니다.
+            </p>
+            <RadioGroup.Root
+              className="space-y-2 text-xs text-gray-700 dark:text-odp-fg mb-4"
+              value={exportPdfPaginationMode}
+              onValueChange={(next) => {
+                if (next !== 'flow' && next !== 'pagedjs') return;
+                setExportPdfPaginationModeState(next);
+                saveExportPdfPaginationMode(next);
+              }}
+              aria-label="Export PDF 페이지 나누기"
+            >
+              {EXPORT_PDF_PAGINATION_MODE_OPTIONS.map((opt) => (
+                <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                  <RadioGroup.Item
+                    value={opt.value}
+                    className="mt-0.5 size-3.5 shrink-0 rounded-full border border-gray-400 bg-white data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                  >
+                    <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
+                  </RadioGroup.Item>
+                  <span>
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                      {opt.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </RadioGroup.Root>
           </div>
           {editorType === EDITOR_TYPE_HAIM ? (
             <div className="mb-4 rounded-md border border-gray-200 bg-white/70 p-3 dark:border-odp-borderStrong dark:bg-odp-bgSoft/40">

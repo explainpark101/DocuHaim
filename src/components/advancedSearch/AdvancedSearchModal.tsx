@@ -207,7 +207,12 @@ function HitIcon({
     if (commandId === 'browse-new-folder' || commandId === 'create-folder') {
       return <FolderPlus size={16} className={className} />;
     }
-    if (commandId === 'export-pdf' || commandId === 'export-current' || commandId === 'editor-export-pdf') {
+    if (
+      commandId === 'export-pdf' ||
+      commandId === 'export-current' ||
+      commandId === 'editor-export-pdf' ||
+      commandId === 'editor-export-pdf-pagedjs'
+    ) {
       return <Printer size={16} className={className} />;
     }
     if (commandId === 'print-scroll-heading') return <ListTree size={16} className={className} />;

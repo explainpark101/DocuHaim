@@ -295,8 +295,10 @@ button {
 /* Chat with Myself — compact auto-growing composer */
 .chat-composer-editor .md-editor {
   display: flex !important;
+  flex: 1 1 auto !important;
   flex-direction: column !important;
   height: 100% !important;
+  min-height: 0 !important;
   border: none !important;
   border-radius: 0 !important;
   background: transparent !important;
@@ -312,23 +314,34 @@ button {
 }
 /* Scrollport for TipTap body (outer shell stays overflow:hidden). */
 .chat-composer-editor .chat-composer-haim-scroll {
+  display: flex !important;
+  flex-direction: column;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
   scrollbar-width: thin !important;
   min-height: 0 !important;
+  flex: 1 1 auto;
 }
 .chat-composer-editor .chat-composer-haim-scroll::-webkit-scrollbar {
   display: block !important;
   width: 6px;
+}
+.chat-composer-editor .haim-editor-content {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  min-height: 100%;
 }
 .chat-composer-editor .chat-composer-haim .tiptap,
 .chat-composer-editor .chat-composer-haim .ProseMirror,
 .chat-composer-editor .haim-editor-content .tiptap,
 .chat-composer-editor .haim-editor .tiptap {
   /* Kill note WYSIWYG scroll-center (50vh) — it inflated edit autoFit height. */
+  box-sizing: border-box;
+  flex: 1 0 auto;
   padding-bottom: 0.5rem !important;
-  min-height: 0 !important;
+  min-height: 100% !important;
 }
 .chat-composer-editor .md-editor-toolbar-wrapper,
 .chat-composer-editor .md-editor-toolbar {
@@ -380,7 +393,7 @@ button {
 .chat-composer-editor .md-editor .cm-scroller .cm-content[contenteditable='true'],
 .chat-composer-editor .cm-content {
   margin: 0 !important;
-  min-height: 1.4em !important;
+  min-height: 100% !important;
   padding: 0 !important;
   padding-bottom: 0 !important;
 }

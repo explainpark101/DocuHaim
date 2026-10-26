@@ -114,6 +114,7 @@ import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext'
 import { registerEditorActions } from '@/utils/advancedSearch/editorActions';
 import type { HaimSlashAppActions } from '@/components/haimEditor/slashCommands/haimSlashCommandItems';
 import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
+import type { ExportPdfPaginationMode } from '@/utils/exportPdf/exportPdfPaginationModeSettings';
 import { useWorkspaceTabsCtxOptional } from '@/App/hooks/useWorkspaceTabsCtx';
 import { useNavigate } from 'react-router';
 import type { EditorView as CmEditorView } from '@codemirror/view';
@@ -994,7 +995,7 @@ export default function HaimEditor({
   ]);
 
   const navigateToExportPdf = useCallback(
-    (options: { openCoverEdit?: boolean } = {}) => {
+    (options: { openCoverEdit?: boolean; paginationMode?: ExportPdfPaginationMode } = {}) => {
       if (!editor) return;
       openExportPdfSurface({
         currentFile: currentFile
@@ -1008,6 +1009,7 @@ export default function HaimEditor({
         theme: theme === 'dark' ? 'dark' : 'light',
         navigate,
         openCoverEdit: Boolean(options.openCoverEdit),
+        ...(options.paginationMode ? { paginationMode: options.paginationMode } : {}),
         openInFocusedPane: (tabId) =>
           Boolean(
             tabsCtx?.workspaceTabsEnabled &&
@@ -1641,7 +1643,11 @@ export default function HaimEditor({
       'editor-pgbr': () => insertPageBreak(),
       'editor-export-pdf': () => {
         flush();
-        navigateToExportPdf();
+        navigateToExportPdf({ paginationMode: 'flow' });
+      },
+      'editor-export-pdf-pagedjs': () => {
+        flush();
+        navigateToExportPdf({ paginationMode: 'pagedjs' });
       },
       'editor-convert-all-images-to-wiki': () => {
         onRequestConvertAllImagesToWiki?.();
@@ -1834,9 +1840,9 @@ export default function HaimEditor({
       onLlmAssist: () => {
         llmAssist?.toggleAssist?.();
       },
-      onExportPdf: () => {
+      onExportPdf: (mode: ExportPdfPaginationMode = 'flow') => {
         flush();
-        navigateToExportPdf();
+        navigateToExportPdf({ paginationMode: mode });
       },
       onFindReplaceToggle: () => openFindRef.current(),
       onInvisibleCharsToggle: toggleInvisibleChars,
@@ -1971,9 +1977,9 @@ export default function HaimEditor({
           onTocOpenChange={setTocOpen}
           {...(onSave ? { onSave } : {})}
           appActions={{
-            onExportPdf: () => {
+            onExportPdf: (mode: ExportPdfPaginationMode = 'flow') => {
               flush();
-              navigateToExportPdf();
+              navigateToExportPdf({ paginationMode: mode });
             },
             onLlmAssist: () => llmAssist?.toggleAssist?.(),
             onHeadingRemap: openHeadingRemap,
@@ -2121,13 +2127,27 @@ export default function HaimEditor({
             {showWysiwyg ? (
               <div
                 ref={wysiwygScrollRef}
-                className={`haim-dual-pane relative min-h-0 overflow-auto ${
+                className={`haim-dual-pane relative flex min-h-0 flex-col overflow-auto ${
                   doublePane
                     ? stackDouble
                       ? 'h-1/2 w-full flex-1'
                       : 'w-1/2 flex-1'
                     : 'flex-1'
                 }`}
+                onMouseDown={(event) => {
+                  if (previewOnly || !editor || !isSurfaceLive) return;
+                  const target = event.target;
+                  if (!(target instanceof Element)) return;
+                  if (
+                    target.closest(
+                      '.ProseMirror, button, a, input, textarea, select, [contenteditable="true"], .haim-drag-handle',
+                    )
+                  ) {
+                    return;
+                  }
+                  event.preventDefault();
+                  editor.chain().focus('end').run();
+                }}
               >
                 {!previewOnly && isSurfaceLive ? (
                   <Suspense fallback={null}>
@@ -2145,7 +2165,7 @@ export default function HaimEditor({
                     />
                   </Suspense>
                 ) : null}
-                <EditorContent editor={editor} className="haim-editor-content h-full" />
+                <EditorContent editor={editor} className="haim-editor-content min-h-full w-full flex-1" />
                 <HaimLinkHoverHint
                   editor={editor}
                   enabled={!previewOnly && isSurfaceLive}

@@ -51,6 +51,12 @@ import {
 } from '@/utils/editorTypeSettings';
 import { resolvePreviewEngine } from '@/utils/previewEngine';
 import { PRINT_BODY_PAGE_ATTR } from '@/utils/print/printBodyPage';
+import {
+  EXPORT_PDF_PAGINATION_MODE_CHANGED_EVENT,
+  loadExportPdfPaginationMode,
+  saveExportPdfPaginationMode,
+  type ExportPdfPaginationMode,
+} from '@/utils/exportPdf/exportPdfPaginationModeSettings';
 
 type UseExportPdfPrintLayoutArgs = Pick<
   ExportPdfDocumentState,
@@ -115,19 +121,28 @@ export function useExportPdfPrintLayout({
   const [previewEngine, setPreviewEngine] = useState<ExportPdfPreviewEngineId>(() =>
     loadExportPdfPreviewEngine(),
   );
+  const [paginationMode, setPaginationModeState] = useState<ExportPdfPaginationMode>(() =>
+    loadExportPdfPaginationMode(),
+  );
+  const [flowPageCount, setFlowPageCount] = useState(1);
   const [editorTypeForPreview, setEditorTypeForPreview] = useState(() => loadEditorType());
 
   useEffect(() => {
     const syncEngine = () => setPreviewEngine(loadExportPdfPreviewEngine());
+    const syncPagination = () => setPaginationModeState(loadExportPdfPaginationMode());
     const syncEditor = () => setEditorTypeForPreview(loadEditorType());
     window.addEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, syncEngine);
+    window.addEventListener(EXPORT_PDF_PAGINATION_MODE_CHANGED_EVENT, syncPagination);
     window.addEventListener(EDITOR_TYPE_CHANGED_EVENT, syncEditor);
     window.addEventListener('storage', syncEngine);
+    window.addEventListener('storage', syncPagination);
     window.addEventListener('storage', syncEditor);
     return () => {
       window.removeEventListener(EXPORT_PDF_PREVIEW_ENGINE_CHANGED_EVENT, syncEngine);
+      window.removeEventListener(EXPORT_PDF_PAGINATION_MODE_CHANGED_EVENT, syncPagination);
       window.removeEventListener(EDITOR_TYPE_CHANGED_EVENT, syncEditor);
       window.removeEventListener('storage', syncEngine);
+      window.removeEventListener('storage', syncPagination);
       window.removeEventListener('storage', syncEditor);
     };
   }, []);
@@ -154,14 +169,8 @@ export function useExportPdfPrintLayout({
   const printPageInnerPx = getPrintPageInnerSizePx(printLayout.pageSizeId, pageMargins);
   const effectivePageInnerHeightPx =
     pageInnerHeightPx > 1 ? pageInnerHeightPx : printPageInnerPx.heightPx;
-  const pagedSourceKey = `${printLayoutKey}|${fontLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}|engine:${previewEngine}|resolved:${resolvedPreviewEngine}`;
-  const {
-    pageCount: bodyPageCount,
-    packLayoutKey,
-    status: pagedStatus,
-    errorMessage: pagedErrorMessage,
-    hasPages: pagedHasPages,
-  } = usePagedJsPreview({
+  const pagedSourceKey = `${printLayoutKey}|${fontLayoutKey}|${previewValue}|${effectivePageInnerHeightPx}|engine:${previewEngine}|resolved:${resolvedPreviewEngine}|pagination:${paginationMode}`;
+  const pagedPreview = usePagedJsPreview({
     sourceRef: paperContentRef,
     outputRef: pagesHostRef,
     layoutKey: pagedSourceKey,
@@ -170,7 +179,52 @@ export function useExportPdfPrintLayout({
     bodyLineHeight: fonts.bodyLineHeight || DEFAULT_PRINT_FONTS.bodyLineHeight,
     headingLineHeight: fonts.headingLineHeight || DEFAULT_PRINT_FONTS.headingLineHeight,
     baseFontSizePx: fonts.baseFontSizePx || DEFAULT_PRINT_FONTS.baseFontSizePx,
+    enabled: paginationMode === 'pagedjs',
   });
+
+  useEffect(() => {
+    if (paginationMode !== 'flow') return undefined;
+    let observer: ResizeObserver | null = null;
+    let timer = 0;
+    let stopped = false;
+
+    const measure = (el: HTMLElement) => {
+      const pageH = Math.max(1, effectivePageInnerHeightPx);
+      setFlowPageCount(Math.max(1, Math.ceil(el.scrollHeight / pageH)));
+    };
+
+    const attach = () => {
+      if (stopped) return;
+      const el = paperContentRef.current;
+      if (!el) {
+        timer = window.setTimeout(attach, 50);
+        return;
+      }
+      measure(el);
+      observer = new ResizeObserver(() => measure(el));
+      observer.observe(el);
+    };
+
+    attach();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+      observer?.disconnect();
+    };
+  }, [effectivePageInnerHeightPx, paginationMode, paperContentRef, previewValue]);
+
+  const bodyPageCount = paginationMode === 'flow' ? flowPageCount : pagedPreview.pageCount;
+  const packLayoutKey =
+    paginationMode === 'flow'
+      ? `flow|${pagedSourceKey}|${flowPageCount}`
+      : pagedPreview.packLayoutKey;
+  const pagedStatus = paginationMode === 'flow' ? 'idle' : pagedPreview.status;
+  const pagedErrorMessage = paginationMode === 'flow' ? null : pagedPreview.errorMessage;
+  const pagedHasPages = paginationMode === 'flow' ? true : pagedPreview.hasPages;
+
+  const setPaginationMode = useCallback((mode: ExportPdfPaginationMode) => {
+    saveExportPdfPaginationMode(mode);
+  }, []);
 
   useEffect(() => {
     if (pagedStatus !== 'error') {
@@ -409,6 +463,8 @@ export function useExportPdfPrintLayout({
     fontStyleVars,
     hasEnabledCover,
     previewEngine,
+    paginationMode,
+    setPaginationMode,
   };
 }
 

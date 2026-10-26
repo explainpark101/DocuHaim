@@ -1,5 +1,7 @@
 import { setPendingPrintReturnState } from '@/utils/printNavigationState';
 import { exportPdfPathnameForStoragePath } from '@/utils/appHref';
+import { saveExportPdfPaginationMode } from '@/utils/exportPdf/exportPdfPaginationModeSettings';
+import type { ExportPdfPaginationMode } from '@/utils/exportPdf/exportPdfPaginationModeSettings';
 import { loadWorkspaceTabsEnabled } from '@/utils/workspaceTabsSettings';
 
 type OpenExportPdfArgs = {
@@ -14,6 +16,8 @@ type OpenExportPdfArgs = {
   navigate: (path: string, options?: { state?: Record<string, unknown> }) => void;
   openInFocusedPane?: (tabId: string | null) => boolean;
   openCoverEdit?: boolean;
+  /** Persist pagination mode before the surface opens. Omit to keep the saved mode. */
+  paginationMode?: ExportPdfPaginationMode;
 };
 
 /**
@@ -26,7 +30,9 @@ export function openExportPdfSurface({
   navigate,
   openInFocusedPane,
   openCoverEdit = false,
+  paginationMode,
 }: OpenExportPdfArgs): void {
+  if (paginationMode) saveExportPdfPaginationMode(paginationMode);
   setPendingPrintReturnState({ currentFile, editorContent });
 
   if (loadWorkspaceTabsEnabled() && openInFocusedPane) {

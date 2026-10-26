@@ -24,6 +24,8 @@ export type PrintActionId =
   | 'print-save'
   | 'print-font-settings'
   | 'print-export'
+  | 'print-pagination-flow'
+  | 'print-pagination-pagedjs'
   | 'print-change-paper'
   | 'print-toggle-toc'
   | 'print-toggle-zero-page-margin'
@@ -193,6 +195,18 @@ export const PRINT_ACTION_COMMANDS: readonly PrintActionCommandDef[] = [
     title: '내보내기 (인쇄)',
     description: '브라우저 인쇄 / PDF 내보내기 대화상자',
     keywords: ['export', 'print', '내보내기', '인쇄', 'pdf'],
+  },
+  {
+    id: 'print-pagination-flow',
+    title: '페이지 나누기: 흐름 보기',
+    description: 'Paged.js 없이 문서 흐름 미리보기로 전환',
+    keywords: ['flow', '흐름', 'paged', 'pagedjs', '페이지', 'pagination', '미리보기'],
+  },
+  {
+    id: 'print-pagination-pagedjs',
+    title: '페이지 나누기: Paged.js',
+    description: 'Paged.js로 용지에 맞춰 페이지를 나눈 미리보기로 전환',
+    keywords: ['paged', 'pagedjs', '페이지', 'pagination', '쪽번호', '페이지 나누기'],
   },
   {
     id: 'print-change-paper',

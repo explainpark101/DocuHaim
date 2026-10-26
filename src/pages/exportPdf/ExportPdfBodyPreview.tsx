@@ -22,6 +22,7 @@ import {
 } from '@/pages/exportPdf/exportPdfPrintStyles';
 import { useExportPdfPreviewZoomClip } from '@/pages/exportPdf/hooks/useExportPdfPreviewZoomClip';
 import type { ExportPdfPreviewEngineId } from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
+import type { ExportPdfPaginationMode } from '@/utils/exportPdf/exportPdfPaginationModeSettings';
 
 export type ExportPdfBodyPreviewProps = {
   coverPages: ReactNode;
@@ -51,6 +52,8 @@ export type ExportPdfBodyPreviewProps = {
   previewFootnotesRenderKey: number;
   /** Staging MdPreview engine; default `auto` follows note editor type. */
   previewEngine?: ExportPdfPreviewEngineId;
+  /** `flow` shows the staging sheet. `pagedjs` paginates into pagesHost. */
+  paginationMode?: ExportPdfPaginationMode;
   printChrome: PrintChromeDoc | null;
   printChromeMarginsMm: PrintPageMarginsMm;
   chromeEditable?: boolean;
@@ -87,6 +90,7 @@ export function ExportPdfBodyPreview({
   bodyMarkdown,
   previewFootnotesRenderKey,
   previewEngine = 'auto',
+  paginationMode = 'flow',
   printChrome,
   printChromeMarginsMm,
   chromeEditable = true,
@@ -95,6 +99,7 @@ export function ExportPdfBodyPreview({
   onChromePlacementDraftCommit,
   onChromeRequestCancelPlacement,
 }: ExportPdfBodyPreviewProps) {
+  const flowMode = paginationMode !== 'pagedjs';
   const coverStackRef = useRef<HTMLDivElement | null>(null);
   const zoomClipHeight = useExportPdfPreviewZoomClip(
     coverStackRef,
@@ -160,50 +165,67 @@ export function ExportPdfBodyPreview({
           />
         ) : null}
         {coverPages}
-        <div className="relative w-full">
-          <ExportPdfPreviewStatusOverlay
-            status={pagedStatus}
-            errorMessage={pagedErrorMessage}
-            hasPages={pagedHasPages}
-          />
+        <div
+          className="relative w-full"
+          style={flowMode ? { display: 'none' } : undefined}
+        >
+          {flowMode ? null : (
+            <ExportPdfPreviewStatusOverlay
+              status={pagedStatus}
+              errorMessage={pagedErrorMessage}
+              hasPages={pagedHasPages}
+            />
+          )}
           <div
             ref={pagesHostRef}
-            data-export-pdf-pages="1"
-            className="export-pdf-pages w-full"
+            {...(flowMode ? {} : { 'data-export-pdf-pages': '1' })}
+            className={flowMode ? undefined : 'export-pdf-pages w-full'}
+            style={flowMode ? { display: 'none' } : undefined}
           />
-          <PrintChromePagesMount
-            pagesHostRef={pagesHostRef}
-            chrome={printChrome}
-            bodyPageCount={bodyPageCount}
-            hasCover={Boolean(activeCover?.enabled)}
-            marginsMm={printChromeMarginsMm}
-            getPresignedUrl={getPresignedUrl}
-            layoutKey={packLayoutKey}
-            editable={chromeEditable}
-            draftPlacement={chromeDraftPlacement}
-            onPlacementDraftChange={onChromePlacementDraftChange}
-            onPlacementDraftCommit={onChromePlacementDraftCommit}
-            onRequestCancelPlacement={onChromeRequestCancelPlacement}
-          />
+          {flowMode ? null : (
+            <PrintChromePagesMount
+              pagesHostRef={pagesHostRef}
+              chrome={printChrome}
+              bodyPageCount={bodyPageCount}
+              hasCover={Boolean(activeCover?.enabled)}
+              marginsMm={printChromeMarginsMm}
+              getPresignedUrl={getPresignedUrl}
+              layoutKey={packLayoutKey}
+              editable={chromeEditable}
+              draftPlacement={chromeDraftPlacement}
+              onPlacementDraftChange={onChromePlacementDraftChange}
+              onPlacementDraftCommit={onChromePlacementDraftCommit}
+              onRequestCancelPlacement={onChromeRequestCancelPlacement}
+            />
+          )}
         </div>
-        {/* Staging: continuous MdPreview for measure/fit; paged.js clones into pagesHost. */}
+        {/* Flow: visible paper. Paged.js: hidden staging cloned into pagesHost. */}
         <div
-          className="export-pdf-paper export-pdf-staging relative mx-auto bg-white text-gray-900 print:hidden"
-          style={{
-            width: 'var(--print-page-width)',
-            minHeight: 'var(--print-page-height)',
-            paddingTop: 'var(--print-page-margin-top, var(--print-page-margin))',
-            paddingRight: 'var(--print-page-margin-right, var(--print-page-margin))',
-            paddingBottom: 'var(--print-page-margin-bottom, var(--print-page-margin))',
-            paddingLeft: 'var(--print-page-margin-left, var(--print-page-margin))',
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            visibility: 'hidden',
-            pointerEvents: 'none',
-            zIndex: -1,
-          }}
-          aria-hidden
+          className={
+            flowMode
+              ? 'export-pdf-paper export-pdf-flow-paper'
+              : 'export-pdf-paper export-pdf-staging relative mx-auto bg-white text-gray-900 print:hidden'
+          }
+          {...(flowMode ? { 'data-export-pdf-pages': '1' } : {})}
+          style={
+            flowMode
+              ? undefined
+              : {
+                  width: 'var(--print-page-width)',
+                  minHeight: 'var(--print-page-height)',
+                  paddingTop: 'var(--print-page-margin-top, var(--print-page-margin))',
+                  paddingRight: 'var(--print-page-margin-right, var(--print-page-margin))',
+                  paddingBottom: 'var(--print-page-margin-bottom, var(--print-page-margin))',
+                  paddingLeft: 'var(--print-page-margin-left, var(--print-page-margin))',
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  visibility: 'hidden',
+                  pointerEvents: 'none',
+                  zIndex: -1,
+                }
+          }
+          aria-hidden={flowMode ? undefined : true}
         >
           <div
             ref={metricRef}

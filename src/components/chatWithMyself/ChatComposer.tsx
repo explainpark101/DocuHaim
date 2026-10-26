@@ -1823,20 +1823,35 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           )}
 
           <div
-            className={`flex items-start gap-2 ${
+            className={`flex gap-2 ${
               showToolbar ? 'col-span-2' : ''
-            } ${fillParent ? 'min-h-0 flex-1' : ''}`}
+            } ${fillParent ? 'min-h-0 flex-1 items-stretch' : 'items-start'}`}
           >
             {!showToolbar ? (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 dark:border-odp-borderSoft dark:hover:bg-odp-focusBg"
-                title="파일 첨부"
-                aria-label="파일 첨부"
-              >
-                <Paperclip size={18} />
-              </button>
+              <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex h-10 w-10 shrink-0 self-start items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 dark:border-odp-borderSoft dark:hover:bg-odp-focusBg"
+                      aria-label="파일 첨부"
+                    >
+                      <Paperclip size={18} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      side="top"
+                      sideOffset={6}
+                      className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 shadow-md dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+                    >
+                      파일 첨부
+                      <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </Tooltip.Provider>
             ) : null}
             <Motion.div
               ref={wrapRef}
@@ -1848,7 +1863,11 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                 useLightweightEditor || !showToolbar
                   ? 'chat-composer-editor--no-toolbar'
                   : ''
-              } ${fillParent ? 'h-full min-h-0 self-stretch' : 'shrink-0'}`}
+              } ${
+                fillParent
+                  ? 'flex h-full min-h-0 flex-col self-stretch [&>*]:h-full [&>*]:min-h-0 [&>*]:flex-1'
+                  : 'shrink-0'
+              }`}
               initial={false}
               {...(sizeEditorToContent
                 ? {
@@ -1903,7 +1922,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                       openEncryptSendPrompt();
                     }}
                     disabled={!canSend}
-                    className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40 ${
+                    className={`inline-flex h-10 w-10 shrink-0 self-start items-center justify-center rounded-full text-white disabled:opacity-40 ${
                       editTarget
                         ? 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500'
                         : 'bg-blue-600 hover:bg-blue-700'

@@ -15,6 +15,7 @@ import PrintFontOptionsModal from '@/components/PrintFontOptionsModal';
 import PrintChromeModal from '@/components/print/PrintChromeModal';
 import ExportPdfToolsDock from '@/components/print/ExportPdfToolsDock';
 import PrintImageMaxSizeControls from '@/components/print/PrintImageMaxSizeControls';
+import ExportPdfPaginationModeControl from '@/components/print/ExportPdfPaginationModeControl';
 import PrintPageSizeSelect from '@/components/print/PrintPageSizeSelect';
 import PrintPreviewZoomControls from '@/components/print/PrintPreviewZoomControls';
 import PrintVisiblePageBadge from '@/components/print/PrintVisiblePageBadge';
@@ -54,6 +55,7 @@ import type {
 } from '@/components/modals/WikiImageSizeModal';
 import type { NoteCover } from '@/utils/noteCover';
 import { DEFAULT_PRINT_FONTS } from '@/utils/printSettingsStore';
+import type { ExportPdfPaginationMode } from '@/utils/exportPdf/exportPdfPaginationModeSettings';
 
 type PrintFontsState = typeof DEFAULT_PRINT_FONTS;
 
@@ -127,6 +129,8 @@ export type ExportPdfShellProps = {
   coverPageRef: RefObject<HTMLDivElement | null>;
   hasEnabledCover: boolean;
   bodyPageCount: number;
+  paginationMode: ExportPdfPaginationMode;
+  onPaginationModeChange: (mode: ExportPdfPaginationMode) => void;
   stageVisiblePages: number[] | null;
   previewContent: ReactNode;
   coverSidebar: ReactNode;
@@ -214,6 +218,8 @@ export function ExportPdfShell({
   coverPageRef,
   hasEnabledCover,
   bodyPageCount,
+  paginationMode,
+  onPaginationModeChange,
   stageVisiblePages,
   previewContent,
   coverSidebar,
@@ -347,7 +353,9 @@ export function ExportPdfShell({
               PDF로 내보내기
             </h2>
             <p className="text-xs text-gray-500 dark:text-odp-fg/70 truncate max-w-full">
-              총 페이지수: {totalPageCount} p.
+              {paginationMode === 'flow'
+                ? `흐름 보기 · 약 ${totalPageCount} p.`
+                : `Paged.js · 총 ${totalPageCount} p.`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -413,6 +421,10 @@ export function ExportPdfShell({
               <LayoutTemplate size={16} />
               {parsedCover ? '표지 편집' : '표지 추가'}
             </button>
+            <ExportPdfPaginationModeControl
+              value={paginationMode}
+              onChange={onPaginationModeChange}
+            />
             <PrintPageSizeSelect
               value={printLayout.pageSizeId}
               onValueChange={(pageSizeId) => updatePrintLayout({ pageSizeId })}

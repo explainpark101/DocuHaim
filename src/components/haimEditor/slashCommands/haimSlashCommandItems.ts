@@ -27,6 +27,7 @@ import {
   Subscript,
   Superscript,
   ListTree,
+  Layers,
   Printer,
   Sparkles,
   Image as ImageIcon,
@@ -55,7 +56,7 @@ export type HaimSlashAppActions = {
   onHeadingRemap?: (() => void) | undefined;
   onChecklistProgress?: (() => void) | undefined;
   onLlmAssist?: (() => void) | undefined;
-  onExportPdf?: (() => void) | undefined;
+  onExportPdf?: ((mode?: 'flow' | 'pagedjs') => void) | undefined;
   onFindReplaceToggle?: (() => void) | undefined;
   onInvisibleCharsToggle?: (() => void) | undefined;
   onTocToggle?: (() => void) | undefined;
@@ -616,14 +617,26 @@ export const HAIM_SLASH_COMMANDS: readonly HaimSlashCommandItem[] = [
   },
   {
     id: 'export-pdf',
-    title: 'PDF로 내보내기',
-    titleEn: 'Export PDF',
-    keywords: ['export', 'pdf', '인쇄', 'print', '내보내기'],
+    title: 'PDF 흐름 보기',
+    titleEn: 'Export PDF flow',
+    keywords: ['export', 'pdf', '인쇄', 'print', '내보내기', '흐름', 'flow'],
     group: 'tool',
     groupLabel: GROUP_LABEL.tool,
     Icon: Printer,
     run: ({ app }) => {
-      app?.onExportPdf?.();
+      app?.onExportPdf?.('flow');
+    },
+  },
+  {
+    id: 'export-pdf-pagedjs',
+    title: 'PDF Paged.js',
+    titleEn: 'Export PDF paged.js',
+    keywords: ['export', 'pdf', '인쇄', 'print', 'paged', 'pagedjs', '페이지'],
+    group: 'tool',
+    groupLabel: GROUP_LABEL.tool,
+    Icon: Layers,
+    run: ({ app }) => {
+      app?.onExportPdf?.('pagedjs');
     },
   },
   {

@@ -32,6 +32,7 @@ type UseExportPdfPrintActionsArgs = Pick<ExportPdfDocumentState, 'handleSave' | 
     | 'setPreviewView'
     | 'updatePreviewView'
     | 'updatePrintLayout'
+    | 'setPaginationMode'
   > &
   Pick<
     ExportPdfPrintChromeState,
@@ -56,6 +57,7 @@ export function useExportPdfPrintActions({
   setPreviewView,
   updatePreviewView,
   updatePrintLayout,
+  setPaginationMode,
   openChromeModal,
   addPageNumberAndOpen,
   addTextAndOpen,
@@ -79,6 +81,8 @@ export function useExportPdfPrintActions({
       },
       'print-font-settings': () => setFontModalOpen(true),
       'print-export': () => handleExport(),
+      'print-pagination-flow': () => setPaginationMode('flow'),
+      'print-pagination-pagedjs': () => setPaginationMode('pagedjs'),
       'print-toggle-toc': () => setTocVisible((v) => !v),
       'print-toggle-zero-page-margin': () => {
         updatePrintLayout({ zeroPageMargin: !printLayout.zeroPageMargin });
@@ -177,6 +181,7 @@ export function useExportPdfPrintActions({
     setPreviewView,
     setTocVisible,
     toggleCoverEditMode,
+    setPaginationMode,
     updatePreviewView,
     updatePrintLayout,
   ]);

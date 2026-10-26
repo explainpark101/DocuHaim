@@ -109,6 +109,7 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
     setPreviewView: layout.setPreviewView,
     updatePreviewView: layout.updatePreviewView,
     updatePrintLayout: layout.updatePrintLayout,
+    setPaginationMode: layout.setPaginationMode,
     openChromeModal: printChromeState.openChromeModal,
     addPageNumberAndOpen: printChromeState.addPageNumberAndOpen,
     addTextAndOpen: printChromeState.addTextAndOpen,
@@ -187,6 +188,7 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       bodyMarkdown={doc.bodyMarkdown}
       previewFootnotesRenderKey={layout.previewFootnotesRenderKey}
       previewEngine={layout.previewEngine}
+      paginationMode={layout.paginationMode}
       printChrome={printChromeState.parsedChrome}
       printChromeMarginsMm={pageMarginsMm}
       chromeEditable
@@ -300,6 +302,8 @@ export default function ExportPDFPage(props: ExportPDFPageProps) {
       coverPageRef={refs.coverPageRef}
       hasEnabledCover={doc.hasEnabledCover}
       bodyPageCount={layout.bodyPageCount}
+      paginationMode={layout.paginationMode}
+      onPaginationModeChange={layout.setPaginationMode}
       stageVisiblePages={layout.stageVisiblePages}
       previewContent={previewContent}
       coverSidebar={coverSidebar}

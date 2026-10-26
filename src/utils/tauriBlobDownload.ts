@@ -1,7 +1,7 @@
 import type { ToastIcon } from '@/contexts/ToastContext';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { normalizeUnicodeNfc } from '@/utils/unicodeNfc';
-import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { isTauriAndroid, isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { loadTauriDownloadSaveDialogEnabled } from '@/utils/tauriDownloadSettings';
 import {
   canUseTauriFastDownload,
@@ -40,6 +40,11 @@ export function notifyTauriDownloadComplete(fileName: string): void {
     message: `「${label}」 다운로드 완료`,
     icon: 'check',
   });
+  if (isTauriAndroid()) {
+    void import('@/utils/androidDownloadNotification').then((mod) =>
+      mod.notifyAndroidDownloadedFile(label),
+    );
+  }
 }
 
 export type AppBlobDownloadResult = {
@@ -89,6 +94,13 @@ async function writeBlobWithTauriFastDownload(
 
 async function downloadAppBlob(blob: Blob, fileName: string): Promise<AppBlobDownloadResult> {
   const normalizedName = normalizeUnicodeNfc(String(fileName || 'download'));
+
+  if (isTauriAndroid()) {
+    const { ensureAndroidDownloadNotificationPermission } = await import(
+      '@/utils/androidDownloadNotification'
+    );
+    await ensureAndroidDownloadNotificationPermission();
+  }
 
   if (isTauriDesktopPlatform() && loadTauriDownloadSaveDialogEnabled()) {
     try {

@@ -131,9 +131,10 @@ export function useExportPdfImageInteractions({
       if (event.ctrlKey) return;
 
       const target = event.target;
+      const pagesHost = pagesHostRef.current;
       const contentRoot =
-        pagesHostRef.current && target instanceof Element && target.closest?.('[data-export-pdf-pages]')
-          ? pagesHostRef.current
+        pagesHost && target instanceof Element && pagesHost.contains(target)
+          ? pagesHost
           : paperContentRef.current;
       if (!contentRoot) return;
 

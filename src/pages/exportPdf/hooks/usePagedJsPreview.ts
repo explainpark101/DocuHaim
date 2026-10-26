@@ -25,6 +25,8 @@ type Args = {
   bodyLineHeight?: string;
   headingLineHeight?: string;
   baseFontSizePx?: string;
+  /** When false, skip paged.js and clear any previous page output. */
+  enabled?: boolean;
 };
 
 type PagedPreviewer = {
@@ -170,10 +172,13 @@ export function usePagedJsPreview({
   bodyLineHeight,
   headingLineHeight,
   baseFontSizePx,
+  enabled = true,
 }: Args) {
   const [pageCount, setPageCount] = useState(1);
   const [packLayoutKey, setPackLayoutKey] = useState(layoutKey);
-  const [status, setStatus] = useState<ExportPdfPagedStatus>('settling');
+  const [status, setStatus] = useState<ExportPdfPagedStatus>(
+    enabled ? 'settling' : 'idle',
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasPages, setHasPages] = useState(false);
   const generationRef = useRef(0);
@@ -183,6 +188,20 @@ export function usePagedJsPreview({
   const marginKey = marginMmDepKey(marginMm);
 
   useEffect(() => {
+    if (!enabled) {
+      generationRef.current += 1;
+      destroyPreviewer(previewerRef.current);
+      previewerRef.current = null;
+      cleanupPagedJsStyles();
+      outputRef.current?.replaceChildren();
+      setPageCount(1);
+      setPackLayoutKey(layoutKey);
+      setStatus('idle');
+      setErrorMessage(null);
+      setHasPages(false);
+      return undefined;
+    }
+
     let cancelled = false;
     const generation = (generationRef.current += 1);
     const effectStartedAt = Date.now();
@@ -580,6 +599,7 @@ export function usePagedJsPreview({
   }, [
     baseFontSizePx,
     bodyLineHeight,
+    enabled,
     headingLineHeight,
     layoutKey,
     marginKey,

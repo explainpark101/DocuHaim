@@ -84,6 +84,12 @@ import {
   type ExportPdfPreviewEngineId,
 } from '@/utils/exportPdf/exportPdfPreviewEngineSettings';
 import {
+  EXPORT_PDF_PAGINATION_MODE_OPTIONS,
+  loadExportPdfPaginationMode,
+  saveExportPdfPaginationMode,
+  type ExportPdfPaginationMode,
+} from '@/utils/exportPdf/exportPdfPaginationModeSettings';
+import {
   EDITOR_IMAGE_ALIGN_OPTIONS,
   loadEditorImageAlign,
   setEditorImageAlign,
@@ -1210,6 +1216,69 @@ export function applyExportPdfPreviewEngineCommand(
   id: ExportPdfPreviewEngineCommandId,
 ): void {
   saveExportPdfPreviewEngine(exportPdfPreviewEngineFromCommandId(id));
+}
+
+export type ExportPdfPaginationModeCommandId =
+  | 'settings-export-pdf-pagination-flow'
+  | 'settings-export-pdf-pagination-pagedjs';
+
+const EXPORT_PDF_PAGINATION_MODE_COMMAND_BY_MODE = {
+  flow: 'settings-export-pdf-pagination-flow',
+  pagedjs: 'settings-export-pdf-pagination-pagedjs',
+} as const;
+
+export function isExportPdfPaginationModeCommandId(
+  id: string | undefined | null,
+): id is ExportPdfPaginationModeCommandId {
+  return (
+    id === 'settings-export-pdf-pagination-flow' ||
+    id === 'settings-export-pdf-pagination-pagedjs'
+  );
+}
+
+export function exportPdfPaginationModeFromCommandId(
+  id: ExportPdfPaginationModeCommandId,
+): ExportPdfPaginationMode {
+  if (id === 'settings-export-pdf-pagination-pagedjs') return 'pagedjs';
+  return 'flow';
+}
+
+/** Situational: only the mode other than the current preference. */
+export function getExportPdfPaginationModeCommands(): Array<{
+  id: ExportPdfPaginationModeCommandId;
+  title: string;
+  description: string;
+  keywords: string[];
+}> {
+  const current = loadExportPdfPaginationMode();
+  return EXPORT_PDF_PAGINATION_MODE_OPTIONS.filter((opt) => opt.value !== current).map(
+    (opt) => ({
+      id: EXPORT_PDF_PAGINATION_MODE_COMMAND_BY_MODE[opt.value],
+      title: `Export PDF 페이지 나누기: ${opt.label}`,
+      description: opt.description,
+      keywords: [
+        'export pdf',
+        'export-pdf',
+        'pdf',
+        '인쇄',
+        'print',
+        '페이지',
+        'pagination',
+        'paged',
+        'pagedjs',
+        '흐름',
+        'flow',
+        opt.value,
+        opt.label,
+      ],
+    }),
+  );
+}
+
+export function applyExportPdfPaginationModeCommand(
+  id: ExportPdfPaginationModeCommandId,
+): void {
+  saveExportPdfPaginationMode(exportPdfPaginationModeFromCommandId(id));
 }
 
 export type EditorImageAlignCommandId =

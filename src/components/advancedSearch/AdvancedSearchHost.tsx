@@ -84,12 +84,14 @@ import {
 } from '@/utils/mirrorEditSettings';
 import {
   applyEditorImageAlignCommand,
+  applyExportPdfPaginationModeCommand,
   applyExportPdfPreviewEngineCommand,
   applyFootnoteDisplayModeCommand,
   applyStatusBarClockFormatCommand,
   applyWorkspacePaneFreezeCommand,
   applyWorkspaceTabsAutoSaveCommand,
   isEditorImageAlignCommandId,
+  isExportPdfPaginationModeCommandId,
   isExportPdfPreviewEngineCommandId,
   isFootnoteDisplayModeCommandId,
   isSettingsToggleId,
@@ -687,6 +689,11 @@ export default function AdvancedSearchHost({
 
         if (isExportPdfPreviewEngineCommandId(commandId)) {
           applyExportPdfPreviewEngineCommand(commandId);
+          return;
+        }
+
+        if (isExportPdfPaginationModeCommandId(commandId)) {
+          applyExportPdfPaginationModeCommand(commandId);
           return;
         }
 

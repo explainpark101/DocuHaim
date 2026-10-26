@@ -3467,10 +3467,12 @@ div.smart-blue-theme hr {
 }
 
 .md-editor .cm-scroller .cm-content[contenteditable=true] {
-  margin-block: 10px;
+  /* Vertical inset stays inside the contenteditable so the band is typeable. */
+  margin-block: 0;
   margin-inline: 10px;
-  min-height: calc(100% - 20px);
-  padding-bottom: 50dvh
+  padding-top: 10px;
+  min-height: 100%;
+  padding-bottom: calc(10px + 50dvh)
 }
 
 .md-editor .cm-scroller .cm-gutters+.cm-content[contenteditable=true] {

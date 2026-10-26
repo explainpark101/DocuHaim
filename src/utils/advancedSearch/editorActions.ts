@@ -36,6 +36,7 @@ export type EditorActionId =
   | 'editor-next'
   | 'editor-llm-assist'
   | 'editor-export-pdf'
+  | 'editor-export-pdf-pagedjs'
   | 'editor-pgbr'
   | 'editor-heading-remap'
   | 'editor-checklist-progress'
@@ -363,9 +364,15 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
   },
   {
     id: 'editor-export-pdf',
-    title: 'PDF 내보내기 (현재 에디터)',
-    description: '열린 에디터 내용을 인쇄 페이지로',
-    keywords: ['export', 'pdf', '인쇄', 'print', '내보내기'],
+    title: 'PDF 내보내기 · 흐름 보기',
+    description: 'Paged.js 없이 인쇄 페이지를 엽니다',
+    keywords: ['export', 'pdf', '인쇄', 'print', '내보내기', '흐름', 'flow', 'pagedjs'],
+  },
+  {
+    id: 'editor-export-pdf-pagedjs',
+    title: 'PDF 내보내기 · Paged.js',
+    description: 'Paged.js 페이지 나누기로 인쇄 페이지를 엽니다',
+    keywords: ['export', 'pdf', '인쇄', 'print', '내보내기', 'paged', 'pagedjs', '페이지 나누기'],
   },
   {
     id: 'editor-pgbr',

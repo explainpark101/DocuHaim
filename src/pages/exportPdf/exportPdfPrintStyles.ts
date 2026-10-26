@@ -726,6 +726,20 @@ export const printFontStyles = `
   .export-pdf-pages .print-pack-line {
     display: block;
   }
+  .export-pdf-flow-paper {
+    box-sizing: border-box;
+    position: relative;
+    width: var(--print-page-width);
+    min-height: var(--print-page-height);
+    margin-inline: auto;
+    padding-top: var(--print-page-margin-top, var(--print-page-margin));
+    padding-right: var(--print-page-margin-right, var(--print-page-margin));
+    padding-bottom: var(--print-page-margin-bottom, var(--print-page-margin));
+    padding-left: var(--print-page-margin-left, var(--print-page-margin));
+    background: #ffffff;
+    color: #111827;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+  }
   .export-pdf-paper-metric {
     height: var(--print-page-inner-height);
   }
@@ -884,6 +898,25 @@ export const printFontStyles = `
       background: transparent !important;
       background-image: none !important;
       border: none !important;
+    }
+    .export-pdf-flow-paper {
+      box-shadow: none !important;
+      min-height: 0 !important;
+      width: auto !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      position: static !important;
+    }
+    .export-pdf-flow-paper .md-pgbr {
+      break-after: page !important;
+      page-break-after: always !important;
+      border: none !important;
+      background: transparent !important;
+      height: 0 !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
   }
 `;

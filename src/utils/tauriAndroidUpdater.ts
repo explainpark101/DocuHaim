@@ -378,12 +378,16 @@ export async function downloadPendingTauriAndroidUpdate(): Promise<string> {
   });
 
   downloadPromise = (async () => {
+    const { ensureAndroidDownloadNotificationPermission, notifyAndroidDownloadedFile } =
+      await import('@/utils/androidDownloadNotification');
+    await ensureAndroidDownloadNotificationPermission();
     await attachProgressListener();
     try {
       const path = await invoke<string>('android_download_apk', {
         url: snapshot.url,
         fileName: snapshot.name,
       });
+      void notifyAndroidDownloadedFile(snapshot.name, '업데이트 다운로드 완료');
       if (pendingApk && pendingApk.url === snapshot.url && pendingApk.name === snapshot.name) {
         pendingApk = { ...pendingApk, localPath: path };
       } else {

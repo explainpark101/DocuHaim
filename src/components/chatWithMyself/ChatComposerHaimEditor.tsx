@@ -293,7 +293,7 @@ export default function ChatComposerHaimEditor({
 
   return (
     <div
-      className={`chat-composer-haim flex h-full min-h-0 w-full flex-col ${
+      className={`chat-composer-haim flex h-full min-h-0 w-full flex-1 flex-col ${
         theme === 'dark' ? 'haim-editor--dark' : ''
       }`}
     >
@@ -407,8 +407,17 @@ export default function ChatComposerHaimEditor({
         </Tooltip.Provider>
       ) : null}
       {/* Bounded dock + overflow-auto — same scrollport pattern as note HaimEditor. */}
-      <div className="chat-composer-haim-scroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none]">
-        <EditorContent editor={editor} className="haim-editor-content min-h-full" />
+      <div
+        className="chat-composer-haim-scroll relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain [overflow-anchor:none]"
+        onMouseDown={(event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) return;
+          if (target.closest('.ProseMirror, button, a, input, textarea')) return;
+          event.preventDefault();
+          editor.chain().focus('end').run();
+        }}
+      >
+        <EditorContent editor={editor} className="haim-editor-content min-h-full w-full flex-1" />
       </div>
     </div>
   );

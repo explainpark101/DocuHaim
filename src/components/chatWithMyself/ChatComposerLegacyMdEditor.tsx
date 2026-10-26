@@ -90,7 +90,7 @@ export default function ChatComposerLegacyMdEditor({
   }, []);
 
   return (
-    <div ref={containerRef} className="relative h-full w-full">
+    <div ref={containerRef} className="relative flex h-full min-h-0 w-full flex-1 flex-col">
       <MdEditor
         ref={editorRef}
         editorId={CHAT_COMPOSER_MD_EDITOR_ID}

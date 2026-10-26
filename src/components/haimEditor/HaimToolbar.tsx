@@ -27,7 +27,6 @@ import {
   FileCode2,
   ArrowUpDown,
   ListTree,
-  Printer,
   Sparkles,
   Image as ImageIcon,
   BarChart3,
@@ -50,9 +49,11 @@ import {
 import type { HaimFormatCommand } from '@/components/haimEditor/runHaimFormatCommand';
 import { toggleHaimHeadingLevel } from '@/components/haimEditor/extensions/HaimHeading';
 import type { HaimToolbarToggleState } from '@/components/haimEditor/haimSourceFormatState';
+import ExportPdfOpenMenu from '@/components/print/ExportPdfOpenMenu';
+import type { ExportPdfPaginationMode } from '@/utils/exportPdf/exportPdfPaginationModeSettings';
 
 export type HaimToolbarAppActions = {
-  onExportPdf?: (() => void) | undefined;
+  onExportPdf?: ((mode?: ExportPdfPaginationMode) => void) | undefined;
   onLlmAssist?: (() => void) | undefined;
   llmAssistActive?: boolean | undefined;
   onHeadingRemap?: (() => void) | undefined;
@@ -594,9 +595,10 @@ export default function HaimToolbar({
           <HaimLlmAssistToolButton onToggle={() => a.onLlmAssist?.()} />
         ) : null}
         {a?.onExportPdf ? (
-          <ToolBtn label="PDF로 내보내기" onClick={() => a.onExportPdf?.()}>
-            <Printer size={14} />
-          </ToolBtn>
+          <ExportPdfOpenMenu
+            variant="haim"
+            onOpen={(mode) => a.onExportPdf?.(mode)}
+          />
         ) : null}
         {a?.onFindReplaceOpenChange ? (
           <ToolBtn

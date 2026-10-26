@@ -165,6 +165,10 @@ export {
   getExportPdfPreviewEngineCommands,
   applyExportPdfPreviewEngineCommand,
   exportPdfPreviewEngineFromCommandId,
+  isExportPdfPaginationModeCommandId,
+  getExportPdfPaginationModeCommands,
+  applyExportPdfPaginationModeCommand,
+  exportPdfPaginationModeFromCommandId,
   isEditorImageAlignCommandId,
   getEditorImageAlignCommands,
   applyEditorImageAlignCommand,
@@ -181,6 +185,7 @@ export type {
   WorkspacePaneFreezeCommandId,
   FootnoteDisplayModeCommandId,
   ExportPdfPreviewEngineCommandId,
+  ExportPdfPaginationModeCommandId,
   EditorImageAlignCommandId,
   StatusBarClockFormatCommandId,
 } from '@/utils/advancedSearch/settingsToggles';
