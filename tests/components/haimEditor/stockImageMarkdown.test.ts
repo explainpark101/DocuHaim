@@ -1,15 +1,12 @@
-import type { Editor } from '@tiptap/core';
+import { Editor } from '@tiptap/core';
 import { describe, expect, it } from 'vitest';
+import { createHaimExtensions } from '@/components/haimEditor/createHaimExtensions';
 import { isRenderableImageSrc } from '@/components/haimEditor/extensions/stockImageSrc';
 import { isStorageImageSrc } from '@/utils/storageImagePath';
 
 const SRC = 'attachment:51a532f8-364a-4d50-8974-48e0f09a395e.png';
 
-async function openEditor(markdown: string) {
-  const { Editor } = await import('@tiptap/core');
-  const { createHaimExtensions } = await import(
-    '@/components/haimEditor/createHaimExtensions'
-  );
+function openEditor(markdown: string) {
   return new Editor({
     extensions: createHaimExtensions({ placeholder: '', profile: 'note' }),
     content: markdown,
@@ -43,8 +40,8 @@ describe('stock markdown image', () => {
     expect(isStorageImageSrc('https://example.com/a.png')).toBe(false);
   });
 
-  it('opens a missing attachment image without a schema error', async () => {
-    const editor = await openEditor(`![image.png](${SRC})\n`);
+  it('opens a missing attachment image without a schema error', () => {
+    const editor = openEditor(`![image.png](${SRC})\n`);
     try {
       expect(() => editor.state.doc.check()).not.toThrow();
       const found = paragraphImage(editor);
@@ -64,8 +61,8 @@ describe('stock markdown image', () => {
     }
   });
 
-  it('keeps an inline missing image inside a sentence', async () => {
-    const editor = await openEditor(`see ![image.png](${SRC}) here\n`);
+  it('keeps an inline missing image inside a sentence', () => {
+    const editor = openEditor(`see ![image.png](${SRC}) here\n`);
     try {
       expect(() => editor.state.doc.check()).not.toThrow();
       const found = paragraphImage(editor);
