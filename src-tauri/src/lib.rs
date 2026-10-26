@@ -91,7 +91,6 @@ async fn gemini_api_fetch(
 struct PendingOpenPaths(Mutex<Vec<String>>);
 
 impl PendingOpenPaths {
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
     fn extend_unique(&self, paths: &[String]) {
         if let Ok(mut guard) = self.0.lock() {
             for p in paths {
@@ -271,16 +270,64 @@ fn looks_like_markdown_path(p: &str) -> bool {
         || lower.contains("text%2fmarkdown")
 }
 
+fn strip_wrapping_quotes(s: &str) -> &str {
+    let t = s.trim();
+    let bytes = t.as_bytes();
+    if bytes.len() >= 2 {
+        let first = bytes[0];
+        let last = bytes[bytes.len() - 1];
+        if (first == b'"' && last == b'"') || (first == b'\'' && last == b'\'') {
+            return &t[1..t.len() - 1];
+        }
+    }
+    t
+}
+
+fn resolve_open_path(raw: &str, cwd: &str) -> String {
+    if raw.starts_with("content:") {
+        return raw.to_string();
+    }
+    let path = std::path::Path::new(raw);
+    if path.is_absolute() {
+        return raw.to_string();
+    }
+    let base = if cwd.trim().is_empty() {
+        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+    } else {
+        std::path::PathBuf::from(cwd)
+    };
+    base.join(path).to_string_lossy().into_owned()
+}
+
+/// Markdown paths from a process argv. Skips flags and the executable path.
+fn markdown_paths_from_args(argv: &[String], cwd: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for arg in argv {
+        let trimmed = strip_wrapping_quotes(arg.trim());
+        if trimmed.is_empty() || trimmed.starts_with('-') {
+            continue;
+        }
+        let Some(raw) = path_from_url_or_raw(trimmed) else {
+            continue;
+        };
+        if !looks_like_markdown_path(&raw) {
+            continue;
+        }
+        let resolved = resolve_open_path(&raw, cwd);
+        if !out.iter().any(|p| p == &resolved) {
+            out.push(resolved);
+        }
+    }
+    out
+}
+
 fn collect_cli_file_args() -> Vec<String> {
-    std::env::args()
-        .skip(1)
-        .filter_map(|arg| {
-            if arg.starts_with('-') {
-                return None;
-            }
-            path_from_url_or_raw(&arg).filter(|p| looks_like_markdown_path(p))
-        })
-        .collect()
+    let cwd = std::env::current_dir()
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    // args() includes argv[0]. markdown_paths_from_args drops non-markdown entries.
+    let args: Vec<String> = std::env::args().collect();
+    markdown_paths_from_args(&args, &cwd)
 }
 
 /// Read bytes for an OS-open path (absolute file path or Android content:// URI).
@@ -382,8 +429,7 @@ fn read_android_content_uri(uri: &str) -> Result<Vec<u8>, String> {
     })
 }
 
-/// Queue + emit paths from OS "open with" / file-association URLs (not CLI args).
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+/// Queue + emit paths from OS "open with" / file association.
 fn push_paths(app: &AppHandle, paths: Vec<String>) {
     if paths.is_empty() {
         return;
@@ -392,6 +438,28 @@ fn push_paths(app: &AppHandle, paths: Vec<String>) {
         state.extend_unique(&paths);
     }
     let _ = app.emit("desktop-open-files", paths);
+}
+
+/// Bring the already-running main window forward after a second launch.
+#[cfg(desktop)]
+fn focus_running_main_window(app: &AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+/// Windows/Linux file association starts a new process. Hand its markdown args
+/// to this instance and focus it. macOS usually delivers files via RunEvent::Opened.
+#[cfg(desktop)]
+fn on_second_instance(app: &AppHandle, argv: Vec<String>, cwd: String) {
+    focus_running_main_window(app);
+    let paths = markdown_paths_from_args(&argv, &cwd);
+    if !paths.is_empty() {
+        push_paths(app, paths);
+    }
 }
 
 #[tauri::command]
@@ -421,7 +489,15 @@ fn take_pending_android_share(
 pub fn run() {
     let pending = PendingOpenPaths(Mutex::new(collect_cli_file_args()));
 
-    let mut builder = tauri::Builder::default()
+    // Must be the first plugin so a second process exits before it creates a window.
+    let mut builder = tauri::Builder::default();
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            on_second_instance(app, argv, cwd);
+        }));
+    }
+    builder = builder
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init())
@@ -678,4 +754,56 @@ pub fn run() {
                 _ => {}
             }
         });
+}
+
+#[cfg(test)]
+mod open_path_tests {
+    use super::markdown_paths_from_args;
+
+    #[test]
+    fn keeps_absolute_markdown_and_skips_exe_and_flags() {
+        let dir = std::env::temp_dir();
+        let note = dir.join("note.md").to_string_lossy().into_owned();
+        let readme = dir.join("readme.markdown").to_string_lossy().into_owned();
+        let argv = vec![
+            "docuhaim.exe".to_string(),
+            note.clone(),
+            "--flag".to_string(),
+            readme.clone(),
+        ];
+        let got = markdown_paths_from_args(&argv, &dir.to_string_lossy());
+        assert_eq!(got, vec![note, readme]);
+    }
+
+    #[test]
+    fn resolves_relative_markdown_against_cwd() {
+        let argv = vec!["notes/chapter.md".to_string()];
+        let got = markdown_paths_from_args(&argv, "/tmp/docs");
+        let expected = std::path::Path::new("/tmp/docs")
+            .join("notes/chapter.md")
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(got, vec![expected]);
+    }
+
+    #[test]
+    fn accepts_quoted_relative_markdown_path() {
+        let argv = vec![r#""notes/open.md""#.to_string()];
+        let got = markdown_paths_from_args(&argv, "/tmp/docs");
+        let expected = std::path::Path::new("/tmp/docs")
+            .join("notes/open.md")
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(got, vec![expected]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn accepts_windows_file_url() {
+        let argv = vec!["file:///D:/vault/other.md".to_string()];
+        let got = markdown_paths_from_args(&argv, r"D:\vault");
+        assert!(got
+            .iter()
+            .any(|p| p.replace('\\', "/").ends_with("D:/vault/other.md")));
+    }
 }

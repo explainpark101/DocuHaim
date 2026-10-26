@@ -1,13 +1,9 @@
 /**
  * Desktop OS / CLI / Android intent open-file bridge.
- * Routes paths under the Local vault to vault notes; otherwise session workspace.
+ * Associated markdown files open as a download session (session workspace).
  */
 
 import { isDesktopApp } from '@/utils/isDesktopApp';
-import {
-  loadLocalVaultFsPath,
-  relativePathUnderVault,
-} from '@/utils/localVaultPathStore';
 import {
   workspaceFromInputFiles,
   type SessionWorkspace,
@@ -22,11 +18,28 @@ const queue: string[] = [];
 const listeners = new Set<Listener>();
 let started = false;
 let unlisten: UnlistenFn | null = null;
+const recentlyEnqueued = new Map<string, number>();
+const OPEN_PATH_DEDUPE_MS = 1500;
+
+function openPathKey(path: string): string {
+  const slash = path.replace(/\\/g, '/');
+  const platform = typeof navigator !== 'undefined' ? navigator.platform : '';
+  if (/win/i.test(platform)) return slash.toLowerCase();
+  return slash;
+}
 
 function enqueue(paths: string[]): void {
+  const now = Date.now();
   const next = (Array.isArray(paths) ? paths : [])
     .map((p) => String(p || '').trim())
-    .filter(Boolean);
+    .filter((p) => {
+      if (!p) return false;
+      const key = openPathKey(p);
+      const prev = recentlyEnqueued.get(key);
+      if (prev != null && now - prev < OPEN_PATH_DEDUPE_MS) return false;
+      recentlyEnqueued.set(key, now);
+      return true;
+    });
   if (!next.length) return;
   for (const p of next) {
     if (!queue.includes(p)) queue.push(p);
@@ -80,9 +93,7 @@ export function stopDesktopOpenFilesBridge(): void {
   started = false;
 }
 
-export type DesktopOpenRoute =
-  | { kind: 'vault'; relativePath: string }
-  | { kind: 'session'; workspace: SessionWorkspace };
+export type DesktopOpenRoute = { kind: 'session'; workspace: SessionWorkspace };
 
 function basename(path: string): string {
   const n = String(path || '').replace(/\\/g, '/');
@@ -124,20 +135,15 @@ export async function readOpenPathBytes(abs: string): Promise<Uint8Array> {
 }
 
 /**
- * Route absolute OS paths / content URIs: under registered vault → relative local note; else session.
+ * Read each OS path / content URI and open it as a download session.
+ * `localAbsPath` stays on the session file so a later save writes back to that path.
  */
 export async function resolveDesktopOpenPaths(
   absolutePaths: string[],
 ): Promise<DesktopOpenRoute[]> {
-  const vaultRoot = loadLocalVaultFsPath();
   const routes: DesktopOpenRoute[] = [];
 
   for (const abs of absolutePaths) {
-    const relative = vaultRoot ? relativePathUnderVault(abs, vaultRoot) : null;
-    if (relative) {
-      routes.push({ kind: 'vault', relativePath: relative });
-      continue;
-    }
     try {
       const bytes = await readOpenPathBytes(abs);
       const name = basename(abs);

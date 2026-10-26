@@ -306,7 +306,7 @@ export function useFileOpenRoutingDomain() {
     hasRestoredPersistedWorkspaceTabsRef.current = true;
   }, [isUnlocked, workspaceTabsEnabled]);
 
-  // Desktop OS / CLI open-file queue (Tauri file association)
+  // Desktop OS / CLI open-file queue (Tauri file association, including a second instance).
   useEffect(() => {
     if (!isUnlocked || !isDesktopApp()) return undefined;
     let cancelled = false;
@@ -317,17 +317,7 @@ export function useFileOpenRoutingDomain() {
       const routes = await resolveDesktopOpenPaths(abs);
       for (const route of routes) {
         if (cancelled) return;
-        if (route.kind === 'vault') {
-          const name = route.relativePath.split('/').filter(Boolean).pop() || 'note.md';
-          const node = {
-            type: 'file',
-            path: route.relativePath,
-            name,
-          };
-          await selectFileRaw('local', node);
-        } else if (route.kind === 'session') {
-          await openSessionWorkspaceRef.current?.(route.workspace);
-        }
+        await openSessionWorkspaceRef.current?.(route.workspace);
       }
     };
 
@@ -342,7 +332,7 @@ export function useFileOpenRoutingDomain() {
       cancelled = true;
       unsub();
     };
-  }, [isUnlocked, selectFileRaw, openSessionWorkspaceRef]);
+  }, [isUnlocked, openSessionWorkspaceRef]);
 
   // Open file from ?open=, /view/* or /export-pdf/* route, or last-file cache once storage is ready.
   useEffect(() => {

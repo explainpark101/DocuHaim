@@ -47,6 +47,8 @@ font-kit = "0.14"
 tauri-plugin-biometry = "0.2.8"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# Forwards a second process (Windows/Linux "Open with") into the running app.
+tauri-plugin-single-instance = "2"
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-biometric = "2"
