@@ -11,6 +11,10 @@ import {
   HAIM_LINK_OPEN_CHANGED_EVENT,
 } from '@/utils/haimLinkOpenSettings';
 import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
+import {
+  isNoteDocumentHashHref,
+  scrollHaimEditorToDocumentHash,
+} from '@/utils/noteDocumentHashLink';
 
 type PendingOpen = {
   href: string;
@@ -85,6 +89,7 @@ function resolveLinkHref(editor: Editor, link: HTMLAnchorElement): string {
 }
 
 function formatLinkLabel(href: string): string {
+  if (isNoteDocumentHashHref(href)) return href;
   const docPath = parseDocuhaimHref(href);
   if (docPath) return docPath;
   try {
@@ -213,7 +218,11 @@ export default function HaimLinkHoverHint({
           }
         : null);
     if (!current?.href) return;
-    openHaimLinkHref(current.href, { target: current.target || '_blank' });
+    if (isNoteDocumentHashHref(current.href) && editor) {
+      scrollHaimEditorToDocumentHash(editor, current.href);
+    } else {
+      openHaimLinkHref(current.href, { target: current.target || '_blank' });
+    }
     hide();
   };
 

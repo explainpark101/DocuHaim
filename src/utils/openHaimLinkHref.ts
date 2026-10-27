@@ -5,6 +5,10 @@ import {
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { isDocuhaimHref, parseDocuhaimHref } from '@/utils/docuhaimLink';
 import { openHaimViewPath } from '@/utils/haimOpenViewPath';
+import {
+  isNoteDocumentHashHref,
+  scrollPreviewToDocumentHash,
+} from '@/utils/noteDocumentHashLink';
 
 /**
  * Open via a temporary anchor click — more reliable than window.open(..., features)
@@ -23,8 +27,11 @@ function openViaAnchorClick(href: string, target: string): void {
 }
 
 /**
- * Open a Haim link href: docuhaim:// in-app, desktop/Android http(s) via OS browser,
- * otherwise a new tab.
+ * Open a Haim link href: in-document `#` scrolls (never a new tab),
+ * docuhaim:// in-app, desktop/Android http(s) via OS browser, otherwise a new tab.
+ *
+ * Prefer editor-aware scroll helpers (`scrollHaimEditorToDocumentHash`, etc.)
+ * when a TipTap/CM/preview root is available; this is the last-resort path.
  */
 export function openHaimLinkHref(
   href: string,
@@ -32,6 +39,13 @@ export function openHaimLinkHref(
 ): void {
   const raw = String(href || '').trim();
   if (!raw) return;
+
+  if (isNoteDocumentHashHref(raw)) {
+    if (typeof document !== 'undefined') {
+      scrollPreviewToDocumentHash(raw, document);
+    }
+    return;
+  }
 
   const docuhaimPath = parseDocuhaimHref(raw);
   if (docuhaimPath) {

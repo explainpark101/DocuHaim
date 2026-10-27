@@ -131,6 +131,7 @@ import {
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself';
 import { resolvePreviewHref } from '@/utils/appHref';
+import { scrollPreviewToDocumentHash } from '@/utils/noteDocumentHashLink';
 import { bindPreviewFootnoteClick } from '@/utils/previewFootnoteScroll';
 import {
   FOOTNOTE_DISPLAY_MODE_CHANGED_EVENT,
@@ -2057,6 +2058,12 @@ export default function MarkdownEditor({
       const resolved = resolvePreviewHref(href, {
         currentViewPath: currentFile?.type ? currentFile.id : null,
       });
+      if (resolved.kind === 'hash') {
+        event.preventDefault();
+        event.stopPropagation();
+        scrollPreviewToDocumentHash(href, root);
+        return;
+      }
       if (resolved.kind !== 'app') return;
 
       event.preventDefault();

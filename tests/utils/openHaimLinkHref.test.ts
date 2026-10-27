@@ -44,6 +44,23 @@ describe('openHaimLinkHref', () => {
     expect(openHaimViewPath).toHaveBeenCalledWith('notes/a.md');
   });
 
+  it('does not open a new tab for in-document hash hrefs', async () => {
+    const createElement = vi.fn();
+    vi.stubGlobal('document', {
+      createElement,
+      body: { appendChild: vi.fn() },
+      querySelector: vi.fn(() => null),
+      querySelectorAll: vi.fn(() => []),
+      getElementById: vi.fn(() => null),
+    });
+
+    const { openHaimLinkHref } = await import('@/utils/openHaimLinkHref');
+    openHaimLinkHref('#introduction', { target: '_blank' });
+
+    expect(createElement).not.toHaveBeenCalled();
+    expect(openHaimViewPath).not.toHaveBeenCalled();
+  });
+
   it('opens http(s) via temporary anchor click on web', async () => {
     const click = vi.fn();
     const remove = vi.fn();

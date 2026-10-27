@@ -9,6 +9,10 @@ import { loadHaimLinkOpenOnClick } from '@/utils/haimLinkOpenSettings';
 import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
 import { openHaimViewPath } from '@/utils/haimOpenViewPath';
 import { isDesktopApp } from '@/utils/isDesktopApp';
+import {
+  isNoteDocumentHashHref,
+  scrollHaimEditorToDocumentHash,
+} from '@/utils/noteDocumentHashLink';
 import { shouldOpenDesktopExternalLink } from '@/utils/shared/initDesktopExternalLinks';
 
 /** Applied to the ProseMirror root while Ctrl/Cmd is held (CSS cursor:pointer on links). */
@@ -112,6 +116,7 @@ function tryOpenLinkFromEvent(
   const docuhaimPath = parseDocuhaimHref(href);
   const openOnClick = loadHaimLinkOpenOnClick();
   const mod = event.metaKey || event.ctrlKey;
+  const isHash = isNoteDocumentHashHref(href);
 
   // Editable: always prevent browser navigation; open via setting, Mod+click, or hover/tap 「열기」.
   // Coarse pointers keep preventDefault so the sticky hover-card can show 「열기」
@@ -120,6 +125,12 @@ function tryOpenLinkFromEvent(
     event.preventDefault();
     const allowOpen = mod || openOnClick;
     if (!allowOpen) return true;
+
+    if (isHash) {
+      event.stopPropagation();
+      scrollHaimEditorToDocumentHash(editor, href);
+      return true;
+    }
 
     if (docuhaimPath) {
       event.stopPropagation();
@@ -132,7 +143,14 @@ function tryOpenLinkFromEvent(
     return true;
   }
 
-  // Preview / read-only: docuhaim opens in-app.
+  // Preview / read-only: in-document hash scrolls; docuhaim opens in-app.
+  if (isHash) {
+    event.preventDefault();
+    event.stopPropagation();
+    scrollHaimEditorToDocumentHash(editor, href);
+    return true;
+  }
+
   if (docuhaimPath) {
     event.preventDefault();
     event.stopPropagation();
@@ -180,10 +198,13 @@ export const HaimLink = Link.extend({
   renderHTML({ HTMLAttributes }) {
     const href = String(HTMLAttributes.href || '');
     const docuhaim = isDocuhaimHref(href);
+    const isHash = isNoteDocumentHashHref(href);
     return [
       'a',
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
         class: docuhaim ? 'haim-docuhaim-link' : null,
+        // In-document hashes must not open a new tab — click handler scrolls.
+        ...(isHash ? { target: null, rel: null } : {}),
       }),
       0,
     ];

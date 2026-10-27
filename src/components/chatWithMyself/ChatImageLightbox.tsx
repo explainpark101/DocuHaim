@@ -100,7 +100,8 @@ export function ChatImageLightbox({
           <Dialog.Portal forceMount key="chat-image-lightbox">
             <Dialog.Overlay asChild forceMount>
               <Motion.div
-                className="fixed inset-x-0 top-0 z-[300] bg-black/85"
+                // Above sidebar sticky headers (z-9999) and TreeNode sticky folders (~1000).
+                className="fixed inset-x-0 top-0 z-100060 bg-black/85"
                 style={stageStyle}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -130,7 +131,7 @@ export function ChatImageLightbox({
               }}
             >
               <Motion.div
-                className="fixed inset-x-0 top-0 z-[310] flex flex-col outline-none"
+                className="fixed inset-x-0 top-0 z-100061 flex flex-col outline-none"
                 style={stageStyle}
                 aria-label="이미지 크게 보기"
                 initial={{ opacity: 0, scale: 0.98 }}

@@ -12,6 +12,7 @@ md-editor-rt / markdown-it / CommonMark **기본 문법**이 아닌, 이 앱에�
 |------|------|------|
 | [wiki-image.md](./wiki-image.md) | `![[path\|opts]]` + 캡션 | 에디터 / 미리보기 / 채팅 / 인쇄 |
 | [docuhaim-link.md](./docuhaim-link.md) | `[text](docuhaim://path)` | Haim / 노트 미리보기 |
+| [hash-heading-link.md](./hash-heading-link.md) | `[text](#heading)` 같은 파일 스크롤 | Haim / 노트 미리보기 |
 | [task-list.md](./task-list.md) | `- [ ]` / `[~]` / `[x]` | Haim / 미리보기 / 인쇄 |
 | [remote-image.md](./remote-image.md) | `<!-- remote-image … -->` sidecar | 서식 유지 복사 / ImgBB |
 | [markdown-image-attrs.md](./markdown-image-attrs.md) | `![alt](src){attrs}` | 에디터 / 미리보기 / 인쇄 |
@@ -66,7 +67,7 @@ Feature 문서의 **Spec** 섹션은 파서 중립 계약이다. markdown-it 토
 
 - CommonMark / GFM (제목 h1–h6, 링크, 목록, 코드펜스, 테이블, task list 등)
 - md-editor-rt 기본 기능 (KaTeX, Mermaid 등; shortcode 이모지는 [emoji-shortcode.md](./emoji-shortcode.md))
-- 미리보기 외부 링크 `target=_blank` (`previewLinkTargetBlankPlugin`) — **문법 아님**, 렌더러만
+- 미리보기 외부 링크 `target=_blank` (`previewLinkTargetBlankPlugin`) — **문법 아님**, 렌더러만 (해시 링크 동작은 [hash-heading-link.md](./hash-heading-link.md))
 - 녹음 동기화 — `.sync.pb` / `.sync.json` **사이드카**, 인라인 마커 없음
 - Obsidian식 일반 `[[wikilink]]` — **미지원** (`![[]]`, `[[file:]]`, `[[note:]]`, `[[folder:]]`만)
 

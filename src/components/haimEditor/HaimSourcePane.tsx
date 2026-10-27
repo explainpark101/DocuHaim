@@ -51,6 +51,10 @@ import { findMarkdownLinkHrefAt } from '@/components/haimEditor/cmMarkdownLinkAt
 import type { TaskCheckboxKind } from '@/utils/taskCheckboxStatus';
 import { DEFAULT_DOCUMENT_TASK_CHECKBOX } from '@/utils/documentSettingsMeta';
 import { openHaimLinkHref } from '@/utils/openHaimLinkHref';
+import {
+  isNoteDocumentHashHref,
+  scrollCodeMirrorToDocumentHash,
+} from '@/utils/noteDocumentHashLink';
 
 type Props = {
   initialValue: string;
@@ -205,7 +209,11 @@ export default function HaimSourcePane({
             const href = findMarkdownLinkHrefAt(view.state, pos);
             if (!href) return false;
             event.preventDefault();
-            openHaimLinkHref(href, { target: '_blank' });
+            if (isNoteDocumentHashHref(href)) {
+              scrollCodeMirrorToDocumentHash(view, href);
+            } else {
+              openHaimLinkHref(href, { target: '_blank' });
+            }
             return true;
           },
         }),

@@ -107,8 +107,16 @@ html[data-haim-prose-width-clamp='1']
   .haim-editor:not([data-haim-preview-only])
   .haim-editor-content
   .tiptap.haim-editor-prose {
-  max-width: var(--haim-prose-max-width, 800px);
+  /*
+   * Set both width and max-width from the CSS var. TipTap also has Tailwind
+   * `max-w-none`; if that utility wins on max-width, width still clamps to
+   * --haim-prose-max-width. align-self beats flex stretch so the column can
+   * shrink and center via margin-inline.
+   */
+  width: min(100%, var(--haim-prose-max-width, 800px));
+  max-width: min(100%, var(--haim-prose-max-width, 800px));
   margin-inline: auto;
+  align-self: center;
   min-height: 100%;
   box-sizing: border-box;
   background-color: #fff;
