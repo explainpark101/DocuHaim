@@ -52,6 +52,7 @@ const COVERED_FEATURE_DOCS = [
   'mermaid-fence-size.md',
   'mermaid-size.md',
   'docuhaim-link.md',
+  'hash-heading-link.md',
   'kanban-json.md',
   'task-list.md',
   'version-history.md',
@@ -631,6 +632,26 @@ describe('Haim Editor custom markdown (docs/custom-markdown)', () => {
       expectContainsAll(restored, [
         '[회의록](docuhaim://notes/meeting.md)',
         '[표지](docuhaim://folder/file%20name.md)',
+      ]);
+    });
+  });
+
+  describe('hash-heading-link.md', () => {
+    it('leaves in-document #heading markdown links intact through protect/restore', () => {
+      const src = [
+        '# Introduction',
+        '',
+        'See [the intro](#introduction) or [한글 제목](#한글-제목).',
+        '',
+        '## 한글 제목',
+        '',
+      ].join('\n');
+      const restored = protectRestore(src);
+      expectContainsAll(restored, [
+        '[the intro](#introduction)',
+        '[한글 제목](#한글-제목)',
+        '# Introduction',
+        '## 한글 제목',
       ]);
     });
   });
