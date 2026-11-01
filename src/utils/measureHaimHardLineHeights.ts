@@ -114,16 +114,18 @@ export function countHaimDomHardLines(el: HTMLElement): number {
 }
 
 /**
- * Effective gutter line count: max(text newlines, DOM hard breaks).
- * TipTap may paint an extra blank via <br> that text.split misses (or vice versa).
+ * Effective gutter line count from source text newlines.
+ * Do not prefer DOM `<br>` counts: after Dual source→WYSIWYG remount TipTap
+ * can report an extra trailing break and inflate the code-block hit box over
+ * the following block (e.g. ol). Soft-wrap display bands still come from
+ * `measureHaimHardLineHeights` when wrap is on.
  */
 export function resolveHaimGutterLineCount(
   el: HTMLElement | null,
   text: string,
 ): number {
-  const fromText = countHaimDisplayLines(text);
-  if (!el) return fromText;
-  return Math.max(fromText, countHaimDomHardLines(el));
+  void el;
+  return countHaimDisplayLines(text);
 }
 
 function rangeBandHeight(range: Range, fallback: number): number {

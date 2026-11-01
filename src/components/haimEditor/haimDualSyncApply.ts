@@ -23,22 +23,29 @@ export { replaceCmDocPreservingView, replaceCmDocPreservingViewAsync };
 /** Idle debounce while local input is ongoing (TipTap or CM). Default 150ms. */
 export const HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS = HAIM_DUAL_SYNC_DEBOUNCE_MS_DEFAULT;
 
-/** Which dual pane owns keyboard focus and drives content sync. */
+/**
+ * Which dual pane last produced an edit event and drives content sync.
+ * Default / unclear → source (CM).
+ */
 export type HaimDualSyncAuthor = 'tiptap' | 'cm';
 
+/** Canonical fallback when no edit has been recorded yet. */
+export const HAIM_DUAL_SYNC_DEFAULT_AUTHOR: HaimDualSyncAuthor = 'cm';
+
 /**
- * Resolve the sync author from keyboard focus.
- * Focused pane wins; if neither (or both) report focus, keep `lastAuthor`.
+ * Resolve the sync author from the last edit event.
+ * Focus is intentionally ignored here (it only protects the follower caret).
+ * When `lastAuthor` is missing/invalid, prefer source (CM).
  */
 export function resolveHaimDualSyncAuthor(options: {
-  tipTapFocused: boolean;
-  cmFocused: boolean;
-  lastAuthor: HaimDualSyncAuthor;
+  lastAuthor: HaimDualSyncAuthor | null | undefined;
+  /** Kept for call-site compatibility; not used for SoT. */
+  tipTapFocused?: boolean;
+  cmFocused?: boolean;
 }): HaimDualSyncAuthor {
-  const { tipTapFocused, cmFocused, lastAuthor } = options;
-  if (tipTapFocused && !cmFocused) return 'tiptap';
-  if (cmFocused && !tipTapFocused) return 'cm';
-  return lastAuthor;
+  const { lastAuthor } = options;
+  if (lastAuthor === 'tiptap' || lastAuthor === 'cm') return lastAuthor;
+  return HAIM_DUAL_SYNC_DEFAULT_AUTHOR;
 }
 
 /**
@@ -49,15 +56,16 @@ export function shouldRewriteFollowerPane(followerFocused: boolean): boolean {
 }
 
 /**
- * Only a pane that actually has keyboard focus may push markdown into the
- * vault. `lastAuthor` fallback is for follower sync, not for unfocused
- * split panes (those were writing "" over a loaded note on mount).
+ * A pane may push markdown into the vault when the note body is loaded and
+ * either it still has focus or it is the last-edit author (toolbar blur).
  */
 export function canDriveVaultSync(options: {
   paneFocused: boolean;
   vaultReady: boolean;
+  isLastEditAuthor?: boolean;
 }): boolean {
-  return options.paneFocused && options.vaultReady;
+  if (!options.vaultReady) return false;
+  return options.paneFocused || Boolean(options.isLastEditAuthor);
 }
 
 /**

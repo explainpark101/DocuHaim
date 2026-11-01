@@ -61,4 +61,69 @@ describe('inline code inside bold', () => {
       editor.destroy();
     }
   });
+
+  it('does not keep a link mark on a URL inside inline code', async () => {
+    const { Editor } = await import('@tiptap/core');
+    const StarterKit = (await import('@tiptap/starter-kit')).default;
+    const Link = (await import('@tiptap/extension-link')).default;
+    const { Markdown } = await import('@tiptap/markdown');
+    const { HaimInlineCode } = await import(
+      '@/components/haimEditor/extensions/HaimInlineCode'
+    );
+    const editor = new Editor({
+      extensions: [
+        StarterKit.configure({ code: false }),
+        HaimInlineCode,
+        Link.configure({ openOnClick: false, autolink: false }),
+        Markdown,
+      ],
+      content: 'https://example.com/in-code',
+      contentType: 'markdown',
+    });
+    try {
+      editor.commands.selectAll();
+      editor.commands.setLink({ href: 'https://example.com/in-code' });
+      expect(
+        textMarks(editor).some((n) => n.marks.includes('link')),
+      ).toBe(true);
+      editor.commands.setCode();
+      const marks = textMarks(editor);
+      expect(marks.some((n) => n.marks.includes('code'))).toBe(true);
+      expect(marks.some((n) => n.marks.includes('link'))).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it('loads a URL in backticks as code only (no link mark)', async () => {
+    const { Editor } = await import('@tiptap/core');
+    const StarterKit = (await import('@tiptap/starter-kit')).default;
+    const { HaimLink } = await import(
+      '@/components/haimEditor/extensions/HaimLink'
+    );
+    const { Markdown } = await import('@tiptap/markdown');
+    const { HaimInlineCode } = await import(
+      '@/components/haimEditor/extensions/HaimInlineCode'
+    );
+    const editor = new Editor({
+      extensions: [
+        StarterKit.configure({ code: false }),
+        HaimInlineCode,
+        HaimLink,
+        Markdown,
+      ],
+      content: '`https://example.com/coded`',
+      contentType: 'markdown',
+    });
+    try {
+      const marks = textMarks(editor);
+      expect(marks.some((n) => n.text.includes('https://example.com/coded'))).toBe(
+        true,
+      );
+      expect(marks.some((n) => n.marks.includes('code'))).toBe(true);
+      expect(marks.some((n) => n.marks.includes('link'))).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
 });

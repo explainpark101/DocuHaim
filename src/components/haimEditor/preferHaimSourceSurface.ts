@@ -9,7 +9,7 @@ export type PreferHaimSourceSurfaceOptions = {
   cm: EditorView | null | undefined;
   /** TipTap ProseMirror DOM has focus. */
   tipTapFocused?: boolean | undefined;
-  /** Last dual-pane keyboard author (survives toolbar mousedown blur). */
+  /** Last dual-pane edit author (survives toolbar mousedown blur). */
   lastAuthor?: HaimDualSyncAuthor | undefined;
   effectiveMode: HaimViewMode;
   showSource: boolean;
@@ -18,7 +18,7 @@ export type PreferHaimSourceSurfaceOptions = {
 
 /**
  * Whether format / insert actions should target CodeMirror (source) vs TipTap.
- * Prefer live CM focus; if neither pane is focused (toolbar click), use lastAuthor.
+ * Prefer live CM focus; if neither pane is focused (toolbar click), use last edit author.
  */
 export function preferHaimSourceSurface(
   options: PreferHaimSourceSurfaceOptions,

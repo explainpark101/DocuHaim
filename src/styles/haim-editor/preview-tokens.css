@@ -217,6 +217,7 @@ html[data-haim-prose-line-numbers='1']
 
 /* Code block + lowlight (hljs-*) — chrome; token colors in code-hljs-themes.css */
 .haim-editor .haim-code-block {
+  position: relative;
   margin: 0.85em 0;
   border: 1.5px solid var(--haim-code-border, #c5cad3);
   border-radius: 10px;
@@ -325,7 +326,8 @@ html[data-haim-prose-line-numbers='1']
 
 .haim-editor .haim-code-block__body {
   display: flex;
-  align-items: stretch;
+  /* Prefer pre height; gutter should not invent empty stretch below the code. */
+  align-items: flex-start;
   min-width: 0;
 }
 

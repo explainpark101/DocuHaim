@@ -10,6 +10,7 @@ import {
   canonicalOgFetchUrl,
   groupUrlsByOgIdentity,
 } from '@/utils/chatWithMyself/ogIdentity';
+import { isInsideMarkdownCodeLiteral } from '@/utils/markdownCodeLiteral';
 
 const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/gi;
 
@@ -90,9 +91,15 @@ function trimUrlTrailingPunct(url: string): string {
 
 export function extractUrls(text: string | null | undefined): string[] {
   if (!text) return [];
-  const found = String(text).match(URL_RE) || [];
-  const cleaned = found.map((u) => trimUrlTrailingPunct(u));
-  return [...new Set(cleaned)];
+  const s = String(text);
+  const found: string[] = [];
+  const re = new RegExp(URL_RE.source, URL_RE.flags);
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s))) {
+    if (isInsideMarkdownCodeLiteral(s, m.index)) continue;
+    found.push(trimUrlTrailingPunct(m[0]));
+  }
+  return [...new Set(found.filter(Boolean))];
 }
 
 function notePart(
@@ -135,68 +142,105 @@ function folderPart(
   };
 }
 
+type TextLinkHit =
+  | {
+      kind: 'md';
+      start: number;
+      end: number;
+      label: string;
+      url: string;
+    }
+  | {
+      kind: 'url';
+      start: number;
+      end: number;
+      url: string;
+      trailing: string;
+    };
+
+function pushLinkOrNote(
+  parts: ChatTextPart[],
+  url: string,
+  label?: string,
+): void {
+  if (!url) return;
+  const viewPath = parseAppViewPath(url);
+  if (viewPath) {
+    const part = notePart(viewPath, label);
+    if (part) parts.push(part);
+    return;
+  }
+  if (label) {
+    parts.push({ type: 'link', value: url, label });
+  } else {
+    parts.push({ type: 'link', value: url });
+  }
+}
+
 /**
  * Split a plain-text chunk into text / note-card / markdown-link / bare-URL segments.
+ * URLs / md links inside inline or fenced code stay literal text (no anchors).
  */
 function splitTextLinks(ts: string): ChatTextPart[] {
-  const out: ChatTextPart[] = [];
-  let last = 0;
+  const hits: TextLinkHit[] = [];
+
   const mdRe = new RegExp(MD_LINK_RE.source, MD_LINK_RE.flags);
   let md: RegExpExecArray | null;
   while ((md = mdRe.exec(ts))) {
-    if (md.index > last) {
-      out.push({ type: 'text', value: ts.slice(last, md.index) });
-    }
+    if (isInsideMarkdownCodeLiteral(ts, md.index)) continue;
     const label = String(md[1] || '').trim();
     const url = String(md[2] || '').trim();
-    if (url) {
-      const viewPath = parseAppViewPath(url);
-      if (viewPath) {
-        const part = notePart(viewPath, label);
-        if (part) out.push(part);
-      } else if (label) {
-        out.push({ type: 'link', value: url, label });
-      } else {
-        out.push({ type: 'link', value: url });
-      }
-    }
-    last = md.index + md[0].length;
+    if (!url) continue;
+    hits.push({
+      kind: 'md',
+      start: md.index,
+      end: md.index + md[0].length,
+      label,
+      url,
+    });
   }
-  if (last < ts.length) out.push({ type: 'text', value: ts.slice(last) });
-  if (!out.length) out.push({ type: 'text', value: ts });
+
+  const urlRe = new RegExp(URL_RE.source, URL_RE.flags);
+  let um: RegExpExecArray | null;
+  while ((um = urlRe.exec(ts))) {
+    if (isInsideMarkdownCodeLiteral(ts, um.index)) continue;
+    const covered = hits.some(
+      (h) => um!.index >= h.start && um!.index < h.end,
+    );
+    if (covered) continue;
+    const raw = um[0];
+    const url = trimUrlTrailingPunct(raw);
+    if (!url) continue;
+    hits.push({
+      kind: 'url',
+      start: um.index,
+      end: um.index + raw.length,
+      url,
+      trailing: raw.slice(url.length),
+    });
+  }
+
+  hits.sort((a, b) => a.start - b.start);
 
   const parts: ChatTextPart[] = [];
-  for (const chunk of out) {
-    if (chunk.type !== 'text') {
-      parts.push(chunk);
-      continue;
+  let last = 0;
+  for (const hit of hits) {
+    if (hit.start < last) continue;
+    if (hit.start > last) {
+      parts.push({ type: 'text', value: ts.slice(last, hit.start) });
     }
-    const re = new RegExp(URL_RE.source, URL_RE.flags);
-    let tLast = 0;
-    let m: RegExpExecArray | null;
-    const segment = chunk.value || '';
-    while ((m = re.exec(segment))) {
-      const raw = m[0];
-      const url = trimUrlTrailingPunct(raw);
-      const trailing = raw.slice(url.length);
-      if (m.index > tLast) {
-        parts.push({ type: 'text', value: segment.slice(tLast, m.index) });
+    if (hit.kind === 'md') {
+      pushLinkOrNote(parts, hit.url, hit.label);
+    } else {
+      pushLinkOrNote(parts, hit.url);
+      if (hit.trailing) {
+        parts.push({ type: 'text', value: hit.trailing });
       }
-      if (url) {
-        const viewPath = parseAppViewPath(url);
-        if (viewPath) {
-          const part = notePart(viewPath);
-          if (part) parts.push(part);
-        } else {
-          parts.push({ type: 'link', value: url });
-        }
-      }
-      if (trailing) parts.push({ type: 'text', value: trailing });
-      tLast = m.index + raw.length;
     }
-    if (tLast < segment.length) {
-      parts.push({ type: 'text', value: segment.slice(tLast) });
-    }
+    last = hit.end;
+  }
+  if (last < ts.length) {
+    parts.push({ type: 'text', value: ts.slice(last) });
   }
   return parts.length ? parts : [{ type: 'text', value: ts }];
 }

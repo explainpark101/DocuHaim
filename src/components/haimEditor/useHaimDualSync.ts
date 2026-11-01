@@ -1,7 +1,7 @@
 /**
  * Bidirectional TipTap <-> CodeMirror sync with debounce + origin tags.
- * Keyboard focus picks the sync author: only the focused pane drives
- * cross-pane updates. On focus handoff, flush the previous author once.
+ * Last edit event picks the sync author; when unclear, source (CM) wins.
+ * On focus into the follower pane, flush the last-edit author once.
  */
 
 import { useCallback, useEffect, useRef } from 'react';
@@ -15,6 +15,7 @@ import {
 } from '@/components/haimEditor/haimCmDocReplace';
 import {
   HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS,
+  HAIM_DUAL_SYNC_DEFAULT_AUTHOR,
   replaceTipTapPreservingView,
   canDriveVaultSync,
   resolveHaimDualSyncAuthor,
@@ -133,16 +134,20 @@ export function useHaimDualSync({
   const onVaultChangeRef = useRef(onVaultChange);
   onVaultChangeRef.current = onVaultChange;
 
+  /** Last pane that produced an edit event (default: source). */
+  const lastAuthorRef = useRef<HaimDualSyncAuthor>(HAIM_DUAL_SYNC_DEFAULT_AUTHOR);
   const vaultIsReady = () => (vaultReadyRef ? vaultReadyRef.current : true);
   const tipTapDrivesVault = () =>
     canDriveVaultSync({
       paneFocused: Boolean(editor?.isFocused),
       vaultReady: vaultIsReady(),
+      isLastEditAuthor: lastAuthorRef.current === 'tiptap',
     });
   const cmDrivesVault = () =>
     canDriveVaultSync({
       paneFocused: Boolean(cmViewRef.current?.hasFocus),
       vaultReady: vaultIsReady(),
+      isLastEditAuthor: lastAuthorRef.current === 'cm',
     });
   const tipTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -158,8 +163,6 @@ export function useHaimDualSync({
   /** Pointer is down in the source pane (set before focusin). */
   const sourcePointerDownRef = useRef(false);
   const deferredCmReplaceRef = useRef(false);
-  /** Last pane that held keyboard focus (fallback when neither is focused). */
-  const lastAuthorRef = useRef<HaimDualSyncAuthor>('tiptap');
   const debounceMsRef = useRef(debounceMs);
   debounceMsRef.current = debounceMs;
 
@@ -179,20 +182,11 @@ export function useHaimDualSync({
     }
   };
 
-  const readFocusFlags = useCallback(() => {
-    const tipTapFocused = Boolean(editor?.isFocused);
-    const cmFocused = Boolean(cmViewRef.current?.hasFocus);
-    return { tipTapFocused, cmFocused };
-  }, [editor, cmViewRef]);
-
   const resolveAuthor = useCallback((): HaimDualSyncAuthor => {
-    const { tipTapFocused, cmFocused } = readFocusFlags();
     return resolveHaimDualSyncAuthor({
-      tipTapFocused,
-      cmFocused,
       lastAuthor: lastAuthorRef.current,
     });
-  }, [readFocusFlags]);
+  }, []);
 
   const refreshSourceLines = useCallback(
     (ed: Editor) => {
@@ -510,7 +504,8 @@ export function useHaimDualSync({
     wysiwygScrollRef,
   ]);
 
-  // Track keyboard focus → author; flush previous author on handoff.
+  // On focus into a pane: flush last-edit author into that pane when it is the follower.
+  // Do not treat focus itself as an edit (lastAuthor stays last-edit).
   useEffect(() => {
     if (!editor || !enabled) return undefined;
 
@@ -523,34 +518,29 @@ export function useHaimDualSync({
       const cm = cmViewRef.current;
       const cmFocused = Boolean(cm && cm.dom.contains(target));
       if (!tipTapFocused && !cmFocused) return;
+      if (tipTapFocused && cmFocused) return;
 
-      const prev = lastAuthorRef.current;
-      const next = resolveHaimDualSyncAuthor({
-        tipTapFocused,
-        cmFocused,
-        lastAuthor: prev,
-      });
-      if (next === prev) {
-        lastAuthorRef.current = next;
-        return;
-      }
-      // Handoff: push the leaving pane into the newly focused follower once.
-      clearTipTapTimer();
-      clearCmTimer();
-      if (prev === 'tiptap' && next === 'cm') {
+      const editAuthor = lastAuthorRef.current;
+      // Focusing the follower of the last edit → pull that edit in once.
+      if (editAuthor === 'tiptap' && cmFocused) {
+        clearTipTapTimer();
+        clearCmTimer();
         if (sourcePointerDownRef.current) {
           deferredCmReplaceRef.current = true;
         } else {
           applyTipTapToOther({ forceFollower: true });
         }
-      } else if (prev === 'cm' && next === 'tiptap') {
+        return;
+      }
+      if (editAuthor === 'cm' && tipTapFocused) {
+        clearTipTapTimer();
+        clearCmTimer();
         if (cmIdleTimerRef.current) {
           clearTimeout(cmIdleTimerRef.current);
           cmIdleTimerRef.current = null;
         }
         applyCmToOther({ forceFollower: true });
       }
-      lastAuthorRef.current = next;
     };
 
     // Capture so CM (lazy dual mount) is covered without polling.
@@ -580,7 +570,7 @@ export function useHaimDualSync({
     };
   }, [editor, enabled, cmViewRef, applyTipTapToOther, applyCmToOther]);
 
-  // TipTap → CM + vault (only while TipTap is the keyboard-focus author)
+  // TipTap → CM + vault (last TipTap edit event wins)
   useEffect(() => {
     if (!editor || !enabled) return undefined;
 
@@ -588,13 +578,14 @@ export function useHaimDualSync({
       if (originRef.current === 'cm' || originRef.current === 'external') return;
       if (composingRef.current) return;
       if (isBlockDragActive()) return;
-      // Unfocused split panes must not publish (mount updates often serialize as "").
-      if (!tipTapDrivesVault()) return;
-      const author = resolveAuthor();
-      if (author !== 'tiptap') return;
+      if (!vaultIsReady()) return;
+      // Claiming last-edit requires live TipTap focus (avoids decoration noise
+      // overwriting source after the caret moved). Debounced apply may still
+      // run after toolbar blur via isLastEditAuthor.
+      if (!editor.isFocused) return;
       lastAuthorRef.current = 'tiptap';
       bumpLocalInput(localInputAtRef);
-      // Latest author wins — drop pending CM → TipTap so we do not stomp TipTap.
+      // Latest edit wins — drop pending CM → TipTap so we do not stomp TipTap.
       clearCmTimer();
       clearTipTapTimer();
       const delay = debounceMsRef.current;
@@ -608,7 +599,6 @@ export function useHaimDualSync({
         if (!editor) return;
         if (originRef.current === 'cm' || originRef.current === 'external') return;
         if (isBlockDragActive()) return;
-        // Focus may have moved during debounce — only the focused pane may apply.
         if (!tipTapDrivesVault()) return;
         applyTipTapToOther();
       }, delay);
@@ -637,7 +627,6 @@ export function useHaimDualSync({
     editor,
     enabled,
     debounceMs,
-    resolveAuthor,
     applyTipTapToOther,
     blockDragActiveRef,
     localInputAtRef,
@@ -648,10 +637,11 @@ export function useHaimDualSync({
     if (!enabled || !editor) return;
     if (originRef.current === 'tiptap' || originRef.current === 'external') return;
     if (isBlockDragActive()) return;
-    // Ignore programmatic CM replaces and unfocused panes.
-    if (!cmDrivesVault()) return;
-    const author = resolveAuthor();
-    if (author !== 'cm') return;
+    if (!vaultIsReady()) return;
+    const cm = cmViewRef.current;
+    // Claiming last-edit requires live source focus; debounce may finish
+    // after blur via isLastEditAuthor.
+    if (!cm?.hasFocus) return;
     lastAuthorRef.current = 'cm';
     bumpLocalInput(localInputAtRef);
     clearTipTapTimer();
@@ -660,7 +650,6 @@ export function useHaimDualSync({
       clearTimeout(cmIdleTimerRef.current);
       cmIdleTimerRef.current = null;
     }
-    const cm = cmViewRef.current;
     cmScheduleRef.current = {
       docLength: cm?.state.doc.length ?? 0,
       inputAt: localInputAtRef?.current ?? 0,

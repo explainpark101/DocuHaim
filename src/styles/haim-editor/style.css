@@ -676,6 +676,18 @@ html[data-haim-prose-width-clamp='1']
   contain-intrinsic-size: auto 3lh;
 }
 
+/*
+ * TipTap React NodeViews (code blocks, etc.): content-visibility size
+ * containment often keeps a stale/short intrinsic box after Dual source→WYSIWYG
+ * remount, so the painted block overlaps the next sibling (e.g. ol) and steals
+ * pointer hit-testing. Keep NodeViews fully sized.
+ */
+.haim-editor .tiptap > .haim-code-block,
+.haim-editor .tiptap > [data-node-view-wrapper] {
+  content-visibility: visible;
+  contain-intrinsic-size: none;
+}
+
 /* Pointer / block drag: keep on-screen blocks painted. */
 .haim-editor.haim-cv-hold .tiptap > * {
   content-visibility: visible;

@@ -55,11 +55,11 @@
  *
  * - NoteEditorSurface must lazy-import only the selected engine.
  * - Dual mode mounts HaimSourcePane only when viewMode === dual.
- * - useHaimDualSync: keyboard-focus author drives TipTap↔CM (default 150ms debounce, 0 = immediate); origin tags + lastPushed skip feedback.
+ * - useHaimDualSync: last-edit author drives TipTap↔CM (default source/CM; 150ms debounce, 0 = immediate); origin tags + lastPushed skip feedback.
  * - Source focus never full-setContent; block patch, abort if the CM snapshot moved.
  * - CM replace is prefix/suffix (or worker hunks). Pointer drags defer the write.
  * - HaimEditor skips parent `value` echo (lastEmitted) + local-input debounce window.
- * - Follower rewrite skipped while focused; focus handoff flushes previous author once.
+ * - Follower rewrite skipped while focused; focusing the follower flushes last-edit author once.
  * - getCachedMarkdown / getCachedVaultMarkdown skip work when PM doc identity unchanged.
  * - Scroll sync: rAF uses cache only; dirty cache is ratio scroll; scrollend measures.
  * - HaimSourceLine only when dual + scroll sync enabled; idle flush remaps once.

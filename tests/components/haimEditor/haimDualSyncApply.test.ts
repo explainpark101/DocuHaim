@@ -36,44 +36,44 @@ describe('HAIM_DUAL_CONTENT_SYNC_DEBOUNCE_MS', () => {
 });
 
 describe('resolveHaimDualSyncAuthor', () => {
-  it('prefers the focused TipTap pane', () => {
-    expect(
-      resolveHaimDualSyncAuthor({
-        tipTapFocused: true,
-        cmFocused: false,
-        lastAuthor: 'cm',
-      }),
-    ).toBe('tiptap');
-  });
-
-  it('prefers the focused source (CM) pane', () => {
+  it('uses the last edit author (TipTap)', () => {
     expect(
       resolveHaimDualSyncAuthor({
         tipTapFocused: false,
         cmFocused: true,
         lastAuthor: 'tiptap',
       }),
-    ).toBe('cm');
+    ).toBe('tiptap');
   });
 
-  it('keeps lastAuthor when neither pane is focused', () => {
+  it('uses the last edit author (source)', () => {
     expect(
       resolveHaimDualSyncAuthor({
-        tipTapFocused: false,
+        tipTapFocused: true,
         cmFocused: false,
         lastAuthor: 'cm',
       }),
     ).toBe('cm');
   });
 
-  it('keeps lastAuthor when both report focus (rare race)', () => {
+  it('defaults to source when lastAuthor is missing', () => {
+    expect(
+      resolveHaimDualSyncAuthor({
+        tipTapFocused: false,
+        cmFocused: false,
+        lastAuthor: null,
+      }),
+    ).toBe('cm');
+  });
+
+  it('ignores focus when choosing the SoT', () => {
     expect(
       resolveHaimDualSyncAuthor({
         tipTapFocused: true,
-        cmFocused: true,
-        lastAuthor: 'tiptap',
+        cmFocused: false,
+        lastAuthor: 'cm',
       }),
-    ).toBe('tiptap');
+    ).toBe('cm');
   });
 });
 
@@ -148,10 +148,26 @@ describe('clampCmOffset', () => {
 });
 
 describe('canDriveVaultSync', () => {
-  it('allows sync only when the pane is focused and the loaded body is applied', () => {
+  it('allows sync when focused and the loaded body is applied', () => {
     expect(canDriveVaultSync({ paneFocused: true, vaultReady: true })).toBe(true);
-    expect(canDriveVaultSync({ paneFocused: false, vaultReady: true })).toBe(false);
     expect(canDriveVaultSync({ paneFocused: true, vaultReady: false })).toBe(false);
+  });
+
+  it('allows sync when unfocused if this pane is the last-edit author', () => {
+    expect(
+      canDriveVaultSync({
+        paneFocused: false,
+        vaultReady: true,
+        isLastEditAuthor: true,
+      }),
+    ).toBe(true);
+    expect(
+      canDriveVaultSync({
+        paneFocused: false,
+        vaultReady: true,
+        isLastEditAuthor: false,
+      }),
+    ).toBe(false);
   });
 });
 
