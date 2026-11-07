@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-27T09:48:01.482Z",
-  "totalBytes": 4356974,
+  "generatedAt": "2026-11-07T13:46:16.216Z",
+  "totalBytes": 4343711,
   "assets": [
     {
       "file": "assets/vendor-react-BPvvDyqO.js",
@@ -39,8 +39,8 @@
       "label": "애니메이션"
     },
     {
-      "file": "assets/vendor-markdown-it-BSFfF5B5.js",
-      "bytes": 116649,
+      "file": "assets/vendor-markdown-it-Dg5Isw3B.js",
+      "bytes": 103386,
       "label": "Markdown 엔진"
     },
     {
@@ -59,7 +59,7 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-DRAozU5b.js",
+      "file": "assets/index-CTprHWlJ.js",
       "bytes": 2116878,
       "label": "앱 코어"
     }
