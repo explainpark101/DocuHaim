@@ -327,7 +327,7 @@ export function chromeHeightAboveEditorRow(
 }
 
 /**
- * Height of the controls strip above the editor (attach + group + markdown),
+ * Height of the controls strip above the editor (attach + group + WYSIWYG),
  * excluding the editor row itself.
  */
 function measureControlsChrome(

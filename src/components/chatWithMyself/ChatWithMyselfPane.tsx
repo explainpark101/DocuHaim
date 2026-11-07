@@ -628,6 +628,15 @@ export default function ChatWithMyselfPane({
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<any>(null);
   const [editTarget, setEditTarget] = useState<any>(null);
+  /** Composer send-group before edit started; restored when edit ends. */
+  const groupBeforeEditRef = useRef<string | null>(null);
+  const clearEditTarget = useCallback(() => {
+    setEditTarget(null);
+    const prevGroup = groupBeforeEditRef.current;
+    if (prevGroup == null) return;
+    groupBeforeEditRef.current = null;
+    setSelectedGroup(prevGroup);
+  }, []);
   const [composerFitHeights, setComposerFitHeights] = useState<{
     previewHeight: number;
     contentHeight: number;
@@ -1200,11 +1209,11 @@ export default function ChatWithMyselfPane({
     const hasFiles =
       Array.isArray(shareGroupSend.files) && shareGroupSend.files.length > 0;
     if (!hasBody && !hasFiles) return;
-    setEditTarget(null);
+    clearEditTarget();
     setShareGroupModal((prev: any) =>
       prev?.id === shareGroupSend.id ? prev : shareGroupSend,
     );
-  }, [shareGroupSend]);
+  }, [shareGroupSend, clearEditTarget]);
 
   const clearShareGroupSend = useCallback(() => {
     setShareGroupModal(null);
@@ -1770,7 +1779,7 @@ export default function ChatWithMyselfPane({
   );
 
   const handleReply = useCallback((message: any) => {
-    setEditTarget(null);
+    clearEditTarget();
     const locked =
       isChatMessageEncrypted(message) && !decryptedById[message.id];
     setReplyTo({
@@ -1786,7 +1795,7 @@ export default function ChatWithMyselfPane({
         ? { ogCards: message.ogCards }
         : {}),
     });
-  }, [decryptedById]);
+  }, [decryptedById, clearEditTarget]);
 
   const handleEdit = useCallback(
     (message: any) => {
@@ -1794,6 +1803,9 @@ export default function ChatWithMyselfPane({
       if (isChatMessageEncrypted(message)) {
         const plain = decryptedById[message.id];
         if (!plain) return;
+        if (!editTarget) {
+          groupBeforeEditRef.current = selectedGroup;
+        }
         setReplyTo(null);
         setEditTarget({
           ...message,
@@ -1803,11 +1815,14 @@ export default function ChatWithMyselfPane({
         setSelectedGroup(resolveGroupId(groups, message.group || SELF_GROUP));
         return;
       }
+      if (!editTarget) {
+        groupBeforeEditRef.current = selectedGroup;
+      }
       setReplyTo(null);
       setEditTarget(message);
       setSelectedGroup(resolveGroupId(groups, message.group || SELF_GROUP));
     },
-    [groups, decryptedById],
+    [groups, decryptedById, editTarget, selectedGroup],
   );
 
   const handleRequestDecrypt = useCallback((message: any) => {
@@ -1861,7 +1876,7 @@ export default function ChatWithMyselfPane({
       const optimisticBody = [attachHint, text].filter(Boolean).join('\n\n');
       const editedAt = new Date().toISOString();
 
-      setEditTarget(null);
+      clearEditTarget();
       setError('');
       setMessages((prev: any) =>
         prev.map((m: any) =>
@@ -1974,7 +1989,7 @@ export default function ChatWithMyselfPane({
         setError(e?.message || '수정 실패');
       }
     },
-    [storageReady, ctx, noteLocalDayWrite],
+    [storageReady, ctx, noteLocalDayWrite, clearEditTarget],
   );
 
   const performDeleteMessage = useCallback(
@@ -1995,7 +2010,7 @@ export default function ChatWithMyselfPane({
         ),
       );
       if (replyTo?.id === message.id) setReplyTo(null);
-      if (editTarget?.id === message.id) setEditTarget(null);
+      if (editTarget?.id === message.id) clearEditTarget();
       if (historyMessage?.id === message.id) setHistoryMessage(null);
       setDeletingCount((c: any) => c + 1);
 
@@ -2036,7 +2051,15 @@ export default function ChatWithMyselfPane({
         setDeletingCount((c: any) => Math.max(0, c - 1));
       }
     },
-    [storageReady, ctx, replyTo, editTarget, historyMessage, noteLocalDayWrite],
+    [
+      storageReady,
+      ctx,
+      replyTo,
+      editTarget,
+      historyMessage,
+      noteLocalDayWrite,
+      clearEditTarget,
+    ],
   );
 
   const handleDelete = useCallback(
@@ -3625,7 +3648,7 @@ export default function ChatWithMyselfPane({
                     replyTo={replyTo}
                     onClearReply={() => setReplyTo(null)}
                     editTarget={editTarget}
-                    onClearEdit={() => setEditTarget(null)}
+                    onClearEdit={clearEditTarget}
                     onSaveEdit={handleSaveEdit}
                     ogStorage={ogStorage}
                     timeZone={timeZone}

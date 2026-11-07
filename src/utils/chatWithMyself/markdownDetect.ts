@@ -1,6 +1,6 @@
 /**
  * Heuristic: does `text` look like CommonMark-ish / wiki markdown?
- * Used to auto-enable the composer Markdown switch — prefer recall over precision,
+ * Used to auto-enable the composer WYSIWYG editor — prefer recall over precision,
  * but avoid obvious false positives (lone `#`, snake_case underscores, etc.).
  *
  * Avoid lookbehind so older Safari builds stay supported.

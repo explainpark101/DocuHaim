@@ -463,7 +463,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     ref,
   ) {
   const [value, setValue] = useState('');
-  const [markdownEnabled, setMarkdownEnabled] = useState(false);
+  /** WYSIWYG (rich) vs Text (raw markdown). Message content is always markdown. */
+  const [wysiwygEnabled, setWysiwygEnabled] = useState(() => !lightweight);
   const [inlineAddOpen, setInlineAddOpen] = useState(false);
   const [inlineGroupName, setInlineGroupName] = useState('');
   const [addingGroup, setAddingGroup] = useState(false);
@@ -483,9 +484,9 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const inlineGroupInputRef = useRef<HTMLInputElement | null>(null);
   const valueRef = useRef(value);
-  const markdownEnabledRef = useRef(markdownEnabled);
-  /** When user turns Markdown off while markup remains, skip auto-enable until markup clears. */
-  const markdownUserOffRef = useRef(false);
+  const wysiwygEnabledRef = useRef(wysiwygEnabled);
+  /** When user turns WYSIWYG off while markup remains, skip auto-enable until markup clears. */
+  const wysiwygUserOffRef = useRef(false);
   /** Safari + lightweight: defer textarea→MdEditor until Space/Enter after markdown is detected. */
   const safariDeferMdEditor = lightweight && isSafariBrowser();
   const wasLightweightEditorRef = useRef<boolean | null>(null);
@@ -500,9 +501,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   const isMobile = useIsCoarsePointer();
   /** Mobile layout or coarse/narrow — never mount the rich editor chunk. */
   const forcePlainTextarea = Boolean(isMobileLayout) || isMobile;
-  /** Markdown messages prefer MdEditor so toolbar formatting matches render (desktop only). */
-  const useLightweightEditor =
-    forcePlainTextarea || (lightweight && !markdownEnabled);
+  /** Text mode (or mobile) uses textarea; WYSIWYG mounts MdEditor/Haim on desktop. */
+  const useLightweightEditor = forcePlainTextarea || !wysiwygEnabled;
   const applePlatform = useMemo(() => isApplePlatform(), []);
   const sendModLabel = applePlatform ? 'Cmd+Enter' : 'Ctrl+Enter';
   const sortedGroups = useMemo(() => sortGroupsKo(groups), [groups]);
@@ -546,26 +546,27 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
   }, [value]);
 
   useEffect(() => {
-    markdownEnabledRef.current = markdownEnabled;
-  }, [markdownEnabled]);
+    wysiwygEnabledRef.current = wysiwygEnabled;
+  }, [wysiwygEnabled]);
 
-  const setMarkdownFromUser = useCallback((next: boolean) => {
+  const setWysiwygFromUser = useCallback((next: boolean) => {
     const enabled = Boolean(next);
-    markdownUserOffRef.current = !enabled;
-    setMarkdownEnabled(enabled);
+    // Remember explicit Text choice so auto-detect does not steal the mode back.
+    wysiwygUserOffRef.current = !enabled;
+    setWysiwygEnabled(enabled);
   }, []);
 
   const applyComposerValue = useCallback((next: string) => {
     const text = String(next ?? '');
     setValue(text);
-    if (looksLikeMarkdown(text)) {
-      // Safari lightweight: keep textarea until Space/Enter promotes to MdEditor.
-      if (!markdownUserOffRef.current && !safariDeferMdEditor) {
-        setMarkdownEnabled(true);
-      }
-    } else {
-      markdownUserOffRef.current = false;
-      setMarkdownEnabled(false);
+    // Auto-promote to WYSIWYG when markdown markup appears, unless the user
+    // chose Text. Do not auto-disable — editor mode is independent of content.
+    if (
+      looksLikeMarkdown(text) &&
+      !wysiwygUserOffRef.current &&
+      !safariDeferMdEditor
+    ) {
+      setWysiwygEnabled(true);
     }
   }, [safariDeferMdEditor]);
 
@@ -598,8 +599,14 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         if (meta?.body) {
           setValue(meta.body);
         }
-        setMarkdownEnabled(looksLikeMarkdown(meta?.body));
-        markdownUserOffRef.current = false;
+        // Draft `markdown` key stores last WYSIWYG preference (legacy name).
+        if (meta && typeof meta.markdown === 'boolean') {
+          setWysiwygEnabled(meta.markdown);
+          wysiwygUserOffRef.current = !meta.markdown;
+        } else {
+          setWysiwygEnabled(!lightweight);
+          wysiwygUserOffRef.current = false;
+        }
         if (meta?.imageIds?.length) {
           const imgs = await loadDraftQueueItems(draftScope, meta.imageIds);
           if (!cancelled && imgs.length) {
@@ -615,6 +622,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     return () => {
       cancelled = true;
     };
+    // Mount-only draft hydrate; lightweight is the initial default when meta lacks mode.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- draftScope/lightweight snapshotted on mount
   }, []);
 
   // Apply share-target (or similar) seed into the editor + draft meta.
@@ -627,7 +636,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       ...meta,
       body: nextBody,
       group: selectedGroup || SELF_GROUP,
-      markdown: looksLikeMarkdown(nextBody),
+      markdown: looksLikeMarkdown(nextBody), // WYSIWYG preference
     });
     onSeedConsumed?.();
   }, [
@@ -663,8 +672,10 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       previewUrl: null,
     }));
     setValue(text);
-    markdownUserOffRef.current = false;
-    setMarkdownEnabled(isChatMessageMarkdown(editTarget));
+    // Prefer WYSIWYG for markdown messages; Text for legacy plain so raw is editable.
+    const preferWysiwyg = isChatMessageMarkdown(editTarget);
+    setWysiwygEnabled(preferWysiwyg);
+    wysiwygUserOffRef.current = !preferWysiwyg;
     setImageQueue((prev) => {
       prev.forEach((item) => {
         if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
@@ -736,8 +747,13 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       const meta = readComposerDraftMeta(draftScope);
       if (cancelled) return;
       setValue(meta?.body || '');
-      setMarkdownEnabled(looksLikeMarkdown(meta?.body));
-      markdownUserOffRef.current = false;
+      if (meta && typeof meta.markdown === 'boolean') {
+        setWysiwygEnabled(meta.markdown);
+        wysiwygUserOffRef.current = !meta.markdown;
+      } else {
+        setWysiwygEnabled(!lightweight);
+        wysiwygUserOffRef.current = false;
+      }
       setImageQueue((prevQueue) => {
         prevQueue.forEach((item) => {
           if (item?.previewUrl && item.previewUrl.startsWith('blob:')) {
@@ -756,7 +772,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     return () => {
       cancelled = true;
     };
-  }, [editTarget, draftReady, draftScope]);
+  }, [editTarget, draftReady, draftScope, lightweight]);
 
   useEffect(() => {
     return () => {
@@ -786,12 +802,12 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           : null,
         imageIds,
         imageBackgrounds: imageBackgroundsFromQueue(imageQueue),
-        markdown: markdownEnabled,
+        markdown: wysiwygEnabled, // WYSIWYG preference (legacy draft key)
       });
       void syncComposerDraftImages(draftScope, draftSyncFileQueue(imageQueue));
     }, 280);
     return () => window.clearTimeout(t);
-  }, [draftReady, editTarget, value, imageQueue, selectedGroup, replyTo, draftScope, markdownEnabled]);
+  }, [draftReady, editTarget, value, imageQueue, selectedGroup, replyTo, draftScope, wysiwygEnabled]);
 
   // Flush draft on hide / unload.
   useEffect(() => {
@@ -813,7 +829,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           : null,
         imageIds: imageQueueRef.current.map((item) => item.id),
         imageBackgrounds: imageBackgroundsFromQueue(imageQueueRef.current),
-        markdown: markdownEnabledRef.current,
+        markdown: wysiwygEnabledRef.current, // WYSIWYG preference (legacy draft key)
       });
       void syncComposerDraftImages(
         draftScope,
@@ -1234,7 +1250,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       typeof options.encryptPassword === 'string' ? options.encryptPassword.trim() : '';
     const body = valueRef.current.trim();
     const queued = imageQueueRef.current;
-    const markdown = Boolean(markdownEnabledRef.current);
+    // Composer always stores/renders as markdown; WYSIWYG toggle is editor-only.
+    const markdown = true;
     if (!body && queued.length === 0) return;
     const newAttachments: ChatComposerOutgoingFileAttachment[] = queued
       .filter((q): q is ChatComposerQueueItem & { file: File } => Boolean(q.file))
@@ -1264,8 +1281,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         { existingMarkdown: mergedExisting, removedPaths, markdown },
       );
       setValue('');
-      setMarkdownEnabled(false);
-      markdownUserOffRef.current = false;
+      setWysiwygEnabled(!lightweight);
+      wysiwygUserOffRef.current = false;
       clearImageQueue();
       onClearEdit?.();
       return;
@@ -1277,8 +1294,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       ...(encryptPassword ? { encryptPassword } : {}),
     });
     setValue('');
-    setMarkdownEnabled(false);
-    markdownUserOffRef.current = false;
+    setWysiwygEnabled(!lightweight);
+    wysiwygUserOffRef.current = false;
     clearImageQueue();
     onClearReply?.();
     await clearComposerDraft(draftScope);
@@ -1292,6 +1309,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     onClearEdit,
     clearImageQueue,
     draftScope,
+    lightweight,
   ]);
 
   const openEncryptSendPrompt = useCallback(() => {
@@ -1310,7 +1328,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       const eventTarget = e.target;
       if (!(eventTarget instanceof Node) || !el.contains(eventTarget)) return;
 
-      // Ctrl+M toggles Markdown (Ctrl on Mac too — not Cmd).
+      // Ctrl+M toggles WYSIWYG / Text (Ctrl on Mac too — not Cmd).
       if (
         (e.key === 'm' || e.key === 'M') &&
         e.ctrlKey &&
@@ -1320,19 +1338,21 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
       ) {
         e.preventDefault();
         e.stopPropagation();
-        setMarkdownFromUser(!markdownEnabledRef.current);
+        if (!forcePlainTextarea) {
+          setWysiwygFromUser(!wysiwygEnabledRef.current);
+        }
         return;
       }
 
-      // Safari lightweight: promote textarea → MdEditor only on Space/Enter
+      // Safari lightweight: promote textarea → WYSIWYG only on Space/Enter
       // once markdown markup is already present (do not auto-switch on detect).
       // Skip on mobile — always keep the native textarea.
       if (
         !forcePlainTextarea &&
         safariDeferMdEditor &&
         useLightweightEditor &&
-        !markdownEnabledRef.current &&
-        !markdownUserOffRef.current &&
+        !wysiwygEnabledRef.current &&
+        !wysiwygUserOffRef.current &&
         (e.key === ' ' || e.key === 'Enter') &&
         !e.metaKey &&
         !e.ctrlKey &&
@@ -1345,7 +1365,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
         const next = `${valueRef.current}${suffix}`;
         valueRef.current = next;
         setValue(next);
-        setMarkdownEnabled(true);
+        setWysiwygEnabled(true);
         return;
       }
 
@@ -1400,7 +1420,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
     forcePlainTextarea,
     editTarget,
     applePlatform,
-    setMarkdownFromUser,
+    setWysiwygFromUser,
     safariDeferMdEditor,
     useLightweightEditor,
   ]);
@@ -1463,13 +1483,13 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
 
   const canSend = Boolean(value.trim()) || imageQueue.length > 0;
 
-  const markdownSwitch = (
+  const wysiwygSwitch = forcePlainTextarea ? null : (
     <ChatNavSwitch
-      id="chat-composer-markdown"
-      label="Markdown"
-      title="마크다운 문법으로 렌더링 (Ctrl+M)"
-      checked={markdownEnabled}
-      onCheckedChange={setMarkdownFromUser}
+      id="chat-composer-wysiwyg"
+      label={wysiwygEnabled ? 'WYSIWYG' : 'Text'}
+      title="WYSIWYG / Text 전환 (Ctrl+M). 메시지는 마크다운으로 저장됩니다."
+      checked={wysiwygEnabled}
+      onCheckedChange={setWysiwygFromUser}
     />
   );
 
@@ -1519,8 +1539,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
               onClick={() => {
                 removedExistingPathsRef.current = [];
                 setValue('');
-                setMarkdownEnabled(false);
-                markdownUserOffRef.current = false;
+                setWysiwygEnabled(!lightweight);
+                wysiwygUserOffRef.current = false;
                 clearImageQueue();
                 onClearEdit?.();
               }}
@@ -1766,7 +1786,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                     </button>
                   </>
                 ) : (
-                  markdownSwitch
+                  wysiwygSwitch
                 )}
               </div>
             </>
@@ -1817,7 +1837,7 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
                   </button>
                 </>
               ) : (
-                markdownSwitch
+                wysiwygSwitch
               )}
             </div>
           )}
@@ -1955,8 +1975,8 @@ const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(
           >
             <p className="min-w-0 flex-1 text-[10px] text-gray-400 dark:text-gray-500">
               {editTarget
-                ? `${sendModLabel} 수정 완료 · Enter / Shift+Enter 줄바꿈 · Ctrl+M 마크다운`
-                : `${sendModLabel} / Enter 전송 · Ctrl+Shift+Enter 암호화 · Shift+Enter 줄바꿈 · Ctrl+M 마크다운 · 첨부는 전송 시 업로드`}
+                ? `${sendModLabel} 수정 완료 · Enter / Shift+Enter 줄바꿈 · Ctrl+M WYSIWYG/Text`
+                : `${sendModLabel} / Enter 전송 · Ctrl+Shift+Enter 암호화 · Shift+Enter 줄바꿈 · Ctrl+M WYSIWYG/Text · 첨부는 전송 시 업로드`}
             </p>
             <button
               type="button"
