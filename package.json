@@ -79,7 +79,7 @@
     "@tauri-apps/plugin-process": "~2",
     "@tauri-apps/plugin-shell": "~2",
     "@tauri-apps/plugin-stronghold": "^2.3.1",
-    "@tauri-apps/plugin-updater": "~2",
+    "@tauri-apps/plugin-updater": "2.14.1",
     "@tauri-apps/plugin-upload": "~2",
     "@tiptap/extension-audio": "^3.31.3",
     "@tiptap/extension-bubble-menu": "^3.31.3",
