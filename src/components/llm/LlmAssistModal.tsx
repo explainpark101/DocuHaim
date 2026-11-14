@@ -544,13 +544,15 @@ export default function LlmAssistModal({
             selectedProfile.id,
             () => selectedProfile.apiKey || '',
             async (apiKey) => {
+              const trainFile = exaoneTabular.trainFile!;
+              const testFile = exaoneTabular.testFile!;
               const out = await runExaoneTabularPredict({
                 apiKey,
                 task,
-                trainFile: exaoneTabular.trainFile!,
-                testFile: exaoneTabular.testFile!,
-                trainFileName: exaoneTabular.trainFile?.name,
-                testFileName: exaoneTabular.testFile?.name,
+                trainFile,
+                testFile,
+                ...(trainFile.name ? { trainFileName: trainFile.name } : {}),
+                ...(testFile.name ? { testFileName: testFile.name } : {}),
                 targetColumn: exaoneTabular.targetColumn,
                 outputType: exaoneTabular.outputType,
                 signal: controller.signal,
