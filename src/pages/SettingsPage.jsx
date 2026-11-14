@@ -150,6 +150,11 @@ import {
   treeHoverExpandSettingsToMs,
 } from '@/utils/treeHoverExpandSettings';
 import { loadTreeRevealOnOpenEnabled } from '@/utils/treeRevealOnOpenSettings';
+import {
+  loadTreeFileOpenClickMode,
+  TREE_FILE_OPEN_CLICK_MODE_CHANGED_EVENT,
+  TREE_FILE_OPEN_CLICK_MODE_OPTIONS,
+} from '@/utils/treeFileOpenClickModeSettings';
 import LlmProviderProfilesSettings from '@/components/settings/LlmProviderProfilesSettings';
 import StorageUsageAnalysis from '@/components/settings/StorageUsageAnalysis';
 import InvertedIndexCoverage from '@/components/settings/InvertedIndexCoverage';
@@ -325,6 +330,9 @@ export default function SettingsPage({
   const [treeRevealOnOpenEnabled, setTreeRevealOnOpenEnabled] = useState(() =>
     loadTreeRevealOnOpenEnabled(),
   );
+  const [treeFileOpenClickMode, setTreeFileOpenClickMode] = useState(() =>
+    loadTreeFileOpenClickMode(),
+  );
   const [advancedSearchBusy, setAdvancedSearchBusy] = useState(false);
   const [checkpointChoiceOpen, setCheckpointChoiceOpen] = useState(false);
   const [checkpointInfo, setCheckpointInfo] = useState(
@@ -386,8 +394,16 @@ export default function SettingsPage({
         setBase64ImageFoldState(enabled);
       } else if (id === 'settings-tree-reveal-on-open') {
         setTreeRevealOnOpenEnabled(enabled);
+      } else if (id === 'settings-tree-file-open-on-click') {
+        setTreeFileOpenClickMode(enabled ? 'click' : 'dblclick');
       }
     });
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setTreeFileOpenClickMode(loadTreeFileOpenClickMode());
+    window.addEventListener(TREE_FILE_OPEN_CLICK_MODE_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(TREE_FILE_OPEN_CLICK_MODE_CHANGED_EVENT, sync);
   }, []);
 
   useEffect(() => {
@@ -2415,6 +2431,41 @@ export default function SettingsPage({
               고급 검색에서 파일을 열면 사이드바 트리를 해당 위치로 스크롤
             </span>
           </label>
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">
+            <p className="text-xs font-semibold text-gray-700 dark:text-odp-fg mb-1">
+              사이드바 파일 열기
+            </p>
+            <p className="text-[11px] text-gray-500 dark:text-odp-muted mb-3">
+              TreeNode에서 파일을 탭으로 열 때 클릭 또는 더블클릭을 선택합니다.
+            </p>
+            <RadioGroup.Root
+              className="space-y-2 text-xs text-gray-700 dark:text-odp-fg"
+              value={treeFileOpenClickMode}
+              onValueChange={(next) => {
+                if (next !== 'click' && next !== 'dblclick') return;
+                setTreeFileOpenClickMode(next);
+                setSettingsToggle('settings-tree-file-open-on-click', next === 'click');
+              }}
+              aria-label="사이드바 파일 열기"
+            >
+              {TREE_FILE_OPEN_CLICK_MODE_OPTIONS.map((opt) => (
+                <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                  <RadioGroup.Item
+                    value={opt.value}
+                    className="mt-0.5 size-3.5 shrink-0 rounded-full border border-gray-400 bg-white data-[state=checked]:border-blue-500 data-[state=checked]:bg-blue-500 dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+                  >
+                    <RadioGroup.Indicator className="relative flex size-full items-center justify-center after:block after:size-1.5 after:rounded-full after:bg-white" />
+                  </RadioGroup.Item>
+                  <span>
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="text-[11px] text-gray-500 dark:text-odp-muted block mt-0.5">
+                      {opt.description}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </RadioGroup.Root>
+          </div>
           <StatusBarClockSettings />
           {typeof onTreeHoverExpandSettingsChange === 'function' && (
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-odp-borderSoft">

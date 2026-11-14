@@ -25,7 +25,7 @@ import RecordingSyncView from '@/components/RecordingSyncView';
 import RecordingPlayer from '@/components/RecordingPlayer';
 import Button from '@/components/Button';
 import { Tooltip } from 'radix-ui';
-import { ArrowLeftRight, ClipboardCopy, ClipboardList, FileText, ImagePlus, Loader2, PenLine, Search, Settings, Shuffle, Sparkles, X } from 'lucide-react';
+import { ArrowLeftRight, ClipboardCopy, ClipboardList, ExternalLink, FileText, ImagePlus, Loader2, PenLine, Search, Settings, Shuffle, Sparkles, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import SessionOpenPanel from '@/components/SessionOpenPanel';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
@@ -122,6 +122,7 @@ export default function EditorPane({
   onViewUnsupportedAsText,
   onUnlockEncMdFromUnsupported,
   onRequestDownload,
+  onOpenWithDefaultApp,
   onShareToChatWithMyself,
   theme = 'light',
   previewOnly = false,
@@ -1069,6 +1070,19 @@ export default function EditorPane({
                     다운로드
                   </button>
                 )}
+                {typeof onOpenWithDefaultApp === 'function' && currentFile.type !== 'session' ? (
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-odp-fgStrong hover:bg-gray-100 dark:hover:bg-odp-bgSoft flex items-center gap-2"
+                    onClick={() => {
+                      void onOpenWithDefaultApp();
+                      setFileManagementOpen(false);
+                    }}
+                  >
+                    <ExternalLink size={14} />
+                    앱 열기
+                  </button>
+                ) : null}
                 {viewer === 'markdown' ? (
                   <button
                     type="button"
@@ -1526,6 +1540,18 @@ export default function EditorPane({
                   <IconDownload size={16} /> 다운로드
                 </Button>
               )}
+              {typeof onOpenWithDefaultApp === 'function' ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={() => {
+                    void onOpenWithDefaultApp();
+                  }}
+                >
+                  <ExternalLink size={16} /> 앱 열기
+                </Button>
+              ) : null}
             </div>
           </div>
         ) : (

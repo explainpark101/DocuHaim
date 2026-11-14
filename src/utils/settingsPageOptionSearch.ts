@@ -44,6 +44,7 @@ const TOGGLE_TO_SECTION: Partial<Record<SettingsToggleId, string>> = {
   'settings-tree-sticky': 'settings-display',
   'settings-tree-modified-date': 'settings-display',
   'settings-tree-reveal-on-open': 'settings-display',
+  'settings-tree-file-open-on-click': 'settings-display',
   'settings-status-bar-clock': 'settings-display',
   'settings-status-bar-clock-date': 'settings-display',
   'settings-composer-helper': 'settings-chat',
@@ -107,6 +108,16 @@ const EXTRA_OPTION_ENTRIES: SettingsOptionSearchEntry[] = [
     sectionId: 'settings-auto-save',
     label: '입력 멈춘 뒤',
     keywords: ['debounce', 'idle', '디바운스', 'ms', '초'],
+  },
+  {
+    sectionId: 'settings-display',
+    label: '클릭으로 열기',
+    keywords: ['tree', '트리', 'TreeNode', 'click', '클릭', '열기', '사이드바'],
+  },
+  {
+    sectionId: 'settings-display',
+    label: '더블클릭으로 열기',
+    keywords: ['tree', '트리', 'TreeNode', 'double click', '더블클릭', '열기', '사이드바'],
   },
 ];
 

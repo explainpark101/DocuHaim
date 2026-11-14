@@ -54,6 +54,10 @@ import { copyText } from '@/utils/copyText';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { notifyTauriDownloadComplete } from '@/utils/tauriBlobDownload';
 import {
+  joinVaultAbsolutePath,
+  openFileWithDefaultApp,
+} from '@/utils/openFileWithDefaultApp';
+import {
   allocateUniqueTauriEntryName,
   ensureTauriDir,
   pickTauriExportDirectory,
@@ -68,7 +72,19 @@ import {
 export function useDownloadSessionDomain() {
   const { showAlert } = useAlertModal();
   const { s3Creds } = useAuth();
-  const { getBackendForType, getS3Client, loadS3Files, localRootHandle, refreshLocalTree, refreshWebdavTree, upsertSessionWorkspace, storageMode, webdavConfig, webdavReady } = useVault();
+  const {
+    getBackendForType,
+    getS3Client,
+    loadS3Files,
+    localRootHandle,
+    localVaultFsPath,
+    refreshLocalTree,
+    refreshWebdavTree,
+    upsertSessionWorkspace,
+    storageMode,
+    webdavConfig,
+    webdavReady,
+  } = useVault();
   const { connectedHaimStorageTypeRef, currentFile, currentFileRef, downloadSessionWorkspaceRef, editorContentRef, flushSessionEditorToWorkspaceRef, handleRequestSessionSaveChooserRef, requestEncMdPasswordRef, saveFileRef, sessionVaultBindingsRef, sessionWorkspacesRef, setCurrentFile, setEditorContent, setEncMdPrompt, writeSessionFileToHaimRef } = useFileSessionOwned();
   const { saveFile } = useFileSession();
   const { downloadMarkdownImageZipRef, readBackendBytesRef } = useTreeOpsOwned();
@@ -1267,10 +1283,68 @@ export function useDownloadSessionDomain() {
     saveFileRef.current = saveFile;
   }, [saveFile]);
 
+  /** Tauri desktop: open the current file with the OS default application. */
+  const handleOpenWithDefaultApp = useCallback(async () => {
+    if (!isTauriDesktopPlatform()) return;
+    const file = currentFileRef.current ?? currentFile;
+    if (!file?.id) return;
+    const storageType = String(file.type || '');
+    if (
+      storageType !== 's3' &&
+      storageType !== 'local' &&
+      storageType !== 'webdav' &&
+      storageType !== 'idb' &&
+      storageType !== SESSION_STORAGE_TYPE
+    ) {
+      return;
+    }
+
+    let localAbsolutePath: string | null = null;
+    if (storageType === 'local' && localVaultFsPath) {
+      localAbsolutePath = joinVaultAbsolutePath(localVaultFsPath, file.id);
+    } else if (storageType === SESSION_STORAGE_TYPE) {
+      const map = sessionWorkspacesRef.current ?? {};
+      const ref = resolveSessionFileRef(map, file.id);
+      localAbsolutePath = ref
+        ? getSessionFileLocalAbsPath(ref.workspace, ref.path)
+        : null;
+    }
+
+    try {
+      const opened = await openFileWithDefaultApp({
+        storageType,
+        path: file.id,
+        fileName: file.name || file.id,
+        localAbsolutePath,
+        objectUrl: file.objectUrl || null,
+        readBytes: async (type, path) => {
+          const reader = readBackendBytesRef.current;
+          if (typeof reader !== 'function') {
+            return readBackendBytes(type, path);
+          }
+          return reader(type, path);
+        },
+      });
+      if (!opened) {
+        showAlert({
+          title: '앱으로 열기',
+          message: '파일을 열 수 없습니다. 다운로드 위치를 선택했는지 확인해 주세요.',
+        });
+      }
+    } catch (error: any) {
+      console.error('Open with default app failed:', error);
+      showAlert({
+        title: '앱으로 열기',
+        message: `기본 앱으로 열기에 실패했습니다: ${error?.message || error}`,
+      });
+    }
+  }, [currentFile, localVaultFsPath, readBackendBytes, showAlert]);
+
   const api = {
     handleViewUnsupportedAsText,
     handleUnlockEncMdFromUnsupported,
     handleRequestDownload,
+    handleOpenWithDefaultApp,
     handleRequestSessionSaveChooser,
     handleRequestSessionTransformDownload,
     connectedHaimStorageType,

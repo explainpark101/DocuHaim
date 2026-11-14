@@ -235,6 +235,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     isUploadingEditorImage,
     editorImageUploadPercent,
     handleRequestDownload,
+    handleOpenWithDefaultApp,
     handleViewUnsupportedAsText,
     handleUnlockEncMdFromUnsupported,
     getAdvancedSearchTrees,
@@ -1043,6 +1044,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                     onViewUnsupportedAsText: handleViewUnsupportedAsText,
                     onUnlockEncMdFromUnsupported: handleUnlockEncMdFromUnsupported,
                     onRequestDownload: handleRequestDownload,
+                    onOpenWithDefaultApp: isTauriDesktopPlatform()
+                      ? handleOpenWithDefaultApp
+                      : undefined,
                     onShareToChatWithMyself:
                       paneFile && paneFile.type !== SESSION_STORAGE_TYPE
                         ? handleShareNoteToChatWithMyself

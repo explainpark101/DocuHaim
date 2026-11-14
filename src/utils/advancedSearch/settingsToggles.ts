@@ -56,6 +56,10 @@ import {
   saveTreeRevealOnOpenEnabled,
 } from '@/utils/treeRevealOnOpenSettings';
 import {
+  loadTreeFileOpenOnClickEnabled,
+  saveTreeFileOpenOnClickEnabled,
+} from '@/utils/treeFileOpenClickModeSettings';
+import {
   loadCoverCenterSnapEnabled,
   loadCoverObjectSnapEnabled,
   loadCoverPlacePreviewEnabled,
@@ -188,6 +192,7 @@ export type SettingsToggleId =
   | 'settings-tree-sticky'
   | 'settings-tree-modified-date'
   | 'settings-tree-reveal-on-open'
+  | 'settings-tree-file-open-on-click'
   | 'settings-status-bar-clock'
   | 'settings-status-bar-clock-date'
   | 'settings-composer-helper'
@@ -679,6 +684,29 @@ export const SETTINGS_TOGGLE_DEFS: readonly SettingsToggleDef[] = [
     ],
     load: loadTreeRevealOnOpenEnabled,
     save: saveTreeRevealOnOpenEnabled,
+  },
+  {
+    id: 'settings-tree-file-open-on-click',
+    enableTitle: '트리 파일 클릭으로 열기',
+    disableTitle: '트리 파일 더블클릭으로 열기',
+    description: '사이드바 TreeNode에서 파일을 여는 클릭 방식',
+    keywords: [
+      'tree',
+      '트리',
+      'TreeNode',
+      'click',
+      '클릭',
+      'double click',
+      '더블클릭',
+      'open',
+      '열기',
+      '사이드바',
+      'sidebar',
+      '파일',
+      'file',
+    ],
+    load: loadTreeFileOpenOnClickEnabled,
+    save: saveTreeFileOpenOnClickEnabled,
   },
   {
     id: 'settings-status-bar-clock',

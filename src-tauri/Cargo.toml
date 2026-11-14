@@ -1,6 +1,6 @@
 [package]
 name = "docuhaim"
-version = "2.2.12"
+version = "2.4.15"
 description = "DocuHaim desktop shell"
 authors = ["Jaehyung Park"]
 edition = "2021"

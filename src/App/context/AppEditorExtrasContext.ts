@@ -10,6 +10,7 @@ export type AppEditorExtrasValue = {
   isUploadingEditorImage: boolean;
   editorImageUploadPercent: number;
   handleRequestDownload: (...args: any[]) => any;
+  handleOpenWithDefaultApp: (...args: any[]) => any;
   handleViewUnsupportedAsText: (...args: any[]) => any;
   handleUnlockEncMdFromUnsupported: (...args: any[]) => any;
   getAdvancedSearchTrees: (...args: any[]) => any;
@@ -28,6 +29,7 @@ export const APP_EDITOR_EXTRAS_KEYS = [
   'isUploadingEditorImage',
   'editorImageUploadPercent',
   'handleRequestDownload',
+  'handleOpenWithDefaultApp',
   'handleViewUnsupportedAsText',
   'handleUnlockEncMdFromUnsupported',
   'getAdvancedSearchTrees',
