@@ -359,8 +359,21 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
   {
     id: 'editor-llm-assist',
     title: 'AI 도우미 열기',
-    description: '선택 텍스트를 LLM으로 변환',
-    keywords: ['ai', 'llm', 'gemini', 'openai', '인공지능', '도우미', 'assist'],
+    description: '선택 텍스트를 LLM으로 변환 · EXAONE Tabular CSV 예측',
+    keywords: [
+      'ai',
+      'llm',
+      'gemini',
+      'openai',
+      'exaone',
+      'tabular',
+      'csv',
+      '인공지능',
+      '도우미',
+      'assist',
+      '분류',
+      '회귀',
+    ],
   },
   {
     id: 'editor-export-pdf',

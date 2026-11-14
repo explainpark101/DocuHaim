@@ -5,12 +5,15 @@ import MlxVlmModelSelect from '@/components/llm/MlxVlmModelSelect';
 import LlamaCppModelSelect from '@/components/llm/LlamaCppModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import {
+  LLM_PROVIDER_EXAONE,
   LLM_PROVIDER_LLAMA_CPP,
   LLM_PROVIDER_MLX_VLM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
+  resolveOpenAiCompatibleProfileBaseUrl,
   resolveSelectedLlmProfile,
   type LlmProviderProfile,
 } from '@/utils/llmProviderProfiles';
+import { listExaoneModels } from '@/utils/exaoneSettings';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
 type QuizLlmModelPickerProps = {
@@ -56,12 +59,21 @@ export default function QuizLlmModelPicker({
           <span className="text-xs font-semibold text-slate-700 dark:text-odp-fgStrong">
             모델
           </span>
-          {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
+          {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ||
+          selectedProfile.kind === LLM_PROVIDER_EXAONE ? (
             <OpenAiCompatibleModelSelect
-              key={`${selectedProfile.id}-openai`}
-              reloadKey={`${selectedProfile.id}:${selectedProfile.baseUrl || ''}`}
-              getBaseUrl={() => selectedProfile.baseUrl || ''}
+              key={`${selectedProfile.id}-${selectedProfile.kind}`}
+              reloadKey={`${selectedProfile.id}:${resolveOpenAiCompatibleProfileBaseUrl(selectedProfile)}`}
+              getBaseUrl={() => resolveOpenAiCompatibleProfileBaseUrl(selectedProfile)}
               getApiKey={() => selectedProfile.apiKey || ''}
+              {...(selectedProfile.kind === LLM_PROVIDER_EXAONE
+                ? {
+                    listModels: ({ apiKey }: { apiKey: string }) => listExaoneModels(apiKey),
+                    placeholder: '모델 ID (예: k-exaone_v2.5)',
+                    helpText:
+                      '새로고침으로 EXAONE 모델을 불러오거나, 모델 ID를 직접 입력하세요.',
+                  }
+                : {})}
               value={model}
               onChange={onModelChange}
               autoLoad={autoLoadModels}

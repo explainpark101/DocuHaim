@@ -19,14 +19,24 @@ import { useLlmProfileIdState } from '@/components/LlmProviderSelect';
 import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
 import {
+  LLM_PROVIDER_EXAONE,
   LLM_PROVIDER_GEMINI,
   LLM_PROVIDER_LLAMA_CPP,
   LLM_PROVIDER_MLX_VLM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   loadLastUsedModelForProfile,
+  resolveOpenAiCompatibleProfileBaseUrl,
   resolveSelectedLlmProfile,
   saveLastUsedModelForProfile,
 } from '@/utils/llmProviderProfiles';
+import {
+  isExaoneTabularModelId,
+  resolveExaoneTabularTask,
+} from '@/utils/exaoneSettings';
+import {
+  createDefaultExaoneTabularAssistState,
+  type ExaoneTabularAssistState,
+} from '@/components/llm/ExaoneTabularAssistFields';
 import { isFreeTierBlockedModel } from '@/utils/geminiError';
 import { isDesktopApp } from '@/utils/isDesktopApp';
 import { loadMlxVlmSettings } from '@/utils/mlxVlmSettingsStore';
@@ -219,6 +229,11 @@ export default function LlmAssistModal({
     selectedProfile
       ? loadLastUsedModelForProfile(selectedProfile.id, selectedProfile.kind)
       : '',
+  );
+  const [exaoneTabular, setExaoneTabular] = useState<ExaoneTabularAssistState>(() =>
+    createDefaultExaoneTabularAssistState(
+      resolveExaoneTabularTask(model) ?? 'classification',
+    ),
   );
 
   const popoutRef = useRef<Window | null>(null);
@@ -471,6 +486,13 @@ export default function LlmAssistModal({
     (nextId: string) => {
       const next = String(nextId || '').trim();
       setModel(next);
+      const nextTask = resolveExaoneTabularTask(next);
+      if (nextTask) {
+        setExaoneTabular((prev) => ({
+          ...prev,
+          outputType: nextTask === 'classification' ? 'class' : 'point',
+        }));
+      }
       if (!selectedProfile) return;
       saveLastUsedModelForProfile(selectedProfile.id, next);
       if (selectedProfile.kind === LLM_PROVIDER_GEMINI) saveLastUsedGeminiModel(next);
@@ -502,13 +524,57 @@ export default function LlmAssistModal({
         throw new Error('설정에서 AI 제공자를 추가한 뒤 선택하세요.');
       }
 
-      if (selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE) {
-        const baseUrl = (selectedProfile.baseUrl || '').trim();
+      if (
+        selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ||
+        selectedProfile.kind === LLM_PROVIDER_EXAONE
+      ) {
+        if (selectedProfile.kind === LLM_PROVIDER_EXAONE && isExaoneTabularModelId(model)) {
+          const task = resolveExaoneTabularTask(model);
+          if (!task) throw new Error('알 수 없는 EXAONE Tabular 모델입니다.');
+          if (!exaoneTabular.trainFile) {
+            throw new Error('학습용 CSV(train_file)를 선택하세요.');
+          }
+          if (!exaoneTabular.testFile) {
+            throw new Error('예측용 CSV(test_file)를 선택하세요.');
+          }
+          saveLastUsedModelForProfile(selectedProfile.id, model);
+          saveLastUsedOpenAiCompatibleModel(model);
+          const { runExaoneTabularPredict } = await import('@/utils/exaoneTabularClient');
+          const markdown = await withLlmProfileApiKey(
+            selectedProfile.id,
+            () => selectedProfile.apiKey || '',
+            async (apiKey) => {
+              const out = await runExaoneTabularPredict({
+                apiKey,
+                task,
+                trainFile: exaoneTabular.trainFile!,
+                testFile: exaoneTabular.testFile!,
+                trainFileName: exaoneTabular.trainFile?.name,
+                testFileName: exaoneTabular.testFile?.name,
+                targetColumn: exaoneTabular.targetColumn,
+                outputType: exaoneTabular.outputType,
+                signal: controller.signal,
+              });
+              return out.markdown;
+            },
+            {
+              missingKeyMessage: 'EXAONE API 키가 없습니다. 설정에서 입력하세요.',
+            },
+          );
+          setResult(markdown);
+          return;
+        }
+
+        const baseUrl = resolveOpenAiCompatibleProfileBaseUrl(selectedProfile);
         if (!baseUrl) {
           throw new Error('선택한 제공자의 Endpoint URL이 없습니다. 설정에서 수정하세요.');
         }
         saveLastUsedModelForProfile(selectedProfile.id, model);
         saveLastUsedOpenAiCompatibleModel(model);
+        const missingKeyMessage =
+          selectedProfile.kind === LLM_PROVIDER_EXAONE
+            ? 'EXAONE API 키가 없습니다. 설정에서 입력하세요.'
+            : 'OpenAI 호환 API 키가 없습니다. 설정에서 입력하세요.';
         const output = await withLlmProfileApiKey(
           selectedProfile.id,
           () => selectedProfile.apiKey || '',
@@ -526,8 +592,8 @@ export default function LlmAssistModal({
               signal: controller.signal,
             }),
           {
-            allowEmpty: true,
-            missingKeyMessage: 'OpenAI 호환 API 키가 없습니다. 설정에서 입력하세요.',
+            allowEmpty: selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE,
+            missingKeyMessage,
           },
         );
         setResult(output);
@@ -636,7 +702,16 @@ export default function LlmAssistModal({
         setLoading(false);
       }
     }
-  }, [selectedText, attachedImages, selectedProfile, model, instruction, systemPrompt, requestOptions]);
+  }, [
+    selectedText,
+    attachedImages,
+    selectedProfile,
+    model,
+    instruction,
+    systemPrompt,
+    requestOptions,
+    exaoneTabular,
+  ]);
 
   const handleApplyResult = useCallback(() => {
     if (!result) return;
@@ -1048,6 +1123,8 @@ export default function LlmAssistModal({
     onCreateNoteFromResult: handleCreateNoteFromResult,
     presentation,
     canInsertIntoDocument,
+    exaoneTabular,
+    onExaoneTabularChange: setExaoneTabular,
   };
 
   const headerActions = (

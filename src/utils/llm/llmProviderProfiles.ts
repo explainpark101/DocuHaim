@@ -1,5 +1,9 @@
 import { DEFAULT_GEMINI_MODEL, loadLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import {
+  DEFAULT_EXAONE_MODEL,
+  EXAONE_API_BASE_URL,
+} from '@/utils/llm/exaoneSettings';
+import {
   loadLastUsedOpenAiCompatibleModel,
   normalizeOpenAiCompatibleBaseUrl,
 } from '@/utils/openaiCompatibleSettings';
@@ -8,12 +12,14 @@ import { loadLlamaCppSettings } from '@/utils/llamaCppSettingsStore';
 
 export const LLM_PROVIDER_GEMINI = 'gemini';
 export const LLM_PROVIDER_OPENAI_COMPATIBLE = 'openai-compatible';
+export const LLM_PROVIDER_EXAONE = 'exaone';
 export const LLM_PROVIDER_MLX_VLM = 'mlx-vlm';
 export const LLM_PROVIDER_LLAMA_CPP = 'llama-cpp';
 
 export type LlmProviderKind =
   | typeof LLM_PROVIDER_GEMINI
   | typeof LLM_PROVIDER_OPENAI_COMPATIBLE
+  | typeof LLM_PROVIDER_EXAONE
   | typeof LLM_PROVIDER_MLX_VLM
   | typeof LLM_PROVIDER_LLAMA_CPP;
 
@@ -113,9 +119,18 @@ export function isLlmProviderKind(value: string): value is LlmProviderKind {
   return (
     value === LLM_PROVIDER_GEMINI ||
     value === LLM_PROVIDER_OPENAI_COMPATIBLE ||
+    value === LLM_PROVIDER_EXAONE ||
     value === LLM_PROVIDER_MLX_VLM ||
     value === LLM_PROVIDER_LLAMA_CPP
   );
+}
+
+/** Resolved chat/completions base URL for OpenAI-compatible transports. */
+export function resolveOpenAiCompatibleProfileBaseUrl(profile: LlmProviderProfile): string {
+  if (profile.kind === LLM_PROVIDER_EXAONE) {
+    return EXAONE_API_BASE_URL;
+  }
+  return normalizeOpenAiCompatibleBaseUrl(profile.baseUrl);
 }
 
 export function createLlmProviderProfileId(): string {
@@ -148,15 +163,19 @@ export function normalizeLlmProviderProfile(raw: unknown): LlmProviderProfile | 
     (typeof rec.name === 'string' && rec.name.trim()) ||
     (kind === LLM_PROVIDER_GEMINI
       ? 'Google Gemini'
-      : kind === LLM_PROVIDER_MLX_VLM
-        ? 'MLX-VLM (local)'
-        : kind === LLM_PROVIDER_LLAMA_CPP
-          ? 'llama.cpp (local)'
-          : 'OpenAI 호환');
+      : kind === LLM_PROVIDER_EXAONE
+        ? 'EXAONE'
+        : kind === LLM_PROVIDER_MLX_VLM
+          ? 'MLX-VLM (local)'
+          : kind === LLM_PROVIDER_LLAMA_CPP
+            ? 'llama.cpp (local)'
+            : 'OpenAI 호환');
   const baseUrl =
-    kind === LLM_PROVIDER_OPENAI_COMPATIBLE || kind === LLM_PROVIDER_LLAMA_CPP
-      ? String(rec.baseUrl || rec.endpoint || '').trim()
-      : '';
+    kind === LLM_PROVIDER_EXAONE
+      ? EXAONE_API_BASE_URL
+      : kind === LLM_PROVIDER_OPENAI_COMPATIBLE || kind === LLM_PROVIDER_LLAMA_CPP
+        ? String(rec.baseUrl || rec.endpoint || '').trim()
+        : '';
   const apiKey = typeof rec.apiKey === 'string' ? rec.apiKey : '';
   return { id: resolvedId, name, kind, baseUrl, apiKey };
 }
@@ -291,10 +310,15 @@ function looksLikeGeminiModelId(modelId: string): boolean {
   return /^gemini-/i.test(String(modelId || '').trim());
 }
 
+function looksLikeExaoneModelId(modelId: string): boolean {
+  return /exaone/i.test(String(modelId || '').trim());
+}
+
 function storedModelMatchesKind(modelId: string, kind: LlmProviderKind): boolean {
   const trimmed = String(modelId || '').trim();
   if (!trimmed) return false;
   if (kind === LLM_PROVIDER_GEMINI) return looksLikeGeminiModelId(trimmed);
+  if (kind === LLM_PROVIDER_EXAONE) return looksLikeExaoneModelId(trimmed);
   if (kind === LLM_PROVIDER_MLX_VLM) {
     return trimmed.includes('/') || trimmed.startsWith('/') || trimmed.startsWith('.');
   }
@@ -336,6 +360,7 @@ export function saveLastUsedModelForProfile(profileId: string, modelId: string):
 
 export function defaultModelForKind(kind: LlmProviderKind): string {
   if (kind === LLM_PROVIDER_GEMINI) return DEFAULT_GEMINI_MODEL;
+  if (kind === LLM_PROVIDER_EXAONE) return DEFAULT_EXAONE_MODEL;
   if (kind === LLM_PROVIDER_MLX_VLM) return loadMlxVlmSettings().selectedModelId || '';
   if (kind === LLM_PROVIDER_LLAMA_CPP) return loadLlamaCppSettings().selectedModelId || '';
   return '';
@@ -353,6 +378,12 @@ export function validateLlmProviderProfileDraft(draft: {
   if (draft.kind === LLM_PROVIDER_GEMINI) {
     if (!String(draft.apiKey || '').trim() && !draft.hasStoredKey) {
       return 'Gemini API 키를 입력하세요.';
+    }
+    return null;
+  }
+  if (draft.kind === LLM_PROVIDER_EXAONE) {
+    if (!String(draft.apiKey || '').trim() && !draft.hasStoredKey) {
+      return 'EXAONE API 키를 입력하세요.';
     }
     return null;
   }

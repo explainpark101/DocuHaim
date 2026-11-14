@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2, Undo2 } from 'lucide-react';
 import { RadioGroup } from 'radix-ui';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
@@ -10,6 +10,7 @@ import {
   SettingsCollapsibleHeading,
 } from '@/components/settings/SettingsCollapsible';
 import {
+  LLM_PROVIDER_EXAONE,
   LLM_PROVIDER_GEMINI,
   LLM_PROVIDER_MLX_VLM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
@@ -21,6 +22,7 @@ import {
   type LlmProviderKind,
   type LlmProviderProfile,
 } from '@/utils/llmProviderProfiles';
+import { EXAONE_API_BASE_URL, listExaoneModels } from '@/utils/exaoneSettings';
 import { normalizeOpenAiCompatibleBaseUrl } from '@/utils/openaiCompatibleSettings';
 import { isTauriMacOS } from '@/utils/tauriPlatform';
 import MlxVlmModelSelect from '@/components/llm/MlxVlmModelSelect';
@@ -41,6 +43,7 @@ const RADIO_INDICATOR_CLASS =
 
 function kindLabel(kind: LlmProviderKind): string {
   if (kind === LLM_PROVIDER_GEMINI) return 'Google Gemini';
+  if (kind === LLM_PROVIDER_EXAONE) return 'EXAONE';
   if (kind === LLM_PROVIDER_MLX_VLM) return 'MLX-VLM (local)';
   return 'OpenAI 호환';
 }
@@ -145,9 +148,11 @@ export default function LlmProviderProfilesSettings({
       name: draft.name.trim(),
       kind: draft.kind,
       baseUrl:
-        draft.kind === LLM_PROVIDER_OPENAI_COMPATIBLE
-          ? normalizeOpenAiCompatibleBaseUrl(draft.baseUrl)
-          : '',
+        draft.kind === LLM_PROVIDER_EXAONE
+          ? EXAONE_API_BASE_URL
+          : draft.kind === LLM_PROVIDER_OPENAI_COMPATIBLE
+            ? normalizeOpenAiCompatibleBaseUrl(draft.baseUrl)
+            : '',
       apiKey,
     };
     const exists = profiles.some((p) => p.id === nextProfile.id);
@@ -180,13 +185,17 @@ export default function LlmProviderProfilesSettings({
         <>
           {!compact ? (
             <p className="text-xs text-gray-600 dark:text-odp-muted">
-              Gemini와 OpenAI 호환 endpoint를 여러 개 저장할 수 있습니다. 실제 사용할 제공자는
+              Gemini, EXAONE, OpenAI 호환 endpoint를 여러 개 저장할 수 있습니다. 실제 사용할 제공자는
               에디터 AI 도우미에서 고릅니다. API 키는 연결 정보와 함께 암호화되며, 이 화면에서 다시
               표시되지 않습니다. 웹에서는 Gemini 요청이 Google AI Studio(
               <code className="rounded bg-gray-100 px-1 dark:bg-odp-bgSoft">
                 generativelanguage.googleapis.com
               </code>
-              )로 직접 전송됩니다. Tauri 앱은 네이티브 HTTP를 사용합니다. OpenAI 호환
+              )로 직접 전송됩니다. EXAONE은{' '}
+              <code className="rounded bg-gray-100 px-1 dark:bg-odp-bgSoft">
+                api.exaone.ai
+              </code>
+              에 Bearer 토큰으로 요청합니다. Tauri 앱은 네이티브 HTTP를 사용합니다. OpenAI 호환·EXAONE
               endpoint는 CORS가 허용되어야 합니다.
             </p>
           ) : null}
@@ -210,9 +219,11 @@ export default function LlmProviderProfilesSettings({
                       {kindLabel(profile.kind)}
                       {profile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE && profile.baseUrl
                         ? ` · ${profile.baseUrl}`
-                        : profile.kind === LLM_PROVIDER_MLX_VLM
-                          ? ' · Apple Silicon local'
-                          : ''}
+                        : profile.kind === LLM_PROVIDER_EXAONE
+                          ? ` · ${EXAONE_API_BASE_URL}`
+                          : profile.kind === LLM_PROVIDER_MLX_VLM
+                            ? ' · Apple Silicon local'
+                            : ''}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -267,6 +278,7 @@ export default function LlmProviderProfilesSettings({
                     if (
                       next !== LLM_PROVIDER_GEMINI &&
                       next !== LLM_PROVIDER_OPENAI_COMPATIBLE &&
+                      next !== LLM_PROVIDER_EXAONE &&
                       next !== LLM_PROVIDER_MLX_VLM
                     ) {
                       return;
@@ -279,6 +291,7 @@ export default function LlmProviderProfilesSettings({
                       return {
                         ...p,
                         kind: nextKind,
+                        baseUrl: nextKind === LLM_PROVIDER_EXAONE ? EXAONE_API_BASE_URL : p.baseUrl,
                         keyInput: '',
                         hasStoredKey:
                           editingProfile?.kind === nextKind &&
@@ -295,6 +308,12 @@ export default function LlmProviderProfilesSettings({
                       <RadioGroup.Indicator className={RADIO_INDICATOR_CLASS} />
                     </RadioGroup.Item>
                     <span>Google Gemini</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-odp-fg">
+                    <RadioGroup.Item value={LLM_PROVIDER_EXAONE} className={RADIO_ITEM_CLASS}>
+                      <RadioGroup.Indicator className={RADIO_INDICATOR_CLASS} />
+                    </RadioGroup.Item>
+                    <span>EXAONE</span>
                   </label>
                   <label className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-700 dark:text-odp-fg">
                     <RadioGroup.Item
@@ -315,6 +334,33 @@ export default function LlmProviderProfilesSettings({
                   ) : null}
                 </RadioGroup.Root>
               </div>
+              {draft.kind === LLM_PROVIDER_EXAONE && !compact ? (
+                <div className="rounded border border-sky-200 bg-sky-50/60 p-2.5 text-[11px] leading-relaxed text-sky-950 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-100">
+                  LG AI연구원 EXAONE API Platform입니다. Endpoint는{' '}
+                  <code className="rounded bg-white/80 px-1 dark:bg-odp-bgSoft">
+                    {EXAONE_API_BASE_URL}
+                  </code>
+                  이며, Authorization Bearer 토큰으로 호출합니다. 채팅(K-EXAONE)과{' '}
+                  <a
+                    href="https://docs.exaone.ai/ko/docs/exaone-tabular"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    Tabular 분류/회귀
+                  </a>
+                  모델을 고를 수 있습니다. 키는{' '}
+                  <a
+                    href="https://docs.exaone.ai/ko/docs/quick-start"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    EXAONE 문서
+                  </a>
+                  에서 발급하세요.
+                </div>
+              ) : null}
               {draft.kind === LLM_PROVIDER_MLX_VLM && !compact ? (
                 <div className="rounded border border-emerald-200 bg-emerald-50/60 p-2.5 text-[11px] leading-relaxed text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
                   MLX-VLM 서버 시작·모델 설치는 설정의{' '}
@@ -360,7 +406,9 @@ export default function LlmProviderProfilesSettings({
                       ? '저장됨 — 변경 시 새 키 입력'
                       : draft.kind === LLM_PROVIDER_GEMINI
                         ? 'AI Studio API 키 입력'
-                        : 'Bearer 토큰 (로컬 서버는 비워 두세요)'
+                        : draft.kind === LLM_PROVIDER_EXAONE
+                          ? 'EXAONE Bearer API 키 입력'
+                          : 'Bearer 토큰 (로컬 서버는 비워 두세요)'
                   }
                 />
               </div>
@@ -388,6 +436,21 @@ export default function LlmProviderProfilesSettings({
                     autoLoad
                     autoLoadModelOnSelect={false}
                   />
+                ) : draft.kind === LLM_PROVIDER_EXAONE ? (
+                  <OpenAiCompatibleModelSelect
+                    key={`${draft.id}-${modelTick}-exaone`}
+                    getBaseUrl={() => EXAONE_API_BASE_URL}
+                    getApiKey={() =>
+                      draft.keyInput.trim() ||
+                      (editingProfile?.kind === LLM_PROVIDER_EXAONE ? editingProfile.apiKey : '')
+                    }
+                    listModels={({ apiKey }) => listExaoneModels(apiKey)}
+                    value={draftModel}
+                    onChange={handleDraftModelChange}
+                    autoLoad={draft.hasStoredKey || Boolean(draft.keyInput.trim())}
+                    placeholder="모델 ID (예: k-exaone_v2.5)"
+                    helpText="API 키 입력 후 새로고침으로 모델을 불러오거나, 모델 ID를 직접 입력하세요."
+                  />
                 ) : (
                   <OpenAiCompatibleModelSelect
                     key={`${draft.id}-${modelTick}`}
@@ -408,15 +471,17 @@ export default function LlmProviderProfilesSettings({
                 <button
                   type="button"
                   onClick={cancelDraft}
-                  className="rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 dark:text-odp-muted dark:hover:bg-odp-focusBg"
+                  className="inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 dark:text-odp-muted dark:hover:bg-odp-focusBg"
                 >
+                  <Undo2 className="h-3.5 w-3.5" aria-hidden />
                   취소
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveDraft}
-                  className="rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
+                  className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-1.5 text-sm text-white hover:bg-blue-700"
                 >
+                  <Check className="h-3.5 w-3.5" aria-hidden />
                   제공자 저장
                 </button>
               </div>

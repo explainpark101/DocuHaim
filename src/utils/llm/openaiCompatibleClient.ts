@@ -64,6 +64,10 @@ async function readErrorDetail(res: Response): Promise<string> {
         if (typeof msg === 'string' && msg.trim()) return msg;
       }
       if (typeof rec.message === 'string' && rec.message.trim()) return rec.message;
+      // EXAONE API Platform error shape
+      if (typeof rec.description === 'string' && rec.description.trim()) {
+        return rec.description.trim();
+      }
     }
   } catch {
     // ignore

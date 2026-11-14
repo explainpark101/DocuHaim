@@ -24,6 +24,15 @@ type OpenAiCompatibleModelSelectProps = {
   reloadKey?: string;
   /** When set (e.g. llama-cpp), show local aliases in the model list. */
   aliasScope?: LocalLlmModelAliasScope;
+  /** Override model listing (e.g. EXAONE with documented fallbacks). */
+  listModels?: (args: {
+    baseUrl: string;
+    apiKey: string;
+  }) => Promise<ModelIdOption[]>;
+  /** Shown when Endpoint URL is not required (fixed-base providers). */
+  emptyBaseUrlMessage?: string;
+  placeholder?: string;
+  helpText?: string;
   className?: string;
 };
 
@@ -35,12 +44,18 @@ export default function OpenAiCompatibleModelSelect({
   autoLoad = false,
   reloadKey = '',
   aliasScope,
+  listModels,
+  emptyBaseUrlMessage = 'Endpoint URL을 먼저 입력하세요.',
+  placeholder = '모델 ID 직접 입력 (예: gpt-4o-mini)',
+  helpText = '새로고침으로 서버 모델을 가져오거나, 모델 ID를 직접 입력하세요.',
   className = '',
 }: OpenAiCompatibleModelSelectProps) {
   const getBaseUrlRef = useRef(getBaseUrl);
   const getApiKeyRef = useRef(getApiKey);
+  const listModelsRef = useRef(listModels);
   getBaseUrlRef.current = getBaseUrl;
   getApiKeyRef.current = getApiKey;
+  listModelsRef.current = listModels;
   const [fetched, setFetched] = useState<ModelIdOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -49,7 +64,7 @@ export default function OpenAiCompatibleModelSelect({
   const refreshModels = useCallback(async () => {
     const baseUrl = (await Promise.resolve(getBaseUrlRef.current()))?.trim();
     if (!baseUrl) {
-      setError('Endpoint URL을 먼저 입력하세요.');
+      setError(emptyBaseUrlMessage);
       return;
     }
 
@@ -57,7 +72,10 @@ export default function OpenAiCompatibleModelSelect({
     setError('');
     try {
       const apiKey = (await Promise.resolve(getApiKeyRef.current()))?.trim() ?? '';
-      const list = await listOpenAiCompatibleModels(baseUrl, apiKey);
+      const customList = listModelsRef.current;
+      const list = customList
+        ? await customList({ baseUrl, apiKey })
+        : await listOpenAiCompatibleModels(baseUrl, apiKey);
       setFetched(list);
       if (!list.length) {
         setError('모델 목록이 비어 있습니다. 모델 ID를 직접 입력하세요.');
@@ -67,7 +85,7 @@ export default function OpenAiCompatibleModelSelect({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [emptyBaseUrlMessage]);
 
   useEffect(() => {
     setFetched([]);
@@ -125,7 +143,7 @@ export default function OpenAiCompatibleModelSelect({
           options={options}
           loading={loading}
           {...(aliasScope ? { aliasScope } : {})}
-          placeholder="모델 ID 직접 입력 (예: gpt-4o-mini)"
+          placeholder={placeholder}
         />
         <button
           type="button"
@@ -143,9 +161,7 @@ export default function OpenAiCompatibleModelSelect({
           원본 ID · {canonicalValue}
         </p>
       ) : null}
-      <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">
-        새로고침으로 서버 모델을 가져오거나, 모델 ID를 직접 입력하세요.
-      </p>
+      <p className="mt-1.5 text-[11px] text-gray-500 dark:text-odp-muted">{helpText}</p>
       {error ? (
         <p className="mt-1.5 whitespace-pre-line text-[11px] text-amber-700 dark:text-amber-300">
           {error}

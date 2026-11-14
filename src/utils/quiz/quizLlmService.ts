@@ -2,16 +2,19 @@ import { withLlmProfileApiKey } from '@/utils/llmApiKeySession';
 import { generateGeminiTransform } from '@/utils/geminiClient';
 import { generateOpenAiCompatibleTransform } from '@/utils/openaiCompatibleClient';
 import {
+  LLM_PROVIDER_EXAONE,
   LLM_PROVIDER_GEMINI,
   LLM_PROVIDER_LLAMA_CPP,
   LLM_PROVIDER_MLX_VLM,
   LLM_PROVIDER_OPENAI_COMPATIBLE,
   loadLastLlmProfileId,
   loadLastUsedModelForProfile,
+  resolveOpenAiCompatibleProfileBaseUrl,
   resolveSelectedLlmProfile,
   saveLastUsedModelForProfile,
   type LlmProviderProfile,
 } from '@/utils/llmProviderProfiles';
+import { isExaoneTabularModelId } from '@/utils/exaoneSettings';
 import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
 import { loadLlamaCppSettings } from '@/utils/llamaCppSettingsStore';
@@ -204,18 +207,36 @@ export async function checkQuizLlmReady(
     return { ready: true, profile, model: resolved };
   }
 
-  if (profile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE) {
-    if (!(profile.baseUrl || '').trim()) {
+  if (
+    profile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ||
+    profile.kind === LLM_PROVIDER_EXAONE
+  ) {
+    if (!resolveOpenAiCompatibleProfileBaseUrl(profile)) {
       return {
         ready: false,
         message:
-          'OpenAI 호환 Endpoint URL이 없습니다. 설정 또는 AI 도우미에서 제공자를 확인하세요.',
+          profile.kind === LLM_PROVIDER_EXAONE
+            ? 'EXAONE Endpoint를 확인할 수 없습니다. 설정에서 제공자를 다시 저장하세요.'
+            : 'OpenAI 호환 Endpoint URL이 없습니다. 설정 또는 AI 도우미에서 제공자를 확인하세요.',
+      };
+    }
+    if (profile.kind === LLM_PROVIDER_EXAONE && !(profile.apiKey || '').trim()) {
+      return {
+        ready: false,
+        message: 'EXAONE API 키가 없습니다. 설정에서 입력하세요.',
       };
     }
     if (!model) {
       return {
         ready: false,
         message: '모델을 선택하세요. AI 도우미에서 모델을 고른 뒤 다시 시도하세요.',
+      };
+    }
+    if (profile.kind === LLM_PROVIDER_EXAONE && isExaoneTabularModelId(model)) {
+      return {
+        ready: false,
+        message:
+          'EXAONE Tabular는 퀴즈 생성에 사용할 수 없습니다. K-EXAONE 채팅 모델을 선택하세요.',
       };
     }
     return { ready: true, profile, model };
@@ -350,8 +371,16 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
   if (options.signal) streamOpts.signal = options.signal;
   if (options.onChunk) streamOpts.onChunk = options.onChunk;
 
-  if (selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE) {
-    const baseUrl = (selectedProfile.baseUrl || '').trim();
+  if (
+    selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ||
+    selectedProfile.kind === LLM_PROVIDER_EXAONE
+  ) {
+    if (selectedProfile.kind === LLM_PROVIDER_EXAONE && isExaoneTabularModelId(model)) {
+      throw new Error(
+        'EXAONE Tabular는 퀴즈 생성에 사용할 수 없습니다. K-EXAONE 채팅 모델을 선택하세요.',
+      );
+    }
+    const baseUrl = resolveOpenAiCompatibleProfileBaseUrl(selectedProfile);
     if (!baseUrl) throw new Error('선택한 제공자의 Endpoint URL이 없습니다.');
     saveLastUsedModelForProfile(selectedProfile.id, model);
     saveLastUsedOpenAiCompatibleModel(model);
@@ -374,8 +403,11 @@ export async function runQuizLlmPrompt(options: QuizLlmRunOptions): Promise<stri
           ),
         ),
       {
-        allowEmpty: true,
-        missingKeyMessage: 'OpenAI 호환 API 키가 없습니다. 설정에서 입력하세요.',
+        allowEmpty: selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE,
+        missingKeyMessage:
+          selectedProfile.kind === LLM_PROVIDER_EXAONE
+            ? 'EXAONE API 키가 없습니다. 설정에서 입력하세요.'
+            : 'OpenAI 호환 API 키가 없습니다. 설정에서 입력하세요.',
       },
     );
   }

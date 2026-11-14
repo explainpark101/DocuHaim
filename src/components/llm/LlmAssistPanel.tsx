@@ -39,7 +39,17 @@ import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import GeminiModelSelect from '@/components/GeminiModelSelect';
 import OpenAiCompatibleModelSelect from '@/components/OpenAiCompatibleModelSelect';
 import LlmProviderSelect from '@/components/LlmProviderSelect';
-import { LLM_PROVIDER_LLAMA_CPP, LLM_PROVIDER_MLX_VLM, LLM_PROVIDER_OPENAI_COMPATIBLE } from '@/utils/llmProviderProfiles';
+import {
+  LLM_PROVIDER_EXAONE,
+  LLM_PROVIDER_LLAMA_CPP,
+  LLM_PROVIDER_MLX_VLM,
+  LLM_PROVIDER_OPENAI_COMPATIBLE,
+  resolveOpenAiCompatibleProfileBaseUrl,
+} from '@/utils/llmProviderProfiles';
+import { isExaoneTabularModelId, listExaoneModels } from '@/utils/exaoneSettings';
+import ExaoneTabularAssistFields, {
+  type ExaoneTabularAssistState,
+} from '@/components/llm/ExaoneTabularAssistFields';
 import MlxVlmModelSelect from '@/components/llm/MlxVlmModelSelect';
 import LlamaCppModelSelect from '@/components/llm/LlamaCppModelSelect';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
@@ -129,7 +139,12 @@ export type LlmAssistPanelProps = {
   modelSelectAutoLoad?: boolean;
   /** When false, parent chrome owns OS image drop (dock / floating shell). */
   enableImageDropZone?: boolean;
+  /** EXAONE Tabular CSV request (shown when a tabular model is selected). */
+  exaoneTabular?: ExaoneTabularAssistState;
+  onExaoneTabularChange?: (next: ExaoneTabularAssistState) => void;
 };
+
+export type { ExaoneTabularAssistState };
 
 type PanelLabelProps = {
   icon?: LucideIcon;
@@ -195,8 +210,12 @@ export default function LlmAssistPanel({
   remoteMode = false,
   modelSelectAutoLoad = true,
   enableImageDropZone = true,
+  exaoneTabular,
+  onExaoneTabularChange,
 }: LlmAssistPanelProps) {
   const resultReadOnly = loading || (remoteMode ? false : !result);
+  const isExaoneTabular =
+    selectedProfile?.kind === LLM_PROVIDER_EXAONE && isExaoneTabularModelId(model);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const resultPreviewRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -369,12 +388,21 @@ export default function LlmAssistPanel({
           <label className="mb-1 block">
             <PanelLabel icon={BrainCircuit}>모델</PanelLabel>
           </label>
-          {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ? (
+          {selectedProfile.kind === LLM_PROVIDER_OPENAI_COMPATIBLE ||
+          selectedProfile.kind === LLM_PROVIDER_EXAONE ? (
             <OpenAiCompatibleModelSelect
-              key={`${selectedProfile.id}-openai`}
-              reloadKey={`${selectedProfile.id}:${selectedProfile.baseUrl || ''}`}
-              getBaseUrl={() => selectedProfile.baseUrl || ''}
+              key={`${selectedProfile.id}-${selectedProfile.kind}`}
+              reloadKey={`${selectedProfile.id}:${resolveOpenAiCompatibleProfileBaseUrl(selectedProfile)}`}
+              getBaseUrl={() => resolveOpenAiCompatibleProfileBaseUrl(selectedProfile)}
               getApiKey={() => selectedProfile.apiKey || ''}
+              {...(selectedProfile.kind === LLM_PROVIDER_EXAONE
+                ? {
+                    listModels: ({ apiKey }: { apiKey: string }) => listExaoneModels(apiKey),
+                    placeholder: '모델 ID (예: k-exaone_v2.5)',
+                    helpText:
+                      '채팅(K-EXAONE) 또는 Tabular 분류/회귀 모델을 고르세요. 새로고침으로 목록을 불러올 수 있습니다.',
+                  }
+                : {})}
               value={model}
               onChange={onModelChange}
               autoLoad={modelSelectAutoLoad}
@@ -420,6 +448,15 @@ export default function LlmAssistPanel({
         </div>
       ) : null}
 
+      {isExaoneTabular && exaoneTabular && onExaoneTabularChange ? (
+        <ExaoneTabularAssistFields
+          modelId={model}
+          value={exaoneTabular}
+          onChange={onExaoneTabularChange}
+        />
+      ) : null}
+
+      {!isExaoneTabular ? (
       <div>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
           <label className="shrink-0 whitespace-nowrap">
@@ -443,7 +480,9 @@ export default function LlmAssistPanel({
           placeholder="선택된 텍스트가 없어도, 입력한 지시사항으로 실행할 수 있습니다."
         />
       </div>
+      ) : null}
 
+      {!isExaoneTabular ? (
       <div>
         <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
           <label className="shrink-0 whitespace-nowrap">
@@ -555,7 +594,9 @@ export default function LlmAssistPanel({
           <p className="mt-1 text-[10px] text-red-600 dark:text-red-400">{imageError}</p>
         )}
       </div>
+      ) : null}
 
+      {!isExaoneTabular ? (
       <div className="space-y-2 rounded border border-gray-200 p-2 dark:border-odp-borderSoft">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <label className="shrink-0 whitespace-nowrap">
@@ -698,6 +739,7 @@ export default function LlmAssistPanel({
           onChange={(next) => onRequestOptionsChange?.(next)}
         />
       </div>
+      ) : null}
 
       {loading ? (
         <button
@@ -705,10 +747,10 @@ export default function LlmAssistPanel({
           onClick={handleCancelRunClick}
           disabled={!selectedProfile}
           className="flex w-full items-center justify-center gap-2 rounded bg-violet-700 px-3 py-2 text-sm font-medium text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-60"
-          aria-label="생성 중 — 클릭하여 취소"
+          aria-label={isExaoneTabular ? '예측 중 — 클릭하여 취소' : '생성 중 — 클릭하여 취소'}
         >
           <Loader2 size={16} className="animate-spin" aria-hidden />
-          생성 중…
+          {isExaoneTabular ? '예측 중…' : '생성 중…'}
         </button>
       ) : (
         <button
@@ -720,7 +762,7 @@ export default function LlmAssistPanel({
           className="flex w-full items-center justify-center gap-2 rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Sparkles size={16} aria-hidden />
-          실행
+          {isExaoneTabular ? 'Tabular 예측 실행' : '실행'}
         </button>
       )}
 
