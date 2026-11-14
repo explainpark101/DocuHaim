@@ -155,12 +155,16 @@ export async function triggerAppBlobDownload(blob: Blob, fileName: string): Prom
 }
 
 /**
- * Tauri desktop: download a blob, then open it with the default app when a local path is known.
+ * Tauri desktop: write a blob into the open-with-app temp cache, then open with the OS default app.
+ * Does not use the user download / save-dialog path.
  */
 export async function triggerAppBlobDownloadAndOpen(blob: Blob, fileName: string): Promise<boolean> {
-  const result = await downloadAppBlob(blob, fileName);
+  if (!isTauriDesktopPlatform()) return false;
+  const { writeBlobToOpenWithAppCache } = await import('@/utils/tauriOpenWithAppCache');
+  const result = await writeBlobToOpenWithAppCache(blob, fileName);
   if (result.ok && result.savedPath) {
     await openTauriPathWithDefaultApp(result.savedPath);
+    return true;
   }
-  return result.ok;
+  return false;
 }

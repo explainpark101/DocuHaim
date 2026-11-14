@@ -47,6 +47,7 @@ initDesktopExternalLinks()
 initMdEditorCodeCopy()
 initMdEditorToolbarScroll()
 initUiFontSettings()
+void import('@/utils/tauriOpenWithAppCache').then((m) => m.initTauriOpenWithAppCacheCleanup())
 void startDesktopOpenFilesBridge()
 void startAndroidShareTargetBridge()
 

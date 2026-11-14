@@ -119,6 +119,16 @@ const EXTRA_OPTION_ENTRIES: SettingsOptionSearchEntry[] = [
     label: '더블클릭으로 열기',
     keywords: ['tree', '트리', 'TreeNode', 'double click', '더블클릭', '열기', '사이드바'],
   },
+  {
+    sectionId: 'settings-tauri-download',
+    label: '앱 열기 임시 캐시',
+    keywords: ['temp', 'cache', '캐시', '앱 열기', 'open with', 'TTL', '보관', '삭제'],
+  },
+  {
+    sectionId: 'settings-tauri-download',
+    label: '만료 캐시 지금 정리',
+    keywords: ['purge', 'cleanup', '정리', '삭제', '캐시'],
+  },
 ];
 
 function stripToggleActionSuffix(title: string): string {

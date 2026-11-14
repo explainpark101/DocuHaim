@@ -1328,7 +1328,7 @@ export function useDownloadSessionDomain() {
       if (!opened) {
         showAlert({
           title: '앱으로 열기',
-          message: '파일을 열 수 없습니다. 다운로드 위치를 선택했는지 확인해 주세요.',
+          message: '파일을 기본 앱으로 열 수 없습니다.',
         });
       }
     } catch (error: any) {
