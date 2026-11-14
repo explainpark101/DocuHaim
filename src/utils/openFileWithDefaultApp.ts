@@ -76,5 +76,5 @@ export async function openFileWithDefaultApp(
   }
   const body = await params.readBytes(storageType, path);
   const bytes = body instanceof Uint8Array ? body : new Uint8Array(body);
-  return triggerAppBlobDownloadAndOpen(new Blob([bytes]), label);
+  return triggerAppBlobDownloadAndOpen(new Blob([bytes as BlobPart]), label);
 }
