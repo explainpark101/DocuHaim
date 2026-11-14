@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-14T07:30:13.795Z",
-  "totalBytes": 4348539,
+  "generatedAt": "2026-11-14T09:08:32.283Z",
+  "totalBytes": 4349641,
   "assets": [
-    {
-      "file": "assets/vendor-react-BPvvDyqO.js",
-      "bytes": 287210,
-      "label": "React 런타임"
-    },
     {
       "file": "assets/vendor-aws-hJDgVEKM.js",
       "bytes": 232235,
       "label": "스토리지 SDK"
+    },
+    {
+      "file": "assets/vendor-react-BPvvDyqO.js",
+      "bytes": 287210,
+      "label": "React 런타임"
     },
     {
       "file": "assets/vendor-lucide-BnjwTb2j.js",
@@ -59,8 +59,8 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-CYfjMD5l.js",
-      "bytes": 2121706,
+      "file": "assets/index-CjGK7v1R.js",
+      "bytes": 2122808,
       "label": "앱 코어"
     }
   ]
