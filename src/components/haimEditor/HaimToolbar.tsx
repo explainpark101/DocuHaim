@@ -51,6 +51,7 @@ import { toggleHaimHeadingLevel } from '@/components/haimEditor/extensions/HaimH
 import type { HaimToolbarToggleState } from '@/components/haimEditor/haimSourceFormatState';
 import ExportPdfOpenMenu from '@/components/print/ExportPdfOpenMenu';
 import type { ExportPdfPaginationMode } from '@/utils/exportPdf/exportPdfPaginationModeSettings';
+import { getModKeyLabel } from '@/components/Kbd';
 
 export type HaimToolbarAppActions = {
   onExportPdf?: ((mode?: ExportPdfPaginationMode) => void) | undefined;
@@ -158,9 +159,11 @@ function ToolBtn({
 function HaimLlmAssistToolButton({ onToggle }: { onToggle: () => void }) {
   const assist = useLlmAssistOpenOptional();
   const open = Boolean(assist?.open);
+  const chord = `${getModKeyLabel()}+L`;
+  const label = open ? 'AI 도우미 닫기' : 'AI 도우미';
   return (
     <ToolBtn
-      label={open ? 'AI 도우미 닫기' : 'AI 도우미'}
+      label={`${label} (${chord})`}
       active={open}
       onClick={onToggle}
     >

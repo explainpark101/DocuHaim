@@ -192,6 +192,11 @@ export type AdvancedSearchHostProps = {
   preferPrintActions?: boolean;
   /** Open the vault content search tab (workspace tabs aware). */
   onOpenContentSearch?: (query?: string) => void;
+  /**
+   * Open AI Assist as an agent-style surface (workspace tab when tabs are on,
+   * otherwise right dock). Used by the `llm-assist` app command.
+   */
+  onOpenLlmAssist?: () => void;
   /** Chat with Myself tab/surface is active (gates chat section commands). */
   chatTabActive?: boolean;
 };
@@ -214,6 +219,7 @@ export default function AdvancedSearchHost({
   theme = 'light',
   preferPrintActions = false,
   onOpenContentSearch,
+  onOpenLlmAssist,
   chatTabActive = false,
 }: AdvancedSearchHostProps) {
   const navigate = useNavigate();
@@ -794,6 +800,10 @@ export default function AdvancedSearchHost({
           }
           return;
         }
+        if (commandId === 'llm-assist') {
+          onOpenLlmAssist?.();
+          return;
+        }
         if (hit.path) {
           navigate(hit.path);
         }
@@ -813,6 +823,7 @@ export default function AdvancedSearchHost({
       onRequestCreateItem,
       openExportPdf,
       onOpenContentSearch,
+      onOpenLlmAssist,
       currentFile,
       defaultCreateParentPath,
       snippetConfig,

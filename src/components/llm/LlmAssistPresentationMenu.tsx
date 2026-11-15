@@ -42,7 +42,7 @@ export default function LlmAssistPresentationMenu({
     { value: 'docked', label: '우측에 고정', icon: PanelRight },
     {
       value: 'split',
-      label: '스플릿 창',
+      label: '에이전트 탭',
       icon: Columns2,
       disabled: !splitEnabled,
     },

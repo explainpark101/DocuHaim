@@ -359,7 +359,7 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
   {
     id: 'editor-llm-assist',
     title: 'AI 도우미 열기',
-    description: '선택 텍스트를 LLM으로 변환 · EXAONE Tabular CSV 예측',
+    description: '선택 텍스트를 LLM으로 변환 · EXAONE Tabular CSV 예측 (Ctrl/Cmd+L)',
     keywords: [
       'ai',
       'llm',
@@ -373,6 +373,8 @@ export const EDITOR_ACTION_COMMANDS: readonly EditorActionCommandDef[] = [
       'assist',
       '분류',
       '회귀',
+      'ctrl+l',
+      'cmd+l',
     ],
   },
   {

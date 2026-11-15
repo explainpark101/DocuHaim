@@ -1,6 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
 import { useLlmAssistOpenOptional } from '@/contexts/LlmAssistSessionContext';
+import { getModKeyLabel } from '@/components/Kbd';
 
 type Props = {
   onToggle?: () => void;
@@ -10,7 +11,9 @@ type Props = {
 export default function LlmAssistToolbar({ onToggle }: Props) {
   const assist = useLlmAssistOpenOptional();
   const active = Boolean(assist?.open);
+  const chord = `${getModKeyLabel()}+L`;
   const label = active ? 'AI 도우미 닫기' : 'AI 도우미';
+  const tooltip = `${label} (${chord})`;
   return (
     <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
       <Tooltip.Root>
@@ -26,7 +29,7 @@ export default function LlmAssistToolbar({ onToggle }: Props) {
               .filter(Boolean)
               .join(' ')}
             onClick={() => onToggle?.()}
-            aria-label={label}
+            aria-label={tooltip}
             aria-pressed={active}
           >
             <Sparkles className="md-editor-icon" size={16} />
@@ -38,7 +41,7 @@ export default function LlmAssistToolbar({ onToggle }: Props) {
             sideOffset={6}
             className="z-100001 max-w-[min(92vw,280px)] rounded-md border border-violet-200/80 bg-white px-2 py-1 text-xs text-violet-950 shadow-md dark:border-violet-800/60 dark:bg-odp-surface dark:text-violet-50"
           >
-            {label}
+            {tooltip}
             <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
           </Tooltip.Content>
         </Tooltip.Portal>

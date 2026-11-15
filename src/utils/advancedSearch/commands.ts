@@ -111,6 +111,7 @@ export type AppCommandId =
   | 'settings-app-update'
   | 'chat'
   | 'telegram'
+  | 'llm-assist'
   | 'content-search'
   | 'chat-settings'
   | 'chat-groups'
@@ -650,6 +651,29 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       'message',
       'dm',
       '대화',
+    ],
+  },
+  {
+    id: 'llm-assist',
+    title: 'AI 도우미',
+    description: '에이전트 탭·우측 패널로 AI 도우미 열기 (Ctrl/Cmd+L)',
+    path: '',
+    keywords: [
+      'ai',
+      'llm',
+      'assist',
+      '도우미',
+      '인공지능',
+      'agent',
+      '에이전트',
+      'gemini',
+      'openai',
+      '탭',
+      'tab',
+      'panel',
+      '패널',
+      'ctrl+l',
+      'cmd+l',
     ],
   },
   {

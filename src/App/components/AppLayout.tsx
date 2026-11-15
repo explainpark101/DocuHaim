@@ -39,6 +39,7 @@ import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import {
   CHAT_TAB_ID,
+  LLM_ASSIST_TAB_ID,
   TELEGRAM_TAB_ID,
   fileTabId,
   findLeafContainingTab,
@@ -77,7 +78,11 @@ import { useLlamaCppProviderAutoSync } from '@/hooks/useLlamaCppProviderAutoSync
 import { useMlxVlmLoadToast } from '@/hooks/useMlxVlmLoadToast';
 import { useDesktopMenuBridge } from '@/hooks/useDesktopMenuBridge';
 import AiSettingsDock from '@/components/settings/AiSettingsDock';
-import { useLlmAssistOpen } from '@/contexts/LlmAssistSessionContext';
+import {
+  useLlmAssistOpen,
+  useLlmAssistSessionOptional,
+} from '@/contexts/LlmAssistSessionContext';
+import { useLlmAssistToggleShortcut } from '@/hooks/useLlmAssistToggleShortcut';
 
 const LlmAssistModal = lazy(() => import('@/components/LlmAssistModal'));
 
@@ -87,7 +92,12 @@ function LlmAssistMenuBridge(
     'llmAssistOpen' | 'toggleLlmAssist'
   >,
 ) {
+  const { isUnlocked } = useAuth();
   const { open, toggleAssist } = useLlmAssistOpen();
+  useLlmAssistToggleShortcut({
+    enabled: isUnlocked,
+    onToggle: toggleAssist,
+  });
   useDesktopMenuBridge({
     ...props,
     llmAssistOpen: open,
@@ -336,6 +346,19 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const telegramSurfaceActive = workspaceTabsEnabled
     ? workspaceTabs.activeId === TELEGRAM_TAB_ID
     : isTelegramRoute;
+  const llmAssistSession = useLlmAssistSessionOptional();
+  const { open: llmAssistOpen } = useLlmAssistOpen();
+  const openLlmAssistAgentSurface = useCallback(() => {
+    if (workspaceTabsEnabled) {
+      llmAssistSession?.openAsSplit();
+      return;
+    }
+    llmAssistSession?.dockToRight();
+  }, [workspaceTabsEnabled, llmAssistSession]);
+  const llmAssistSurfaceActive =
+    workspaceTabsEnabled && llmAssistSession?.presentation === 'split'
+      ? workspaceTabs.activeId === LLM_ASSIST_TAB_ID
+      : llmAssistOpen;
   const openContentSearchWorkspaceTab = tabsCtx.openContentSearchWorkspaceTab;
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
   const focusWorkspacePane = tabsCtx.focusWorkspacePane;
@@ -671,6 +694,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             }
             navigate(query ? `/search?q=${encodeURIComponent(query)}` : '/search');
           }}
+          onOpenLlmAssist={openLlmAssistAgentSurface}
         />
       ) : null}
 
@@ -765,6 +789,11 @@ export function AppLayout({ children }: { children?: ReactNode }) {
                 if (workspaceTabsEnabled) openChatWorkspaceTab();
                 else navigate('/chat');
               }}
+              onOpenLlmAssist={() => {
+                if (isMobile) setSidebarOpen(false);
+                openLlmAssistAgentSurface();
+              }}
+              llmAssistActive={llmAssistSurfaceActive}
               onOpenTelegram={() => {
                 if (isMobile) setSidebarOpen(false);
                 if (workspaceTabsEnabled) openTelegramWorkspaceTab();
