@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-14T15:43:00.425Z",
-  "totalBytes": 4353527,
+  "generatedAt": "2026-11-15T08:59:09.894Z",
+  "totalBytes": 4356225,
   "assets": [
     {
       "file": "assets/vendor-aws-hJDgVEKM.js",
@@ -14,7 +14,7 @@
       "label": "React 런타임"
     },
     {
-      "file": "assets/vendor-lucide-B8TfEQX9.js",
+      "file": "assets/vendor-lucide-AHEFQNv5.js",
       "bytes": 824421,
       "label": "아이콘"
     },
@@ -44,13 +44,13 @@
       "label": "Markdown 엔진"
     },
     {
-      "file": "assets/vendor-radix-CN5WtDh3.js",
+      "file": "assets/vendor-radix-BVXLG2Jn.js",
       "bytes": 154509,
       "label": "UI 컴포넌트"
     },
     {
-      "file": "assets/index-DvXEXuwA.css",
-      "bytes": 336736,
+      "file": "assets/index-B1R7OWEK.css",
+      "bytes": 337128,
       "label": "스타일시트"
     },
     {
@@ -59,8 +59,8 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-BebLgvYF.js",
-      "bytes": 2125507,
+      "file": "assets/index-CQMGs8de.js",
+      "bytes": 2127813,
       "label": "앱 코어"
     }
   ]
