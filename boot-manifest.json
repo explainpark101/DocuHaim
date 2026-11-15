@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-15T08:59:09.894Z",
-  "totalBytes": 4356225,
+  "generatedAt": "2026-11-15T09:51:35.109Z",
+  "totalBytes": 4356227,
   "assets": [
     {
       "file": "assets/vendor-aws-hJDgVEKM.js",
@@ -59,8 +59,8 @@
       "label": "시작 화면"
     },
     {
-      "file": "assets/index-CQMGs8de.js",
-      "bytes": 2127813,
+      "file": "assets/index-CWx1gBsv.js",
+      "bytes": 2127815,
       "label": "앱 코어"
     }
   ]
