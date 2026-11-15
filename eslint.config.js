@@ -30,6 +30,8 @@ export default defineConfig([
     'src-tauri/target/**',
     // paged.js patch snippets (partial JS; not standalone modules)
     'vite/pagedjs/**/*.inc.js',
+    // Generated emoji shortcode tables (large; regenerate via scripts/)
+    'src/utils/emojiShortcodeData.ts',
   ]),
   {
     files: ['electron/**/*.js'],
