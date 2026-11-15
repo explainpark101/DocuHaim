@@ -1,5 +1,4 @@
 import { memo, useMemo, useRef } from 'react';
-import '@/config/mdEditorConfig';
 import MarkdownPreviewSurface from '@/components/editor/surface/MarkdownPreviewSurface';
 import { useDocumentTheme } from '@/hooks/useDocumentTheme';
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
@@ -16,6 +15,11 @@ type QuizMdPreviewProps = {
   currentNotePath?: string | null | undefined;
 };
 
+/**
+ * Quiz-only lightweight markdown preview.
+ * Forces legacy (md-editor-rt / markdown-it) so each choice/body does not mount TipTap.
+ * mdEditorConfig is loaded lazily inside MarkdownPreviewSurface — do not side-import it here.
+ */
 function QuizMdPreview({
   text,
   previewId,
@@ -38,6 +42,7 @@ function QuizMdPreview({
   return (
     <div ref={rootRef} className={`quiz-md-preview markdown-content ${className}`}>
       <MarkdownPreviewSurface
+        engineHint="legacy"
         id={previewId}
         modelValue={value}
         theme={theme === 'dark' ? 'dark' : 'light'}
@@ -46,6 +51,7 @@ function QuizMdPreview({
         language="ko-KR"
         showCodeRowNumber={false}
         noImgZoomIn
+        noMermaid
         iconfontType={undefined}
         sanitize={(html: string) => html}
       />

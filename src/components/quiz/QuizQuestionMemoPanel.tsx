@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PenLine } from 'lucide-react';
 import Button from '@/components/Button';
 import QuizMdPreview from '@/components/quiz/QuizMdPreview';
@@ -19,10 +19,29 @@ export default function QuizQuestionMemoPanel({
   const previewId = `qmemo-${questionId}`;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const editingRef = useRef(false);
+  const draftRef = useRef('');
+  const savedMemoRef = useRef(savedMemo);
+  const onSaveRef = useRef(onSave);
+
+  editingRef.current = editing;
+  draftRef.current = draft;
+  savedMemoRef.current = savedMemo;
+  onSaveRef.current = onSave;
 
   useEffect(() => {
     if (!editing) setDraft(savedMemo);
   }, [savedMemo, editing]);
+
+  // Virtualized cards unmount off-screen — persist in-progress memo edits.
+  useEffect(() => {
+    return () => {
+      if (!editingRef.current) return;
+      const next = draftRef.current;
+      if (next === savedMemoRef.current) return;
+      onSaveRef.current(next);
+    };
+  }, []);
 
   const startCompose = () => {
     setDraft('');

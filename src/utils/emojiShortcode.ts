@@ -1,9 +1,13 @@
 /**
  * GitHub-style emoji shortcodes (`:cross_mark:` → ❌).
  * Shared by Haim TipTap markdown parse and markdown-it preview.
+ * Uses a local compact map so markdown-it / mdEditorConfig do not pull TipTap.
  */
 
-import { gitHubEmojis, shortcodeToEmoji } from '@tiptap/extension-emoji';
+import {
+  EMOJI_SHORTCODE_TO_GLYPH,
+  EMOJI_SHORTCODE_TO_NAME,
+} from '@/utils/emojiShortcodeData';
 
 /** Shortcode body: letters, digits, underscore, plus, hyphen (TipTap inputRegex). */
 export const EMOJI_SHORTCODE_BODY_RE = /[a-zA-Z0-9_+-]+/;
@@ -17,8 +21,7 @@ export function resolveEmojiShortcodeGlyph(
 ): string | null {
   const key = String(name ?? '').trim();
   if (!key) return null;
-  const item = shortcodeToEmoji(key, gitHubEmojis);
-  const glyph = item?.emoji;
+  const glyph = EMOJI_SHORTCODE_TO_GLYPH[key];
   return glyph ? String(glyph) : null;
 }
 
@@ -28,8 +31,6 @@ export function resolveEmojiShortcodeName(
 ): string | null {
   const key = String(name ?? '').trim();
   if (!key) return null;
-  const item = shortcodeToEmoji(key, gitHubEmojis);
-  return item?.name ? String(item.name) : null;
+  const canonical = EMOJI_SHORTCODE_TO_NAME[key];
+  return canonical ? String(canonical) : null;
 }
-
-export { gitHubEmojis, shortcodeToEmoji };

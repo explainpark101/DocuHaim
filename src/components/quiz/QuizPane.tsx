@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -34,9 +36,7 @@ import type { QuizQuestionSectionsTarget } from "@/components/quiz/QuizQuestionS
 import QuizQuestionList, {
   type QuizQuestionListHandle,
 } from "@/components/quiz/QuizQuestionList";
-import QuizChoiceAnalysisDock, {
-  type QuizChoiceAnalysisDockMode,
-} from "@/components/quiz/QuizChoiceAnalysisDock";
+import type { QuizChoiceAnalysisDockMode } from "@/components/quiz/QuizChoiceAnalysisDock";
 import QuizSourcesDock, {
   readQuizSourceRemoveConfirm,
 } from "@/components/quiz/QuizSourcesDock";
@@ -88,7 +88,6 @@ import { formToQuizQuestion } from "@/utils/quiz/buildQuestionMarkdown";
 import type { LlmProviderProfile } from "@/utils/llm/llmProviderProfiles";
 import { useQuizLlmSelection } from "@/hooks/useQuizLlmSelection";
 import { useQuizScrollSectionInView } from "@/hooks/useQuizScrollSectionInView";
-import QuizLlmSessionBar from "@/components/quiz/QuizLlmSessionBar";
 import type { QuizVaultTextReader } from "@/utils/quiz/quizVaultSourceLoader";
 import "@/styles/quiz-pane.css";
 import { writeQuizGenerationLog } from "@/utils/quiz/quizGenerationLog";
@@ -152,6 +151,24 @@ import {
   type VaultStorageType,
 } from "@/utils/vault/resolveVaultFileNode";
 import { isTauriDesktopPlatform } from "@/utils/tauriPlatform";
+
+/** Defer google-genai / model-select chunks until the AI chrome is needed. */
+const QuizLlmSessionBar = lazy(
+  () => import("@/components/quiz/QuizLlmSessionBar"),
+);
+const QuizChoiceAnalysisDock = lazy(
+  () => import("@/components/quiz/QuizChoiceAnalysisDock"),
+);
+
+function QuizLlmSessionBarFallback() {
+  return (
+    <section
+      aria-label="퀴즈 AI 제공자"
+      aria-busy
+      className="h-[7.5rem] animate-pulse rounded-2xl border border-slate-200 bg-slate-100/80 dark:border-odp-borderSoft dark:bg-odp-bgSoft/60"
+    />
+  );
+}
 
 const QUIZ_AUTOSAVE_DEBOUNCE_MS = 20_000;
 
@@ -2244,13 +2261,15 @@ export default function QuizPane({
                 className="h-full min-h-0 overflow-y-auto px-4 py-4"
               >
                 <div className="mx-auto max-w-3xl space-y-4">
-                  <QuizLlmSessionBar
-                    profiles={profiles}
-                    profileId={quizLlm.profileId}
-                    model={quizLlm.model}
-                    onProfileIdChange={quizLlm.onProfileIdChange}
-                    onModelChange={quizLlm.onModelChange}
-                  />
+                  <Suspense fallback={<QuizLlmSessionBarFallback />}>
+                    <QuizLlmSessionBar
+                      profiles={profiles}
+                      profileId={quizLlm.profileId}
+                      model={quizLlm.model}
+                      onProfileIdChange={quizLlm.onProfileIdChange}
+                      onModelChange={quizLlm.onModelChange}
+                    />
+                  </Suspense>
                   <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs dark:border-odp-borderSoft dark:bg-odp-surface">
                     <div ref={contentProgressRef}>
                       <div className="mb-2 flex justify-between text-xs font-semibold text-slate-600 dark:text-odp-muted">
@@ -2409,39 +2428,42 @@ export default function QuizPane({
               onSubmit={onDerivedSubmit}
             />
 
-            <QuizChoiceAnalysisDock
-              open={Boolean(choiceAnalysisDock && choiceAnalysisQuestion)}
-              question={choiceAnalysisQuestion}
-              option={choiceAnalysisDock?.option ?? null}
-              mode={choiceAnalysisDock?.mode ?? "create"}
-              existingAnalysis={
-                choiceAnalysisDock && choiceAnalysisDock.mode === "followup"
-                  ? String(
-                      wrongExps[
-                        wrongChoiceExplanationKey(
-                          choiceAnalysisDock.questionId,
-                          choiceAnalysisDock.option,
+            {choiceAnalysisDock ? (
+              <Suspense fallback={null}>
+                <QuizChoiceAnalysisDock
+                  open={Boolean(choiceAnalysisQuestion)}
+                  question={choiceAnalysisQuestion}
+                  option={choiceAnalysisDock.option ?? null}
+                  mode={choiceAnalysisDock.mode ?? "create"}
+                  existingAnalysis={
+                    choiceAnalysisDock.mode === "followup"
+                      ? String(
+                          wrongExps[
+                            wrongChoiceExplanationKey(
+                              choiceAnalysisDock.questionId,
+                              choiceAnalysisDock.option,
+                            )
+                          ] || "",
                         )
-                      ] || "",
+                      : ""
+                  }
+                  llmProfiles={profiles}
+                  profileId={quizLlm.profileId}
+                  model={quizLlm.model}
+                  onProfileIdChange={quizLlm.onProfileIdChange}
+                  onModelChange={quizLlm.onModelChange}
+                  busy={
+                    busyId ===
+                    wrongChoiceExplanationKey(
+                      choiceAnalysisDock.questionId,
+                      choiceAnalysisDock.option,
                     )
-                  : ""
-              }
-              llmProfiles={profiles}
-              profileId={quizLlm.profileId}
-              model={quizLlm.model}
-              onProfileIdChange={quizLlm.onProfileIdChange}
-              onModelChange={quizLlm.onModelChange}
-              busy={
-                choiceAnalysisDock != null &&
-                busyId ===
-                  wrongChoiceExplanationKey(
-                    choiceAnalysisDock.questionId,
-                    choiceAnalysisDock.option,
-                  )
-              }
-              onClose={closeChoiceAnalysisDock}
-              onGenerate={handleChoiceAnalysisGenerate}
-            />
+                  }
+                  onClose={closeChoiceAnalysisDock}
+                  onGenerate={handleChoiceAnalysisGenerate}
+                />
+              </Suspense>
+            ) : null}
 
             <QuizSourcePreviewDock
               path={previewSourcePath}
