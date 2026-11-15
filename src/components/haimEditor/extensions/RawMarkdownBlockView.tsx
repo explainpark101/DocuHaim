@@ -5,10 +5,13 @@ import HaimLineNumberGutter from '@/components/haimEditor/HaimLineNumberGutter';
 import { haimTableToHtml } from '@/utils/haimTable';
 import { parseHaimTableRawText } from '@/components/haimEditor/haimTableRawText';
 import { dispatchHaimTableEditRequest } from '@/components/haimEditor/haimTableEditEvents';
+import { parseChatWithMyselfNoteMeta } from '@/utils/chatWithMyself/format.js';
+import { buildChatSavedNoteCardHtml } from '@/utils/chatSavedNoteMarkdownIt.js';
 
 /**
  * TipTap raw-markdown node view.
- * haim-table → rendered HTML preview; other kinds stay as opaque pre.
+ * haim-table → rendered HTML preview; chat-saved-note → origin badge card;
+ * other kinds stay as opaque pre.
  */
 export default function RawMarkdownBlockView({
   node,
@@ -26,6 +29,13 @@ export default function RawMarkdownBlockView({
     const parsed = parseHaimTableRawText(text);
     if (!parsed) return null;
     return haimTableToHtml(parsed.grid, parsed.meta);
+  }, [kind, text]);
+
+  const chatSavedHtml = useMemo(() => {
+    if (kind !== 'chat-saved-note') return null;
+    const meta = parseChatWithMyselfNoteMeta(text);
+    if (!meta) return null;
+    return buildChatSavedNoteCardHtml(meta);
   }, [kind, text]);
 
   const openTableEdit = () => {
@@ -53,6 +63,24 @@ export default function RawMarkdownBlockView({
           className="haim-haim-table-preview"
           // Parsed from our own serializer; not user HTML.
           dangerouslySetInnerHTML={{ __html: tableHtml }}
+        />
+      </NodeViewWrapper>
+    );
+  }
+
+  if (kind === 'chat-saved-note' && chatSavedHtml) {
+    return (
+      <NodeViewWrapper
+        as="div"
+        className={`haim-raw-md haim-raw-md--chat-saved-note${selected ? ' is-selected' : ''}`}
+        data-haim-raw-md="1"
+        data-kind="chat-saved-note"
+        contentEditable={false}
+      >
+        <div
+          className="haim-chat-saved-note-preview"
+          // Built from parseChatWithMyselfNoteMeta + escapeHtml in builder.
+          dangerouslySetInnerHTML={{ __html: chatSavedHtml }}
         />
       </NodeViewWrapper>
     );

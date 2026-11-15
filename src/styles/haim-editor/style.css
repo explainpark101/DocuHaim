@@ -539,6 +539,27 @@ html[data-haim-prose-width-clamp='1']
   border-radius: 4px;
 }
 
+.haim-raw-md--chat-saved-note {
+  display: block;
+  white-space: normal;
+  font-size: inherit;
+  margin: 0.5em 0 0.75em;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.haim-raw-md--chat-saved-note.is-selected {
+  outline: 2px solid var(--md-theme-code-active-color, #0ea5e9);
+  outline-offset: 2px;
+  border-radius: 0.75rem;
+}
+
+.haim-chat-saved-note-preview a.md-chat-saved-note {
+  margin-bottom: 0;
+}
+
 .haim-haim-table-preview table {
   border-collapse: collapse;
   max-width: 100%;

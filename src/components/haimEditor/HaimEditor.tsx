@@ -165,7 +165,9 @@ import '@/styles/haim-editor/style.css';
 import '@/styles/haim-editor/code-hljs-themes.css';
 import '@/styles/editor-image-align.css';
 import '@/styles/md-editor-rt/note-cover-placeholder.css';
+import '@/styles/md-editor-rt/chat-saved-note.css';
 import 'katex/dist/katex.min.css';
+import { chatSavedNoteLinkTo } from '@/utils/chatWithMyself/format.js';
 
 const HaimFindReplaceBar = lazy(
   () => import('@/components/haimEditor/HaimFindReplaceBar'),
@@ -808,7 +810,7 @@ export default function HaimEditor({
   useEffect(() => {
     const root = wysiwygScrollRef.current;
     if (!root || !showWysiwyg) return undefined;
-    const activate = (target: EventTarget | null) => {
+    const activateCover = (target: EventTarget | null) => {
       const el =
         target instanceof Element
           ? target.closest('[data-note-cover-placeholder]')
@@ -817,15 +819,32 @@ export default function HaimEditor({
       setCoverExportConfirmOpen(true);
       return true;
     };
+    const activateChatSavedNote = (target: EventTarget | null) => {
+      const el =
+        target instanceof Element
+          ? target.closest('[data-chat-saved-note]')
+          : null;
+      if (!el || !root.contains(el)) return false;
+      navigate(
+        chatSavedNoteLinkTo({
+          id: el.getAttribute('data-chat-id') || '',
+          href:
+            el.getAttribute('data-chat-href') ||
+            el.getAttribute('href') ||
+            '',
+        }),
+      );
+      return true;
+    };
     const onClick = (e: MouseEvent) => {
-      if (activate(e.target)) {
+      if (activateCover(e.target) || activateChatSavedNote(e.target)) {
         e.preventDefault();
         e.stopPropagation();
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
-      if (activate(e.target)) {
+      if (activateCover(e.target) || activateChatSavedNote(e.target)) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -836,7 +855,7 @@ export default function HaimEditor({
       root.removeEventListener('click', onClick);
       root.removeEventListener('keydown', onKeyDown);
     };
-  }, [showWysiwyg, editor]);
+  }, [showWysiwyg, editor, navigate]);
 
   useEffect(() => {
     return () => {

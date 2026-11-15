@@ -311,7 +311,7 @@ describe('Haim Editor custom markdown (docs/custom-markdown)', () => {
   });
 
   describe('chat-saved-note.md', () => {
-    it('wraps chat-with-myself card block as raw and restores it', () => {
+    it('wraps only the card fold as raw and leaves the message body editable', () => {
       const src = [
         '<!-- chat-with-myself id="msg1" at="2026-01-01T00:00:00.000Z" group="G" href="/chat#msg-msg1" notePath="notes/a.md" -->',
         '',
@@ -324,6 +324,15 @@ describe('Haim Editor custom markdown (docs/custom-markdown)', () => {
       ].join('\n');
       const protectedMd = protectCustomMarkdown(src);
       expect(protectedMd).toContain('data-kind="chat-saved-note"');
+      expect(protectedMd).toContain('메시지 본문');
+      // Body must stay outside the opaque raw <pre> (not swallowed as codeblock).
+      const rawInner = protectedMd.match(
+        /<pre\b[^>]*\bdata-kind="chat-saved-note"[^>]*>([\s\S]*?)<\/pre>/i,
+      )?.[1];
+      expect(rawInner).toBeTruthy();
+      expect(rawInner).not.toContain('메시지 본문');
+      expect(rawInner).toContain('chat-with-myself');
+      expect(rawInner).toContain('채팅에서 저장된 노트');
       const restored = protectRestore(src);
       expectContainsAll(restored, [
         '<!-- chat-with-myself',

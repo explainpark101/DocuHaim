@@ -19,6 +19,7 @@ import {
 import { wikiImageToProtectedHtml } from '@/components/haimEditor/extensions/WikiImage';
 import { renderAppMarkdownInline } from '@/utils/createAppMarkdownIt';
 import { restoreEscapedTildes } from '@/components/haimEditor/preserveEscapedTilde';
+import { replaceChatSavedNoteCardSpans } from '@/utils/chatSavedNoteProtect';
 
 const SENTINEL_OPEN = '@@@haim-raw:';
 const SENTINEL_CLOSE = '@@@/haim-raw';
@@ -33,10 +34,6 @@ const HAIM_TABLE_RE =
 
 /** Plan YAML frontmatter at document start (after meta comments already stripped). */
 const PLAN_FM_RE = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/;
-
-/** Chat-saved note card comment block. */
-const CHAT_SAVED_RE =
-  /<!--\s*chat-with-myself\b[\s\S]*?-->[\s\S]*?(?=\n<!--|\n#{1,6}\s|\n*$)/g;
 
 function wrapRawHtml(kind: string, body: string): string {
   const trimmed = body.replace(/\s+$/, '');
@@ -55,7 +52,10 @@ export function protectCustomMarkdown(src: string): string {
     return m;
   });
   out = out.replace(HAIM_TABLE_RE, (m) => wrapRawHtml('haim-table', m));
-  out = out.replace(CHAT_SAVED_RE, (m) => wrapRawHtml('chat-saved-note', m));
+  // Fold only comment + optional quote + optional chat link — not the message body.
+  out = replaceChatSavedNoteCardSpans(out, (m) =>
+    wrapRawHtml('chat-saved-note', m),
+  );
 
   const plan = PLAN_FM_RE.exec(out);
   if (plan?.[0]) {

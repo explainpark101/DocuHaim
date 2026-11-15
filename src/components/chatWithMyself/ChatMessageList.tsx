@@ -1167,23 +1167,6 @@ const MessageBubble = memo(function MessageBubble({
                     : {})}
                 />
               )}
-              {!collapsed &&
-              !encryptedLocked &&
-              msg.notePath &&
-              !isDeleting &&
-              (typeof noteExists !== 'function' || noteExists(msg.notePath)) ? (
-                <button
-                  type="button"
-                  className="mt-1 inline-flex items-center gap-1 text-[10px] text-blue-600 underline-offset-2 hover:underline dark:text-blue-300"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (msg.notePath) onOpenNote?.(msg.notePath, msg);
-                  }}
-                >
-                  <ExternalLink size={10} />
-                  노트 열기
-                </button>
-              ) : null}
               {!collapsed && msg.editedAt && !isDeleting ? (
                 <button
                   type="button"
@@ -1212,6 +1195,23 @@ const MessageBubble = memo(function MessageBubble({
                           onPersistOgCards(msg, cards),
                       })}
                 />
+              ) : null}
+              {!collapsed &&
+              !encryptedLocked &&
+              msg.notePath &&
+              !isDeleting &&
+              (typeof noteExists !== 'function' || noteExists(msg.notePath)) ? (
+                <button
+                  type="button"
+                  className="mt-1 inline-flex items-center gap-1 text-[10px] text-blue-600 underline-offset-2 hover:underline dark:text-blue-300"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (msg.notePath) onOpenNote?.(msg.notePath, msg);
+                  }}
+                >
+                  <ExternalLink size={10} />
+                  노트 열기
+                </button>
               ) : null}
             </Motion.div>
             {!self && !isDeleting && !selectionMode ? (

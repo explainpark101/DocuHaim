@@ -94,5 +94,7 @@ HTML-escape `href` and `id` in attributes. Styling is host CSS (`chat-saved-note
 |------|------|
 | 메타 파서·노트 본문 생성 | `src/utils/chatWithMyself/format.js` |
 | markdown-it | `src/utils/chatSavedNoteMarkdownIt.js` |
-| CSS | `src/styles/md-editor-rt/chat-saved-note.css` |
-| 전역 등록 | `src/config/mdEditorConfig.js` |
+| Haim protect fold (card only) | `src/utils/chatSavedNoteProtect.ts` + `protectCustomMarkdown.ts` |
+| Haim WYSIWYG badge | `RawMarkdownBlockView` (`kind=chat-saved-note`) |
+| CSS | `src/styles/md-editor-rt/chat-saved-note.css` (preview + `.haim-editor`) |
+| 전역 등록 | `src/config/mdEditorConfig.ts` |
