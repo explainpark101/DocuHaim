@@ -537,6 +537,7 @@ export function parseChatWithMyselfNoteMeta(markdown) {
  * React Router location for a chat message deep-link.
  * Path is basename-relative (`/chat`); Router applies Vite `BASE_URL`.
  * @param {{ id?: string, href?: string } | null | undefined} meta
+ * @returns {string | { pathname: string, hash: string }}
  */
 export function chatSavedNoteLinkTo(meta) {
   const raw = String(meta?.href || chatMessageUrl(meta?.id) || '/chat');
@@ -554,8 +555,9 @@ export function chatSavedNoteLinkTo(meta) {
     return hash ? { pathname, hash } : pathname;
   } catch {
     const hashMatch = raw.match(/#(.+)$/);
-    if (hashMatch) {
-      return { pathname: '/chat', hash: hashMatch[1] };
+    const hashPart = hashMatch?.[1];
+    if (hashPart) {
+      return { pathname: '/chat', hash: hashPart };
     }
     return '/chat';
   }

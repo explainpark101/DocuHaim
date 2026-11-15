@@ -825,14 +825,20 @@ export default function HaimEditor({
           ? target.closest('[data-chat-saved-note]')
           : null;
       if (!el || !root.contains(el)) return false;
+      const to = chatSavedNoteLinkTo({
+        id: el.getAttribute('data-chat-id') || '',
+        href:
+          el.getAttribute('data-chat-href') ||
+          el.getAttribute('href') ||
+          '',
+      });
+      // exactOptionalPropertyTypes: omit hash when absent (never pass undefined).
       navigate(
-        chatSavedNoteLinkTo({
-          id: el.getAttribute('data-chat-id') || '',
-          href:
-            el.getAttribute('data-chat-href') ||
-            el.getAttribute('href') ||
-            '',
-        }),
+        typeof to === 'string'
+          ? to
+          : to.hash
+            ? { pathname: to.pathname, hash: to.hash }
+            : { pathname: to.pathname },
       );
       return true;
     };
