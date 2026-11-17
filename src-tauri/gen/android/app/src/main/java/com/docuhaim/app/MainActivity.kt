@@ -1,32 +1,42 @@
 package com.docuhaim.app
 
+import android.Manifest
 import android.app.PendingIntent
 import android.content.ComponentName
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.provider.Settings
 import android.view.View
+import android.webkit.MimeTypeMap
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import java.io.File
+import java.io.FileInputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 class MainActivity : TauriActivity() {
   companion object {
+    private const val REQ_STORAGE_PERMISSION = 9911
+
     @JvmStatic
     @Volatile
     var instance: MainActivity? = null
@@ -105,6 +115,12 @@ class MainActivity : TauriActivity() {
 
   /** Populated in onWebViewCreate so warm shares can poke the JS bridge. */
   private var appWebView: WebView? = null
+
+  @Volatile
+  private var storagePermissionLatch: CountDownLatch? = null
+
+  @Volatile
+  private var storagePermissionGranted: Boolean = false
 
   /**
    * Share-sheet targets are activity-aliases. The real class is still MainActivity,
@@ -522,6 +538,149 @@ class MainActivity : TauriActivity() {
       return "need_unknown_sources"
     }
     return "ok"
+  }
+
+  /**
+   * Request WRITE_EXTERNAL_STORAGE on API ≤ 28 (legacy public Downloads path).
+   * API 29+ uses MediaStore and does not need the runtime dialog.
+   *
+   * Called from a JNI worker thread — request on main, wait on worker.
+   */
+  fun ensureStoragePermission(): String {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return "ok"
+    val granted =
+      ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+        PackageManager.PERMISSION_GRANTED
+    if (granted) return "ok"
+
+    val latch = CountDownLatch(1)
+    storagePermissionLatch = latch
+    storagePermissionGranted = false
+    try {
+      runOnMainSync {
+        ActivityCompat.requestPermissions(
+          this,
+          arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+          REQ_STORAGE_PERMISSION,
+        )
+      }
+      if (!latch.await(60, TimeUnit.SECONDS)) {
+        return "denied"
+      }
+      return if (storagePermissionGranted) "ok" else "denied"
+    } finally {
+      storagePermissionLatch = null
+    }
+  }
+
+  override fun onRequestPermissionsResult(
+    requestCode: Int,
+    permissions: Array<out String>,
+    grantResults: IntArray,
+  ) {
+    if (requestCode == REQ_STORAGE_PERMISSION) {
+      storagePermissionGranted =
+        grantResults.isNotEmpty() &&
+          grantResults[0] == PackageManager.PERMISSION_GRANTED
+      storagePermissionLatch?.countDown()
+      storagePermissionLatch = null
+      return
+    }
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+  }
+
+  /**
+   * Copy a local cache file into the shared Downloads folder.
+   * Returns status token: ok | missing | denied | failed:msg
+   */
+  fun saveFileToDownloads(absolutePath: String, displayName: String): String {
+    val source = File(absolutePath)
+    if (!source.isFile || source.length() <= 0L) return "missing"
+
+    val perm = ensureStoragePermission()
+    if (perm != "ok") return perm
+
+    val safeName = sanitizeDownloadFileName(displayName)
+    return try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        saveToDownloadsMediaStore(source, safeName)
+      } else {
+        saveToDownloadsLegacy(source, safeName)
+      }
+      "ok"
+    } catch (t: Throwable) {
+      android.util.Log.e("DocuHaim", "saveFileToDownloads failed", t)
+      "failed:${t.message ?: t.javaClass.simpleName}"
+    }
+  }
+
+  private fun sanitizeDownloadFileName(raw: String): String {
+    val base = raw.trim().ifEmpty { "download" }
+      .replace(Regex("""[\\/:*?"<>|]"""), "_")
+      .replace(Regex("""\s+"""), " ")
+      .take(180)
+    return base.ifEmpty { "download" }
+  }
+
+  private fun guessMimeType(fileName: String): String {
+    val ext = fileName.substringAfterLast('.', "").lowercase()
+    if (ext.isEmpty()) return "application/octet-stream"
+    return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+      ?: when (ext) {
+        "md", "markdown" -> "text/markdown"
+        "pdf" -> "application/pdf"
+        "json" -> "application/json"
+        "zip" -> "application/zip"
+        else -> "application/octet-stream"
+      }
+  }
+
+  private fun saveToDownloadsMediaStore(source: File, displayName: String) {
+    val resolver = contentResolver
+    val values = ContentValues().apply {
+      put(MediaStore.Downloads.DISPLAY_NAME, displayName)
+      put(MediaStore.Downloads.MIME_TYPE, guessMimeType(displayName))
+      put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+      put(MediaStore.Downloads.IS_PENDING, 1)
+    }
+    val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+    val uri = resolver.insert(collection, values)
+      ?: throw IllegalStateException("MediaStore insert returned null")
+    try {
+      resolver.openOutputStream(uri)?.use { output ->
+        FileInputStream(source).use { input -> input.copyTo(output) }
+      } ?: throw IllegalStateException("openOutputStream returned null")
+      values.clear()
+      values.put(MediaStore.Downloads.IS_PENDING, 0)
+      resolver.update(uri, values, null, null)
+    } catch (t: Throwable) {
+      resolver.delete(uri, null, null)
+      throw t
+    }
+  }
+
+  @Suppress("DEPRECATION")
+  private fun saveToDownloadsLegacy(source: File, displayName: String) {
+    val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+    if (!dir.exists() && !dir.mkdirs()) {
+      throw IllegalStateException("cannot create Downloads directory")
+    }
+    var target = File(dir, displayName)
+    if (target.exists()) {
+      val stem = displayName.substringBeforeLast('.', displayName)
+      val ext = displayName.substringAfterLast('.', "")
+      var n = 1
+      while (target.exists()) {
+        val candidate =
+          if (ext.isEmpty()) "$stem ($n)" else "$stem ($n).$ext"
+        target = File(dir, candidate)
+        n += 1
+        if (n > 9999) throw IllegalStateException("unique name exhausted")
+      }
+    }
+    FileInputStream(source).use { input ->
+      target.outputStream().use { output -> input.copyTo(output) }
+    }
   }
 
   private fun openUnknownSourcesSettings() {

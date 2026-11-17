@@ -615,6 +615,8 @@ pub fn run() {
                 android_native::android_install_apk,
                 android_native::android_download_apk,
                 android_native::android_download_and_install_apk,
+                android_native::android_ensure_storage_permission,
+                android_native::android_save_file_to_downloads,
             ]);
     }
 
