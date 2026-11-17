@@ -92,6 +92,17 @@ async function writeBlobWithTauriFastDownload(
   return { ok: true, savedPath: result.savedPath };
 }
 
+async function writeBlobWithAndroidPublicDownload(
+  blob: Blob,
+  fileName: string,
+): Promise<AppBlobDownloadResult> {
+  const { writeBlobToAndroidPublicDownloads } = await import('@/utils/androidPublicDownload');
+  const result = await writeBlobToAndroidPublicDownloads(blob, fileName);
+  if (!result.ok) return { ok: false };
+  notifyTauriDownloadComplete(result.savedName);
+  return { ok: true, savedPath: result.savedName };
+}
+
 async function downloadAppBlob(blob: Blob, fileName: string): Promise<AppBlobDownloadResult> {
   const normalizedName = normalizeUnicodeNfc(String(fileName || 'download'));
 
@@ -100,6 +111,14 @@ async function downloadAppBlob(blob: Blob, fileName: string): Promise<AppBlobDow
       '@/utils/androidDownloadNotification'
     );
     await ensureAndroidDownloadNotificationPermission();
+    try {
+      const result = await writeBlobWithAndroidPublicDownload(blob, normalizedName);
+      if (result.ok) return result;
+      return { ok: false };
+    } catch (error) {
+      console.error('Android Downloads folder save failed:', error);
+      throw error;
+    }
   }
 
   if (isTauriDesktopPlatform() && loadTauriDownloadSaveDialogEnabled()) {
@@ -143,6 +162,7 @@ export async function openTauriPathWithDefaultApp(filePath: string): Promise<voi
 
 /**
  * Download a blob as a file.
+ * - Tauri Android: always write to the shared Downloads folder (MediaStore).
  * - Save-dialog ON (Tauri desktop): per-file save dialog.
  * - Save-dialog OFF (Tauri desktop): fast write to remembered folder or system Downloads.
  * - Web: anchor download.

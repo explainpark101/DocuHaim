@@ -230,6 +230,57 @@ fn android_ensure_install_permission() -> Result<(), String> {
     map_install_status(status, "ensureInstallPermission failed")
 }
 
+fn map_storage_status(status: String, context: &str) -> Result<(), String> {
+    match status.as_str() {
+        "ok" => Ok(()),
+        "denied" => Err("STORAGE_PERMISSION_DENIED".into()),
+        "missing" => Err(format!("{context}: source file missing")),
+        other if other.starts_with("failed:") => Err(format!("{context}: {other}")),
+        other => Err(format!("{context}: {other}")),
+    }
+}
+
+/// Request legacy WRITE_EXTERNAL_STORAGE when needed (API ≤ 28). No-op on Q+.
+#[tauri::command]
+pub fn android_ensure_storage_permission() -> Result<(), String> {
+    let status = call_activity_string("ensureStoragePermission", "()Ljava/lang/String;", &[])?;
+    map_storage_status(status, "ensureStoragePermission failed")
+}
+
+/// Copy a local file into the shared Downloads folder (MediaStore on Q+).
+#[tauri::command]
+pub fn android_save_file_to_downloads(path: String, file_name: String) -> Result<(), String> {
+    let trimmed_path = path.trim();
+    let trimmed_name = file_name.trim();
+    if trimmed_path.is_empty() {
+        return Err("empty path".into());
+    }
+    if trimmed_name.is_empty() {
+        return Err("empty file_name".into());
+    }
+
+    let status = with_main_activity(|env, activity| {
+        let path_j = env.new_string(trimmed_path).map_err(|e| e.to_string())?;
+        let name_j = env.new_string(trimmed_name).map_err(|e| e.to_string())?;
+        let obj = env
+            .call_method(
+                activity,
+                "saveFileToDownloads",
+                "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                &[JValue::Object(&path_j), JValue::Object(&name_j)],
+            )
+            .map_err(|e| e.to_string())?
+            .l()
+            .map_err(|e| e.to_string())?;
+        if obj.is_null() {
+            return Err("saveFileToDownloads returned null".into());
+        }
+        let jstr = env.get_string((&obj).into()).map_err(|e| e.to_string())?;
+        Ok(jstr.to_string_lossy().into_owned())
+    })?;
+    map_storage_status(status, &format!("saveFileToDownloads failed for {trimmed_name}"))
+}
+
 #[derive(Debug, Serialize, Clone)]
 struct AndroidApkDownloadProgress {
     downloaded: u64,

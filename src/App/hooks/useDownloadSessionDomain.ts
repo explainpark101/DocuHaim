@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAlertModal } from '@/contexts/AlertModalContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVault } from '@/App/hooks/useVault';
@@ -51,7 +51,7 @@ import {
 } from '@/utils/markdownImageExport';
 import { remapMarkdownHeadingLevels } from '@/utils/markdownHeadings';
 import { copyText } from '@/utils/copyText';
-import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
+import { isTauriAndroid, isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 import { notifyTauriDownloadComplete } from '@/utils/tauriBlobDownload';
 import {
   joinVaultAbsolutePath,
@@ -91,6 +91,7 @@ export function useDownloadSessionDomain() {
   const { downloadModalMode, openUnsupportedFolderDownloadModal, setDownloadComplete, setDownloadModalMode, setDownloadProgress, setIsSavingSessionToNote, setShowDownloadMethodModal, setShowSaveSessionToNoteModal, triggerBlobDownload } = useModalsOwned();
   const { setOperationStatus } = useChromeOwned();
   const { setState: setWorkspaceTabs, workspaceTabsRef } = useWorkspaceTabsCtx();
+  const downloadCurrentFileRef = useRef<((opts?: any) => Promise<void>) | null>(null);
 
   const loadUnsupportedFileText = useCallback(async (file: any): Promise<string | null> => {
     if (!file) return null;
@@ -230,6 +231,11 @@ export function useDownloadSessionDomain() {
   };
 
   const handleRequestDownload = () => {
+    // Android APK: always save to Downloads — skip method chooser.
+    if (isTauriAndroid()) {
+      void downloadCurrentFileRef.current?.();
+      return;
+    }
     setDownloadModalMode('default');
     setShowDownloadMethodModal(true);
     setDownloadProgress(0);
@@ -244,6 +250,10 @@ export function useDownloadSessionDomain() {
   };
 
   const handleRequestSessionTransformDownload = () => {
+    if (isTauriAndroid()) {
+      void downloadCurrentFileRef.current?.();
+      return;
+    }
     setDownloadModalMode('session-transform');
     setShowDownloadMethodModal(true);
     setDownloadProgress(0);
@@ -904,6 +914,7 @@ export function useDownloadSessionDomain() {
     }
     setShowDownloadMethodModal(false);
   };
+  downloadCurrentFileRef.current = handleDownloadCurrentFile;
 
   // snippet save owned by usePwaSnippetsDomain
 

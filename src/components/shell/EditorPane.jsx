@@ -74,6 +74,7 @@ import {
   loadEditorType,
 } from '@/utils/editorTypeSettings';
 import { openHaimProseWidthPanel } from '@/utils/haimProseWidthPanel';
+import { isTauriAndroid } from '@/utils/tauriPlatform';
 
 const NoteEditorSurface = lazy(
   () => import('@/components/editor/surface/NoteEditorSurface'),
@@ -898,16 +899,28 @@ export default function EditorPane({
             />
             )
           )}
-          {viewer === 'pdf' && (
+          {viewer === 'pdf' && !isTauriAndroid() && (
             <Button
               type="button"
               variant="secondary"
               size="sm"
               onClick={handlePdfRefresh}
-              title="PDF 뷰어 새로고침"
+              aria-label="PDF 뷰어 새로고침"
             >
               <IconRefresh size={14} />
               <span className="hidden md:inline"> 새로고침</span>
+            </Button>
+          )}
+          {viewer === 'pdf' && isTauriAndroid() && onRequestDownload && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onRequestDownload}
+              aria-label="PDF 다운로드"
+            >
+              <IconDownload size={14} />
+              <span className="hidden md:inline"> 다운로드</span>
             </Button>
           )}
           {typeof onRefreshFromDisk === 'function' && isEditableViewer && (
@@ -1401,15 +1414,29 @@ export default function EditorPane({
             />
           </div>
         ) : viewer === 'pdf' && currentFile.objectUrl ? (
-          <div className="flex-1 overflow-hidden">
-            <iframe
-              ref={pdfIframeRef}
-              key={pdfIframeKey}
-              src={currentFile.objectUrl}
-              title={currentFile.name}
-              className="w-full h-full border-0 bg-white dark:bg-black"
-            />
-          </div>
+          isTauriAndroid() ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
+              <p className="max-w-md text-center text-sm text-gray-500 dark:text-odp-muted">
+                Android에서는 PDF 미리보기를 지원하지 않습니다. Download 폴더로 저장한 뒤 외부
+                앱에서 열어 주세요.
+              </p>
+              {onRequestDownload ? (
+                <Button type="button" variant="primary" size="md" onClick={onRequestDownload}>
+                  <IconDownload size={16} /> 다운로드
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                ref={pdfIframeRef}
+                key={pdfIframeKey}
+                src={currentFile.objectUrl}
+                title={currentFile.name}
+                className="h-full w-full border-0 bg-white dark:bg-black"
+              />
+            </div>
+          )
         ) : viewer === 'kanban' ? (
           <Suspense fallback={<EditorPaneSuspenseFallback message="칸반 보드 로딩 중…" />}>
             <KanbanPane
