@@ -27,10 +27,12 @@ type ChatMessageContentPart =
   | { type: 'text'; text: string }
   | { type: 'image_url'; image_url: { url: string } };
 
-type ChatMessage = {
-  role: 'system' | 'user';
+export type OpenAiCompatibleChatMessage = {
+  role: 'system' | 'user' | 'assistant';
   content: string | ChatMessageContentPart[];
 };
+
+type ChatMessage = OpenAiCompatibleChatMessage;
 
 function authHeaders(apiKey: string): Record<string, string> {
   const headers: Record<string, string> = {
@@ -414,6 +416,55 @@ export async function generateOpenAiCompatibleTransform({
     apiKey: apiKey ?? '',
     modelId,
     messages,
+    requestOptions: requestOptions ?? {},
+    ...(onChunk ? { onChunk } : {}),
+    ...(signal ? { signal } : {}),
+  });
+}
+
+/**
+ * Multi-turn chat/completions stream (OpenAI-compatible).
+ * Callers own message history; system prompt may be prepended here.
+ */
+export async function streamOpenAiCompatibleChat({
+  baseUrl,
+  apiKey,
+  model,
+  messages,
+  systemPrompt,
+  requestOptions,
+  onChunk,
+  signal,
+}: {
+  baseUrl: string;
+  apiKey?: string;
+  model?: string;
+  messages: OpenAiCompatibleChatMessage[];
+  systemPrompt?: string;
+  requestOptions?: Record<string, unknown>;
+  onChunk?: (accumulated: string) => void;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const base = requireBaseUrl(baseUrl);
+  const modelId = (model || loadLastUsedOpenAiCompatibleModel()).trim();
+  if (!modelId) throw new Error('모델 ID를 입력하거나 목록에서 선택하세요.');
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new Error('채팅 메시지를 입력하세요.');
+  }
+  throwIfLlmAssistAborted(signal);
+
+  const trimmedSystem = (systemPrompt ?? '').trim();
+  const hasSystem = messages.some((m) => m.role === 'system');
+  const payload: ChatMessage[] =
+    trimmedSystem && !hasSystem
+      ? [{ role: 'system', content: trimmedSystem }, ...messages]
+      : messages;
+
+  return postChatCompletionsStreamWithRetry({
+    baseUrl: base,
+    apiKey: apiKey ?? '',
+    modelId,
+    messages: payload,
     requestOptions: requestOptions ?? {},
     ...(onChunk ? { onChunk } : {}),
     ...(signal ? { signal } : {}),

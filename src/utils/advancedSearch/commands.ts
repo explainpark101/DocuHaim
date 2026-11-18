@@ -656,7 +656,7 @@ export const APP_COMMANDS: readonly AppCommand[] = [
   {
     id: 'llm-assist',
     title: 'AI 도우미',
-    description: '에이전트 탭·우측 패널로 AI 도우미 열기 (Ctrl/Cmd+L)',
+    description: '우측 Dock으로 AI 도우미 열기 (Ctrl/Cmd+L)',
     path: '',
     keywords: [
       'ai',
@@ -666,10 +666,12 @@ export const APP_COMMANDS: readonly AppCommand[] = [
       '인공지능',
       'agent',
       '에이전트',
+      'dock',
+      '독',
       'gemini',
       'openai',
-      '탭',
-      'tab',
+      '채팅',
+      'chat',
       'panel',
       '패널',
       'ctrl+l',

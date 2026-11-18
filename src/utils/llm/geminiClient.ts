@@ -138,22 +138,28 @@ function buildContentParts({
   return parts;
 }
 
-async function generateGeminiContentStream(
+export type GeminiChatTurn = {
+  role: 'user' | 'model';
+  parts: Part[];
+};
+
+async function generateGeminiContentsStream(
   apiKey: string,
   modelId: string,
-  parts: Part[],
+  contents: GeminiChatTurn[],
   systemPrompt = '',
   requestOptions: Record<string, unknown> = {},
   onChunk?: (accumulated: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
   throwIfLlmAssistAborted(signal);
+  if (!contents.length) throw new Error('채팅 메시지를 입력하세요.');
   const ai = createGeminiClient(apiKey);
   const trimmedSystem = (systemPrompt || '').trim();
   const generationConfig = toGeminiGenerationConfig(requestOptions);
   const stream = await ai.models.generateContentStream({
     model: modelId,
-    contents: [{ role: 'user', parts }],
+    contents,
     config: {
       ...generationConfig,
       ...(trimmedSystem ? { systemInstruction: trimmedSystem } : {}),
@@ -178,10 +184,10 @@ async function generateGeminiContentStream(
   return text;
 }
 
-async function generateGeminiContentStreamWithRetry(
+async function generateGeminiContentsStreamWithRetry(
   apiKey: string,
   modelId: string,
-  parts: Part[],
+  contents: GeminiChatTurn[],
   systemPrompt = '',
   requestOptions: Record<string, unknown> = {},
   onChunk?: (accumulated: string) => void,
@@ -192,10 +198,10 @@ async function generateGeminiContentStreamWithRetry(
     throwIfLlmAssistAborted(signal);
     let receivedChunk = false;
     try {
-      return await generateGeminiContentStream(
+      return await generateGeminiContentsStream(
         apiKey,
         modelId,
-        parts,
+        contents,
         systemPrompt,
         requestOptions,
         (text) => {
@@ -221,6 +227,7 @@ async function generateGeminiContentStreamWithRetry(
     }
   }
 }
+
 
 export async function generateGeminiTransform({
   apiKey,
@@ -261,10 +268,67 @@ export async function generateGeminiTransform({
   });
 
   try {
-    return await generateGeminiContentStreamWithRetry(
+    return await generateGeminiContentsStreamWithRetry(
       apiKey,
       modelId,
-      parts,
+      [{ role: 'user', parts }],
+      (systemPrompt || '').trim(),
+      requestOptions || {},
+      onChunk,
+      signal,
+    );
+  } catch (err) {
+    if (isLlmAssistAbortError(err)) throw err;
+    throw toGeminiApiError(err, modelId);
+  }
+}
+
+export type GeminiChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+/** Multi-turn Gemini chat stream. */
+export async function streamGeminiChat({
+  apiKey,
+  model,
+  messages,
+  systemPrompt,
+  requestOptions,
+  onChunk,
+  signal,
+}: {
+  apiKey: string;
+  model?: string;
+  messages: GeminiChatMessage[];
+  systemPrompt?: string;
+  requestOptions?: Record<string, unknown>;
+  onChunk?: (accumulated: string) => void;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const modelId = (model || loadLastUsedGeminiModel()).trim() || DEFAULT_GEMINI_MODEL;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new Error('채팅 메시지를 입력하세요.');
+  }
+  throwIfLlmAssistAborted(signal);
+
+  const contents: GeminiChatTurn[] = [];
+  for (const msg of messages) {
+    const text = String(msg.content || '').trim();
+    if (!text) continue;
+    contents.push({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text }],
+    });
+  }
+
+  if (!contents.length) throw new Error('채팅 메시지를 입력하세요.');
+
+  try {
+    return await generateGeminiContentsStreamWithRetry(
+      apiKey,
+      modelId,
+      contents,
       (systemPrompt || '').trim(),
       requestOptions || {},
       onChunk,

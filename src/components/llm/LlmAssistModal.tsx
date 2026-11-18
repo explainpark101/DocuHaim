@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type
 import { createPortal } from 'react-dom';
 import { GripHorizontal, Sparkles, X, EyeOff, SquareArrowOutUpRight } from 'lucide-react';
 import { Tooltip } from 'radix-ui';
+import { useHistoryOverlayBack } from '@/hooks/useHistoryOverlayBack';
+import { MOBILE_LAYOUT_MAX_WIDTH_PX } from '@/utils/layoutBreakpoints';
 import {
   createEmptyLlmPromptTemplate,
   deleteLlmPromptTemplate,
@@ -61,9 +63,11 @@ import LlmAssistPanel, {
   type LlmAssistPromptTemplate,
   type LlmAssistResultViewMode,
 } from '@/components/llm/LlmAssistPanel';
+import LlmAssistChatPanel from '@/components/llm/LlmAssistChatPanel';
 import LlmAssistDockShell from '@/components/llm/LlmAssistDockShell';
 import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
 import LlmAssistPresentationMenu from '@/components/llm/LlmAssistPresentationMenu';
+import LlmAssistUiModeToggle from '@/components/llm/LlmAssistUiModeToggle';
 import { AnimatePresence, motion as Motion } from 'motion/react';
 import { normalizeImageAttachment, readImageFilesAsAttachments } from '@/utils/llmAssistImages';
 import { copyText } from '@/utils/copyText';
@@ -81,6 +85,16 @@ import {
 } from '@/utils/llm/llmAssistAbort';
 import type { LlmProviderProfile } from '@/utils/llm/llmProviderProfiles';
 import type { LlmAssistPresentation } from '@/utils/llm/llmAssistPresentation';
+import {
+  loadLlmAssistUiMode,
+  saveLlmAssistUiMode,
+  type LlmAssistUiMode,
+} from '@/utils/llm/llmAssistUiMode';
+import {
+  createLlmChatMessageId,
+  streamLlmChatReply,
+  type LlmChatMessage,
+} from '@/utils/llm/llmChatStream';
 import {
   getLlmAssistSplitHost,
   subscribeLlmAssistSplitHost,
@@ -235,10 +249,62 @@ export default function LlmAssistModal({
       resolveExaoneTabularTask(model) ?? 'classification',
     ),
   );
+  const [uiMode, setUiModeState] = useState<LlmAssistUiMode>(() => loadLlmAssistUiMode());
+  const [chatMessages, setChatMessages] = useState<LlmChatMessage[]>([]);
+  const [chatDraft, setChatDraft] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState('');
 
   const popoutRef = useRef<Window | null>(null);
   const popoutUsesTauriRef = useRef(false);
   const runAbortRef = useRef<AbortController | null>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
+  const [viewportMobile, setViewportMobile] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia(`(max-width: ${MOBILE_LAYOUT_MAX_WIDTH_PX}px)`).matches
+      : false,
+  );
+  const [layoutNarrow, setLayoutNarrow] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_LAYOUT_MAX_WIDTH_PX}px)`);
+    const onChange = () => setViewportMobile(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setLayoutNarrow(false);
+      return undefined;
+    }
+    const root = document.querySelector<HTMLElement>('[data-llm-assist-layout-root]');
+    if (!root || typeof ResizeObserver === 'undefined') {
+      setLayoutNarrow(viewportMobile);
+      return undefined;
+    }
+    const update = (width: number) => {
+      setLayoutNarrow(width > 0 && width <= MOBILE_LAYOUT_MAX_WIDTH_PX);
+    };
+    update(root.getBoundingClientRect().width);
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const width =
+        entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
+      update(width);
+    });
+    ro.observe(root);
+    return () => ro.disconnect();
+  }, [open, viewportMobile]);
+
+  const compactLayout = viewportMobile || layoutNarrow;
+  const fullBleed =
+    Boolean(open) &&
+    compactLayout &&
+    (presentation === 'docked' || presentation === 'floating');
+
   const {
     panelRef,
     panelStyle,
@@ -248,8 +314,13 @@ export default function LlmAssistModal({
     startEdgeResize,
     refreshBounds,
   } = useLlmAssistModalLayout(editorRef, {
-    enabled: open && presentation === 'floating',
+    enabled: open && presentation === 'floating' && !fullBleed,
   });
+
+  const setUiMode = useCallback((next: LlmAssistUiMode) => {
+    setUiModeState(next);
+    saveLlmAssistUiMode(next);
+  }, []);
 
   const buildSyncPayload = useCallback(
     () => ({
@@ -276,6 +347,11 @@ export default function LlmAssistModal({
       selectedProfileId: profileId,
       model,
       theme,
+      uiMode,
+      chatMessages,
+      chatDraft,
+      chatLoading,
+      chatError,
     }),
     [
       selectedText,
@@ -296,6 +372,11 @@ export default function LlmAssistModal({
       profileId,
       model,
       theme,
+      uiMode,
+      chatMessages,
+      chatDraft,
+      chatLoading,
+      chatError,
     ],
   );
 
@@ -506,6 +587,91 @@ export default function LlmAssistModal({
     if (!controller || controller.signal.aborted) return;
     controller.abort(createLlmAssistAbortError());
   }, []);
+
+  const handleCancelChat = useCallback(() => {
+    const controller = chatAbortRef.current;
+    if (!controller || controller.signal.aborted) return;
+    controller.abort(createLlmAssistAbortError());
+  }, []);
+
+  const handleClearChat = useCallback(() => {
+    if (chatAbortRef.current) {
+      chatAbortRef.current.abort(createLlmAssistAbortError());
+      chatAbortRef.current = null;
+    }
+    setChatMessages([]);
+    setChatDraft('');
+    setChatError('');
+    setChatLoading(false);
+  }, []);
+
+  const handleSendChat = useCallback(async () => {
+    if (chatAbortRef.current) return;
+    const text = chatDraft.trim();
+    if (!text) return;
+    if (!selectedProfile) {
+      setChatError('설정에서 AI 제공자를 추가한 뒤 선택하세요.');
+      return;
+    }
+
+    const userMessage: LlmChatMessage = {
+      id: createLlmChatMessageId(),
+      role: 'user',
+      content: text,
+    };
+    const assistantId = createLlmChatMessageId();
+    const history = [...chatMessages, userMessage];
+
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
+    setChatDraft('');
+    setChatError('');
+    setChatLoading(true);
+    setChatMessages([
+      ...history,
+      { id: assistantId, role: 'assistant', content: '' },
+    ]);
+
+    try {
+      const output = await streamLlmChatReply({
+        profile: selectedProfile,
+        model,
+        messages: history,
+        systemPrompt,
+        requestOptions,
+        signal: controller.signal,
+        onChunk: (accumulated) => {
+          setChatMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId ? { ...msg, content: accumulated } : msg,
+            ),
+          );
+        },
+      });
+      setChatMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId ? { ...msg, content: output } : msg,
+        ),
+      );
+    } catch (err) {
+      if (isLlmAssistAbortError(err)) {
+        setChatError('생성이 취소되었습니다.');
+        setChatMessages((prev) =>
+          prev.filter((msg) => !(msg.id === assistantId && !msg.content.trim())),
+        );
+        return;
+      }
+      setChatError(err instanceof Error ? err.message : 'LLM 채팅 요청에 실패했습니다.');
+      setChatMessages((prev) =>
+        prev.filter((msg) => !(msg.id === assistantId && !msg.content.trim())),
+      );
+    } finally {
+      if (chatAbortRef.current === controller) {
+        chatAbortRef.current = null;
+        setChatLoading(false);
+      }
+    }
+  }, [chatDraft, chatMessages, selectedProfile, model, systemPrompt, requestOptions]);
 
   const handleRun = useCallback(async () => {
     // Ignore re-entry while a run is active (cancel is explicit). Prevents
@@ -957,6 +1123,23 @@ export default function LlmAssistModal({
         case 'clear-images':
           handleClearImages();
           break;
+        case 'set-ui-mode':
+          if (payload.value === 'edit' || payload.value === 'chat') {
+            setUiMode(payload.value);
+          }
+          break;
+        case 'set-chat-draft':
+          setChatDraft(typeof payload.value === 'string' ? payload.value : '');
+          break;
+        case 'send-chat':
+          await handleSendChat();
+          break;
+        case 'cancel-chat':
+          handleCancelChat();
+          break;
+        case 'clear-chat':
+          handleClearChat();
+          break;
         case 'close':
           onOpenChange?.(false);
           break;
@@ -981,6 +1164,10 @@ export default function LlmAssistModal({
       handleAddImages,
       handleRemoveImage,
       handleClearImages,
+      setUiMode,
+      handleSendChat,
+      handleCancelChat,
+      handleClearChat,
       onOpenChange,
     ],
   );
@@ -1036,11 +1223,25 @@ export default function LlmAssistModal({
     refreshSelection();
   };
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     handleCancelGeneration();
+    handleCancelChat();
     closePopout();
     onOpenChange?.(false);
-  };
+  }, [handleCancelGeneration, handleCancelChat, closePopout, onOpenChange]);
+
+  useHistoryOverlayBack(fullBleed, handleClose, fullBleed, 'llm-assist-full');
+
+  useEffect(() => {
+    if (!fullBleed) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      handleClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [fullBleed, handleClose]);
 
   const handleOpenPopout = () => {
     void (async () => {
@@ -1139,10 +1340,10 @@ export default function LlmAssistModal({
           <LlmAssistPresentationMenu
             presentation={presentation}
             onChange={handlePresentationChange}
-            splitEnabled={splitEnabled}
+            splitEnabled={splitEnabled && !fullBleed}
           />
         ) : null}
-        {presentation === 'floating' ? (
+        {presentation === 'floating' && !fullBleed ? (
           <HeaderIconButton
             label={popoutActive ? '새 창에서 열려 있음' : '새 창으로 열기'}
             onClick={handleOpenPopout}
@@ -1151,7 +1352,7 @@ export default function LlmAssistModal({
             <SquareArrowOutUpRight size={15} />
           </HeaderIconButton>
         ) : null}
-        {presentation === 'floating' ? (
+        {presentation === 'floating' && !fullBleed ? (
           <HeaderIconButton label="숨기기" onClick={handleHide}>
             <EyeOff size={15} />
           </HeaderIconButton>
@@ -1163,13 +1364,47 @@ export default function LlmAssistModal({
     </Tooltip.Provider>
   );
 
-  const dockOpen = Boolean(open && presentation === 'docked');
-  const splitVisible = Boolean(open && presentation === 'split' && splitHost);
+  const modeTitle = (
+    <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
+      <Sparkles size={16} className="shrink-0" aria-hidden />
+      <span className="whitespace-nowrap">AI 도우미</span>
+      <LlmAssistUiModeToggle value={uiMode} onChange={setUiMode} />
+    </div>
+  );
+
+  const assistBody =
+    uiMode === 'chat' ? (
+      <LlmAssistChatPanel
+        profiles={profiles}
+        selectedProfileId={profileId}
+        onSelectedProfileIdChange={setProfileId}
+        selectedProfile={selectedProfile}
+        model={model}
+        onModelChange={handleModelChange}
+        systemPrompt={systemPrompt}
+        onSystemPromptChange={setSystemPrompt}
+        requestOptions={requestOptions}
+        onRequestOptionsChange={setRequestOptions}
+        messages={chatMessages}
+        draft={chatDraft}
+        onDraftChange={setChatDraft}
+        loading={chatLoading}
+        error={chatError}
+        onSend={handleSendChat}
+        onCancel={handleCancelChat}
+        onClearMessages={handleClearChat}
+      />
+    ) : (
+      <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+    );
+
+  const dockOpen = Boolean(open && presentation === 'docked' && !fullBleed);
+  const splitVisible = Boolean(open && presentation === 'split' && splitHost && !fullBleed);
   const floatingVisible = Boolean(
-    open && presentation === 'floating' && !hidden && !popoutActive,
+    open && presentation === 'floating' && !hidden && !popoutActive && !fullBleed,
   );
   const chipVisible = Boolean(
-    open && presentation === 'floating' && (hidden || popoutActive),
+    open && presentation === 'floating' && (hidden || popoutActive) && !fullBleed,
   );
   const chipLabel = popoutActive ? 'AI (새창)' : 'AI';
   const chipTitle = popoutActive
@@ -1184,21 +1419,35 @@ export default function LlmAssistModal({
     >
       <div className="flex h-full min-h-0 flex-col" role="complementary" aria-label="AI 텍스트 도우미">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-violet-200/60 bg-violet-50/90 px-3 py-2 dark:border-violet-800/50 dark:bg-violet-950/40">
-          <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
-            <Sparkles size={16} className="shrink-0" aria-hidden />
-            <span className="whitespace-nowrap">AI 도우미</span>
-          </div>
+          {modeTitle}
           {headerActions}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+        <div
+          className={`min-h-0 flex-1 p-3 ${
+            uiMode === 'chat' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'
+          }`}
+        >
+          {assistBody}
         </div>
       </div>
     </LlmAssistImageDropZone>
   );
 
+  const fullBleedBody = (
+    <div
+      className="absolute inset-0 z-60 flex min-h-0 flex-col bg-white dark:bg-odp-surface"
+      role="dialog"
+      aria-modal="true"
+      aria-label="AI 도우미"
+    >
+      {dockBody}
+    </div>
+  );
+
   return (
     <>
+      {fullBleed ? fullBleedBody : null}
+
       {dockOpen ? (
         <LlmAssistDockShell open onClose={handleClose}>
           {dockBody}
@@ -1266,16 +1515,21 @@ export default function LlmAssistModal({
                 onPointerDown={(e) => startPositionDrag(e)}
                 onTouchStart={(e) => startPositionTouchDrag(e)}
               >
-                <div className="flex min-w-0 shrink-0 items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
                   <GripHorizontal size={16} className="shrink-0 opacity-60" aria-hidden />
                   <Sparkles size={16} className="shrink-0" aria-hidden />
                   <span className="whitespace-nowrap">AI 도우미</span>
+                  <LlmAssistUiModeToggle value={uiMode} onChange={setUiMode} />
                 </div>
                 {headerActions}
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
+              <div
+                className={`min-h-0 flex-1 p-3 ${
+                  uiMode === 'chat' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'
+                }`}
+              >
+                {assistBody}
               </div>
             </LlmAssistImageDropZone>
 

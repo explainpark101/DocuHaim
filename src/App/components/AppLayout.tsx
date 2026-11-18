@@ -39,7 +39,6 @@ import { loadLastLocalFolderName } from '@/utils/localFolderStore';
 import { patchFileTab } from '@/utils/workspaceTabs/appBridge';
 import {
   CHAT_TAB_ID,
-  LLM_ASSIST_TAB_ID,
   TELEGRAM_TAB_ID,
   fileTabId,
   findLeafContainingTab,
@@ -349,16 +348,10 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   const llmAssistSession = useLlmAssistSessionOptional();
   const { open: llmAssistOpen } = useLlmAssistOpen();
   const openLlmAssistAgentSurface = useCallback(() => {
-    if (workspaceTabsEnabled) {
-      llmAssistSession?.openAsSplit();
-      return;
-    }
     llmAssistSession?.dockToRight();
-  }, [workspaceTabsEnabled, llmAssistSession]);
+  }, [llmAssistSession]);
   const llmAssistSurfaceActive =
-    workspaceTabsEnabled && llmAssistSession?.presentation === 'split'
-      ? workspaceTabs.activeId === LLM_ASSIST_TAB_ID
-      : llmAssistOpen;
+    llmAssistOpen && llmAssistSession?.presentation === 'docked';
   const openContentSearchWorkspaceTab = tabsCtx.openContentSearchWorkspaceTab;
   const reorderWorkspaceTabs = tabsCtx.reorderWorkspaceTabs;
   const focusWorkspacePane = tabsCtx.focusWorkspacePane;
