@@ -34,9 +34,16 @@ import TreeDndLayoutSync from '@/components/shell/TreeDndLayoutSync';
 import ChatTreeAttachDroppable from '@/components/chatWithMyself/ChatTreeAttachDroppable';
 import QuizTreeSourceDroppable from '@/components/quiz/QuizTreeSourceDroppable';
 import KanbanTreeCardDroppable from '@/components/kanban/KanbanTreeCardDroppable';
+import LlmAssistTreeReferenceDroppable from '@/components/llm/LlmAssistTreeReferenceDroppable';
 import { isChatTreeAttachDroppableId } from '@/utils/chatWithMyself';
 import { isQuizTreeSourceDroppableId } from '@/utils/quiz/quizTreeSourceDrop';
 import { isKanbanTreeCardDroppableId } from '@/utils/kanban/kanbanTreeCardDrop';
+import {
+  dispatchLlmAssistReferenceDrop,
+  getLlmAssistReferenceDropSnapshot,
+  isLlmAssistReferenceDroppableId,
+  subscribeLlmAssistReferenceDrop,
+} from '@/utils/llm/llmAssistReferenceDrop';
 import {
   findNodeByPath,
   buildRecordingBasePathSetFromTrees,
@@ -610,6 +617,16 @@ export default function Sidebar({
   const [isS3Refreshing, setIsS3Refreshing] = useState(false);
   const [isS3SpinFinishing, setIsS3SpinFinishing] = useState(false);
   const [activeDragItems, setActiveDragItems] = useState<TreeMoveItem[] | null>(null);
+  const [llmAssistRefDrop, setLlmAssistRefDrop] = useState(() =>
+    getLlmAssistReferenceDropSnapshot(),
+  );
+  useEffect(() => {
+    return subscribeLlmAssistReferenceDrop(() => {
+      setLlmAssistRefDrop(getLlmAssistReferenceDropSnapshot());
+    });
+  }, []);
+  const llmAssistRefDropReady =
+    llmAssistRefDrop.active && Boolean(llmAssistRefDrop.host);
   const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
     useTreeCopyDragModifier(Boolean(activeDragItems?.length));
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -844,6 +861,11 @@ export default function Sidebar({
         onDropOnFolder?.(null, null, 'dragLeave');
         return;
       }
+      if (isLlmAssistReferenceDroppableId(over.id)) {
+        clearHoverExpandTimer();
+        onDropOnFolder?.(null, null, 'dragLeave');
+        return;
+      }
       if (isQuizTreeSourceDroppableId(over.id)) {
         clearHoverExpandTimer();
         onDropOnFolder?.(null, null, 'dragLeave');
@@ -910,10 +932,16 @@ export default function Sidebar({
         return;
       }
 
-      // Chat attach / quiz take priority when the pointer is over those hosts.
+      // Chat attach / LLM Assist / quiz take priority when the pointer is over those hosts.
       if (over && isChatTreeAttachDroppableId(over.id)) {
         onDropOnFolder?.(null, null, 'dragLeave');
         onDropToChatAttach?.(items);
+        return;
+      }
+
+      if (over && isLlmAssistReferenceDroppableId(over.id)) {
+        onDropOnFolder?.(null, null, 'dragLeave');
+        dispatchLlmAssistReferenceDrop(items);
         return;
       }
 
@@ -2686,6 +2714,12 @@ export default function Sidebar({
         <ChatTreeAttachDroppable
           host={chatAttachDropHost}
           enabled={Boolean(chatAttachDropHost)}
+        />
+      ) : null}
+      {llmAssistRefDropReady && activeDragItems?.length ? (
+        <LlmAssistTreeReferenceDroppable
+          host={llmAssistRefDrop.host}
+          enabled={llmAssistRefDropReady}
         />
       ) : null}
       {quizSourceDropActive && activeDragItems?.length ? (

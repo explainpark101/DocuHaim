@@ -99,8 +99,17 @@ import {
   type LlmChatMessage,
 } from '@/utils/llm/llmChatStream';
 import {
+  createLlmAssistChatReference,
+  createLlmAssistFileReference,
+  enrichLlmAssistChatReferenceFromBridge,
+  loadLlmAssistAutoActiveTabReference,
+  sameLlmAssistFileReference,
+  saveLlmAssistAutoActiveTabReference,
+  type LlmAssistChatReference,
+  type LlmAssistChatReferenceDraft,
+} from '@/utils/llm/llmAssistChatReferences';
+import {
   createLlmAssistChatThreadId,
-  createLlmAssistReferenceId,
   deleteLlmAssistChatThread,
   deriveThreadTitle,
   loadActiveLlmAssistChatThreadId,
@@ -108,9 +117,17 @@ import {
   saveActiveLlmAssistChatThreadId,
   saveLlmAssistChatThreads,
   upsertLlmAssistChatThread,
-  type LlmAssistChatReference,
   type LlmAssistChatThread,
 } from '@/utils/llm/llmAssistChatThreads';
+import {
+  registerLlmAssistReferenceDropHandler,
+  setLlmAssistReferenceDropActive,
+  setLlmAssistReferenceDropHost,
+  type LlmAssistReferenceDropItem,
+} from '@/utils/llm/llmAssistReferenceDrop';
+import { resolveLlmAssistFileReferenceText } from '@/utils/llm/resolveLlmAssistFileReferenceText';
+import { getActiveFileTab } from '@/utils/workspaceTabs';
+import { useVault } from '@/App/hooks/useVault';
 import {
   getLlmAssistSplitHost,
   subscribeLlmAssistSplitHost,
@@ -189,6 +206,7 @@ export default function LlmAssistModal({
   const session = useLlmAssistSessionOptional();
   const assistOpen = useLlmAssistOpenOptional();
   const tabsCtx = useWorkspaceTabsCtxOptional();
+  const { getBackendForType } = useVault();
   const { requestCreateFileWithContent } = useTreeOps();
   const open = assistOpen ? assistOpen.open : Boolean(openProp);
   const onOpenChange = assistOpen ? assistOpen.setOpen : onOpenChangeProp;
@@ -283,6 +301,9 @@ export default function LlmAssistModal({
   });
   const [chatDraft, setChatDraft] = useState('');
   const [chatReferences, setChatReferences] = useState<LlmAssistChatReference[]>([]);
+  const [autoActiveTabReference, setAutoActiveTabReference] = useState(() =>
+    loadLlmAssistAutoActiveTabReference(),
+  );
   const [chatImages, setChatImages] = useState<LlmChatImageAttachment[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState('');
@@ -376,15 +397,131 @@ export default function LlmAssistModal({
     [],
   );
 
-  const addChatReference = useCallback((text: string) => {
-    const trimmed = String(text || '').trim();
-    if (!trimmed) return;
-    setUiMode('chat');
-    setChatReferences((prev) => {
-      if (prev.some((r) => r.text === trimmed)) return prev;
-      return [...prev, { id: createLlmAssistReferenceId(), text: trimmed }];
+  const addChatReference = useCallback(
+    (input: string | LlmAssistChatReferenceDraft) => {
+      const draft =
+        typeof input === 'string'
+          ? enrichLlmAssistChatReferenceFromBridge(editorBridge, input)
+          : {
+              ...enrichLlmAssistChatReferenceFromBridge(editorBridge, input.text),
+              ...input,
+              text: String(input.text || '').trim(),
+            };
+      const created = createLlmAssistChatReference(draft);
+      if (!created) return;
+      setUiMode('chat');
+      setChatReferences((prev) => {
+        if (
+          prev.some(
+            (r) =>
+              r.text === created.text &&
+              r.path === created.path &&
+              r.lineStart === created.lineStart &&
+              r.lineEnd === created.lineEnd &&
+              r.kind === created.kind,
+          )
+        ) {
+          return prev;
+        }
+        return [...prev, created];
+      });
+    },
+    [editorBridge, setUiMode],
+  );
+
+  const appendFileReference = useCallback(
+    (ref: LlmAssistChatReference) => {
+      setUiMode('chat');
+      setChatReferences((prev) => {
+        if (
+          ref.kind === 'file' &&
+          ref.path &&
+          prev.some((r) =>
+            sameLlmAssistFileReference(r, ref.storageType || '', ref.path || ''),
+          )
+        ) {
+          return prev;
+        }
+        return [...prev, ref];
+      });
+    },
+    [setUiMode],
+  );
+
+  const loadAndAppendFileReference = useCallback(
+    async (item: LlmAssistReferenceDropItem) => {
+      const storageType = String(item.storageType || '').trim();
+      const path = String(item.path || '').trim();
+      if (!storageType || !path) return;
+      if (item.nodeType && item.nodeType !== 'file') return;
+      const loaded = await resolveLlmAssistFileReferenceText({
+        source: {
+          storageType,
+          path,
+          ...(item.name ? { name: item.name } : {}),
+        },
+        tabsState: tabsCtx?.workspaceTabsRef?.current ?? tabsCtx?.state ?? null,
+        getBackendForType,
+      });
+      if (!loaded) {
+        setChatError('텍스트 노트만 레퍼런스로 추가할 수 있습니다.');
+        return;
+      }
+      const created = createLlmAssistFileReference({
+        text: loaded.text,
+        path,
+        storageType,
+        fileName: loaded.fileName,
+      });
+      if (!created) return;
+      setChatError('');
+      appendFileReference(created);
+    },
+    [appendFileReference, getBackendForType, tabsCtx],
+  );
+
+  const handleDropFileReferences = useCallback(
+    (items: LlmAssistReferenceDropItem[]) => {
+      void (async () => {
+        for (const item of items) {
+          await loadAndAppendFileReference(item);
+        }
+      })();
+    },
+    [loadAndAppendFileReference],
+  );
+
+  const handleAddActiveTabReference = useCallback(() => {
+    const tab = tabsCtx?.state ? getActiveFileTab(tabsCtx.state) : null;
+    if (!tab) {
+      setChatError('참고할 노트 탭이 없습니다.');
+      return;
+    }
+    const name = String(tab.editedFileName || tab.currentFile?.name || '').trim();
+    void loadAndAppendFileReference({
+      storageType: tab.storageType,
+      path: tab.path,
+      nodeType: 'file',
+      ...(name ? { name } : {}),
     });
-  }, [setUiMode]);
+  }, [loadAndAppendFileReference, tabsCtx]);
+
+  const handleAutoActiveTabReferenceChange = useCallback((enabled: boolean) => {
+    setAutoActiveTabReference(enabled);
+    saveLlmAssistAutoActiveTabReference(enabled);
+  }, []);
+
+  const activeTabBadgeLabel = useMemo(() => {
+    const tab = tabsCtx?.state ? getActiveFileTab(tabsCtx.state) : null;
+    if (!tab) return null;
+    const name = String(tab.editedFileName || tab.currentFile?.name || '').trim();
+    if (name) return name;
+    return tab.path.split('/').filter(Boolean).pop() || tab.path;
+  }, [tabsCtx?.state]);
+
+  const setChatDropHost = useCallback((node: HTMLDivElement | null) => {
+    setLlmAssistReferenceDropHost(node);
+  }, []);
 
   useEffect(() => {
     session?.registerChatCaptureHandlers?.({
@@ -392,6 +529,17 @@ export default function LlmAssistModal({
     });
     return () => session?.registerChatCaptureHandlers?.(null);
   }, [session, addChatReference]);
+
+  useEffect(() => {
+    registerLlmAssistReferenceDropHandler(handleDropFileReferences);
+    return () => registerLlmAssistReferenceDropHandler(null);
+  }, [handleDropFileReferences]);
+
+  useEffect(() => {
+    const active = Boolean(open && uiMode === 'chat');
+    setLlmAssistReferenceDropActive(active);
+    return () => setLlmAssistReferenceDropActive(false);
+  }, [open, uiMode]);
 
   const buildSyncPayload = useCallback(
     () => ({
@@ -836,13 +984,44 @@ export default function LlmAssistModal({
 
   const handleSendChat = useCallback(async () => {
     const text = chatDraft.trim();
-    if (!text && chatReferences.length === 0 && chatImages.length === 0) return;
+    let refs = [...chatReferences];
+
+    if (autoActiveTabReference) {
+      const tabsState = tabsCtx?.state ?? null;
+      const tab = tabsState ? getActiveFileTab(tabsState) : null;
+      if (
+        tab &&
+        !refs.some((r) => sameLlmAssistFileReference(r, tab.storageType, tab.path))
+      ) {
+        const name = String(tab.editedFileName || tab.currentFile?.name || '').trim();
+        const loaded = await resolveLlmAssistFileReferenceText({
+          source: {
+            storageType: tab.storageType,
+            path: tab.path,
+            ...(name ? { name } : {}),
+          },
+          tabsState,
+          getBackendForType,
+        });
+        if (loaded) {
+          const created = createLlmAssistFileReference({
+            text: loaded.text,
+            path: tab.path,
+            storageType: tab.storageType,
+            fileName: loaded.fileName,
+          });
+          if (created) refs = [created, ...refs];
+        }
+      }
+    }
+
+    if (!text && refs.length === 0 && chatImages.length === 0) return;
 
     const userMessage: LlmChatMessage = {
       id: createLlmChatMessageId(),
       role: 'user',
       content: text,
-      ...(chatReferences.length ? { references: chatReferences } : {}),
+      ...(refs.length ? { references: refs } : {}),
       ...(chatImages.length ? { images: chatImages } : {}),
     };
     const history = [...chatMessages, userMessage];
@@ -856,6 +1035,9 @@ export default function LlmAssistModal({
     chatImages,
     chatMessages,
     runChatCompletion,
+    autoActiveTabReference,
+    tabsCtx,
+    getBackendForType,
   ]);
 
   const handleResendChatMessage = useCallback(
@@ -1731,6 +1913,12 @@ export default function LlmAssistModal({
         onRemoveReference={(id) =>
           setChatReferences((prev) => prev.filter((r) => r.id !== id))
         }
+        onReorderReferences={setChatReferences}
+        dropHostRef={setChatDropHost}
+        autoActiveTabReference={autoActiveTabReference}
+        onAutoActiveTabReferenceChange={handleAutoActiveTabReferenceChange}
+        activeTabBadgeLabel={activeTabBadgeLabel}
+        onAddActiveTabReference={handleAddActiveTabReference}
         attachedImages={chatImages}
         onAddImages={handleAddChatImages}
         onRemoveImage={handleRemoveChatImage}

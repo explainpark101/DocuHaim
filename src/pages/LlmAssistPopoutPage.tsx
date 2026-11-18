@@ -59,7 +59,14 @@ type PopoutRemoteState = {
   chatDraft: string;
   chatLoading: boolean;
   chatError: string;
-  chatReferences: Array<{ id: string; text: string }>;
+  chatReferences: Array<{
+    id: string;
+    text: string;
+    path?: string;
+    fileName?: string;
+    lineStart?: number;
+    lineEnd?: number;
+  }>;
   chatImages: unknown[];
   chatThreads: Array<{
     id: string;

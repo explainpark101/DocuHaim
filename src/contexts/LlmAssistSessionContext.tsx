@@ -20,6 +20,8 @@ import {
   saveLlmAssistPresentation,
   type LlmAssistPresentation,
 } from '@/utils/llm/llmAssistPresentation';
+import { enrichLlmAssistChatReferenceFromBridge } from '@/utils/llm/llmAssistChatReferences';
+import type { LlmAssistChatReferenceDraft } from '@/utils/llm/llmAssistChatReferences';
 import { readLlmAssistLiveSelectionText } from '@/utils/llm/llmAssistLiveSelection';
 
 export type LlmAssistSelectionSnapshot = {
@@ -71,8 +73,8 @@ export type LlmAssistSplitWorkspaceHandlers = {
 };
 
 export type LlmAssistChatCaptureHandlers = {
-  /** Switch to chat mode and attach the text as a pending reference. */
-  addReference: (text: string) => void;
+  /** Switch to chat mode and attach selection text (optionally with file/line meta). */
+  addReference: (input: string | LlmAssistChatReferenceDraft) => void;
 };
 
 type LlmAssistSessionContextValue = {
@@ -191,11 +193,13 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
   );
 
   const captureSelectionToChat = useCallback(() => {
-    const text = readLlmAssistLiveSelectionText(editorBridgeRef.current);
+    const bridge = editorBridgeRef.current;
+    const text = readLlmAssistLiveSelectionText(bridge);
     if (!text.trim()) return false;
+    const draft = enrichLlmAssistChatReferenceFromBridge(bridge, text);
     setPresentation('docked');
     setOpen(true);
-    chatCaptureHandlersRef.current?.addReference(text);
+    chatCaptureHandlersRef.current?.addReference(draft);
     return true;
   }, [setOpen, setPresentation]);
 

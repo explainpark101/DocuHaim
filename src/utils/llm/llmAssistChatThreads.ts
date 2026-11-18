@@ -12,10 +12,8 @@ export type LlmAssistChatThread = {
   updatedAt: number;
 };
 
-export type LlmAssistChatReference = {
-  id: string;
-  text: string;
-};
+export type { LlmAssistChatReference } from '@/utils/llm/llmAssistChatReferences';
+export { createLlmAssistReferenceId } from '@/utils/llm/llmAssistChatReferences';
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -31,13 +29,6 @@ export function createLlmAssistChatThreadId(): string {
     return crypto.randomUUID();
   }
   return `thread-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-export function createLlmAssistReferenceId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `ref-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function normalizeThread(value: unknown): LlmAssistChatThread | null {

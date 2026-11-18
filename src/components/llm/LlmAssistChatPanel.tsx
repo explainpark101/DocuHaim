@@ -17,6 +17,7 @@ import {
   Copy,
   CornerLeftDown,
   FilePlus,
+  FileStack,
   History,
   ImagePlus,
   Loader2,
@@ -54,10 +55,9 @@ import {
   type LlmChatImageAttachment,
   type LlmChatMessage,
 } from '@/utils/llm/llmChatStream';
-import type {
-  LlmAssistChatReference,
-  LlmAssistChatThread,
-} from '@/utils/llm/llmAssistChatThreads';
+import LlmAssistChatReferenceList from '@/components/llm/LlmAssistChatReferenceList';
+import type { LlmAssistChatReference } from '@/utils/llm/llmAssistChatReferences';
+import type { LlmAssistChatThread } from '@/utils/llm/llmAssistChatThreads';
 
 const LlmAssistChatHaimPreview = lazy(
   () => import('@/components/llm/LlmAssistChatHaimPreview'),
@@ -88,6 +88,14 @@ export type LlmAssistChatPanelProps = {
   onDraftChange?: (value: string) => void;
   references?: LlmAssistChatReference[];
   onRemoveReference?: (id: string) => void;
+  onReorderReferences?: (next: LlmAssistChatReference[]) => void;
+  /** Register the chat surface as a tree/tab file-reference drop host. */
+  dropHostRef?: (node: HTMLDivElement | null) => void;
+  autoActiveTabReference?: boolean;
+  onAutoActiveTabReferenceChange?: (enabled: boolean) => void;
+  /** Live label for the focused file tab (e.g. `note.md`). */
+  activeTabBadgeLabel?: string | null;
+  onAddActiveTabReference?: () => void;
   attachedImages?: LlmChatImageAttachment[];
   onAddImages?: (files: FileList | File[] | null) => void | Promise<void>;
   onRemoveImage?: (id: string) => void;
@@ -126,6 +134,12 @@ export default function LlmAssistChatPanel({
   onDraftChange,
   references = [],
   onRemoveReference,
+  onReorderReferences,
+  dropHostRef,
+  autoActiveTabReference = false,
+  onAutoActiveTabReferenceChange,
+  activeTabBadgeLabel = null,
+  onAddActiveTabReference,
   attachedImages = [],
   onAddImages,
   onRemoveImage,
@@ -175,7 +189,8 @@ export default function LlmAssistChatPanel({
     !loading &&
     (draft.trim().length > 0 ||
       references.some((r) => r.text.trim()) ||
-      attachedImages.length > 0);
+      attachedImages.length > 0 ||
+      (autoActiveTabReference && Boolean(activeTabBadgeLabel)));
 
   const handleSubmit = useCallback(
     (event?: FormEvent) => {
@@ -198,7 +213,10 @@ export default function LlmAssistChatPanel({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 text-xs">
+    <div
+      ref={dropHostRef}
+      className="relative flex h-full min-h-0 flex-col gap-2 text-xs"
+    >
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-1.5">
         <div className="flex min-w-0 flex-wrap items-center gap-1">
           <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
@@ -470,20 +488,11 @@ export default function LlmAssistChatPanel({
                 }`}
               >
                 {msg.references?.length ? (
-                  <div className={`space-y-1 ${isUser ? 'opacity-90' : ''}`}>
-                    {msg.references.map((ref) => (
-                      <div
-                        key={ref.id}
-                        className={`rounded px-2 py-1 text-[10px] whitespace-pre-wrap break-words ${
-                          isUser
-                            ? 'bg-white/15'
-                            : 'bg-violet-50 text-violet-900 dark:bg-violet-950/40 dark:text-violet-100'
-                        }`}
-                      >
-                        {ref.text}
-                      </div>
-                    ))}
-                  </div>
+                  <LlmAssistChatReferenceList
+                    references={msg.references}
+                    tone={isUser ? 'user' : 'composer'}
+                    className={isUser ? 'opacity-95' : ''}
+                  />
                 ) : null}
                 {msg.images?.length ? (
                   <div className="flex flex-wrap gap-1">
@@ -604,28 +613,65 @@ export default function LlmAssistChatPanel({
         </p>
       ) : null}
 
-      {references.length > 0 ? (
-        <div className="flex shrink-0 flex-wrap gap-1">
-          {references.map((ref) => (
-            <div
-              key={ref.id}
-              className="inline-flex max-w-full items-start gap-1 rounded-md border border-sky-300 bg-sky-50 px-2 py-1 text-[10px] text-sky-900 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-100"
+      <div className="flex shrink-0 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-1">
+          <Tooltip.Provider delayDuration={250} skipDelayDuration={0}>
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onAutoActiveTabReferenceChange?.(!autoActiveTabReference)
+                  }
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                    autoActiveTabReference
+                      ? 'border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-100'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-odp-borderStrong dark:text-odp-muted dark:hover:bg-odp-bgSoft'
+                  }`}
+                  aria-pressed={autoActiveTabReference}
+                  aria-label="현재 탭 자동 참고"
+                >
+                  <FileStack size={11} aria-hidden />
+                  현재 탭 자동
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content side="top" sideOffset={6} className={TOOLTIP_CLASS}>
+                  전송 시 보고 있는 노트 전체를 레퍼런스에 포함
+                  <Tooltip.Arrow className="fill-white dark:fill-odp-surface" />
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+          {activeTabBadgeLabel ? (
+            <button
+              type="button"
+              onClick={() => onAddActiveTabReference?.()}
+              disabled={loading}
+              className="inline-flex max-w-[min(100%,12rem)] items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-900 hover:bg-sky-100 disabled:opacity-50 dark:border-sky-700 dark:bg-sky-950/40 dark:text-sky-100 dark:hover:bg-sky-900/50"
+              title="현재 탭을 파일 레퍼런스로 추가"
             >
-              <span className="min-w-0 flex-1 whitespace-pre-wrap break-words line-clamp-3">
-                {ref.text}
-              </span>
-              <button
-                type="button"
-                className="shrink-0 rounded p-0.5 hover:bg-sky-100 dark:hover:bg-sky-900/50"
-                aria-label="레퍼런스 제거"
-                onClick={() => onRemoveReference?.(ref.id)}
-              >
-                <X size={11} aria-hidden />
-              </button>
-            </div>
-          ))}
+              <span className="truncate">{activeTabBadgeLabel} · 전체</span>
+              <span className="shrink-0 opacity-70">+</span>
+            </button>
+          ) : null}
         </div>
-      ) : null}
+        {autoActiveTabReference && activeTabBadgeLabel ? (
+          <div className="inline-flex max-w-full items-center gap-1 rounded-full border border-amber-300/80 bg-amber-50/90 px-2 py-0.5 text-[10px] font-medium text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+            <FileStack size={11} className="shrink-0 opacity-80" aria-hidden />
+            <span className="truncate">자동 · {activeTabBadgeLabel}</span>
+          </div>
+        ) : null}
+        {references.length > 0 ? (
+          <LlmAssistChatReferenceList
+            references={references}
+            editable
+            tone="composer"
+            onRemove={(id) => onRemoveReference?.(id)}
+            onReorder={(next) => onReorderReferences?.(next)}
+          />
+        ) : null}
+      </div>
 
       {attachedImages.length > 0 ? (
         <div className="flex shrink-0 flex-wrap gap-1.5">

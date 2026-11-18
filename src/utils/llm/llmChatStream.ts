@@ -21,6 +21,10 @@ import { loadMlxVlmSettings } from '@/utils/mlxVlmSettingsStore';
 import { getMlxVlmServerStatus } from '@/utils/mlxVlmShell';
 import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
+import {
+  formatLlmAssistReferenceHeading,
+  type LlmAssistChatReference,
+} from '@/utils/llm/llmAssistChatReferences';
 
 export type LlmChatImageAttachment = {
   id?: string;
@@ -35,16 +39,18 @@ export type LlmChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   images?: LlmChatImageAttachment[];
-  references?: { id: string; text: string }[];
+  references?: LlmAssistChatReference[];
 };
 
 export function formatLlmChatUserContent(message: LlmChatMessage): string {
   const refs = Array.isArray(message.references)
-    ? message.references.map((r) => String(r.text || '').trim()).filter(Boolean)
+    ? message.references.filter((r) => String(r.text || '').trim())
     : [];
   const body = String(message.content || '').trim();
   if (!refs.length) return body;
-  const refBlock = refs.map((text, i) => `Reference ${i + 1}:\n${text}`).join('\n\n');
+  const refBlock = refs
+    .map((ref, i) => `${formatLlmAssistReferenceHeading(ref, i)}\n${String(ref.text || '').trim()}`)
+    .join('\n\n');
   return body ? `${refBlock}\n\n${body}` : refBlock;
 }
 

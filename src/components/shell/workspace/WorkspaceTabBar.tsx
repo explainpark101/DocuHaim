@@ -85,6 +85,10 @@ import {
   updateWorkspaceTabDragPoint,
 } from '@/utils/workspaceTabs/workspaceTabDragBridge';
 import {
+  dispatchLlmAssistReferenceDrop,
+  isPointOnLlmAssistReferenceDropHost,
+} from '@/utils/llm/llmAssistReferenceDrop';
+import {
   WORKSPACE_TAB_STRIP_ATTR,
   isPointOnWorkspaceTabStrip,
   workspaceTabStripCollision,
@@ -940,10 +944,34 @@ export default function WorkspaceTabBar({
     const snap = getWorkspaceTabDrag();
     const cx = snap?.clientX ?? (translated ? translated.left + translated.width / 2 : 0);
     const cy = snap?.clientY ?? (translated ? translated.top + translated.height / 2 : 0);
+    const draggedTab = orderedTabs.find((t) => t.id === from) ?? activeDrag?.tab ?? null;
     // Prefer overlay when pointer is still over panes; ignore stale overlay on the strip.
     const hit = resolvePaneDropForCommit(cx, cy);
     const onTabStrip = isPointOnWorkspaceTabStrip(cx, cy);
     clearActiveDrag();
+
+    // Drop file tab onto LLM Assist chat → whole-file reference.
+    if (
+      !onTabStrip &&
+      isPointOnLlmAssistReferenceDropHost(cx, cy) &&
+      draggedTab &&
+      isFileTab(draggedTab)
+    ) {
+      {
+        const name = String(
+          draggedTab.editedFileName || draggedTab.currentFile?.name || '',
+        ).trim();
+        dispatchLlmAssistReferenceDrop([
+          {
+            storageType: draggedTab.storageType,
+            path: draggedTab.path,
+            nodeType: 'file',
+            ...(name ? { name } : {}),
+          },
+        ]);
+      }
+      return;
+    }
 
     // Pane drops only when geography says so. Tab-strip reorders must not be
     // overridden by a leftover center/edge highlight from a brief pane hover.
