@@ -22,20 +22,68 @@ import { getMlxVlmServerStatus } from '@/utils/mlxVlmShell';
 import { saveLastUsedGeminiModel } from '@/utils/geminiModelSettings';
 import { saveLastUsedOpenAiCompatibleModel } from '@/utils/openaiCompatibleSettings';
 
+export type LlmChatImageAttachment = {
+  id?: string;
+  name?: string;
+  mimeType: string;
+  dataBase64: string;
+  previewDataUrl?: string;
+};
+
 export type LlmChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  images?: LlmChatImageAttachment[];
+  references?: { id: string; text: string }[];
 };
+
+export function formatLlmChatUserContent(message: LlmChatMessage): string {
+  const refs = Array.isArray(message.references)
+    ? message.references.map((r) => String(r.text || '').trim()).filter(Boolean)
+    : [];
+  const body = String(message.content || '').trim();
+  if (!refs.length) return body;
+  const refBlock = refs.map((text, i) => `Reference ${i + 1}:\n${text}`).join('\n\n');
+  return body ? `${refBlock}\n\n${body}` : refBlock;
+}
 
 function formatMlxChatPrompt(messages: LlmChatMessage[]): string {
   return messages
     .map((msg) => {
       const label = msg.role === 'assistant' ? 'Assistant' : 'User';
-      return `${label}:\n${msg.content.trim()}`;
+      const content =
+        msg.role === 'user' ? formatLlmChatUserContent(msg) : msg.content.trim();
+      if (!content) return '';
+      return `${label}:\n${content}`;
     })
     .filter((block) => block.length > 0)
     .join('\n\n');
+}
+
+function toOpenAiChatMessages(messages: LlmChatMessage[]) {
+  return messages.map((msg) => {
+    if (msg.role === 'assistant') {
+      return { role: 'assistant' as const, content: msg.content };
+    }
+    const text = formatLlmChatUserContent(msg);
+    const images = Array.isArray(msg.images)
+      ? msg.images.filter((img) => img?.mimeType && img?.dataBase64)
+      : [];
+    if (!images.length) {
+      return { role: 'user' as const, content: text };
+    }
+    return {
+      role: 'user' as const,
+      content: [
+        { type: 'text' as const, text: text || ' ' },
+        ...images.map((img) => ({
+          type: 'image_url' as const,
+          image_url: { url: `data:${img.mimeType};base64,${img.dataBase64}` },
+        })),
+      ],
+    };
+  });
 }
 
 /**
@@ -58,12 +106,27 @@ export async function streamLlmChatReply({
   onChunk?: (accumulated: string) => void;
   signal?: AbortSignal;
 }): Promise<string> {
-  const trimmedMessages = messages
-    .map((msg) => ({
-      ...msg,
-      content: String(msg.content || '').trim(),
-    }))
-    .filter((msg) => msg.content.length > 0);
+  const trimmedMessages: LlmChatMessage[] = messages
+    .map((msg) => {
+      const next: LlmChatMessage = {
+        id: msg.id,
+        role: msg.role,
+        content: String(msg.content || '').trim(),
+      };
+      if (Array.isArray(msg.images) && msg.images.length) {
+        next.images = msg.images;
+      }
+      if (Array.isArray(msg.references) && msg.references.length) {
+        next.references = msg.references;
+      }
+      return next;
+    })
+    .filter((msg) => {
+      if (msg.role === 'assistant') return msg.content.length > 0;
+      const hasRefs = Boolean(msg.references?.some((r) => r.text.trim()));
+      const hasImages = Boolean(msg.images?.length);
+      return msg.content.length > 0 || hasRefs || hasImages;
+    });
 
   if (!trimmedMessages.length) {
     throw new Error('채팅 메시지를 입력하세요.');
@@ -89,10 +152,7 @@ export async function streamLlmChatReply({
           baseUrl,
           apiKey,
           model,
-          messages: trimmedMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: toOpenAiChatMessages(trimmedMessages),
           ...(systemPrompt !== undefined ? { systemPrompt } : {}),
           ...(requestOptions !== undefined ? { requestOptions } : {}),
           ...(onChunk ? { onChunk } : {}),
@@ -128,10 +188,7 @@ export async function streamLlmChatReply({
           baseUrl,
           apiKey,
           model: resolvedModel,
-          messages: trimmedMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: toOpenAiChatMessages(trimmedMessages),
           ...(systemPrompt !== undefined ? { systemPrompt } : {}),
           ...(requestOptions !== undefined ? { requestOptions } : {}),
           ...(onChunk ? { onChunk } : {}),
@@ -152,9 +209,15 @@ export async function streamLlmChatReply({
     const resolvedModel = model.trim() || mlxSettings.selectedModelId || status.models[0] || '';
     if (!resolvedModel) throw new Error('사용할 MLX 모델을 선택하세요.');
     saveLastUsedModelForProfile(profile.id, resolvedModel);
+    const lastUser = [...trimmedMessages].reverse().find((m) => m.role === 'user');
+    const images = lastUser?.images?.map((img) => ({
+      mimeType: img.mimeType,
+      dataBase64: img.dataBase64,
+    }));
     return generateMlxVlmCompletion({
       prompt: formatMlxChatPrompt(trimmedMessages),
       systemPrompt: (systemPrompt ?? '').trim(),
+      ...(images?.length ? { images } : {}),
       generateOptions: toMlxVlmGenerateKwargs(requestOptions ?? {}),
       resetCache: true,
       ...(onChunk ? { onChunk } : {}),
@@ -179,7 +242,7 @@ export async function streamLlmChatReply({
           model,
           messages: trimmedMessages.map((m) => ({
             role: m.role,
-            content: m.content,
+            content: m.role === 'user' ? formatLlmChatUserContent(m) : m.content,
           })),
           ...(systemPrompt !== undefined ? { systemPrompt } : {}),
           ...(requestOptions !== undefined ? { requestOptions } : {}),

@@ -59,6 +59,17 @@ type PopoutRemoteState = {
   chatDraft: string;
   chatLoading: boolean;
   chatError: string;
+  chatReferences: Array<{ id: string; text: string }>;
+  chatImages: unknown[];
+  chatThreads: Array<{
+    id: string;
+    title: string;
+    messages: LlmChatMessage[];
+    createdAt: number;
+    updatedAt: number;
+  }>;
+  activeThreadId: string | null;
+  canInsertIntoDocument: boolean;
 };
 
 const EMPTY_STATE: PopoutRemoteState = {
@@ -85,6 +96,11 @@ const EMPTY_STATE: PopoutRemoteState = {
   chatDraft: '',
   chatLoading: false,
   chatError: '',
+  chatReferences: [],
+  chatImages: [],
+  chatThreads: [],
+  activeThreadId: null,
+  canInsertIntoDocument: true,
 };
 
 function normalizeChatMessages(value: unknown): LlmChatMessage[] {
@@ -154,6 +170,18 @@ export default function LlmAssistPopoutPage() {
       chatDraft: typeof state.chatDraft === 'string' ? state.chatDraft : '',
       chatLoading: Boolean(state.chatLoading),
       chatError: typeof state.chatError === 'string' ? state.chatError : '',
+      chatReferences: Array.isArray(state.chatReferences)
+        ? (state.chatReferences as PopoutRemoteState['chatReferences']).filter(
+            (r) => r && typeof r.id === 'string' && typeof r.text === 'string',
+          )
+        : [],
+      chatImages: Array.isArray(state.chatImages) ? state.chatImages : [],
+      chatThreads: Array.isArray(state.chatThreads)
+        ? (state.chatThreads as PopoutRemoteState['chatThreads'])
+        : [],
+      activeThreadId:
+        typeof state.activeThreadId === 'string' ? state.activeThreadId : null,
+      canInsertIntoDocument: state.canInsertIntoDocument !== false,
       profiles: Array.isArray(state.profiles)
         ? (state.profiles as PopoutRemoteState['profiles'])
         : [],
@@ -391,11 +419,33 @@ export default function LlmAssistPopoutPage() {
             messages={remoteState.chatMessages}
             draft={chatDraft}
             onDraftChange={handleChatDraftChange}
+            references={remoteState.chatReferences}
+            onRemoveReference={(id) => sendAction('remove-chat-reference', { id })}
+            attachedImages={remoteState.chatImages as never[]}
+            onAddImages={async (files) => {
+              if (!files?.length) return;
+              const images = await readImageFilesAsAttachments(files);
+              if (images.length) sendAction('add-chat-images', { images });
+            }}
+            onRemoveImage={(id) => sendAction('remove-chat-image', { id })}
+            threads={remoteState.chatThreads}
+            activeThreadId={remoteState.activeThreadId}
+            onSelectThread={(id) => sendAction('select-chat-thread', { id })}
+            onDeleteThread={(id) => sendAction('delete-chat-thread', { id })}
+            onNewThread={() => sendAction('new-chat-thread')}
             loading={remoteState.chatLoading}
             error={remoteState.chatError}
             onSend={() => sendAction('send-chat')}
             onCancel={() => sendAction('cancel-chat')}
-            onClearMessages={() => sendAction('clear-chat')}
+            canInsertIntoDocument={remoteState.canInsertIntoDocument !== false}
+            onCopyMessage={(message) => sendAction('copy-chat-message', { id: message.id })}
+            onResendMessage={(id) => sendAction('resend-chat-message', { id })}
+            onRegenerateMessage={(id) => sendAction('regenerate-chat-message', { id })}
+            onApplyResult={(content) => sendAction('apply-chat-result', { content })}
+            onAppendResult={(content) => sendAction('append-chat-result', { content })}
+            onCreateNoteFromResult={(content) =>
+              sendAction('create-note-from-chat-result', { content })
+            }
             modelSelectAutoLoad={false}
           />
         ) : (

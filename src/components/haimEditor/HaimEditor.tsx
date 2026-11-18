@@ -111,6 +111,7 @@ import {
   type HaimTypographyRules,
 } from '@/utils/haimTypographySettings';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
+import { activateLlmAssistOrCaptureSelection } from '@/utils/llm/activateLlmAssistOrCaptureSelection';
 import { registerEditorActions } from '@/utils/advancedSearch/editorActions';
 import type { HaimSlashAppActions } from '@/components/haimEditor/slashCommands/haimSlashCommandItems';
 import { openExportPdfSurface } from '@/utils/workspaceTabs/openExportPdfSurface';
@@ -1718,7 +1719,7 @@ export default function HaimEditor({
           .run();
       },
       'editor-llm-assist': () => {
-        llmAssist?.toggleAssist?.();
+        activateLlmAssistOrCaptureSelection(llmAssist);
       },
       'editor-heading-remap': () => openHeadingRemap(),
       'editor-checklist-progress': () => {
@@ -1863,7 +1864,7 @@ export default function HaimEditor({
         setChecklistProgressOpen(true);
       },
       onLlmAssist: () => {
-        llmAssist?.toggleAssist?.();
+        activateLlmAssistOrCaptureSelection(llmAssist);
       },
       onExportPdf: (mode: ExportPdfPaginationMode = 'flow') => {
         flush();
@@ -2006,7 +2007,7 @@ export default function HaimEditor({
               flush();
               navigateToExportPdf({ paginationMode: mode });
             },
-            onLlmAssist: () => llmAssist?.toggleAssist?.(),
+            onLlmAssist: () => activateLlmAssistOrCaptureSelection(llmAssist),
             onHeadingRemap: openHeadingRemap,
             onChecklistProgress: () => {
               setChecklistProgressOpen(true);

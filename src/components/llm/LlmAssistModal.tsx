@@ -63,6 +63,7 @@ import LlmAssistPanel, {
   type LlmAssistPromptTemplate,
   type LlmAssistResultViewMode,
 } from '@/components/llm/LlmAssistPanel';
+import LlmAssistAddSelectionToChat from '@/components/llm/LlmAssistAddSelectionToChat';
 import LlmAssistChatPanel from '@/components/llm/LlmAssistChatPanel';
 import LlmAssistDockShell from '@/components/llm/LlmAssistDockShell';
 import LlmAssistImageDropZone from '@/components/llm/LlmAssistImageDropZone';
@@ -92,9 +93,24 @@ import {
 } from '@/utils/llm/llmAssistUiMode';
 import {
   createLlmChatMessageId,
+  formatLlmChatUserContent,
   streamLlmChatReply,
+  type LlmChatImageAttachment,
   type LlmChatMessage,
 } from '@/utils/llm/llmChatStream';
+import {
+  createLlmAssistChatThreadId,
+  createLlmAssistReferenceId,
+  deleteLlmAssistChatThread,
+  deriveThreadTitle,
+  loadActiveLlmAssistChatThreadId,
+  loadLlmAssistChatThreads,
+  saveActiveLlmAssistChatThreadId,
+  saveLlmAssistChatThreads,
+  upsertLlmAssistChatThread,
+  type LlmAssistChatReference,
+  type LlmAssistChatThread,
+} from '@/utils/llm/llmAssistChatThreads';
 import {
   getLlmAssistSplitHost,
   subscribeLlmAssistSplitHost,
@@ -250,8 +266,24 @@ export default function LlmAssistModal({
     ),
   );
   const [uiMode, setUiModeState] = useState<LlmAssistUiMode>(() => loadLlmAssistUiMode());
-  const [chatMessages, setChatMessages] = useState<LlmChatMessage[]>([]);
+  const [chatThreads, setChatThreads] = useState<LlmAssistChatThread[]>(() =>
+    loadLlmAssistChatThreads(),
+  );
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(() => {
+    const saved = loadActiveLlmAssistChatThreadId();
+    const threads = loadLlmAssistChatThreads();
+    if (saved && threads.some((t) => t.id === saved)) return saved;
+    return threads[0]?.id ?? null;
+  });
+  const [chatMessages, setChatMessages] = useState<LlmChatMessage[]>(() => {
+    const threads = loadLlmAssistChatThreads();
+    const saved = loadActiveLlmAssistChatThreadId();
+    const active = threads.find((t) => t.id === saved) || threads[0];
+    return active?.messages ?? [];
+  });
   const [chatDraft, setChatDraft] = useState('');
+  const [chatReferences, setChatReferences] = useState<LlmAssistChatReference[]>([]);
+  const [chatImages, setChatImages] = useState<LlmChatImageAttachment[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState('');
 
@@ -322,6 +354,45 @@ export default function LlmAssistModal({
     saveLlmAssistUiMode(next);
   }, []);
 
+  const persistActiveThread = useCallback(
+    (messages: LlmChatMessage[], threadId: string | null) => {
+      if (!threadId) return;
+      const now = Date.now();
+      setChatThreads((prev) => {
+        const existing = prev.find((t) => t.id === threadId);
+        const nextThread: LlmAssistChatThread = {
+          id: threadId,
+          title: deriveThreadTitle(messages),
+          messages,
+          createdAt: existing?.createdAt ?? now,
+          updatedAt: now,
+        };
+        const next = upsertLlmAssistChatThread(prev, nextThread);
+        saveLlmAssistChatThreads(next);
+        return next;
+      });
+      saveActiveLlmAssistChatThreadId(threadId);
+    },
+    [],
+  );
+
+  const addChatReference = useCallback((text: string) => {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) return;
+    setUiMode('chat');
+    setChatReferences((prev) => {
+      if (prev.some((r) => r.text === trimmed)) return prev;
+      return [...prev, { id: createLlmAssistReferenceId(), text: trimmed }];
+    });
+  }, [setUiMode]);
+
+  useEffect(() => {
+    session?.registerChatCaptureHandlers?.({
+      addReference: addChatReference,
+    });
+    return () => session?.registerChatCaptureHandlers?.(null);
+  }, [session, addChatReference]);
+
   const buildSyncPayload = useCallback(
     () => ({
       selectedText,
@@ -352,6 +423,11 @@ export default function LlmAssistModal({
       chatDraft,
       chatLoading,
       chatError,
+      chatReferences,
+      chatImages,
+      chatThreads,
+      activeThreadId,
+      canInsertIntoDocument,
     }),
     [
       selectedText,
@@ -377,6 +453,11 @@ export default function LlmAssistModal({
       chatDraft,
       chatLoading,
       chatError,
+      chatReferences,
+      chatImages,
+      chatThreads,
+      activeThreadId,
+      canInsertIntoDocument,
     ],
   );
 
@@ -594,84 +675,288 @@ export default function LlmAssistModal({
     controller.abort(createLlmAssistAbortError());
   }, []);
 
-  const handleClearChat = useCallback(() => {
+  const handleNewChatThread = useCallback(() => {
     if (chatAbortRef.current) {
       chatAbortRef.current.abort(createLlmAssistAbortError());
       chatAbortRef.current = null;
     }
+    if (chatMessages.length > 0) {
+      const id = activeThreadId || createLlmAssistChatThreadId();
+      persistActiveThread(chatMessages, id);
+    }
+    const nextId = createLlmAssistChatThreadId();
+    setActiveThreadId(nextId);
+    saveActiveLlmAssistChatThreadId(nextId);
     setChatMessages([]);
     setChatDraft('');
+    setChatReferences([]);
+    setChatImages([]);
     setChatError('');
     setChatLoading(false);
+    setUiMode('chat');
+  }, [chatMessages, activeThreadId, persistActiveThread, setUiMode]);
+
+  const handleSelectChatThread = useCallback(
+    (threadId: string) => {
+      if (chatAbortRef.current) {
+        chatAbortRef.current.abort(createLlmAssistAbortError());
+        chatAbortRef.current = null;
+      }
+      if (activeThreadId && chatMessages.length > 0) {
+        persistActiveThread(chatMessages, activeThreadId);
+      }
+      const thread = chatThreads.find((t) => t.id === threadId);
+      if (!thread) return;
+      setActiveThreadId(thread.id);
+      saveActiveLlmAssistChatThreadId(thread.id);
+      setChatMessages(thread.messages);
+      setChatDraft('');
+      setChatReferences([]);
+      setChatImages([]);
+      setChatError('');
+      setChatLoading(false);
+      setUiMode('chat');
+    },
+    [activeThreadId, chatMessages, chatThreads, persistActiveThread, setUiMode],
+  );
+
+  const handleDeleteChatThread = useCallback(
+    (threadId: string) => {
+      setChatThreads((prev) => {
+        const next = deleteLlmAssistChatThread(prev, threadId);
+        saveLlmAssistChatThreads(next);
+        return next;
+      });
+      if (activeThreadId === threadId) {
+        setActiveThreadId(null);
+        saveActiveLlmAssistChatThreadId(null);
+        setChatMessages([]);
+        setChatDraft('');
+        setChatReferences([]);
+        setChatImages([]);
+      }
+    },
+    [activeThreadId],
+  );
+
+  const handleAddChatImages = useCallback(async (fileList: FileList | File[] | null) => {
+    if (!fileList?.length) return;
+    const next = await readImageFilesAsAttachments(fileList);
+    setChatImages((prev) => [...prev, ...next]);
   }, []);
 
+  const handleRemoveChatImage = useCallback((imageId: string) => {
+    setChatImages((prev) => prev.filter((img) => img.id !== imageId));
+  }, []);
+
+  const runChatCompletion = useCallback(
+    async (history: LlmChatMessage[]) => {
+      if (chatAbortRef.current) return;
+      if (!selectedProfile) {
+        setChatError('설정에서 AI 제공자를 추가한 뒤 선택하세요.');
+        return;
+      }
+      if (!history.length) return;
+
+      const threadId = activeThreadId || createLlmAssistChatThreadId();
+      if (!activeThreadId) {
+        setActiveThreadId(threadId);
+        saveActiveLlmAssistChatThreadId(threadId);
+      }
+
+      const assistantId = createLlmChatMessageId();
+      const controller = new AbortController();
+      chatAbortRef.current = controller;
+      setChatError('');
+      setChatLoading(true);
+      const withAssistant = [
+        ...history,
+        { id: assistantId, role: 'assistant' as const, content: '' },
+      ];
+      setChatMessages(withAssistant);
+      persistActiveThread(withAssistant, threadId);
+
+      try {
+        const output = await streamLlmChatReply({
+          profile: selectedProfile,
+          model,
+          messages: history,
+          systemPrompt,
+          requestOptions,
+          signal: controller.signal,
+          onChunk: (accumulated) => {
+            setChatMessages((prev) => {
+              const next = prev.map((msg) =>
+                msg.id === assistantId ? { ...msg, content: accumulated } : msg,
+              );
+              persistActiveThread(next, threadId);
+              return next;
+            });
+          },
+        });
+        setChatMessages((prev) => {
+          const next = prev.map((msg) =>
+            msg.id === assistantId ? { ...msg, content: output } : msg,
+          );
+          persistActiveThread(next, threadId);
+          return next;
+        });
+      } catch (err) {
+        if (isLlmAssistAbortError(err)) {
+          setChatError('생성이 취소되었습니다.');
+          setChatMessages((prev) => {
+            const next = prev.filter((msg) => !(msg.id === assistantId && !msg.content.trim()));
+            persistActiveThread(next, threadId);
+            return next;
+          });
+          return;
+        }
+        setChatError(err instanceof Error ? err.message : 'LLM 채팅 요청에 실패했습니다.');
+        setChatMessages((prev) => {
+          const next = prev.filter((msg) => !(msg.id === assistantId && !msg.content.trim()));
+          persistActiveThread(next, threadId);
+          return next;
+        });
+      } finally {
+        if (chatAbortRef.current === controller) {
+          chatAbortRef.current = null;
+          setChatLoading(false);
+        }
+      }
+    },
+    [
+      selectedProfile,
+      model,
+      systemPrompt,
+      requestOptions,
+      activeThreadId,
+      persistActiveThread,
+    ],
+  );
+
   const handleSendChat = useCallback(async () => {
-    if (chatAbortRef.current) return;
     const text = chatDraft.trim();
-    if (!text) return;
-    if (!selectedProfile) {
-      setChatError('설정에서 AI 제공자를 추가한 뒤 선택하세요.');
-      return;
-    }
+    if (!text && chatReferences.length === 0 && chatImages.length === 0) return;
 
     const userMessage: LlmChatMessage = {
       id: createLlmChatMessageId(),
       role: 'user',
       content: text,
+      ...(chatReferences.length ? { references: chatReferences } : {}),
+      ...(chatImages.length ? { images: chatImages } : {}),
     };
-    const assistantId = createLlmChatMessageId();
     const history = [...chatMessages, userMessage];
-
-    const controller = new AbortController();
-    chatAbortRef.current = controller;
     setChatDraft('');
-    setChatError('');
-    setChatLoading(true);
-    setChatMessages([
-      ...history,
-      { id: assistantId, role: 'assistant', content: '' },
-    ]);
+    setChatReferences([]);
+    setChatImages([]);
+    await runChatCompletion(history);
+  }, [
+    chatDraft,
+    chatReferences,
+    chatImages,
+    chatMessages,
+    runChatCompletion,
+  ]);
 
-    try {
-      const output = await streamLlmChatReply({
-        profile: selectedProfile,
-        model,
-        messages: history,
-        systemPrompt,
-        requestOptions,
-        signal: controller.signal,
-        onChunk: (accumulated) => {
-          setChatMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantId ? { ...msg, content: accumulated } : msg,
-            ),
-          );
-        },
-      });
-      setChatMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantId ? { ...msg, content: output } : msg,
-        ),
-      );
-    } catch (err) {
-      if (isLlmAssistAbortError(err)) {
-        setChatError('생성이 취소되었습니다.');
-        setChatMessages((prev) =>
-          prev.filter((msg) => !(msg.id === assistantId && !msg.content.trim())),
-        );
+  const handleResendChatMessage = useCallback(
+    async (messageId: string) => {
+      const index = chatMessages.findIndex((m) => m.id === messageId);
+      if (index < 0) return;
+      const target = chatMessages[index];
+      if (!target || target.role !== 'user') return;
+      const history = chatMessages.slice(0, index + 1);
+      await runChatCompletion(history);
+    },
+    [chatMessages, runChatCompletion],
+  );
+
+  const handleRegenerateChatMessage = useCallback(
+    async (messageId: string) => {
+      const index = chatMessages.findIndex((m) => m.id === messageId);
+      if (index < 0) return;
+      const target = chatMessages[index];
+      if (!target || target.role !== 'assistant') return;
+      let userIndex = index - 1;
+      while (userIndex >= 0 && chatMessages[userIndex]?.role !== 'user') {
+        userIndex -= 1;
+      }
+      if (userIndex < 0) return;
+      const history = chatMessages.slice(0, userIndex + 1);
+      await runChatCompletion(history);
+    },
+    [chatMessages, runChatCompletion],
+  );
+
+  const handleCopyChatMessage = useCallback(async (message: LlmChatMessage) => {
+    const text =
+      message.role === 'user' ? formatLlmChatUserContent(message) : message.content;
+    if (!text.trim()) return;
+    const ok = await copyText(text, {
+      message: message.role === 'user' ? '요청을 복사했습니다' : '응답을 복사했습니다',
+    });
+    if (!ok) setChatError('클립보드에 복사하지 못했습니다.');
+  }, []);
+
+  const handleApplyChatResult = useCallback(
+    (content: string) => {
+      if (!content.trim()) return;
+      if (!canInsertIntoDocument || (!editorRef && !getMarkdown && !editorBridge?.applyResult)) {
+        setChatError('삽입할 문서 에디터가 열려 있지 않습니다.');
         return;
       }
-      setChatError(err instanceof Error ? err.message : 'LLM 채팅 요청에 실패했습니다.');
-      setChatMessages((prev) =>
-        prev.filter((msg) => !(msg.id === assistantId && !msg.content.trim())),
-      );
-    } finally {
-      if (chatAbortRef.current === controller) {
-        chatAbortRef.current = null;
-        setChatLoading(false);
+      const ok =
+        typeof editorBridge?.applyResult === 'function'
+          ? editorBridge.applyResult(content)
+          : applyLlmResultToEditor({
+              editorRef: editorRef ?? { current: null },
+              result: content,
+              ...(onChange ? { onChange } : {}),
+              ...(getMarkdown ? { getMarkdown } : {}),
+              ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
+            });
+      if (!ok) {
+        setChatError('에디터에 결과를 적용할 수 없습니다. 선택 영역을 다시 확인하세요.');
+        return;
       }
-    }
-  }, [chatDraft, chatMessages, selectedProfile, model, systemPrompt, requestOptions]);
+      refreshSelection();
+    },
+    [canInsertIntoDocument, editorRef, getMarkdown, editorBridge, onChange, refreshSelection],
+  );
+
+  const handleAppendChatResult = useCallback(
+    (content: string) => {
+      if (!content.trim()) return;
+      if (!canInsertIntoDocument || (!editorRef && !getMarkdown && !editorBridge?.applyResult)) {
+        setChatError('삽입할 문서 에디터가 열려 있지 않습니다.');
+        return;
+      }
+      const ok =
+        typeof editorBridge?.applyResult === 'function'
+          ? editorBridge.applyResult(content, { forceAppendAtEnd: true })
+          : applyLlmResultToEditor({
+              editorRef: editorRef ?? { current: null },
+              result: content,
+              ...(onChange ? { onChange } : {}),
+              ...(getMarkdown ? { getMarkdown } : {}),
+              forceAppendAtEnd: true,
+              ...(editorBridge?.documentKey ? { documentKey: editorBridge.documentKey } : {}),
+            });
+      if (!ok) {
+        setChatError('에디터에 결과를 삽입할 수 없습니다.');
+        return;
+      }
+      refreshSelection();
+    },
+    [canInsertIntoDocument, editorRef, getMarkdown, editorBridge, onChange, refreshSelection],
+  );
+
+  const handleCreateNoteFromChatResult = useCallback(
+    (content: string) => {
+      if (!content.trim()) return;
+      requestCreateFileWithContent(content);
+    },
+    [requestCreateFileWithContent],
+  );
 
   const handleRun = useCallback(async () => {
     // Ignore re-entry while a run is active (cancel is explicit). Prevents
@@ -1137,8 +1422,51 @@ export default function LlmAssistModal({
         case 'cancel-chat':
           handleCancelChat();
           break;
-        case 'clear-chat':
-          handleClearChat();
+        case 'resend-chat-message':
+          if (typeof payload.id === 'string') await handleResendChatMessage(payload.id);
+          break;
+        case 'regenerate-chat-message':
+          if (typeof payload.id === 'string') await handleRegenerateChatMessage(payload.id);
+          break;
+        case 'copy-chat-message': {
+          const messageId = typeof payload.id === 'string' ? payload.id : '';
+          const message = chatMessages.find((m) => m.id === messageId);
+          if (message) void handleCopyChatMessage(message);
+          break;
+        }
+        case 'apply-chat-result':
+          if (typeof payload.content === 'string') handleApplyChatResult(payload.content);
+          break;
+        case 'append-chat-result':
+          if (typeof payload.content === 'string') handleAppendChatResult(payload.content);
+          break;
+        case 'create-note-from-chat-result':
+          if (typeof payload.content === 'string') handleCreateNoteFromChatResult(payload.content);
+          break;
+        case 'new-chat-thread':
+          handleNewChatThread();
+          break;
+        case 'select-chat-thread':
+          if (typeof payload.id === 'string') handleSelectChatThread(payload.id);
+          break;
+        case 'delete-chat-thread':
+          if (typeof payload.id === 'string') handleDeleteChatThread(payload.id);
+          break;
+        case 'add-chat-reference':
+          if (typeof payload.text === 'string') addChatReference(payload.text);
+          break;
+        case 'remove-chat-reference':
+          setChatReferences((prev) => prev.filter((r) => r.id !== String(payload.id ?? '')));
+          break;
+        case 'add-chat-images': {
+          const incoming = (Array.isArray(payload.images) ? payload.images : [])
+            .map(normalizeImageAttachment)
+            .filter((img): img is LlmAssistImageAttachment => img !== null);
+          if (incoming.length) setChatImages((prev) => [...prev, ...incoming]);
+          break;
+        }
+        case 'remove-chat-image':
+          handleRemoveChatImage(String(payload.id ?? ''));
           break;
         case 'close':
           onOpenChange?.(false);
@@ -1167,7 +1495,18 @@ export default function LlmAssistModal({
       setUiMode,
       handleSendChat,
       handleCancelChat,
-      handleClearChat,
+      handleResendChatMessage,
+      handleRegenerateChatMessage,
+      handleCopyChatMessage,
+      handleApplyChatResult,
+      handleAppendChatResult,
+      handleCreateNoteFromChatResult,
+      chatMessages,
+      handleNewChatThread,
+      handleSelectChatThread,
+      handleDeleteChatThread,
+      addChatReference,
+      handleRemoveChatImage,
       onOpenChange,
     ],
   );
@@ -1388,11 +1727,29 @@ export default function LlmAssistModal({
         messages={chatMessages}
         draft={chatDraft}
         onDraftChange={setChatDraft}
+        references={chatReferences}
+        onRemoveReference={(id) =>
+          setChatReferences((prev) => prev.filter((r) => r.id !== id))
+        }
+        attachedImages={chatImages}
+        onAddImages={handleAddChatImages}
+        onRemoveImage={handleRemoveChatImage}
+        threads={chatThreads}
+        activeThreadId={activeThreadId}
+        onSelectThread={handleSelectChatThread}
+        onDeleteThread={handleDeleteChatThread}
+        onNewThread={handleNewChatThread}
         loading={chatLoading}
         error={chatError}
         onSend={handleSendChat}
         onCancel={handleCancelChat}
-        onClearMessages={handleClearChat}
+        canInsertIntoDocument={canInsertIntoDocument}
+        onCopyMessage={handleCopyChatMessage}
+        onResendMessage={handleResendChatMessage}
+        onRegenerateMessage={handleRegenerateChatMessage}
+        onApplyResult={handleApplyChatResult}
+        onAppendResult={handleAppendChatResult}
+        onCreateNoteFromResult={handleCreateNoteFromChatResult}
       />
     ) : (
       <LlmAssistPanel {...panelProps} enableImageDropZone={false} />
@@ -1446,6 +1803,11 @@ export default function LlmAssistModal({
 
   return (
     <>
+      <LlmAssistAddSelectionToChat
+        enabled={Boolean(open)}
+        onAdd={addChatReference}
+      />
+
       {fullBleed ? fullBleedBody : null}
 
       {dockOpen ? (

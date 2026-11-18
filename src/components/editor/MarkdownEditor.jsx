@@ -170,6 +170,7 @@ import {
 import { useWikiImageHydration } from '@/hooks/useWikiImageHydration';
 import { useLazyMermaidRender } from '@/hooks/useLazyMermaidRender';
 import { useLlmAssistSessionOptional } from '@/contexts/LlmAssistSessionContext';
+import { activateLlmAssistOrCaptureSelection } from '@/utils/llm/activateLlmAssistOrCaptureSelection';
 import {
   attachPreviewMirrorEdit,
   abandonDetachedPreviewMirrorEdit,
@@ -745,7 +746,7 @@ export default function MarkdownEditor({
       view.focus();
       redo(view);
     };
-    handlers['editor-llm-assist'] = () => llmAssist?.toggleAssist?.();
+    handlers['editor-llm-assist'] = () => activateLlmAssistOrCaptureSelection(llmAssist);
     handlers['editor-export-pdf'] = () => openExport({ paginationMode: 'flow' });
     handlers['editor-export-pdf-pagedjs'] = () => openExport({ paginationMode: 'pagedjs' });
     handlers['editor-pgbr'] = () => {
@@ -2557,7 +2558,7 @@ export default function MarkdownEditor({
     <LlmAssistToolbar
       key="llm-assist"
       onToggle={() => {
-        llmAssist?.toggleAssist?.();
+        activateLlmAssistOrCaptureSelection(llmAssist);
       }}
     />,
     <ChecklistProgressToolbar
@@ -2613,7 +2614,7 @@ export default function MarkdownEditor({
     onUploadImage,
     handleToolbarImageUpload,
     openHeadingRemap,
-    llmAssist?.toggleAssist,
+    llmAssist,
   ]);
 
   const toolbars = useMemo(() => [

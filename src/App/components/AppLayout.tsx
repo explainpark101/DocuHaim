@@ -82,6 +82,7 @@ import {
   useLlmAssistSessionOptional,
 } from '@/contexts/LlmAssistSessionContext';
 import { useLlmAssistToggleShortcut } from '@/hooks/useLlmAssistToggleShortcut';
+import { activateLlmAssistOrCaptureSelection } from '@/utils/llm/activateLlmAssistOrCaptureSelection';
 
 const LlmAssistModal = lazy(() => import('@/components/LlmAssistModal'));
 
@@ -93,9 +94,12 @@ function LlmAssistMenuBridge(
 ) {
   const { isUnlocked } = useAuth();
   const { open, toggleAssist } = useLlmAssistOpen();
+  const llmAssistSession = useLlmAssistSessionOptional();
   useLlmAssistToggleShortcut({
     enabled: isUnlocked,
-    onToggle: toggleAssist,
+    onToggle: () => {
+      activateLlmAssistOrCaptureSelection(llmAssistSession ?? { toggleAssist });
+    },
   });
   useDesktopMenuBridge({
     ...props,

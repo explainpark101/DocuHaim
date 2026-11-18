@@ -20,6 +20,7 @@ import {
   saveLlmAssistPresentation,
   type LlmAssistPresentation,
 } from '@/utils/llm/llmAssistPresentation';
+import { readLlmAssistLiveSelectionText } from '@/utils/llm/llmAssistLiveSelection';
 
 export type LlmAssistSelectionSnapshot = {
   text: string;
@@ -69,6 +70,11 @@ export type LlmAssistSplitWorkspaceHandlers = {
   close: () => void;
 };
 
+export type LlmAssistChatCaptureHandlers = {
+  /** Switch to chat mode and attach the text as a pending reference. */
+  addReference: (text: string) => void;
+};
+
 type LlmAssistSessionContextValue = {
   setOpen: (open: boolean) => void;
   openAssist: () => void;
@@ -81,6 +87,12 @@ type LlmAssistSessionContextValue = {
   openAsSplit: () => void;
   /** Register App-side workspace tab open/close for split presentation. */
   registerSplitWorkspaceHandlers: (handlers: LlmAssistSplitWorkspaceHandlers | null) => void;
+  registerChatCaptureHandlers: (handlers: LlmAssistChatCaptureHandlers | null) => void;
+  /**
+   * If there is a live selection, open assist and add it as a chat reference.
+   * Returns true when a reference was captured (shortcut should not toggle).
+   */
+  captureSelectionToChat: () => boolean;
   editorBridge: LlmAssistEditorBridge | null;
   registerEditorBridge: (bridge: LlmAssistEditorBridge) => () => void;
   canInsertIntoDocument: boolean;
@@ -111,6 +123,8 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
   );
   const nextOwnerIdRef = useRef(1);
   const splitHandlersRef = useRef<LlmAssistSplitWorkspaceHandlers | null>(null);
+  const chatCaptureHandlersRef = useRef<LlmAssistChatCaptureHandlers | null>(null);
+  const editorBridgeRef = useRef<LlmAssistEditorBridge | null>(null);
   const presentationRef = useRef(presentation);
   const openRef = useRef(open);
   presentationRef.current = presentation;
@@ -169,6 +183,22 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
     [],
   );
 
+  const registerChatCaptureHandlers = useCallback(
+    (handlers: LlmAssistChatCaptureHandlers | null) => {
+      chatCaptureHandlersRef.current = handlers;
+    },
+    [],
+  );
+
+  const captureSelectionToChat = useCallback(() => {
+    const text = readLlmAssistLiveSelectionText(editorBridgeRef.current);
+    if (!text.trim()) return false;
+    setPresentation('docked');
+    setOpen(true);
+    chatCaptureHandlersRef.current?.addReference(text);
+    return true;
+  }, [setOpen, setPresentation]);
+
   // Keep the workspace LLM tab in sync with split presentation + open.
   useEffect(() => {
     const handlers = splitHandlersRef.current;
@@ -191,6 +221,7 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
     }));
     const picked = pickLlmAssistEditorBridge(candidates, bridgePickMemoryRef.current);
     bridgePickMemoryRef.current = picked.memory;
+    editorBridgeRef.current = picked.bridge;
     setEditorBridge((prev) => (prev === picked.bridge ? prev : picked.bridge));
   }, []);
 
@@ -239,6 +270,8 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
       undockToFloating,
       openAsSplit,
       registerSplitWorkspaceHandlers,
+      registerChatCaptureHandlers,
+      captureSelectionToChat,
       editorBridge,
       registerEditorBridge,
       canInsertIntoDocument: Boolean(editorBridge),
@@ -254,6 +287,8 @@ export function LlmAssistSessionProvider({ children }: { children: ReactNode }) 
       undockToFloating,
       openAsSplit,
       registerSplitWorkspaceHandlers,
+      registerChatCaptureHandlers,
+      captureSelectionToChat,
       editorBridge,
       registerEditorBridge,
     ],
