@@ -14,11 +14,13 @@ export function findFormattedHtmlCopyRoot(
 ): HTMLElement | null {
   for (const selector of COPY_FORMATTED_HTML_ROOT_SELECTORS) {
     const roots = [...scope.querySelectorAll(selector)];
-    const visible = roots.find((el) => {
-      if (!(el instanceof HTMLElement)) return false;
-      const rect = el.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0;
-    });
+    const visible = roots.find(
+      (el): el is HTMLElement => {
+        if (!(el instanceof HTMLElement)) return false;
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      },
+    );
     if (visible) return visible;
   }
   return null;
