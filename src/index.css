@@ -185,7 +185,7 @@
 
   body {
     @apply bg-gray-50 text-gray-800 dark:bg-odp-bgSofter dark:text-odp-fg font-sans print:bg-white print:dark:bg-white;
-    /* Paperozi + system fallbacks: keep metrics stable when glyphs fall through */
+    /* Paperozi metrics via from-font — requires U+20 in Paperozi unicode-range */
     font-size-adjust: from-font;
   }
 
