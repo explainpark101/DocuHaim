@@ -1,4 +1,5 @@
 import {
+  findBrowseFolderNode,
   getBrowseChildren,
   normalizeDirPath,
   type BrowseTreeNode,
@@ -206,6 +207,29 @@ export type FolderSuggestItem = {
   /** Full folder path when not `..`. */
   path?: string;
 };
+
+/**
+ * Parent folder paths (trailing `/`) that do not yet exist in the vault trees.
+ * Root (`''`) is never missing. Used for a single create-missing-folders confirm.
+ */
+export function listMissingCreateParentFolders(
+  trees: Array<BrowseTreeNode[] | null | undefined>,
+  parentDirPath: string,
+): string[] {
+  const target = normalizeDirPath(parentDirPath);
+  if (!target) return [];
+
+  const parts = target.replace(/\/$/, '').split('/').filter(Boolean);
+  const missing: string[] = [];
+  let acc = '';
+  for (const part of parts) {
+    acc = `${acc}${part}/`;
+    if (!findBrowseFolderNode(trees, acc)) {
+      missing.push(acc);
+    }
+  }
+  return missing;
+}
 
 /** Folder suggestions for the current autocomplete list directory. */
 export function listCreateItemFolderSuggestions(

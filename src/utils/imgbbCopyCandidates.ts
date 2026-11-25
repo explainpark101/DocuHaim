@@ -6,10 +6,7 @@ import {
   renderLazyMermaidElement,
 } from '@/utils/lazyMermaid';
 import type { RemoteImageKind } from '@/utils/remoteImageComment';
-
-const COPY_ROOT_SELECTORS = [
-  '.md-editor-preview',
-];
+import { findFormattedHtmlCopyRoot } from '@/utils/copyFormattedHtmlRoots';
 
 export type ImgbbCopyCandidate = {
   id: string;
@@ -25,19 +22,6 @@ export type ImgbbCopyCandidate = {
   occurrence: number;
 };
 
-function findCopyRoot(scope: ParentNode = document): Element | null {
-  for (const selector of COPY_ROOT_SELECTORS) {
-    const roots = [...scope.querySelectorAll(selector)];
-    const visible = roots.find((el) => {
-      if (!(el instanceof HTMLElement)) return false;
-      const rect = el.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0;
-    });
-    if (visible) return visible;
-  }
-  return null;
-}
-
 function occurrenceForKey(
   counts: Map<string, number>,
   key: string,
@@ -52,7 +36,7 @@ function occurrenceForKey(
  * HTTPS URL for formatted HTML copy (skip already-https wiki/md paths).
  */
 export function collectImgbbCopyCandidates(scope: ParentNode = document): ImgbbCopyCandidate[] {
-  const root = findCopyRoot(scope);
+  const root = findFormattedHtmlCopyRoot(scope);
   if (!root) return [];
 
   const out: ImgbbCopyCandidate[] = [];

@@ -32,6 +32,8 @@ import { deleteRecordingById, deleteRecordingFragments } from '@/utils/recording
 import { drainRecordingUploadQueue } from '@/utils/recordingUploadQueue';
 import { STORAGE_MODE_LOCAL, STORAGE_MODE_WEBDAV } from '@/utils/storageSettings';
 import { createWebdavBackend, createLocalBackend } from '@/utils/storage';
+import { resolveCreateItemPath } from '@/utils/createItemPath';
+import { normalizeDirPath } from '@/utils/advancedSearch/browseDirectory';
 import { usePwaNewFileShortcut } from '@/hooks/usePwaNewFileShortcut';
 import { useNewTempFileShortcut } from '@/hooks/useNewTempFileShortcut';
 import {
@@ -49,7 +51,24 @@ export function useTempChatRecordingDomain() {
   const { addIndicator, removeIndicator } = useActivityIndicator();
   const { showAlert } = useAlertModal();
   const { isUnlocked, s3Creds } = useAuth();
-  const { canScanStorageUsage, getS3Client, loadS3Files, localRootHandle, localTree, refreshLocalTree, refreshWebdavTree, s3Tree, upsertSessionWorkspace, storageMode, webdavConfig, webdavReady, webdavTree } = useVault();
+  const {
+    canScanStorageUsage,
+    getBackendForType,
+    getS3Client,
+    loadS3Files,
+    localRootHandle,
+    localTree,
+    localVaultFsPath,
+    refreshIdbTree,
+    refreshLocalTree,
+    refreshWebdavTree,
+    s3Tree,
+    upsertSessionWorkspace,
+    storageMode,
+    webdavConfig,
+    webdavReady,
+    webdavTree,
+  } = useVault();
   const { applySessionFileToEditorRef, currentFile, currentFileRef, editedFileName, editorContent, editorContentRef, flushSessionEditorToWorkspaceRef, revokeSessionObjectUrlsRef, sessionVaultBindingsRef, sessionWorkspacesRef } = useFileSessionOwned();
   const { saveCurrentMarkdownBeforeSwitch, selectFileRaw, openAdvancedSearchFile } = useFileSession();
   const { confirmAndCancelEditorImageUploadRef, setSelectedIds } = useTreeOpsOwned();
@@ -130,14 +149,65 @@ export function useTempChatRecordingDomain() {
     parentHandle,
     fileName,
     includeReplyThread = false,
+    createMissingFolders = false,
   }: any) => {
-    let finalName = String(fileName || '').trim();
-    if (!finalName) throw new Error('파일명이 비어 있습니다.');
-    if (!finalName.endsWith('.md')) finalName += '.md';
-    if (finalName.includes('/') || finalName.includes('\\')) {
-      throw new Error('파일명에 / 를 넣을 수 없습니다.');
+    const resolved = resolveCreateItemPath(parentPath, String(fileName || ''), 'file');
+    if (!resolved.ok) {
+      if (resolved.reason === 'outside-root') {
+        throw new Error('루트 밖으로 나갈 수 없습니다.');
+      }
+      throw new Error('파일명이 비어 있습니다.');
     }
-    const newPath = `${parentPath || ''}${finalName}`;
+
+    const { path: newPath, parentDirPath, baseName: finalName } = resolved;
+    const missingParents = parentDirPath
+      ? parentDirPath.replace(/\/$/, '').split('/').filter(Boolean).reduce(
+          (acc: string[], _part: string, index: number, parts: string[]) => {
+            const dir = `${parts.slice(0, index + 1).join('/')}/`;
+            acc.push(dir);
+            return acc;
+          },
+          [] as string[],
+        )
+      : [];
+
+    const ensureS3Folders = async () => {
+      if (!createMissingFolders || !missingParents.length) return;
+      const client = getS3Client();
+      if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+      for (const dir of missingParents) {
+        await putObject(client, {
+          Bucket: s3Creds.bucket,
+          Key: normalizeDirPath(dir),
+          Body: '',
+        });
+      }
+    };
+
+    const ensureBackendFolders = async (backend: {
+      mkdir: (path: string) => Promise<unknown>;
+    }) => {
+      if (!createMissingFolders || !missingParents.length) return;
+      for (const dir of missingParents) {
+        await backend.mkdir(normalizeDirPath(dir));
+      }
+    };
+
+    const ensureLocalNestedDir = async (dirPath: string) => {
+      if (!localRootHandle) throw new Error('루트 폴더를 먼저 열어주세요.');
+      const parts = String(dirPath || '')
+        .replace(/\/$/, '')
+        .split('/')
+        .filter(Boolean);
+      let dir = localRootHandle;
+      for (const part of parts) {
+        dir = await dir.getDirectoryHandle(part, {
+          create: Boolean(createMissingFolders),
+        });
+      }
+      return dir;
+    };
+
     const tz = detectTimeZone();
     /** @type {any[]} */
     let threadMessages: any[] = [];
@@ -165,6 +235,7 @@ export function useTempChatRecordingDomain() {
     if (storageMode === 's3') {
       const client = getS3Client();
       if (!client) throw new Error('S3 클라이언트를 초기화하지 못했습니다.');
+      await ensureS3Folders();
       await putObject(client, {
         Bucket: s3Creds.bucket,
         Key: newPath,
@@ -174,16 +245,53 @@ export function useTempChatRecordingDomain() {
       await loadS3Files();
     } else if (storageMode === 'webdav') {
       const backend = createWebdavBackend(webdavConfig);
+      await ensureBackendFolders(backend);
       await backend.writeText(newPath, body, 'text/markdown; charset=utf-8');
       await refreshWebdavTree();
+    } else if (storageMode === 'idb') {
+      const backend = getBackendForType('idb');
+      if (!backend?.writeText) {
+        throw new Error('IDB 저장소를 사용할 수 없습니다.');
+      }
+      await ensureBackendFolders(backend);
+      await backend.writeText(newPath, body, 'text/markdown; charset=utf-8');
+      await refreshIdbTree();
     } else {
-      const targetDir = parentHandle || localRootHandle;
-      if (!targetDir) throw new Error('루트 폴더를 먼저 열어주세요.');
-      const newFileHandle = await targetDir.getFileHandle(finalName, { create: true });
-      const writable = await newFileHandle.createWritable();
-      await writable.write(body);
-      await writable.close();
-      await refreshLocalTree();
+      if (localVaultFsPath && !localRootHandle) {
+        const backend = getBackendForType('local');
+        if (!backend?.writeText) {
+          throw new Error('루트 폴더를 먼저 열어주세요.');
+        }
+        await ensureBackendFolders(backend);
+        await backend.writeText(newPath, body, 'text/markdown; charset=utf-8');
+        await refreshLocalTree();
+      } else {
+        let targetDir: FileSystemDirectoryHandle | null = null;
+        if (localRootHandle) {
+          targetDir = await ensureLocalNestedDir(parentDirPath);
+        } else if (parentHandle) {
+          const selectedNorm = normalizeDirPath(parentPath);
+          const relative = parentDirPath.startsWith(selectedNorm)
+            ? parentDirPath.slice(selectedNorm.length)
+            : parentDirPath;
+          const parts = relative.replace(/\/$/, '').split('/').filter(Boolean);
+          let dir: FileSystemDirectoryHandle = parentHandle;
+          for (const part of parts) {
+            dir = await dir.getDirectoryHandle(part, {
+              create: Boolean(createMissingFolders),
+            });
+          }
+          targetDir = dir;
+        }
+        if (!targetDir) throw new Error('루트 폴더를 먼저 열어주세요.');
+        const newFileHandle = await targetDir.getFileHandle(finalName, {
+          create: true,
+        });
+        const writable = await newFileHandle.createWritable();
+        await writable.write(body);
+        await writable.close();
+        await refreshLocalTree();
+      }
     }
 
     if (chatStorageCtx && message?.id) {

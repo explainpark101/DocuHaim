@@ -29,6 +29,7 @@ import { isDesktopApp } from '@/utils/isDesktopApp'
 import { startDesktopOpenFilesBridge } from '@/utils/desktopOpenFiles'
 import { startAndroidShareTargetBridge } from '@/utils/chatWithMyself/androidShareTarget'
 import { initUiFontSettings } from '@/utils/uiFontSettings'
+import { initUiFontSizeSettings } from '@/utils/uiFontSizeSettings'
 import { scheduleRevealTauriMainWindow } from '@/utils/revealTauriMainWindow'
 import { getBootSplash, initBootSplash } from '@/boot/bootSplash'
 
@@ -47,6 +48,7 @@ initDesktopExternalLinks()
 initMdEditorCodeCopy()
 initMdEditorToolbarScroll()
 initUiFontSettings()
+initUiFontSizeSettings()
 void import('@/utils/tauriOpenWithAppCache').then((m) => m.initTauriOpenWithAppCacheCleanup())
 void startDesktopOpenFilesBridge()
 void startAndroidShareTargetBridge()

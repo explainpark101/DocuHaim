@@ -153,7 +153,7 @@ html[data-haim-prose-width-clamp='1']
 
 .haim-editor-prose {
   line-height: 1.65;
-  font-size: 15px;
+  font-size: calc(15px * var(--app-ui-font-scale, 1));
   color: inherit;
   word-break: keep-all;
   overflow-wrap: break-word;

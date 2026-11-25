@@ -241,7 +241,7 @@ html.desktop-app.llm-assist-popout-window #root {
   print-color-adjust: exact;
 }
 
-/* Export PDF print surfaces: ignore app UI font (--font-sans/--font-display on :root). */
+/* Export PDF print surfaces: ignore app UI font / size scale. */
 .export-pdf-paper,
 .export-pdf-paper-content,
 [data-export-pdf-pages],
@@ -250,6 +250,7 @@ html.desktop-app.llm-assist-popout-window #root {
   --font-sans: var(--font-sans-builtin);
   --font-display: var(--font-display-builtin);
   --font-mono: var(--font-mono-builtin);
+  --app-ui-font-scale: 1;
 }
 
 /* PDF paper must stay light even when html has .dark (md-editor preview.css). */

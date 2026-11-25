@@ -3867,6 +3867,9 @@ export default function ChatWithMyselfPane({
                 });
               }
               setAddToNoteMessage(null);
+              if (notePath && onOpenNote) {
+                await onOpenNote(notePath);
+              }
             } finally {
               setAddToNoteSubmitting(false);
             }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Type } from 'lucide-react';
 import FontFamilyInput from '@/components/FontFamilyInput';
+import SliderWithScrubInput from '@/components/SliderWithScrubInput';
 import { IconRefresh } from '@/components/icons';
 import { buildAppUiFontFamilyOptions } from '@/utils/fontOptions';
 import {
@@ -12,6 +13,14 @@ import {
   saveUiFontFamily,
   UI_FONT_CHANGED_EVENT,
 } from '@/utils/uiFontSettings';
+import {
+  loadUiFontSizePercent,
+  saveUiFontSizePercent,
+  UI_FONT_SIZE_CHANGED_EVENT,
+  UI_FONT_SIZE_PERCENT_DEFAULT,
+  UI_FONT_SIZE_PERCENT_MAX,
+  UI_FONT_SIZE_PERCENT_MIN,
+} from '@/utils/uiFontSizeSettings';
 import { WEBFONTS_CHANGED_EVENT } from '@/utils/webfontSettingsStore';
 import { isTauriDesktopPlatform } from '@/utils/tauriPlatform';
 
@@ -19,6 +28,9 @@ const DEFAULT_UI_FONT_HINT = 'Paperozi / A2z (기본)';
 
 export default function AppUiFontSettings() {
   const [fontFamily, setFontFamily] = useState(() => loadUiFontFamily());
+  const [fontSizePercent, setFontSizePercent] = useState(() =>
+    loadUiFontSizePercent(),
+  );
   const [systemFonts, setSystemFonts] = useState<string[]>([]);
   const [systemFontsLoading, setSystemFontsLoading] = useState(isTauriDesktopPlatform());
   const [optionsTick, setOptionsTick] = useState(0);
@@ -41,11 +53,14 @@ export default function AppUiFontSettings() {
 
   useEffect(() => {
     const onUiFontChanged = () => setFontFamily(loadUiFontFamily());
+    const onUiFontSizeChanged = () => setFontSizePercent(loadUiFontSizePercent());
     const onWebfontsChanged = () => setOptionsTick((n) => n + 1);
     window.addEventListener(UI_FONT_CHANGED_EVENT, onUiFontChanged);
+    window.addEventListener(UI_FONT_SIZE_CHANGED_EVENT, onUiFontSizeChanged);
     window.addEventListener(WEBFONTS_CHANGED_EVENT, onWebfontsChanged);
     return () => {
       window.removeEventListener(UI_FONT_CHANGED_EVENT, onUiFontChanged);
+      window.removeEventListener(UI_FONT_SIZE_CHANGED_EVENT, onUiFontSizeChanged);
       window.removeEventListener(WEBFONTS_CHANGED_EVENT, onWebfontsChanged);
     };
   }, []);
@@ -61,9 +76,16 @@ export default function AppUiFontSettings() {
     saveUiFontFamily(value);
   };
 
+  const handleFontSizeChange = (value: number) => {
+    setFontSizePercent(value);
+    saveUiFontSizePercent(value);
+  };
+
   const handleReset = () => {
     setFontFamily('');
     saveUiFontFamily('');
+    setFontSizePercent(UI_FONT_SIZE_PERCENT_DEFAULT);
+    saveUiFontSizePercent(UI_FONT_SIZE_PERCENT_DEFAULT);
   };
 
   return (
@@ -92,6 +114,25 @@ export default function AppUiFontSettings() {
           onChange={handleChange}
           options={fontOptions}
           placeholder={DEFAULT_UI_FONT_HINT}
+        />
+      </label>
+      <label className="mt-3 block space-y-1">
+        <span className="block text-xs font-medium text-gray-700 dark:text-odp-fgStrong">
+          글꼴 크기
+        </span>
+        <p className="text-[11px] leading-relaxed text-gray-500 dark:text-odp-muted">
+          앱 UI와 노트 본문 기본 크기를 일괄 조절합니다. 인쇄 설정 글꼴 크기는 별도입니다.
+        </p>
+        <SliderWithScrubInput
+          id="settings-ui-font-size"
+          unit="percent"
+          suffix="%"
+          min={UI_FONT_SIZE_PERCENT_MIN}
+          max={UI_FONT_SIZE_PERCENT_MAX}
+          step={1}
+          value={fontSizePercent}
+          aria-label="앱 글꼴 크기"
+          onChange={handleFontSizeChange}
         />
       </label>
       <div className="mt-3 flex flex-wrap items-center gap-2">

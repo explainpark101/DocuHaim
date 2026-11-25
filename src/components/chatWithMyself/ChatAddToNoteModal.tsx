@@ -1,11 +1,13 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type ComponentProps,
+  type KeyboardEvent,
 } from 'react';
 import {
   DndContext,
@@ -30,7 +32,7 @@ import {
 } from '@/components/treeDnd';
 import TreeDndLayoutSync from '@/components/shell/TreeDndLayoutSync';
 import { IconFolderPlus } from '@/components/icons';
-import { FolderInput, RotateCcw } from 'lucide-react';
+import { Folder, FolderInput, RotateCcw } from 'lucide-react';
 import { findNodeByPath } from '@/utils/s3Tree';
 import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import {
@@ -45,6 +47,15 @@ import {
   formatMessageFileNameBase,
 } from '@/utils/chatWithMyself';
 import { filterVaultTreeForDisplay } from '@/utils/filterVaultTreeForDisplay';
+import {
+  isCreateItemPathTaken,
+  listCreateItemFolderSuggestions,
+  listMissingCreateParentFolders,
+  resolveCreateItemAutocompleteContext,
+  resolveCreateItemPath,
+  type FolderSuggestItem,
+} from '@/utils/createItemPath';
+import type { BrowseTreeNode } from '@/utils/advancedSearch/browseDirectory';
 
 const EMPTY_SELECTED_IDS: Set<string> = new Set();
 
@@ -70,11 +81,18 @@ export type ChatAddToNoteTreeNode = SidebarTreeNode & {
 };
 
 export type ChatAddToNoteConfirmPayload = {
+  /** Selected tree folder (base for relative path input). */
   parentPath: string;
   parentHandle?: FileSystemDirectoryHandle | null | undefined;
+  /**
+   * Path or file name relative to `parentPath` (or vault root when input
+   * starts with `/`). May include nested folders: `notes/foo/bar.md`.
+   */
   fileName: string;
   message: ChatAddToNoteMessage;
   includeReplyThread: boolean;
+  /** Create missing parent folders after a one-time confirm. */
+  createMissingFolders?: boolean;
 };
 
 type TreeMoveItem = {
@@ -262,16 +280,28 @@ export default function ChatAddToNoteModal({
   const [selectedRoot, setSelectedRoot] = useState(true);
   const [error, setError] = useState('');
   const [confirmReplaceName, setConfirmReplaceName] = useState(false);
+  const [pendingMissingFolders, setPendingMissingFolders] = useState<string[] | null>(
+    null,
+  );
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [expandedPaths, setExpandedPaths] = useState(() => new Set<string>());
   const [activeDragItems, setActiveDragItems] = useState<TreeMoveItem[] | null>(null);
   const { isCopyDrag, isCopyDragRef, syncFromEvent: syncCopyModifierFromEvent } =
     useTreeCopyDragModifier(Boolean(activeDragItems?.length));
   const [includeReplyThread, setIncludeReplyThread] = useState(true);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [activeSuggest, setActiveSuggest] = useState(0);
   const hasInitializedRef = useRef(false);
   const activeDragItemsRef = useRef<TreeMoveItem[] | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const pathWrapRef = useRef<HTMLDivElement | null>(null);
+  const pathListboxId = useId();
   const dragDisabled = useIsMobileDragDisabled();
+
+  const browseTrees = useMemo(
+    (): Array<BrowseTreeNode[] | null | undefined> => [tree as BrowseTreeNode[]],
+    [tree],
+  );
 
   // Mouse only — touch/mobile must not start tree reorder drags.
   const sensors = useSensors(
@@ -288,11 +318,14 @@ export default function ChatAddToNoteModal({
     setFileName('');
     setError('');
     setConfirmReplaceName(false);
+    setPendingMissingFolders(null);
     setPendingMove(null);
     setSelectedRoot(true);
     setSelectedFolder(null);
     setExpandedPaths(new Set());
     setIncludeReplyThread(true);
+    setSuggestOpen(false);
+    setActiveSuggest(0);
     hasInitializedRef.current = false;
   }, [isOpen, message?.id]);
 
@@ -492,16 +525,88 @@ export default function ChatAddToNoteModal({
     setPendingMove(null);
   }, []);
 
+  const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
+
+  const pathInput = fileName.trim() || defaultBaseName;
+  const resolvedPath = useMemo(
+    () => resolveCreateItemPath(parentPath, pathInput, 'file'),
+    [parentPath, pathInput],
+  );
+  const autocomplete = useMemo(
+    () => resolveCreateItemAutocompleteContext(parentPath, fileName),
+    [parentPath, fileName],
+  );
+  const suggestions = useMemo(() => {
+    if (!autocomplete.ok) return [];
+    return listCreateItemFolderSuggestions(
+      browseTrees,
+      autocomplete.listDir,
+      autocomplete.prefix,
+    );
+  }, [autocomplete, browseTrees]);
+
+  useEffect(() => {
+    setActiveSuggest(0);
+  }, [fileName, suggestions.length]);
+
+  useEffect(() => {
+    const el = pathWrapRef.current;
+    if (!el) return undefined;
+    const onPointerDown = (e: MouseEvent) => {
+      if (!el.contains(e.target as Node)) setSuggestOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  const applySuggestion = useCallback(
+    (item: FolderSuggestItem) => {
+      if (!autocomplete.ok) return;
+      setFileName(`${autocomplete.stem}${item.name}/`);
+      setSuggestOpen(true);
+      setActiveSuggest(0);
+    },
+    [autocomplete],
+  );
+
   if (!isOpen || !message) return null;
 
   const isReplyMessage = Boolean(message.replyTo);
-  const parentPath = selectedRoot ? '' : selectedFolder?.path || '';
   const parentDirHandle = selectedRoot ? localRootHandle : selectedFolder?.handle;
   const canCreateFolder = vaultWithoutHandle || parentDirHandle != null;
-  const canSubmit = vaultWithoutHandle
+  // Prefer vault root handle when typing absolute/nested paths.
+  const canSubmitBase = vaultWithoutHandle
     ? true
-    : !!(selectedRoot ? localRootHandle : selectedFolder?.handle);
+    : Boolean(localRootHandle || parentDirHandle);
   const canMoveFolder = !selectedRoot && selectedFolder?.type === 'folder';
+  const isOutsideRoot =
+    resolvedPath?.ok === false && resolvedPath.reason === 'outside-root';
+  const isDuplicate =
+    resolvedPath?.ok === true
+    && isCreateItemPathTaken(browseTrees, resolvedPath, 'file');
+  const canSubmit =
+    canSubmitBase && resolvedPath?.ok === true && !isDuplicate && !isOutsideRoot;
+  const showSuggestions =
+    suggestOpen && !isOutsideRoot && autocomplete.ok && suggestions.length > 0;
+  const listDirLabel = autocomplete.ok
+    ? autocomplete.listDir || '(루트)'
+    : '(루트 밖)';
+  const rootLabel =
+    storageType === 'local'
+      ? '로컬: '
+      : storageType === 'webdav'
+        ? 'WebDAV: '
+        : storageType === 'idb'
+          ? 'IDB: '
+          : 'S3: ';
+  const previewPath = (() => {
+    if (!pathInput.trim()) {
+      return `${rootLabel}${parentPath || ''}${defaultBaseName}.md`;
+    }
+    if (resolvedPath?.ok) return `${rootLabel}${resolvedPath.path}`;
+    if (isOutsideRoot) return `${rootLabel}(루트 밖 — 생성 불가)`;
+    return `${rootLabel}${parentPath || ''}${pathInput}`;
+  })();
 
   const applyDefaultFileName = () => {
     if (fileName.trim()) {
@@ -511,29 +616,80 @@ export default function ChatAddToNoteModal({
     setFileName(defaultBaseName);
   };
 
-  const handleSubmit = async () => {
+  const submitCreate = async (createMissingFolders: boolean) => {
     if (!onConfirm || isSubmitting || !message) return;
-    const raw = (fileName.trim() || defaultBaseName).replace(/\.md$/i, '');
-    if (!raw) {
-      setError('파일명을 입력하세요.');
+    if (!resolvedPath?.ok) {
+      setError(
+        resolvedPath?.reason === 'outside-root'
+          ? '루트 밖으로 나갈 수 없습니다.'
+          : '파일명을 입력하세요.',
+      );
       return;
     }
-    if (raw.includes('/') || raw.includes('\\')) {
-      setError('파일명에 / 를 넣을 수 없습니다.');
+    if (isDuplicate) {
+      setError('같은 경로의 파일이 이미 있습니다.');
       return;
     }
     setError('');
+    setSuggestOpen(false);
     try {
       await onConfirm({
         parentPath,
         parentHandle: parentDirHandle,
-        fileName: `${raw}.md`,
+        fileName: pathInput,
         message,
         includeReplyThread: isReplyMessage ? includeReplyThread : false,
+        createMissingFolders,
       });
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : '노트 생성 실패';
       setError(errMsg || '노트 생성 실패');
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!onConfirm || isSubmitting || !message) return;
+    if (!resolvedPath?.ok) {
+      setError(
+        resolvedPath?.reason === 'outside-root'
+          ? '루트 밖으로 나갈 수 없습니다.'
+          : '파일명을 입력하세요.',
+      );
+      return;
+    }
+    if (isDuplicate) {
+      setError('같은 경로의 파일이 이미 있습니다.');
+      return;
+    }
+    const missing = listMissingCreateParentFolders(
+      browseTrees,
+      resolvedPath.parentDirPath,
+    );
+    if (missing.length > 0) {
+      setPendingMissingFolders(missing);
+      return;
+    }
+    await submitCreate(false);
+  };
+
+  const handlePathKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveSuggest((i) => (i + 1) % suggestions.length);
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveSuggest(
+        (i) => (i - 1 + suggestions.length) % suggestions.length,
+      );
+      return;
+    }
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      const item = suggestions[activeSuggest] || suggestions[0];
+      if (item) applySuggestion(item);
     }
   };
 
@@ -549,34 +705,108 @@ export default function ChatAddToNoteModal({
           노트로 추가
         </h2>
         <p className="text-xs text-gray-500 dark:text-odp-muted">
-          폴더를 선택한 뒤 노트를 생성합니다. 새 폴더 만들기·폴더 이동이 가능하며,
-          데스크톱에서는 드래그로 폴더를 옮길 수 있습니다(확인 후 적용).
+          폴더를 선택하거나 `/` 로 경로를 입력해 노트를 만듭니다. Tab으로 폴더를
+          자동완성할 수 있습니다. 없는 폴더는 한 번 확인 후 생성됩니다.
         </p>
 
-        <label className="block space-y-1">
+        <div ref={pathWrapRef} className="relative block space-y-1">
           <span className="text-[11px] font-medium text-gray-600 dark:text-odp-muted">
-            파일명
+            경로 / 파일명
           </span>
           <div className="flex items-center gap-1">
             <input
               value={fileName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setFileName(e.target.value)}
-              placeholder={defaultBaseName}
-              className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:border-odp-borderStrong dark:bg-odp-surface dark:text-odp-fgStrong"
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setFileName(e.target.value);
+                setSuggestOpen(true);
+                setError('');
+              }}
+              onFocus={() => setSuggestOpen(true)}
+              onKeyDown={handlePathKeyDown}
+              placeholder={`${defaultBaseName} 또는 notes/폴더/${defaultBaseName}`}
+              className={`min-w-0 flex-1 rounded-md border bg-white px-2 py-1.5 text-sm outline-none focus-visible:ring-2 dark:bg-odp-surface dark:text-odp-fgStrong ${
+                isOutsideRoot || isDuplicate
+                  ? 'border-red-500 focus-visible:ring-red-400 dark:border-red-500'
+                  : 'border-gray-300 focus-visible:ring-blue-400 dark:border-odp-borderStrong'
+              }`}
               autoFocus
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={showSuggestions}
+              aria-autocomplete="list"
+              aria-controls={pathListboxId}
+              aria-activedescendant={
+                showSuggestions && suggestions[activeSuggest]
+                  ? `${pathListboxId}-opt-${activeSuggest}`
+                  : undefined
+              }
+              aria-invalid={isOutsideRoot || isDuplicate}
+              aria-label="경로 또는 파일명"
+              disabled={isSubmitting}
             />
             <button
               type="button"
               onClick={applyDefaultFileName}
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-odp-focusBg dark:hover:text-gray-200"
-              title="기본 이름 적용"
               aria-label="기본 이름 적용"
             >
               <RotateCcw size={15} />
             </button>
-            <span className="shrink-0 text-xs text-gray-400">.md</span>
           </div>
-        </label>
+          <p className="text-[11px] text-gray-500 dark:text-odp-muted">
+            생성될 위치:{' '}
+            <span
+              className={`font-mono break-all ${
+                isOutsideRoot || isDuplicate
+                  ? 'text-red-600 dark:text-red-400'
+                  : ''
+              }`}
+            >
+              {previewPath}
+            </span>
+          </p>
+          {showSuggestions ? (
+            <div
+              id={pathListboxId}
+              role="listbox"
+              aria-label={`폴더 자동완성 · ${listDirLabel}`}
+              className="z-100010 max-h-40 overflow-auto rounded-lg border border-gray-200 bg-white shadow-md dark:border-odp-borderSoft dark:bg-odp-bgSoft"
+            >
+              <div className="sticky top-0 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-[11px] text-gray-500 dark:border-odp-border dark:bg-odp-bgSofter dark:text-odp-muted">
+                폴더 목록 · {listDirLabel}
+              </div>
+              {suggestions.map((item, index) => {
+                const active = index === activeSuggest;
+                return (
+                  <button
+                    key={`${item.name}:${item.path || ''}`}
+                    type="button"
+                    role="option"
+                    id={`${pathListboxId}-opt-${index}`}
+                    aria-selected={active}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                      active
+                        ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/40 dark:text-blue-100'
+                        : 'text-gray-800 hover:bg-gray-100 dark:text-odp-fg dark:hover:bg-odp-focusBg'
+                    }`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      applySuggestion(item);
+                    }}
+                    onMouseEnter={() => setActiveSuggest(index)}
+                  >
+                    <Folder
+                      size={14}
+                      className="shrink-0 text-gray-400 dark:text-odp-muted"
+                      aria-hidden
+                    />
+                    <span className="truncate font-mono">{item.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
 
         <div className="flex min-h-[200px] max-h-[320px] flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-sm dark:border-odp-borderSoft dark:bg-odp-bgSoft">
           <div className="flex items-center justify-end gap-1 border-b border-gray-100 bg-gray-50 px-2 py-1.5 dark:border-odp-borderSoft dark:bg-odp-bgSoft">
@@ -739,7 +969,7 @@ export default function ChatAddToNoteModal({
       <ConfirmModal
         isOpen={confirmReplaceName}
         title="파일명 대체"
-        message="입력된 파일명을 기본 이름으로 바꿀까요?"
+        message="입력된 경로를 기본 파일 이름으로 바꿀까요?"
         confirmLabel="대체"
         cancelLabel="취소"
         onConfirm={() => {
@@ -747,6 +977,22 @@ export default function ChatAddToNoteModal({
           setConfirmReplaceName(false);
         }}
         onCancel={() => setConfirmReplaceName(false)}
+      />
+      <ConfirmModal
+        isOpen={Boolean(pendingMissingFolders?.length)}
+        title="폴더 만들기"
+        message={
+          pendingMissingFolders?.length
+            ? `없는 폴더가 있습니다. 아래 경로를 만든 뒤 노트를 생성할까요?\n\n${pendingMissingFolders.join('\n')}`
+            : ''
+        }
+        confirmLabel="만들고 생성"
+        cancelLabel="취소"
+        onConfirm={() => {
+          setPendingMissingFolders(null);
+          void submitCreate(true);
+        }}
+        onCancel={() => setPendingMissingFolders(null)}
       />
       <ConfirmModal
         isOpen={Boolean(pendingMove)}
