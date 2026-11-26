@@ -97,6 +97,13 @@ function eventTargetElement(target: EventTarget | null): Element | null {
 }
 /** Near-bottom threshold for stick-to-bottom (px). */
 const STICK_BOTTOM_PX = 80;
+/**
+ * Skip ResizeObserver re-pin when already this close to the bottom.
+ * Avoids scrollToIndex feedback stutter while pinned.
+ */
+const STICK_BOTTOM_SETTLED_PX = 2;
+/** How long after a user scroll gesture we suppress stick-bottom RO. */
+const USER_SCROLL_GUARD_MS = 180;
 /** Near-edge threshold to trigger older/newer day load (px). */
 const LOAD_EDGE_PX = 120;
 
@@ -1373,9 +1380,31 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
   const loadingNewerLockRef = useRef(false);
   /** True while silent viewport-fill prepends; suppresses stick-bottom RO. */
   const fillingRef = useRef(false);
+  /**
+   * True while the user is actively scrolling the list. Stick-bottom RO must
+   * not yank back to end during this window (composer height animation + item
+   * remeasure otherwise fight wheel/touch and pin the viewport to bottom).
+   */
+  const userScrollActiveRef = useRef(false);
+  const userScrollGuardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const lastScrollOffsetRef = useRef(0);
   const hasMoreRef = useRef(hasMore);
   hasMoreRef.current = hasMore;
   const listHostRef = useRef<HTMLDivElement | null>(null);
+
+  const markUserScrollActive = useCallback((releaseStick: boolean) => {
+    if (releaseStick) stickBottomRef.current = false;
+    userScrollActiveRef.current = true;
+    if (userScrollGuardTimerRef.current != null) {
+      clearTimeout(userScrollGuardTimerRef.current);
+    }
+    userScrollGuardTimerRef.current = setTimeout(() => {
+      userScrollActiveRef.current = false;
+      userScrollGuardTimerRef.current = null;
+    }, USER_SCROLL_GUARD_MS);
+  }, []);
   const [sheetMessage, setSheetMessage] = useState<ChatListMessage | null>(
     null,
   );
@@ -1618,6 +1647,11 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
   const scrollToBottom = useCallback(() => {
     const list = listRef.current;
     if (!list || rows.length === 0) return;
+    userScrollActiveRef.current = false;
+    if (userScrollGuardTimerRef.current != null) {
+      clearTimeout(userScrollGuardTimerRef.current);
+      userScrollGuardTimerRef.current = null;
+    }
     stickBottomRef.current = true;
     setShowJumpToBottom(Boolean(hasMoreNewer));
     list.scrollToIndex(Math.max(0, rows.length - 1), { align: 'end' });
@@ -1686,7 +1720,12 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
       return;
     }
 
-    if (stickBottomRef.current && grewAtEnd && !prepended) {
+    if (
+      stickBottomRef.current &&
+      !userScrollActiveRef.current &&
+      grewAtEnd &&
+      !prepended
+    ) {
       list.scrollToIndex(Math.max(0, rows.length - 1), { align: 'end' });
     }
   }, [
@@ -1702,20 +1741,24 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
 
   // Keep stick-to-bottom when content height changes (images / OG).
   // Skip while silent fill is prepending — virtua shift owns scroll then.
-  // Re-check distance to bottom so off-screen OG resizes cannot yank mid-list.
+  // Skip while the user is scrolling away — RO + composer Motion height
+  // otherwise re-pin every frame and the list cannot leave the bottom.
   useEffect(() => {
     if (highlightId || editingMessageId) return undefined;
     const host = listHostRef.current;
     if (!host || typeof ResizeObserver === 'undefined') return undefined;
     const ro = new ResizeObserver(() => {
-      if (fillingRef.current) return;
+      if (fillingRef.current || userScrollActiveRef.current) return;
       const list = listRef.current;
       if (!list || !stickBottomRef.current) return;
       const distBottom = list.scrollSize - list.scrollOffset - list.viewportSize;
-      if (distBottom >= STICK_BOTTOM_PX * 2) {
+      // Stale stick flag while clearly away from bottom — release, do not yank.
+      if (distBottom >= STICK_BOTTOM_PX) {
         stickBottomRef.current = false;
         return;
       }
+      // Already settled at end; skip scrollToIndex to avoid feedback stutter.
+      if (distBottom <= STICK_BOTTOM_SETTLED_PX) return;
       list.scrollToIndex(Math.max(0, rows.length - 1), {
         align: 'end',
       });
@@ -1724,8 +1767,56 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
     const content = viewport?.firstElementChild;
     if (content) ro.observe(content);
     else ro.observe(host);
+    // Viewport size also changes when the composer dock springs.
+    if (viewport && viewport !== content) ro.observe(viewport);
     return () => ro.disconnect();
   }, [highlightId, editingMessageId, rows.length]);
+
+  // Release stick-to-bottom on the gesture itself (before onScroll), so RO
+  // cannot win the race against wheel/touch and pin the list back to end.
+  useEffect(() => {
+    const host = listHostRef.current;
+    const scroller = host?.firstElementChild;
+    if (!(scroller instanceof HTMLElement)) return undefined;
+
+    const onWheel = (event: WheelEvent) => {
+      if (event.deltaY < 0) markUserScrollActive(true);
+      else markUserScrollActive(false);
+    };
+
+    let touchStartY: number | null = null;
+    const onTouchStart = (event: TouchEvent) => {
+      touchStartY = event.touches[0]?.clientY ?? null;
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      const y = event.touches[0]?.clientY;
+      if (touchStartY == null || y == null) return;
+      // Finger moves down → content scrolls up → leave bottom.
+      if (y - touchStartY > 2) markUserScrollActive(true);
+      else markUserScrollActive(false);
+    };
+    const onTouchEnd = () => {
+      touchStartY = null;
+    };
+
+    scroller.addEventListener('wheel', onWheel, { passive: true });
+    scroller.addEventListener('touchstart', onTouchStart, { passive: true });
+    scroller.addEventListener('touchmove', onTouchMove, { passive: true });
+    scroller.addEventListener('touchend', onTouchEnd, { passive: true });
+    scroller.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    return () => {
+      scroller.removeEventListener('wheel', onWheel);
+      scroller.removeEventListener('touchstart', onTouchStart);
+      scroller.removeEventListener('touchmove', onTouchMove);
+      scroller.removeEventListener('touchend', onTouchEnd);
+      scroller.removeEventListener('touchcancel', onTouchEnd);
+      if (userScrollGuardTimerRef.current != null) {
+        clearTimeout(userScrollGuardTimerRef.current);
+        userScrollGuardTimerRef.current = null;
+      }
+      userScrollActiveRef.current = false;
+    };
+  }, [markUserScrollActive, rows.length]);
 
   useEffect(() => {
     if (!highlightId) return undefined;
@@ -1796,9 +1887,21 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
 
       const distBottom = list.scrollSize - offset - list.viewportSize;
       const nearBottom = distBottom < STICK_BOTTOM_PX;
-      stickBottomRef.current = nearBottom;
+      const prevOffset = lastScrollOffsetRef.current;
+      lastScrollOffsetRef.current = offset;
+      // Scrolling toward older messages always releases stick-to-bottom, even
+      // inside the near-bottom threshold (prevents RO from yanking back).
+      if (offset < prevOffset - 0.5) {
+        stickBottomRef.current = false;
+        markUserScrollActive(true);
+      } else if (nearBottom) {
+        stickBottomRef.current = true;
+      } else {
+        stickBottomRef.current = false;
+      }
       setShowJumpToBottom(
-        messages.length > 0 && (!nearBottom || Boolean(hasMoreNewer)),
+        messages.length > 0 &&
+          (!stickBottomRef.current || Boolean(hasMoreNewer)),
       );
       updateOverlayFromOffset(offset);
       onTopEdgeChange?.(offset < LOAD_EDGE_PX);
@@ -1835,6 +1938,7 @@ const ChatMessageList = forwardRef<ChatMessageListHandle, ChatMessageListProps>(
       hasMoreNewer,
       loadingOlder,
       loadingNewer,
+      markUserScrollActive,
       messages.length,
       onReachTop,
       onReachBottom,
